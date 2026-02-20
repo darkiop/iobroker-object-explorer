@@ -19,7 +19,7 @@ const queryClient = new QueryClient({
 const PAGE_SIZE = 50;
 
 function AppContent() {
-  const [pattern, setPattern] = useState('alias.*');
+  const [pattern, setPattern] = useState('alias.0.*');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [page, setPage] = useState(0);
 
@@ -58,7 +58,7 @@ function AppContent() {
             </div>
           </div>
           <div className="flex-1 overflow-y-auto py-1">
-            <StateTree stateIds={objectIds} selectedId={selectedId} onSelect={setSelectedId} />
+            <StateTree stateIds={objectIds} objects={objects || {}} selectedId={selectedId} onSelect={setSelectedId} />
           </div>
         </div>
       }

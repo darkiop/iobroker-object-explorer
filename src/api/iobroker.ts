@@ -72,29 +72,45 @@ export async function getStatesBatch(ids: string[]): Promise<Record<string, IoBr
 }
 
 export async function getHistory(id: string, options: HistoryOptions): Promise<HistoryEntry[]> {
+  const data = await sendToSql('getHistory', {
+    id,
+    options: {
+      start: options.start,
+      end: options.end,
+      count: options.count ?? 500,
+      aggregate: options.aggregate ?? 'none',
+    },
+  });
+  const entries: HistoryEntry[] = Array.isArray(data) ? data : (data as { result?: HistoryEntry[] })?.result ?? [];
+  return entries.filter((e) => e.ts >= options.start && e.ts <= options.end);
+}
+
+async function sendToSql(command: string, message: unknown): Promise<unknown> {
   const res = await fetch(`${BASE_URL}/command/sendTo`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      adapterInstance: 'sql.0',
-      command: 'getHistory',
-      message: {
-        id,
-        options: {
-          start: options.start,
-          end: options.end,
-          count: options.count ?? 500,
-          aggregate: options.aggregate ?? 'none',
-        },
-      },
-    }),
+    body: JSON.stringify({ adapterInstance: 'sql.0', command, message }),
   });
   if (!res.ok) {
     throw new Error(`API error: ${res.status} ${res.statusText}`);
   }
-  const data = await res.json();
-  const entries: HistoryEntry[] = Array.isArray(data) ? data : data?.result ?? [];
-  return entries.filter((e) => e.ts >= options.start && e.ts <= options.end);
+  return res.json();
+}
+
+export async function deleteHistoryEntry(id: string, ts: number): Promise<void> {
+  await sendToSql('delete', [{ id, state: { ts } }]);
+}
+
+export async function deleteHistoryRange(id: string, start: number, end: number): Promise<void> {
+  await sendToSql('deleteRange', [{ id, start, end }]);
+}
+
+export async function deleteHistoryAll(id: string): Promise<void> {
+  await sendToSql('deleteAll', [{ id }]);
+}
+
+export function hasHistory(obj: IoBrokerObject): boolean {
+  return obj.common?.custom?.['sql.0']?.enabled === true;
 }
 
 export async function getObject(id: string): Promise<IoBrokerObject> {
