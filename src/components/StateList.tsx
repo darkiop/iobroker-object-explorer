@@ -47,7 +47,7 @@ function EditableNameCell({ id, name }: { id: string; name: string }) {
               setDraft(name);
               setEditing(true);
             }}
-            className="opacity-0 group-hover/name:opacity-100 text-gray-500 hover:text-gray-300 shrink-0 transition-opacity"
+            className="opacity-0 group-hover/name:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
             title="Name bearbeiten"
           >
             <Pencil size={12} />
@@ -73,7 +73,7 @@ function EditableNameCell({ id, name }: { id: string; name: string }) {
           }}
           autoFocus
           disabled={extend.isPending}
-          className="flex-1 min-w-0 bg-gray-700 text-gray-200 text-sm rounded px-2 py-0.5 border border-gray-600 focus:border-blue-500 focus:outline-none disabled:opacity-50"
+          className="flex-1 min-w-0 bg-white text-gray-800 text-sm rounded px-2 py-0.5 border border-gray-300 focus:border-blue-500 focus:outline-none disabled:opacity-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600"
         />
         <button
           onClick={() => {
@@ -81,14 +81,14 @@ function EditableNameCell({ id, name }: { id: string; name: string }) {
             setEditing(false);
           }}
           disabled={extend.isPending}
-          className="text-green-400 hover:text-green-300 shrink-0 disabled:opacity-50"
+          className="text-green-500 hover:text-green-600 dark:text-green-400 dark:hover:text-green-300 shrink-0 disabled:opacity-50"
         >
           <Check size={14} />
         </button>
         <button
           onClick={() => setEditing(false)}
           disabled={extend.isPending}
-          className="text-gray-500 hover:text-gray-300 shrink-0 disabled:opacity-50"
+          className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 disabled:opacity-50"
         >
           <X size={14} />
         </button>
@@ -127,10 +127,10 @@ function CopyIdButton({ id }: { id: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="opacity-0 group-hover/id:opacity-100 text-gray-500 hover:text-gray-300 shrink-0 transition-opacity"
+      className="opacity-0 group-hover/id:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
       title={id}
     >
-      {copied ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
+      {copied ? <Check size={12} className="text-green-500 dark:text-green-400" /> : <Copy size={12} />}
     </button>
   );
 }
@@ -149,7 +149,7 @@ function SortHeader({ label, sortKey, activeKey, dir, onSort, className }: {
   const active = sortKey === activeKey;
   return (
     <th
-      className={`px-3 py-2 cursor-pointer select-none hover:text-gray-200 ${className || ''}`}
+      className={`px-3 py-2 cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200 ${className || ''}`}
       onClick={() => onSort(sortKey)}
     >
       <div className={`flex items-center gap-1 ${className?.includes('text-right') ? 'justify-end' : ''}`}>
@@ -212,7 +212,7 @@ export default function StateList({ ids, states, objects, selectedId, onSelect }
 
   if (ids.length === 0) {
     return (
-      <div className="text-gray-500 text-sm p-8 text-center">
+      <div className="text-gray-400 dark:text-gray-500 text-sm p-8 text-center">
         Keine Datenpunkte gefunden. Verwende die Suche um Datenpunkte zu laden.
       </div>
     );
@@ -221,7 +221,7 @@ export default function StateList({ ids, states, objects, selectedId, onSelect }
   return (
     <div className="overflow-x-auto overflow-y-auto h-full">
       <table className="w-full text-sm text-left">
-        <thead className="text-xs text-gray-400 uppercase bg-gray-800 sticky top-0 z-10">
+        <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-100 dark:bg-gray-800 sticky top-0 z-10">
           <tr>
             <SortHeader label="ID" sortKey="id" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
             <SortHeader label="Name" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
@@ -242,27 +242,27 @@ export default function StateList({ ids, states, objects, selectedId, onSelect }
               <tr
                 key={id}
                 onClick={() => onSelect(id)}
-                className={`border-b border-gray-800 cursor-pointer transition-colors ${
+                className={`border-b border-gray-200 dark:border-gray-800 cursor-pointer transition-colors ${
                   selectedId === id
-                    ? 'bg-blue-600/20 text-blue-200'
-                    : 'hover:bg-gray-800/50 text-gray-300'
+                    ? 'bg-blue-600/20 text-blue-700 dark:text-blue-200'
+                    : 'hover:bg-gray-100/80 text-gray-700 dark:hover:bg-gray-800/50 dark:text-gray-300'
                 }`}
               >
-                <td className="px-3 py-2 font-mono text-xs text-gray-400 max-w-xs group/id">
+                <td className="px-3 py-2 font-mono text-xs text-gray-500 dark:text-gray-400 max-w-xs group/id">
                   <div className="flex items-center gap-1.5">
                     <span className="truncate">{id}</span>
                     <CopyIdButton id={id} />
                   </div>
                 </td>
                 <EditableNameCell id={id} name={name} />
-                <td className="px-3 py-2 text-right font-mono font-medium text-white">
+                <td className="px-3 py-2 text-right font-mono font-medium text-gray-900 dark:text-white">
                   {state ? (() => {
                     const v = formatValue(state.val);
                     const truncated = v.length > 20 ? v.slice(0, 20) + '…' : v;
                     return <span title={v}>{truncated}</span>;
-                  })() : <span className="text-gray-600">...</span>}
+                  })() : <span className="text-gray-300 dark:text-gray-600">...</span>}
                 </td>
-                <td className="px-3 py-2 text-gray-500">{unit}</td>
+                <td className="px-3 py-2 text-gray-400 dark:text-gray-500">{unit}</td>
                 <td className="px-3 py-2">
                   {state ? (
                     <span
@@ -273,7 +273,7 @@ export default function StateList({ ids, states, objects, selectedId, onSelect }
                     />
                   ) : null}
                 </td>
-                <td className="px-3 py-2 text-gray-500 text-xs">
+                <td className="px-3 py-2 text-gray-400 dark:text-gray-500 text-xs">
                   {state ? formatTimestamp(state.ts) : ''}
                 </td>
               </tr>

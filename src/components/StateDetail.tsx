@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { Pencil, Check, X } from 'lucide-react';
-import { useStateDetail, useObjectDetail, useExtendObject, useAllRoles, useAllUnits } from '../hooks/useStates';
+import { Pencil, Check, X, Wrench } from 'lucide-react';
+import { useStateDetail, useObjectDetail, useExtendObject, useAllRoles, useAllUnits, useSetState } from '../hooks/useStates';
 import { hasHistory } from '../api/iobroker';
 import HistoryChart from './HistoryChart';
 
@@ -155,12 +155,120 @@ function EditableRow({ label, value, onSave, isPending, suggestions }: {
   );
 }
 
+function SwitchControl({ val, onSet, isPending, disabled }: { val: unknown; onSet: (v: unknown) => void; isPending: boolean; disabled?: boolean }) {
+  const checked = Boolean(val);
+  return (
+    <button
+      onClick={() => !disabled && onSet(!checked)}
+      disabled={isPending || disabled}
+      className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${disabled ? 'cursor-default opacity-60' : 'cursor-pointer'} ${checked ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'}`}
+    >
+      <span className={`inline-block h-4 w-4 mt-1 transform rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
+    </button>
+  );
+}
+
+function ButtonControl({ onSet, isPending, disabled }: { onSet: (v: unknown) => void; isPending: boolean; disabled?: boolean }) {
+  return (
+    <button
+      onClick={() => onSet(true)}
+      disabled={isPending || disabled}
+      className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-500 text-white rounded disabled:opacity-50 transition-colors"
+    >
+      Auslösen
+    </button>
+  );
+}
+
+function NumberControl({ val, onSet, isPending, unit }: { val: unknown; onSet: (v: unknown) => void; isPending: boolean; unit?: string }) {
+  const [draft, setDraft] = useState(String(val ?? ''));
+  useEffect(() => { setDraft(String(val ?? '')); }, [val]);
+
+  function commit() {
+    const n = Number(draft);
+    if (!isNaN(n)) onSet(n);
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <input
+        type="number"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') commit(); }}
+        onBlur={commit}
+        disabled={isPending}
+        className="w-24 bg-white text-gray-800 text-sm rounded px-2 py-0.5 border border-gray-300 focus:border-blue-500 focus:outline-none disabled:opacity-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600"
+      />
+      {unit && <span className="text-gray-500 dark:text-gray-400 text-sm">{unit}</span>}
+    </div>
+  );
+}
+
+function ExpertControl({ val, onSet, isPending, unit, type }: { val: unknown; onSet: (v: unknown) => void; isPending: boolean; unit?: string; type?: string }) {
+  const [draft, setDraft] = useState(String(val ?? ''));
+  useEffect(() => { setDraft(String(val ?? '')); }, [val]);
+
+  function commit(raw: string) {
+    if (type === 'boolean') {
+      onSet(raw === 'true');
+    } else if (type === 'number') {
+      const n = Number(raw);
+      if (!isNaN(n)) onSet(n);
+    } else {
+      onSet(raw);
+    }
+  }
+
+  if (type === 'boolean') {
+    return (
+      <div className="flex items-center gap-1.5">
+        <select
+          value={draft}
+          onChange={(e) => { setDraft(e.target.value); commit(e.target.value); }}
+          disabled={isPending}
+          className="bg-white text-gray-800 text-sm rounded px-2 py-0.5 border border-gray-300 focus:border-blue-500 focus:outline-none disabled:opacity-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600"
+        >
+          <option value="true">true</option>
+          <option value="false">false</option>
+        </select>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <input
+        type={type === 'number' ? 'number' : 'text'}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') commit(draft); }}
+        disabled={isPending}
+        className="w-32 bg-white text-gray-800 text-sm rounded px-2 py-0.5 border border-gray-300 focus:border-blue-500 focus:outline-none disabled:opacity-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600"
+      />
+      <button
+        onClick={() => commit(draft)}
+        disabled={isPending}
+        className="text-green-500 hover:text-green-600 dark:text-green-400 disabled:opacity-50"
+        title="Senden"
+      >
+        <Check size={14} />
+      </button>
+      {unit && <span className="text-gray-500 dark:text-gray-400 text-sm">{unit}</span>}
+    </div>
+  );
+}
+
 export default function StateDetail({ stateId, onClose }: StateDetailProps) {
   const { data: state, isLoading: stateLoading } = useStateDetail(stateId);
   const { data: object, isLoading: objectLoading } = useObjectDetail(stateId);
   const extend = useExtendObject();
+  const setStateMutation = useSetState();
   const { data: roles } = useAllRoles();
   const { data: units } = useAllUnits();
+  const [expertMode, setExpertMode] = useState(false);
+
+  useEffect(() => { setExpertMode(false); }, [stateId]);
 
   const isLoading = stateLoading || objectLoading;
 
@@ -168,16 +276,42 @@ export default function StateDetail({ stateId, onClose }: StateDetailProps) {
     extend.mutate({ id: stateId, common: { [field]: value } });
   }
 
+  function handleSet(val: unknown) {
+    setStateMutation.mutate({ id: stateId, val });
+  }
+
+  const role = object?.common?.role ?? '';
+  const type = object?.common?.type ?? '';
+  const isWritable = object?.common?.write === true;
+  const isSwitch = role === 'switch' || role.startsWith('switch.');
+  const isButton = role === 'button' || role.startsWith('button.');
+  const isNumberValue = !isSwitch && !isButton && type === 'number';
+
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4 dark:bg-gray-800/80 dark:border-gray-700">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate pr-4">{stateId}</h3>
-        <button
-          onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 text-lg leading-none"
-        >
-          ×
-        </button>
+        <div className="flex items-center gap-1 shrink-0">
+          {isWritable && (
+            <button
+              onClick={() => setExpertMode((e) => !e)}
+              title={expertMode ? 'Expertenmodus deaktivieren' : 'Expertenmodus'}
+              className={`p-1.5 rounded-lg transition-colors ${
+                expertMode
+                  ? 'text-orange-400 bg-orange-400/10 hover:bg-orange-400/20'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700'
+              }`}
+            >
+              <Wrench size={16} />
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-200 dark:text-gray-500 dark:hover:text-gray-300 dark:hover:bg-gray-700 transition-colors text-lg leading-none"
+          >
+            ×
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -231,19 +365,38 @@ export default function StateDetail({ stateId, onClose }: StateDetailProps) {
 
           {state && (
             <>
-              <DetailRow
-                label="Wert"
-                value={
-                  <span className="font-mono font-bold text-gray-900 dark:text-white text-base">
-                    {formatValue(state.val)}
-                    {object?.common?.unit && (
-                      <span className="text-gray-500 dark:text-gray-400 ml-1 text-sm font-normal">
-                        {object.common.unit}
-                      </span>
-                    )}
-                  </span>
-                }
-              />
+              <div className="flex gap-4 py-1.5 border-b border-gray-200 dark:border-gray-800 items-center">
+                <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">Wert</span>
+                <div className="flex-1 flex items-center gap-2 min-w-0">
+                  {expertMode ? (
+                    <ExpertControl
+                      val={state.val}
+                      onSet={handleSet}
+                      isPending={setStateMutation.isPending}
+                      unit={object?.common?.unit}
+                      type={type}
+                    />
+                  ) : isSwitch ? (
+                    <SwitchControl val={state.val} onSet={handleSet} isPending={setStateMutation.isPending} disabled={!isWritable} />
+                  ) : isButton ? (
+                    <ButtonControl onSet={handleSet} isPending={setStateMutation.isPending} disabled={!isWritable} />
+                  ) : isWritable && isNumberValue ? (
+                    <NumberControl
+                      val={state.val}
+                      onSet={handleSet}
+                      isPending={setStateMutation.isPending}
+                      unit={object?.common?.unit}
+                    />
+                  ) : (
+                    <span className="font-mono font-bold text-gray-900 dark:text-white text-base">
+                      {formatValue(state.val)}
+                      {object?.common?.unit && (
+                        <span className="text-gray-500 dark:text-gray-400 ml-1 text-sm font-normal">{object.common.unit}</span>
+                      )}
+                    </span>
+                  )}
+                </div>
+              </div>
               <DetailRow
                 label="Acknowledged"
                 value={

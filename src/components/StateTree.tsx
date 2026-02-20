@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText, Database, ChevronsDownUp, ChevronsUpDown, Copy, Check, Search } from 'lucide-react';
+import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText, Database, ChevronsDownUp, ChevronsUpDown, Copy, Check } from 'lucide-react';
 import { hasHistory } from '../api/iobroker';
 import type { TreeNode, IoBrokerObject } from '../types/iobroker';
 
@@ -73,8 +73,8 @@ function TreeNodeComponent({
   return (
     <div>
       <div
-        className={`group/row flex items-center gap-1.5 px-2 py-1 cursor-pointer hover:bg-gray-700/50 rounded text-sm ${
-          selectedId === node.fullPath ? 'bg-blue-600/30 text-blue-300' : 'text-gray-300'
+        className={`group/row flex items-center gap-1.5 px-2 py-1 cursor-pointer hover:bg-gray-200/50 dark:hover:bg-gray-700/50 rounded text-sm ${
+          selectedId === node.fullPath ? 'bg-blue-600/30 text-blue-600 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300'
         }`}
         style={{ paddingLeft: `${depth * 14 + 4}px` }}
         onClick={() => {
@@ -82,15 +82,19 @@ function TreeNodeComponent({
             onSelect(node.fullPath);
           } else if (hasChildren) {
             setExpanded(!expanded);
+            onSearch(`${node.fullPath}.*`);
           }
         }}
       >
         {isFolder && (
-          expanded
-            ? <ChevronDown size={14} className="text-gray-500 shrink-0" />
-            : <ChevronRight size={14} className="text-gray-500 shrink-0" />
+          <button
+            onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+            className="shrink-0 p-1 -ml-1 rounded hover:bg-gray-300/60 text-gray-400 hover:text-gray-600 dark:hover:bg-gray-600/60 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
+          >
+            {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          </button>
         )}
-        {!isFolder && <span className="w-3.5 shrink-0" />}
+        {!isFolder && <span className="w-5 shrink-0" />}
         {isFolder ? (
           expanded
             ? <FolderOpen size={15} className="text-yellow-500/80 shrink-0" />
@@ -100,21 +104,9 @@ function TreeNodeComponent({
         ) : (
           <FileText size={14} className="text-green-400/80 shrink-0" />
         )}
-        <span className={`truncate ${node.isLeaf ? (isHistoryEnabled ? 'text-blue-400' : 'text-green-400') : 'text-gray-400 font-medium'}`}>
+        <span className={`truncate ${node.isLeaf ? (isHistoryEnabled ? 'text-blue-500 dark:text-blue-400' : 'text-green-600 dark:text-green-400') : 'text-gray-600 font-medium dark:text-gray-400'}`}>
           {node.name}
         </span>
-        {!node.isLeaf && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onSearch(`${node.fullPath}.*`);
-            }}
-            className="shrink-0 opacity-0 group-hover/row:opacity-100 text-gray-500 hover:text-blue-400 transition-opacity"
-            title={`Filter: ${node.fullPath}.*`}
-          >
-            <Search size={12} />
-          </button>
-        )}
         <button
             onClick={(e) => {
               e.stopPropagation();
@@ -140,10 +132,10 @@ function TreeNodeComponent({
                 setTimeout(() => setCopied(false), 1500);
               }
             }}
-            className="ml-auto shrink-0 opacity-0 group-hover/row:opacity-100 text-gray-500 hover:text-gray-300 transition-opacity"
+            className="ml-auto shrink-0 opacity-0 group-hover/row:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-opacity"
             title={node.fullPath}
           >
-            {copied ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
+            {copied ? <Check size={12} className="text-green-500 dark:text-green-400" /> : <Copy size={12} />}
           </button>
       </div>
       {expanded &&
@@ -188,7 +180,7 @@ export default function StateTree({ stateIds, objects, selectedId, onSelect, onS
   );
 
   if (stateIds.length === 0) {
-    return <div className="text-gray-500 text-sm p-4">Keine Datenpunkte geladen</div>;
+    return <div className="text-gray-400 dark:text-gray-500 text-sm p-4">Keine Datenpunkte geladen</div>;
   }
 
   return (
@@ -198,31 +190,31 @@ export default function StateTree({ stateIds, objects, selectedId, onSelect, onS
           onClick={() => setHistoryOnly(!historyOnly)}
           className={`flex items-center gap-1.5 flex-1 px-2 py-1 text-xs rounded ${
             historyOnly
-              ? 'bg-blue-600/20 text-blue-300 border border-blue-500/40'
-              : 'bg-gray-700/50 text-gray-400 border border-gray-600/50 hover:bg-gray-700'
+              ? 'bg-blue-600/20 text-blue-600 border border-blue-500/40 dark:text-blue-300'
+              : 'bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700'
           }`}
         >
           <Database size={12} />
           Nur mit History
-          <span className={`ml-auto ${historyOnly ? 'text-blue-400' : 'text-gray-500'}`}>{historyIds.size}</span>
+          <span className={`ml-auto ${historyOnly ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`}>{historyIds.size}</span>
         </button>
         <button
           onClick={() => setExpandSignal((s) => Math.abs(s) + 1)}
-          className="px-2 py-1 text-xs rounded bg-gray-700/50 text-gray-400 border border-gray-600/50 hover:bg-gray-700"
+          className="px-2 py-1 text-xs rounded bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700"
           title="Alle aufklappen"
         >
           <ChevronsUpDown size={14} />
         </button>
         <button
           onClick={() => setExpandSignal((s) => -(Math.abs(s) + 1))}
-          className="px-2 py-1 text-xs rounded bg-gray-700/50 text-gray-400 border border-gray-600/50 hover:bg-gray-700"
+          className="px-2 py-1 text-xs rounded bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700"
           title="Alle zuklappen"
         >
           <ChevronsDownUp size={14} />
         </button>
       </div>
       {filteredIds.length === 0 ? (
-        <div className="text-gray-500 text-sm p-4">Keine Datenpunkte mit History</div>
+        <div className="text-gray-400 dark:text-gray-500 text-sm p-4">Keine Datenpunkte mit History</div>
       ) : (
         sortedChildren.map((child) => (
           <TreeNodeComponent

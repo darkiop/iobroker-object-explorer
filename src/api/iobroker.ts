@@ -151,3 +151,14 @@ export async function getObject(id: string): Promise<IoBrokerObject> {
   if (all[id]) return all[id];
   return fetchApi<IoBrokerObject>(`/object/${encodeURIComponent(id)}`);
 }
+
+export async function setState(id: string, val: unknown): Promise<void> {
+  const res = await fetch(`${BASE_URL}/state/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ val }),
+  });
+  if (!res.ok) {
+    throw new Error(`API error: ${res.status} ${res.statusText}`);
+  }
+}

@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
+import { useTheme } from '../context/ThemeContext';
 import {
   LineChart,
   Line,
@@ -73,29 +74,38 @@ function formatTooltipTime(ts: number): string {
   return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 }
 
-const SHARED_AXES = {
-  xAxis: (rangeMs: number) => ({
-    dataKey: 'ts' as const,
-    type: 'number' as const,
-    domain: ['dataMin', 'dataMax'] as [string, string],
-    tickFormatter: (ts: number) => formatTime(ts, rangeMs),
-    stroke: '#6b7280',
-    tick: { fontSize: 11 },
-  }),
-  yAxis: (unit?: string) => ({
-    stroke: '#6b7280',
-    tick: { fontSize: 11 },
-    tickFormatter: (v: number) => unit ? `${v} ${unit}` : String(v),
-    width: 70,
-  }),
-  tooltip: (unit?: string) => ({
-    contentStyle: { backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: 6 },
-    labelStyle: { color: '#9ca3af' },
-    itemStyle: { color: '#60a5fa' },
-    labelFormatter: (ts: number) => formatTooltipTime(ts),
-    formatter: (value: number) => [unit ? `${value} ${unit}` : value, 'Wert'] as [string | number, string],
-  }),
-};
+function makeAxes(dark: boolean) {
+  const axisStroke = dark ? '#6b7280' : '#9ca3af';
+  const tickColor = dark ? '#6b7280' : '#4b5563';
+  return {
+    xAxis: (rangeMs: number) => ({
+      dataKey: 'ts' as const,
+      type: 'number' as const,
+      domain: ['dataMin', 'dataMax'] as [string, string],
+      tickFormatter: (ts: number) => formatTime(ts, rangeMs),
+      stroke: axisStroke,
+      tick: { fontSize: 11, fill: tickColor },
+    }),
+    yAxis: (unit?: string) => ({
+      stroke: axisStroke,
+      tick: { fontSize: 11, fill: tickColor },
+      tickFormatter: (v: number) => unit ? `${v} ${unit}` : String(v),
+      width: 70,
+    }),
+    tooltip: (unit?: string) => ({
+      contentStyle: {
+        backgroundColor: dark ? '#1f2937' : '#ffffff',
+        border: `1px solid ${dark ? '#374151' : '#e5e7eb'}`,
+        borderRadius: 6,
+      },
+      labelStyle: { color: dark ? '#9ca3af' : '#6b7280' },
+      itemStyle: { color: '#60a5fa' },
+      labelFormatter: (ts: number) => formatTooltipTime(ts),
+      formatter: (value: number) => [unit ? `${value} ${unit}` : value, 'Wert'] as [string | number, string],
+    }),
+    gridStroke: dark ? '#374151' : '#e5e7eb',
+  };
+}
 
 function ConfirmDialog({ message, onConfirm, onCancel, isPending }: {
   message: string;
@@ -105,13 +115,13 @@ function ConfirmDialog({ message, onConfirm, onCancel, isPending }: {
 }) {
   return (
     <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50 rounded-lg">
-      <div className="bg-gray-800 border border-gray-600 rounded-lg p-4 max-w-sm mx-4 shadow-xl">
-        <p className="text-gray-200 text-sm mb-4">{message}</p>
+      <div className="bg-white border border-gray-200 rounded-lg p-4 max-w-sm mx-4 shadow-xl dark:bg-gray-800 dark:border-gray-600">
+        <p className="text-gray-800 dark:text-gray-200 text-sm mb-4">{message}</p>
         <div className="flex gap-2 justify-end">
           <button
             onClick={onCancel}
             disabled={isPending}
-            className="px-3 py-1.5 text-xs rounded bg-gray-700 text-gray-300 hover:bg-gray-600 disabled:opacity-50"
+            className="px-3 py-1.5 text-xs rounded bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
           >
             Abbrechen
           </button>
@@ -129,6 +139,8 @@ function ConfirmDialog({ message, onConfirm, onCancel, isPending }: {
 }
 
 export default function HistoryChart({ stateId, unit }: HistoryChartProps) {
+  const { dark } = useTheme();
+  const axes = makeAxes(dark);
   const [rangeMs, setRangeMs] = useState<number | null>(24 * 60 * 60 * 1000);
   const [customStart, setCustomStart] = useState(() => toLocalDatetime(Date.now() - 24 * 60 * 60 * 1000));
   const [customEnd, setCustomEnd] = useState(() => toLocalDatetime(Date.now()));
@@ -213,14 +225,14 @@ export default function HistoryChart({ stateId, unit }: HistoryChartProps) {
     : { r: 5, fill: '#3b82f6', stroke: '#93c5fd', strokeWidth: 2 };
 
   function renderChart() {
-    const xProps = SHARED_AXES.xAxis(effectiveRangeMs);
-    const yProps = SHARED_AXES.yAxis(unit);
-    const tooltipProps = SHARED_AXES.tooltip(unit);
+    const xProps = axes.xAxis(effectiveRangeMs);
+    const yProps = axes.yAxis(unit);
+    const tooltipProps = axes.tooltip(unit);
 
     if (chartType === 'bar') {
       return (
         <BarChart data={chartData} onClick={handleChartClick}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+          <CartesianGrid strokeDasharray="3 3" stroke={axes.gridStroke} />
           <XAxis {...xProps} />
           <YAxis {...yProps} />
           <Tooltip {...tooltipProps} />
@@ -232,7 +244,7 @@ export default function HistoryChart({ stateId, unit }: HistoryChartProps) {
     if (chartType === 'area') {
       return (
         <AreaChart data={chartData} onClick={handleChartClick}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+          <CartesianGrid strokeDasharray="3 3" stroke={axes.gridStroke} />
           <XAxis {...xProps} />
           <YAxis {...yProps} />
           <Tooltip {...tooltipProps} />
@@ -257,7 +269,7 @@ export default function HistoryChart({ stateId, unit }: HistoryChartProps) {
 
     return (
       <LineChart data={chartData} onClick={handleChartClick}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+        <CartesianGrid strokeDasharray="3 3" stroke={axes.gridStroke} />
         <XAxis {...xProps} />
         <YAxis {...yProps} />
         <Tooltip {...tooltipProps} />
@@ -285,7 +297,7 @@ export default function HistoryChart({ stateId, unit }: HistoryChartProps) {
                 className={`px-2 py-1 text-xs rounded ${
                   rangeMs === p.ms
                     ? 'bg-blue-600 text-white'
-                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                 }`}
               >
                 {p.label}
@@ -315,7 +327,7 @@ export default function HistoryChart({ stateId, unit }: HistoryChartProps) {
                 className={`px-2 py-1 text-xs rounded ${
                   chartType === ct.value
                     ? 'bg-blue-600 text-white'
-                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                 }`}
               >
                 {ct.label}
@@ -336,7 +348,7 @@ export default function HistoryChart({ stateId, unit }: HistoryChartProps) {
           <select
             value={aggregate}
             onChange={(e) => setAggregate(e.target.value as HistoryOptions['aggregate'])}
-            className="bg-gray-700 text-gray-300 text-xs rounded px-2 py-1 border border-gray-600"
+            className="bg-gray-200 text-gray-700 text-xs rounded px-2 py-1 border border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600"
           >
             {AGGREGATES.map((a) => (
               <option key={a.value} value={a.value}>{a.label}</option>
@@ -347,7 +359,7 @@ export default function HistoryChart({ stateId, unit }: HistoryChartProps) {
             className={`flex items-center gap-1 px-2 py-1 text-xs rounded ${
               deleteMode
                 ? 'bg-red-600/30 text-red-300 border border-red-500/40'
-                : 'bg-gray-700 text-red-400 hover:bg-red-900/30 hover:text-red-300'
+                : 'bg-gray-200 text-red-500 hover:bg-red-100 dark:bg-gray-700 dark:text-red-400 dark:hover:bg-red-900/30 dark:hover:text-red-300'
             }`}
             title="Einzelwert löschen — Datenpunkt im Chart anklicken"
           >
@@ -356,7 +368,7 @@ export default function HistoryChart({ stateId, unit }: HistoryChartProps) {
           </button>
           <button
             onClick={() => setConfirmAction({ type: 'range', start: options.start, end: options.end })}
-            className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-gray-700 text-red-400 hover:bg-red-900/30 hover:text-red-300"
+            className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-gray-200 text-red-500 hover:bg-red-100 dark:bg-gray-700 dark:text-red-400 dark:hover:bg-red-900/30 dark:hover:text-red-300"
             title="Zeitbereich löschen"
           >
             <Trash2 size={12} />
@@ -364,7 +376,7 @@ export default function HistoryChart({ stateId, unit }: HistoryChartProps) {
           </button>
           <button
             onClick={() => setConfirmAction({ type: 'all' })}
-            className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-gray-700 text-red-400 hover:bg-red-900/30 hover:text-red-300"
+            className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-gray-200 text-red-500 hover:bg-red-100 dark:bg-gray-700 dark:text-red-400 dark:hover:bg-red-900/30 dark:hover:text-red-300"
             title="Alle History-Daten löschen"
           >
             <Trash2 size={12} />
@@ -374,26 +386,26 @@ export default function HistoryChart({ stateId, unit }: HistoryChartProps) {
         </div>
         {rangeMs === null && (
           <div className="flex items-center gap-2">
-            <label className="text-xs text-gray-500">Von</label>
+            <label className="text-xs text-gray-400 dark:text-gray-500">Von</label>
             <input
               type="datetime-local"
               value={customStart}
               onChange={(e) => setCustomStart(e.target.value)}
-              className="bg-gray-700 text-gray-300 text-xs rounded px-2 py-1 border border-gray-600"
+              className="bg-gray-200 text-gray-700 text-xs rounded px-2 py-1 border border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600"
             />
-            <label className="text-xs text-gray-500">Bis</label>
+            <label className="text-xs text-gray-400 dark:text-gray-500">Bis</label>
             <input
               type="datetime-local"
               value={customEnd}
               onChange={(e) => setCustomEnd(e.target.value)}
-              className="bg-gray-700 text-gray-300 text-xs rounded px-2 py-1 border border-gray-600"
+              className="bg-gray-200 text-gray-700 text-xs rounded px-2 py-1 border border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600"
             />
           </div>
         )}
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center h-48 text-gray-500 text-sm">
+        <div className="flex items-center justify-center h-48 text-gray-400 dark:text-gray-500 text-sm">
           <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
@@ -405,7 +417,7 @@ export default function HistoryChart({ stateId, unit }: HistoryChartProps) {
           Fehler beim Laden der History-Daten
         </div>
       ) : chartData.length === 0 ? (
-        <div className="flex items-center justify-center h-48 text-gray-500 text-sm">
+        <div className="flex items-center justify-center h-48 text-gray-400 dark:text-gray-500 text-sm">
           Keine History-Daten im Zeitraum gefunden
         </div>
       ) : (

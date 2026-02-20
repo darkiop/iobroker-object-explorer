@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, getAllRoles, getAllUnits } from '../api/iobroker';
+import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, getAllRoles, getAllUnits, setState } from '../api/iobroker';
 import type { IoBrokerObject, IoBrokerObjectCommon, IoBrokerState, HistoryOptions } from '../types/iobroker';
 
 export function useFilteredObjects(pattern: string) {
@@ -68,9 +68,19 @@ export function useExtendObject() {
   return useMutation({
     mutationFn: ({ id, common }: { id: string; common: Partial<IoBrokerObjectCommon> }) =>
       extendObject(id, { common }),
-    onSuccess: (_data, { id }) => {
-      queryClient.invalidateQueries({ queryKey: ['object', id] });
-      queryClient.invalidateQueries({ queryKey: ['objects'] });
+    onSuccess: (_data, { id, common }) => {
+      // Update single object detail cache immediately
+      queryClient.setQueryData(['object', id], (old: IoBrokerObject | undefined) =>
+        old ? { ...old, common: { ...old.common, ...common } } : old
+      );
+      // Update all objects list queries immediately (covers all patterns)
+      queryClient.setQueriesData(
+        { queryKey: ['objects'] },
+        (old: Record<string, IoBrokerObject> | undefined) => {
+          if (!old || !old[id]) return old;
+          return { ...old, [id]: { ...old[id], common: { ...old[id].common, ...common } } };
+        }
+      );
     },
   });
 }
@@ -88,6 +98,16 @@ export function useAllUnits() {
     queryKey: ['units'],
     queryFn: getAllUnits,
     staleTime: Infinity,
+  });
+}
+
+export function useSetState() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, val }: { id: string; val: unknown }) => setState(id, val),
+    onSuccess: (_data, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['state', id] });
+    },
   });
 }
 

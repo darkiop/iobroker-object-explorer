@@ -36,13 +36,13 @@ export default function SearchBar({ onSearch, initialPattern = '' }: SearchBarPr
           onChange={(e) => setValue(e.target.value)}
           onFocus={(e) => e.target.select()}
           placeholder="Pattern eingeben, z.B. alias.0.energie.*"
-          className="w-full px-3 py-2 pr-8 bg-gray-800 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm"
+          className="w-full px-3 py-2 pr-8 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-500"
         />
         {value !== DEFAULT_PATTERN && (
           <button
             type="button"
             onClick={handleClear}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
             title="Filter zurücksetzen"
           >
             <X size={14} />
