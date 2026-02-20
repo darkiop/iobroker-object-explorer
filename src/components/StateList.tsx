@@ -219,9 +219,9 @@ export default function StateList({ ids, states, objects, selectedId, onSelect }
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto overflow-y-auto h-full">
       <table className="w-full text-sm text-left">
-        <thead className="text-xs text-gray-400 uppercase bg-gray-800/50 sticky top-0">
+        <thead className="text-xs text-gray-400 uppercase bg-gray-800 sticky top-0 z-10">
           <tr>
             <SortHeader label="ID" sortKey="id" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
             <SortHeader label="Name" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={handleSort} />
@@ -256,7 +256,11 @@ export default function StateList({ ids, states, objects, selectedId, onSelect }
                 </td>
                 <EditableNameCell id={id} name={name} />
                 <td className="px-3 py-2 text-right font-mono font-medium text-white">
-                  {state ? formatValue(state.val) : <span className="text-gray-600">...</span>}
+                  {state ? (() => {
+                    const v = formatValue(state.val);
+                    const truncated = v.length > 20 ? v.slice(0, 20) + '…' : v;
+                    return <span title={v}>{truncated}</span>;
+                  })() : <span className="text-gray-600">...</span>}
                 </td>
                 <td className="px-3 py-2 text-gray-500">{unit}</td>
                 <td className="px-3 py-2">

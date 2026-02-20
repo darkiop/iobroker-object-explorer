@@ -111,6 +111,24 @@ export async function deleteHistoryAll(id: string): Promise<void> {
   await sendToSql('deleteAll', [{ id }]);
 }
 
+export async function getAllUnits(): Promise<string[]> {
+  const all = await getAllObjects();
+  const units = new Set<string>();
+  for (const obj of Object.values(all)) {
+    if (obj.common?.unit) units.add(obj.common.unit);
+  }
+  return [...units].sort();
+}
+
+export async function getAllRoles(): Promise<string[]> {
+  const all = await getAllObjects();
+  const roles = new Set<string>();
+  for (const obj of Object.values(all)) {
+    if (obj.common?.role) roles.add(obj.common.role);
+  }
+  return [...roles].sort();
+}
+
 export function hasHistory(obj: IoBrokerObject): boolean {
   return obj.common?.custom?.['sql.0']?.enabled === true;
 }

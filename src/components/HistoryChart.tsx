@@ -40,6 +40,7 @@ const PRESETS = [
   { label: '24h', ms: 24 * 60 * 60 * 1000 },
   { label: '7d', ms: 7 * 24 * 60 * 60 * 1000 },
   { label: '30d', ms: 30 * 24 * 60 * 60 * 1000 },
+  { label: '1y', ms: 365 * 24 * 60 * 60 * 1000 },
 ] as const;
 
 const AGGREGATES = [
@@ -405,7 +406,7 @@ export default function HistoryChart({ stateId, unit }: HistoryChartProps) {
         </div>
       ) : chartData.length === 0 ? (
         <div className="flex items-center justify-center h-48 text-gray-500 text-sm">
-          Keine History-Daten vorhanden
+          Keine History-Daten im Zeitraum gefunden
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={250}>

@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Pencil, Check, X } from 'lucide-react';
-import { useStateDetail, useObjectDetail, useExtendObject } from '../hooks/useStates';
+import { useStateDetail, useObjectDetail, useExtendObject, useAllRoles, useAllUnits } from '../hooks/useStates';
+import { hasHistory } from '../api/iobroker';
 import HistoryChart from './HistoryChart';
 
 interface StateDetailProps {
@@ -37,14 +38,38 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
   );
 }
 
-function EditableRow({ label, value, onSave, isPending }: {
+function EditableRow({ label, value, onSave, isPending, suggestions }: {
   label: string;
   value: string;
   onSave: (val: string) => void;
   isPending: boolean;
+  suggestions?: string[];
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const filtered = suggestions && draft
+    ? suggestions.filter((s) => s.toLowerCase().includes(draft.toLowerCase()))
+    : (suggestions ?? []);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  function commit(val: string) {
+    onSave(val);
+    setEditing(false);
+    setShowSuggestions(false);
+  }
 
   if (!editing) {
     return (
@@ -52,7 +77,7 @@ function EditableRow({ label, value, onSave, isPending }: {
         <span className="text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{label}</span>
         <span className="text-gray-200 text-sm break-all flex-1">{value || '—'}</span>
         <button
-          onClick={() => { setDraft(value); setEditing(true); }}
+          onClick={() => { setDraft(value); setEditing(true); setShowSuggestions(!!suggestions); setActiveIndex(-1); }}
           className="opacity-0 group-hover/edit:opacity-100 text-gray-500 hover:text-gray-300 shrink-0 transition-opacity"
           title="Bearbeiten"
         >
@@ -65,23 +90,54 @@ function EditableRow({ label, value, onSave, isPending }: {
   return (
     <div className="flex gap-4 py-1 border-b border-gray-800">
       <span className="text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide pt-1">{label}</span>
-      <div className="flex-1 flex gap-1.5 items-center">
-        <input
-          type="text"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') { onSave(draft); setEditing(false); }
-            if (e.key === 'Escape') setEditing(false);
-          }}
-          autoFocus
-          disabled={isPending}
-          className="flex-1 bg-gray-700 text-gray-200 text-sm rounded px-2 py-0.5 border border-gray-600 focus:border-blue-500 focus:outline-none disabled:opacity-50"
-        />
+      <div className="flex-1 flex gap-1.5 items-start">
+        <div className="relative flex-1" ref={wrapperRef}>
+          <input
+            type="text"
+            value={draft}
+            onChange={(e) => { setDraft(e.target.value); setShowSuggestions(true); setActiveIndex(-1); }}
+            onFocus={() => suggestions && setShowSuggestions(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setActiveIndex((i) => Math.min(i + 1, filtered.length - 1));
+              } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setActiveIndex((i) => Math.max(i - 1, -1));
+              } else if (e.key === 'Enter') {
+                if (activeIndex >= 0 && filtered[activeIndex]) {
+                  commit(filtered[activeIndex]);
+                } else {
+                  commit(draft);
+                }
+              } else if (e.key === 'Escape') {
+                if (showSuggestions) { setShowSuggestions(false); }
+                else { setEditing(false); }
+              }
+            }}
+            autoFocus
+            disabled={isPending}
+            className="w-full bg-gray-700 text-gray-200 text-sm rounded px-2 py-0.5 border border-gray-600 focus:border-blue-500 focus:outline-none disabled:opacity-50"
+          />
+          {showSuggestions && filtered.length > 0 && (
+            <ul className="absolute z-50 top-full left-0 right-0 mt-0.5 max-h-48 overflow-y-auto bg-gray-800 border border-gray-600 rounded shadow-lg">
+              {filtered.map((s, i) => (
+                <li
+                  key={s}
+                  onMouseDown={(e) => { e.preventDefault(); commit(s); }}
+                  onMouseEnter={() => setActiveIndex(i)}
+                  className={`px-2 py-1 text-sm cursor-pointer ${i === activeIndex ? 'bg-blue-600 text-white' : 'text-gray-200 hover:bg-gray-700'}`}
+                >
+                  {s}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
         <button
-          onClick={() => { onSave(draft); setEditing(false); }}
+          onClick={() => commit(draft)}
           disabled={isPending}
-          className="text-green-400 hover:text-green-300 disabled:opacity-50"
+          className="text-green-400 hover:text-green-300 disabled:opacity-50 mt-0.5"
           title="Speichern"
         >
           <Check size={14} />
@@ -89,7 +145,7 @@ function EditableRow({ label, value, onSave, isPending }: {
         <button
           onClick={() => setEditing(false)}
           disabled={isPending}
-          className="text-gray-500 hover:text-gray-300 disabled:opacity-50"
+          className="text-gray-500 hover:text-gray-300 disabled:opacity-50 mt-0.5"
           title="Abbrechen"
         >
           <X size={14} />
@@ -103,6 +159,8 @@ export default function StateDetail({ stateId, onClose }: StateDetailProps) {
   const { data: state, isLoading: stateLoading } = useStateDetail(stateId);
   const { data: object, isLoading: objectLoading } = useObjectDetail(stateId);
   const extend = useExtendObject();
+  const { data: roles } = useAllRoles();
+  const { data: units } = useAllUnits();
 
   const isLoading = stateLoading || objectLoading;
 
@@ -140,12 +198,14 @@ export default function StateDetail({ stateId, onClose }: StateDetailProps) {
                 value={object.common?.role || ''}
                 onSave={(v) => saveField('role', v)}
                 isPending={extend.isPending}
+                suggestions={roles}
               />
               <EditableRow
                 label="Einheit"
                 value={object.common?.unit || ''}
                 onSave={(v) => saveField('unit', v)}
                 isPending={extend.isPending}
+                suggestions={units}
               />
               <EditableRow
                 label="Beschreibung"
@@ -203,10 +263,12 @@ export default function StateDetail({ stateId, onClose }: StateDetailProps) {
             </>
           )}
 
-          <div className="mt-4 pt-3 border-t border-gray-700">
-            <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">History</div>
-            <HistoryChart stateId={stateId} unit={object?.common?.unit} />
-          </div>
+          {object && hasHistory(object) && (
+            <div className="mt-4 pt-3 border-t border-gray-700">
+              <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">History</div>
+              <HistoryChart stateId={stateId} unit={object?.common?.unit} />
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -71,10 +71,20 @@ function AppContent() {
         )}
 
         {selectedId && (
-          <StateDetail stateId={selectedId} onClose={() => setSelectedId(null)} />
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={() => setSelectedId(null)}
+          >
+            <div
+              className="w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <StateDetail stateId={selectedId} onClose={() => setSelectedId(null)} />
+            </div>
+          </div>
         )}
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 min-h-0">
           <StateList
             ids={pageIds}
             states={stateValues || {}}

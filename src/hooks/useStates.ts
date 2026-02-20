@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject } from '../api/iobroker';
+import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, getAllRoles, getAllUnits } from '../api/iobroker';
 import type { IoBrokerObject, IoBrokerObjectCommon, IoBrokerState, HistoryOptions } from '../types/iobroker';
 
 export function useFilteredObjects(pattern: string) {
@@ -72,6 +72,22 @@ export function useExtendObject() {
       queryClient.invalidateQueries({ queryKey: ['object', id] });
       queryClient.invalidateQueries({ queryKey: ['objects'] });
     },
+  });
+}
+
+export function useAllRoles() {
+  return useQuery({
+    queryKey: ['roles'],
+    queryFn: getAllRoles,
+    staleTime: Infinity,
+  });
+}
+
+export function useAllUnits() {
+  return useQuery({
+    queryKey: ['units'],
+    queryFn: getAllUnits,
+    staleTime: Infinity,
   });
 }
 
