@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll } from '../api/iobroker';
-import type { IoBrokerObject, IoBrokerState, HistoryOptions } from '../types/iobroker';
+import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject } from '../api/iobroker';
+import type { IoBrokerObject, IoBrokerObjectCommon, IoBrokerState, HistoryOptions } from '../types/iobroker';
 
 export function useFilteredObjects(pattern: string) {
   return useQuery({
@@ -61,6 +61,18 @@ export function useDeleteHistory() {
       onSuccess: () => queryClient.invalidateQueries({ queryKey: ['history'] }),
     }),
   };
+}
+
+export function useExtendObject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, common }: { id: string; common: Partial<IoBrokerObjectCommon> }) =>
+      extendObject(id, { common }),
+    onSuccess: (_data, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['object', id] });
+      queryClient.invalidateQueries({ queryKey: ['objects'] });
+    },
+  });
 }
 
 // Re-export types for convenience

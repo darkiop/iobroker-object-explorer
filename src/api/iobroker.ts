@@ -50,23 +50,25 @@ export async function getState(id: string): Promise<IoBrokerState> {
   return fetchApi<IoBrokerState>(`/state/${encodeURIComponent(id)}`);
 }
 
-// Batch: mehrere States parallel laden (mit Limit)
+// Batch: mehrere States parallel laden (in 20er-Gruppen)
 export async function getStatesBatch(ids: string[]): Promise<Record<string, IoBrokerState>> {
   const BATCH_SIZE = 20;
-  const batch = ids.slice(0, BATCH_SIZE);
-  const results = await Promise.all(
-    batch.map(async (id) => {
-      try {
-        const state = await getState(id);
-        return [id, state] as const;
-      } catch {
-        return [id, null] as const;
-      }
-    })
-  );
   const record: Record<string, IoBrokerState> = {};
-  for (const [id, state] of results) {
-    if (state) record[id] = state;
+  for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+    const batch = ids.slice(i, i + BATCH_SIZE);
+    const results = await Promise.all(
+      batch.map(async (id) => {
+        try {
+          const state = await getState(id);
+          return [id, state] as const;
+        } catch {
+          return [id, null] as const;
+        }
+      })
+    );
+    for (const [id, state] of results) {
+      if (state) record[id] = state;
+    }
   }
   return record;
 }
@@ -111,6 +113,19 @@ export async function deleteHistoryAll(id: string): Promise<void> {
 
 export function hasHistory(obj: IoBrokerObject): boolean {
   return obj.common?.custom?.['sql.0']?.enabled === true;
+}
+
+export async function extendObject(id: string, obj: { common: Partial<IoBrokerObject['common']> }): Promise<void> {
+  const res = await fetch(`${BASE_URL}/object/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(obj),
+  });
+  if (!res.ok) {
+    throw new Error(`API error: ${res.status} ${res.statusText}`);
+  }
+  // Invalidate objects cache since we changed an object
+  objectsCache = null;
 }
 
 export async function getObject(id: string): Promise<IoBrokerObject> {

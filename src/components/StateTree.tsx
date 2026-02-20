@@ -100,11 +100,10 @@ function TreeNodeComponent({
         <span className={`truncate ${node.isLeaf ? (isHistoryEnabled ? 'text-blue-400' : 'text-green-400') : 'text-gray-400 font-medium'}`}>
           {node.name}
         </span>
-        {node.isLeaf && (
-          <button
+        <button
             onClick={(e) => {
               e.stopPropagation();
-              const text = node.fullPath;
+              const text = node.isLeaf ? node.fullPath : `${node.fullPath}.*`;
               if (navigator.clipboard?.writeText) {
                 navigator.clipboard.writeText(text).then(() => {
                   setCopied(true);
@@ -131,7 +130,6 @@ function TreeNodeComponent({
           >
             {copied ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
           </button>
-        )}
       </div>
       {expanded &&
         sortedChildren.map((child) => (
@@ -190,9 +188,7 @@ export default function StateTree({ stateIds, objects, selectedId, onSelect }: S
         >
           <Database size={12} />
           Nur mit History
-          {historyOnly && (
-            <span className="ml-auto text-blue-400">{filteredIds.length}</span>
-          )}
+          <span className={`ml-auto ${historyOnly ? 'text-blue-400' : 'text-gray-500'}`}>{historyIds.size}</span>
         </button>
         <button
           onClick={() => setExpandSignal((s) => Math.abs(s) + 1)}

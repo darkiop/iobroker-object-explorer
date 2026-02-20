@@ -58,15 +58,18 @@ function toLocalDatetime(ts: number): string {
 
 function formatTime(ts: number, rangeMs: number): string {
   const d = new Date(ts);
+  const p = (n: number) => String(n).padStart(2, '0');
+  const time = `${p(d.getHours())}:${p(d.getMinutes())}`;
   if (rangeMs <= 24 * 60 * 60 * 1000) {
-    return d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    return time;
   }
-  return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }) +
-    ' ' + d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  return `${p(d.getDate())}.${p(d.getMonth() + 1)} ${time}`;
 }
 
 function formatTooltipTime(ts: number): string {
-  return new Date(ts).toLocaleString('de-DE');
+  const d = new Date(ts);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 }
 
 const SHARED_AXES = {
