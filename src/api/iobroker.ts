@@ -1,0 +1,104 @@
+import type { IoBrokerState, IoBrokerObject, HistoryEntry, HistoryOptions } from '../types/iobroker';
+
+const BASE_URL = '/api/v1';
+
+async function fetchApi<T>(path: string): Promise<T> {
+  const res = await fetch(`${BASE_URL}${path}`);
+  if (!res.ok) {
+    throw new Error(`API error: ${res.status} ${res.statusText}`);
+  }
+  return res.json();
+}
+
+function matchPattern(id: string, pattern: string): boolean {
+  const regex = new RegExp(
+    '^' + pattern.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$'
+  );
+  return regex.test(id);
+}
+
+// Objects: einmalig laden und cachen (Baum-Struktur + Metadaten)
+let objectsCache: Record<string, IoBrokerObject> | null = null;
+let objectsCachePromise: Promise<Record<string, IoBrokerObject>> | null = null;
+
+export async function getAllObjects(): Promise<Record<string, IoBrokerObject>> {
+  if (objectsCache) return objectsCache;
+  if (objectsCachePromise) return objectsCachePromise;
+
+  objectsCachePromise = fetchApi<Record<string, IoBrokerObject>>('/objects').then((data) => {
+    objectsCache = data;
+    objectsCachePromise = null;
+    return data;
+  });
+
+  return objectsCachePromise;
+}
+
+export async function getObjectsByPattern(pattern: string): Promise<Record<string, IoBrokerObject>> {
+  const all = await getAllObjects();
+  const result: Record<string, IoBrokerObject> = {};
+  for (const [id, obj] of Object.entries(all)) {
+    if (obj && obj.type === 'state' && matchPattern(id, pattern)) {
+      result[id] = obj;
+    }
+  }
+  return result;
+}
+
+// States: immer einzeln laden, nie bulk
+export async function getState(id: string): Promise<IoBrokerState> {
+  return fetchApi<IoBrokerState>(`/state/${encodeURIComponent(id)}`);
+}
+
+// Batch: mehrere States parallel laden (mit Limit)
+export async function getStatesBatch(ids: string[]): Promise<Record<string, IoBrokerState>> {
+  const BATCH_SIZE = 20;
+  const batch = ids.slice(0, BATCH_SIZE);
+  const results = await Promise.all(
+    batch.map(async (id) => {
+      try {
+        const state = await getState(id);
+        return [id, state] as const;
+      } catch {
+        return [id, null] as const;
+      }
+    })
+  );
+  const record: Record<string, IoBrokerState> = {};
+  for (const [id, state] of results) {
+    if (state) record[id] = state;
+  }
+  return record;
+}
+
+export async function getHistory(id: string, options: HistoryOptions): Promise<HistoryEntry[]> {
+  const res = await fetch(`${BASE_URL}/command/sendTo`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      adapterInstance: 'sql.0',
+      command: 'getHistory',
+      message: {
+        id,
+        options: {
+          start: options.start,
+          end: options.end,
+          count: options.count ?? 500,
+          aggregate: options.aggregate ?? 'none',
+        },
+      },
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`API error: ${res.status} ${res.statusText}`);
+  }
+  const data = await res.json();
+  const entries: HistoryEntry[] = Array.isArray(data) ? data : data?.result ?? [];
+  return entries.filter((e) => e.ts >= options.start && e.ts <= options.end);
+}
+
+export async function getObject(id: string): Promise<IoBrokerObject> {
+  const all = await getAllObjects();
+  if (all[id]) return all[id];
+  return fetchApi<IoBrokerObject>(`/object/${encodeURIComponent(id)}`);
+}
