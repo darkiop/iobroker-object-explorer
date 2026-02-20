@@ -100,7 +100,7 @@ function makeAxes(dark: boolean) {
       },
       labelStyle: { color: dark ? '#9ca3af' : '#6b7280' },
       itemStyle: { color: '#60a5fa' },
-      labelFormatter: (ts: number) => formatTooltipTime(ts),
+      labelFormatter: (ts: unknown) => formatTooltipTime(ts as number),
       formatter: (value: number | undefined) => [unit && value !== undefined ? `${value} ${unit}` : value ?? '', 'Wert'] as [string | number, string],
     }),
     gridStroke: dark ? '#374151' : '#e5e7eb',
