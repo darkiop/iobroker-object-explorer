@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 
 const DEFAULT_PATTERN = 'alias.0.*';
@@ -10,6 +10,10 @@ interface SearchBarProps {
 
 export default function SearchBar({ onSearch, initialPattern = '' }: SearchBarProps) {
   const [value, setValue] = useState(initialPattern);
+
+  useEffect(() => {
+    setValue(initialPattern);
+  }, [initialPattern]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

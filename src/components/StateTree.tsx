@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText, Database, ChevronsDownUp, ChevronsUpDown, Copy, Check } from 'lucide-react';
+import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText, Database, ChevronsDownUp, ChevronsUpDown, Copy, Check, Search } from 'lucide-react';
 import { hasHistory } from '../api/iobroker';
 import type { TreeNode, IoBrokerObject } from '../types/iobroker';
 
@@ -8,6 +8,7 @@ interface StateTreeProps {
   objects: Record<string, IoBrokerObject>;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onSearch: (pattern: string) => void;
 }
 
 function buildTree(ids: string[]): TreeNode {
@@ -42,6 +43,7 @@ function TreeNodeComponent({
   depth,
   selectedId,
   onSelect,
+  onSearch,
   historyIds,
   expandSignal,
 }: {
@@ -49,6 +51,7 @@ function TreeNodeComponent({
   depth: number;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onSearch: (pattern: string) => void;
   historyIds: Set<string>;
   expandSignal: number;
 }) {
@@ -100,6 +103,18 @@ function TreeNodeComponent({
         <span className={`truncate ${node.isLeaf ? (isHistoryEnabled ? 'text-blue-400' : 'text-green-400') : 'text-gray-400 font-medium'}`}>
           {node.name}
         </span>
+        {!node.isLeaf && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onSearch(`${node.fullPath}.*`);
+            }}
+            className="shrink-0 opacity-0 group-hover/row:opacity-100 text-gray-500 hover:text-blue-400 transition-opacity"
+            title={`Filter: ${node.fullPath}.*`}
+          >
+            <Search size={12} />
+          </button>
+        )}
         <button
             onClick={(e) => {
               e.stopPropagation();
@@ -139,6 +154,7 @@ function TreeNodeComponent({
             depth={depth + 1}
             selectedId={selectedId}
             onSelect={onSelect}
+            onSearch={onSearch}
             historyIds={historyIds}
             expandSignal={expandSignal}
           />
@@ -147,7 +163,7 @@ function TreeNodeComponent({
   );
 }
 
-export default function StateTree({ stateIds, objects, selectedId, onSelect }: StateTreeProps) {
+export default function StateTree({ stateIds, objects, selectedId, onSelect, onSearch }: StateTreeProps) {
   const [historyOnly, setHistoryOnly] = useState(false);
   // positive = expand all, negative = collapse all, 0 = initial
   const [expandSignal, setExpandSignal] = useState(0);
@@ -215,6 +231,7 @@ export default function StateTree({ stateIds, objects, selectedId, onSelect }: S
             depth={0}
             selectedId={selectedId}
             onSelect={onSelect}
+            onSearch={onSearch}
             historyIds={historyIds}
             expandSignal={expandSignal}
           />

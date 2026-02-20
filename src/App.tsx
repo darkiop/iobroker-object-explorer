@@ -58,7 +58,7 @@ function AppContent() {
             </div>
           </div>
           <div className="flex-1 overflow-y-auto py-1">
-            <StateTree stateIds={objectIds} objects={objects || {}} selectedId={selectedId} onSelect={setSelectedId} />
+            <StateTree stateIds={objectIds} objects={objects || {}} selectedId={selectedId} onSelect={setSelectedId} onSearch={handleSearch} />
           </div>
         </div>
       }
