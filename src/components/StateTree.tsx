@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText } from 'lucide-react';
 import type { TreeNode } from '../types/iobroker';
 
 interface StateTreeProps {
@@ -47,6 +48,7 @@ function TreeNodeComponent({
 }) {
   const [expanded, setExpanded] = useState(depth < 2);
   const hasChildren = node.children.size > 0;
+  const isFolder = hasChildren && !node.isLeaf;
   const sortedChildren = useMemo(
     () => [...node.children.values()].sort((a, b) => a.name.localeCompare(b.name)),
     [node.children]
@@ -55,10 +57,10 @@ function TreeNodeComponent({
   return (
     <div>
       <div
-        className={`flex items-center gap-1 px-2 py-0.5 cursor-pointer hover:bg-gray-700/50 rounded text-sm ${
+        className={`flex items-center gap-1.5 px-2 py-1 cursor-pointer hover:bg-gray-700/50 rounded text-sm ${
           selectedId === node.fullPath ? 'bg-blue-600/30 text-blue-300' : 'text-gray-300'
         }`}
-        style={{ paddingLeft: `${depth * 12 + 4}px` }}
+        style={{ paddingLeft: `${depth * 14 + 4}px` }}
         onClick={() => {
           if (node.isLeaf) {
             onSelect(node.fullPath);
@@ -67,12 +69,19 @@ function TreeNodeComponent({
           }
         }}
       >
-        {hasChildren && !node.isLeaf && (
-          <span className="text-gray-500 w-4 text-center text-xs">
-            {expanded ? '▼' : '▶'}
-          </span>
+        {isFolder && (
+          expanded
+            ? <ChevronDown size={14} className="text-gray-500 shrink-0" />
+            : <ChevronRight size={14} className="text-gray-500 shrink-0" />
         )}
-        {node.isLeaf && !hasChildren && <span className="w-4" />}
+        {!isFolder && <span className="w-3.5 shrink-0" />}
+        {isFolder ? (
+          expanded
+            ? <FolderOpen size={15} className="text-yellow-500/80 shrink-0" />
+            : <Folder size={15} className="text-yellow-600/70 shrink-0" />
+        ) : (
+          <FileText size={14} className="text-green-400/80 shrink-0" />
+        )}
         <span className={node.isLeaf ? 'text-green-400' : 'text-gray-400 font-medium'}>
           {node.name}
         </span>
