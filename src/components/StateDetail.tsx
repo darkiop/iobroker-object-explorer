@@ -205,6 +205,33 @@ function NumberControl({ val, onSet, isPending, unit }: { val: unknown; onSet: (
   );
 }
 
+function StringControl({ val, onSet, isPending, unit }: { val: unknown; onSet: (v: unknown) => void; isPending: boolean; unit?: string }) {
+  const [draft, setDraft] = useState(String(val ?? ''));
+  useEffect(() => { setDraft(String(val ?? '')); }, [val]);
+
+  return (
+    <div className="flex items-center gap-1.5 flex-1 min-w-0">
+      <input
+        type="text"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') onSet(draft); }}
+        disabled={isPending}
+        className="flex-1 min-w-0 bg-white text-gray-800 text-sm rounded px-2 py-0.5 border border-gray-300 focus:border-blue-500 focus:outline-none disabled:opacity-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600"
+      />
+      <button
+        onClick={() => onSet(draft)}
+        disabled={isPending}
+        className="text-green-500 hover:text-green-600 dark:text-green-400 disabled:opacity-50 shrink-0"
+        title="Senden"
+      >
+        <Check size={14} />
+      </button>
+      {unit && <span className="text-gray-500 dark:text-gray-400 text-sm shrink-0">{unit}</span>}
+    </div>
+  );
+}
+
 function ExpertControl({ val, onSet, isPending, unit, type }: { val: unknown; onSet: (v: unknown) => void; isPending: boolean; unit?: string; type?: string }) {
   const [draft, setDraft] = useState(String(val ?? ''));
   useEffect(() => { setDraft(String(val ?? '')); }, [val]);
@@ -402,6 +429,15 @@ export default function StateDetail({ stateId, onClose }: StateDetailProps) {
                     <ButtonControl onSet={handleSet} isPending={setStateMutation.isPending} disabled={!isWritable} />
                   ) : isWritable && isNumberValue ? (
                     <NumberControl
+                      val={state.val}
+                      onSet={handleSet}
+                      isPending={setStateMutation.isPending}
+                      unit={object?.common?.unit}
+                    />
+                  ) : isWritable && type === 'boolean' ? (
+                    <SwitchControl val={state.val} onSet={handleSet} isPending={setStateMutation.isPending} />
+                  ) : isWritable && (type === 'string' || type === 'mixed') ? (
+                    <StringControl
                       val={state.val}
                       onSet={handleSet}
                       isPending={setStateMutation.isPending}
