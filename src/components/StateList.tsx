@@ -569,11 +569,8 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
   const toolbar = (
     <div className="flex items-center justify-between px-3 py-1 shrink-0 border-b border-gray-200 dark:border-gray-800">
       <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums">
-        <span className="text-gray-600 dark:text-gray-300 font-medium">{Object.keys(states).length}</span>
-        {' '}Datenpunkte
-        <span className="mx-1.5 text-gray-300 dark:text-gray-600">·</span>
         <span className="text-gray-600 dark:text-gray-300 font-medium">{totalCount}</span>
-        {' '}Objekte
+        {' '}Datenpunkte
       </span>
       <div className="flex items-center gap-1">
         <button
