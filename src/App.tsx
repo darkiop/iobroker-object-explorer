@@ -103,7 +103,7 @@ function AppContent() {
               {['alias.0.*', 'javascript.0.*', '0_userdata.0.*'].map((q) => (
                 <button
                   key={q}
-                  onClick={() => { handleSearch(q); setTreeExpandSignal(s => ({ depth: 2, seq: (s?.seq ?? 0) + 1 })); }}
+                  onClick={() => { handleSearch(pattern === q ? '*' : q); if (pattern !== q) setTreeExpandSignal(s => ({ depth: 2, seq: (s?.seq ?? 0) + 1 })); }}
                   className={`px-2 py-0.5 rounded text-xs font-mono transition-colors ${
                     pattern === q
                       ? 'bg-blue-600 text-white'
