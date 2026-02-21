@@ -415,6 +415,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
   const [visibleCols, setVisibleCols] = useState<SortKey[]>(loadVisibleCols);
   const [colWidths, setColWidths] = useState<Record<SortKey, number>>(loadColWidths);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [colFilters, setColFilters] = useState<Partial<Record<SortKey, string>>>({});
   const { data: roles = [] } = useAllRoles();
 
   function handleColChange(cols: SortKey[]) {
@@ -546,6 +547,29 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
     });
   }, [ids, states, objects, roomMap, sortKey, sortDir]);
 
+  const filteredIds = useMemo(() => {
+    const active = (Object.entries(colFilters) as [SortKey, string][]).filter(([, v]) => v.trim() !== '');
+    if (active.length === 0) return sortedIds;
+    return sortedIds.filter((id) => {
+      const obj = objects[id];
+      const state = states[id];
+      return active.every(([key, filter]) => {
+        const f = filter.toLowerCase();
+        switch (key) {
+          case 'id':    return id.toLowerCase().includes(f);
+          case 'name':  return getObjectName(obj).toLowerCase().includes(f);
+          case 'room':  return (roomMap[id] || '').toLowerCase().includes(f);
+          case 'role':  return (obj?.common?.role || '').toLowerCase().includes(f);
+          case 'value': return formatValue(state?.val).toLowerCase().includes(f);
+          case 'unit':  return (obj?.common?.unit || '').toLowerCase().includes(f);
+          default: return true;
+        }
+      });
+    });
+  }, [sortedIds, colFilters, objects, states, roomMap]);
+
+  const hasColFilters = Object.values(colFilters).some((v) => v.trim() !== '');
+
   const totalWidth = visibleCols.reduce((sum, k) => sum + colWidths[k], 0);
 
   const toolbar = (
@@ -565,12 +589,22 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
         >
           <Maximize2 size={15} />
         </button>
+        {hasColFilters && (
+          <button
+            onClick={() => setColFilters({})}
+            title="Spaltenfilter löschen"
+            className="p-1.5 rounded-lg transition-colors text-blue-500 hover:text-blue-700 hover:bg-blue-500/10 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-500/10"
+          >
+            <X size={15} />
+          </button>
+        )}
         <button
           onClick={() => {
             localStorage.removeItem(LS_KEY);
             localStorage.removeItem(LS_WIDTHS_KEY);
             setVisibleCols(DEFAULT_COLS);
             setColWidths({ ...DEFAULT_WIDTHS });
+            setColFilters({});
           }}
           title="Einstellungen zurücksetzen"
           className="p-1.5 rounded-lg transition-colors text-gray-400 hover:text-red-500 hover:bg-red-500/10 dark:text-gray-500 dark:hover:text-red-400 dark:hover:bg-red-500/10"
@@ -612,9 +646,32 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
               {show('history') && <SortHeader label="History" sortKey="history" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('history')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('smart')   && <SortHeader label="Smart" sortKey="smart" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('smart')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
             </tr>
+            <tr className="bg-gray-50 dark:bg-gray-850 border-b border-gray-200 dark:border-gray-700">
+              {(['id','name','room','role','value','unit','ack','ts','history','smart'] as SortKey[]).filter(show).map((key) => {
+                const filterable = ['id','name','room','role','value','unit'].includes(key);
+                return (
+                  <th key={key} style={{ width: w(key) }} className="px-2 py-1 normal-case font-normal">
+                    {filterable ? (
+                      <input
+                        type="text"
+                        value={colFilters[key] || ''}
+                        onChange={(e) => setColFilters((prev) => ({ ...prev, [key]: e.target.value }))}
+                        onClick={(e) => e.stopPropagation()}
+                        placeholder="Filter..."
+                        className={`w-full px-1.5 py-0.5 text-xs rounded border bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 placeholder-gray-300 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500 ${
+                          colFilters[key]?.trim()
+                            ? 'border-blue-400 dark:border-blue-500'
+                            : 'border-gray-200 dark:border-gray-600'
+                        }`}
+                      />
+                    ) : null}
+                  </th>
+                );
+              })}
+            </tr>
           </thead>
           <tbody>
-            {sortedIds.map((id) => {
+            {filteredIds.map((id) => {
               const state = states[id];
               const obj = objects[id];
               const unit = obj?.common?.unit || '';
