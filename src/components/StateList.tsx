@@ -617,17 +617,6 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
 
   const existingIds = useMemo(() => new Set(Object.keys(objects)), [objects]);
 
-  if (ids.length === 0) {
-    return (
-      <div className="flex flex-col h-full">
-        {toolbar}
-        <div className="text-gray-400 dark:text-gray-500 text-sm p-8 text-center">
-          Keine Datenpunkte gefunden. Verwende die Suche um Datenpunkte zu laden.
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col h-full">
       {toolbar}
@@ -678,6 +667,15 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
             </tr>
           </thead>
           <tbody>
+            {filteredIds.length === 0 && (
+              <tr>
+                <td colSpan={visibleCols.length} className="px-4 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
+                  {ids.length === 0
+                    ? 'Keine Datenpunkte gefunden. Verwende die Suche um Datenpunkte zu laden.'
+                    : 'Keine Einträge entsprechen den gesetzten Filtern.'}
+                </td>
+              </tr>
+            )}
             {filteredIds.map((id) => {
               const state = states[id];
               const obj = objects[id];
