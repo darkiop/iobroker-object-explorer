@@ -31,6 +31,7 @@ export interface IoBrokerObject {
   type: string;
   common: IoBrokerObjectCommon;
   native: Record<string, unknown>;
+  enums?: Record<string, string>;
   from?: string;
   user?: string;
   ts?: number;

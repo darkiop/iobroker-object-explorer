@@ -133,12 +133,12 @@ export async function getRoomMap(): Promise<Record<string, string>> {
   const all = await getAllObjects();
   const map: Record<string, string> = {};
   for (const [id, obj] of Object.entries(all)) {
-    if (!id.startsWith('enum.rooms.') || obj.type !== 'enum') continue;
-    const name = typeof obj.common?.name === 'string'
-      ? obj.common.name
-      : obj.common?.name?.de || obj.common?.name?.en || Object.values(obj.common?.name ?? {})[0] || id;
-    for (const memberId of obj.common?.members ?? []) {
-      map[memberId] = name;
+    if (!obj.enums) continue;
+    for (const [enumId, enumName] of Object.entries(obj.enums)) {
+      if (enumId.startsWith('enum.rooms.')) {
+        map[id] = enumName;
+        break;
+      }
     }
   }
   return map;
