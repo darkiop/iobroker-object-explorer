@@ -28,6 +28,14 @@ export default function NewDatapointModal({ onClose, existingIds }: Props) {
     idRef.current?.focus();
   }, []);
 
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
   const filteredRoles = role.trim()
     ? roles.filter((r) => r.toLowerCase().includes(role.toLowerCase()))
     : roles;
