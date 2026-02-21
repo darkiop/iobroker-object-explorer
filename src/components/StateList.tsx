@@ -653,6 +653,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                           type="text"
                           value={colFilters[key] || ''}
                           onChange={(e) => onColFilterChange({ ...colFilters, [key]: e.target.value })}
+                          onKeyDown={(e) => { if (e.key === 'Escape' && colFilters[key]?.trim()) { e.stopPropagation(); onColFilterChange({ ...colFilters, [key]: '' }); } }}
                           placeholder="Filter..."
                           className={`w-full py-0.5 text-xs rounded border bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500 ${
                             colFilters[key]?.trim()
