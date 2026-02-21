@@ -8,7 +8,7 @@ interface LayoutProps {
 }
 
 export default function Layout({ sidebar, children }: LayoutProps) {
-  const [sidebarWidth, setSidebarWidth] = useState(288);
+  const [sidebarWidth, setSidebarWidth] = useState(340);
   const dragging = useRef(false);
   const startX = useRef(0);
   const startWidth = useRef(0);
