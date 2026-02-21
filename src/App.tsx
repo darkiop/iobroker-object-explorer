@@ -30,6 +30,7 @@ function AppContent() {
   const [colFilters, setColFilters] = useState<Partial<Record<SortKey, string>>>({});
 
   const { data: objects, isLoading: objectsLoading, error: objectsError } = useFilteredObjects(pattern);
+  const { data: roomMap } = useRoomMap();
 
   const historyIds = useMemo(() => {
     const set = new Set<string>();
@@ -69,7 +70,6 @@ function AppContent() {
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   const { data: stateValues } = useStateValues(pageIds);
-  const { data: roomMap } = useRoomMap();
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
