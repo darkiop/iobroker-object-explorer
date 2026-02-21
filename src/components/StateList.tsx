@@ -665,7 +665,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                             onMouseDown={(e) => { e.preventDefault(); onColFilterChange({ ...colFilters, [key]: '' }); }}
                             className="absolute right-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                           >
-                            <X size={10} />
+                            <X size={12} />
                           </button>
                         )}
                       </div>
