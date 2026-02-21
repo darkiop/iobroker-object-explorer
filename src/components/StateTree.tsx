@@ -14,6 +14,7 @@ interface StateTreeProps {
   onSmartOnlyChange: (v: boolean) => void;
   historyIds: Set<string>;
   smartIds: Set<string>;
+  expandToDepth?: { depth: number; seq: number };
 }
 
 function buildTree(ids: string[]): TreeNode {
@@ -60,7 +61,7 @@ function TreeNodeComponent({
   onSearch: (pattern: string) => void;
   historyIds: Set<string>;
   smartIds: Set<string>;
-  expandSignal: number;
+  expandSignal: { depth: number; seq: number };
 }) {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -74,8 +75,8 @@ function TreeNodeComponent({
   );
 
   useEffect(() => {
-    if (expandSignal === 0) return;
-    setExpanded(expandSignal > 0);
+    if (expandSignal.seq === 0) return;
+    setExpanded(depth < expandSignal.depth);
   }, [expandSignal]);
 
   return (
@@ -167,9 +168,13 @@ function TreeNodeComponent({
   );
 }
 
-export default function StateTree({ stateIds, selectedId, onSelect, onSearch, historyOnly, onHistoryOnlyChange, smartOnly, onSmartOnlyChange, historyIds, smartIds }: StateTreeProps) {
-  // positive = expand all, negative = collapse all, 0 = initial
-  const [expandSignal, setExpandSignal] = useState(0);
+export default function StateTree({ stateIds, selectedId, onSelect, onSearch, historyOnly, onHistoryOnlyChange, smartOnly, onSmartOnlyChange, historyIds, smartIds, expandToDepth }: StateTreeProps) {
+  const [expandSignal, setExpandSignal] = useState<{ depth: number; seq: number }>({ depth: 0, seq: 0 });
+
+  useEffect(() => {
+    if (!expandToDepth) return;
+    setExpandSignal(s => ({ depth: expandToDepth.depth, seq: s.seq + 1 }));
+  }, [expandToDepth]);
 
   const filteredIds = useMemo(() => {
     return stateIds.filter((id) =>
@@ -215,14 +220,14 @@ export default function StateTree({ stateIds, selectedId, onSelect, onSearch, hi
             <span className={`ml-auto ${smartOnly ? 'text-violet-500 dark:text-violet-400' : 'text-gray-400 dark:text-gray-500'}`}>{smartIds.size}</span>
           </button>
           <button
-            onClick={() => setExpandSignal((s) => Math.abs(s) + 1)}
+            onClick={() => setExpandSignal(s => ({ depth: 9999, seq: s.seq + 1 }))}
             className="px-2 py-1 text-xs rounded bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700"
             title="Alle aufklappen"
           >
             <ChevronsUpDown size={14} />
           </button>
           <button
-            onClick={() => setExpandSignal((s) => -(Math.abs(s) + 1))}
+            onClick={() => setExpandSignal(s => ({ depth: 0, seq: s.seq + 1 }))}
             className="px-2 py-1 text-xs rounded bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700"
             title="Alle zuklappen"
           >

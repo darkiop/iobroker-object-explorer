@@ -28,6 +28,7 @@ function AppContent() {
   const [historyOnly, setHistoryOnly] = useState(false);
   const [smartOnly, setSmartOnly] = useState(false);
   const [colFilters, setColFilters] = useState<Partial<Record<SortKey, string>>>({});
+  const [treeExpandSignal, setTreeExpandSignal] = useState<{ depth: number; seq: number } | undefined>(undefined);
 
   const { data: objects, isLoading: objectsLoading, error: objectsError } = useFilteredObjects(pattern);
   const { data: roomMap } = useRoomMap();
@@ -102,7 +103,7 @@ function AppContent() {
               {['alias.0.*', 'javascript.0.*', '0_userdata.0.*'].map((q) => (
                 <button
                   key={q}
-                  onClick={() => handleSearch(q)}
+                  onClick={() => { handleSearch(q); setTreeExpandSignal(s => ({ depth: 2, seq: (s?.seq ?? 0) + 1 })); }}
                   className={`px-2 py-0.5 rounded text-xs font-mono transition-colors ${
                     pattern === q
                       ? 'bg-blue-600 text-white'
@@ -130,6 +131,7 @@ function AppContent() {
               onSmartOnlyChange={(v) => { setSmartOnly(v); setPage(0); }}
               historyIds={historyIds}
               smartIds={smartIds}
+              expandToDepth={treeExpandSignal}
             />
           </div>
         </div>
