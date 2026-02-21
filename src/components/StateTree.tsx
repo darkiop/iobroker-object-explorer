@@ -194,43 +194,45 @@ export default function StateTree({ stateIds, selectedId, onSelect, onSearch, hi
         <div className="flex gap-1.5">
           <button
             onClick={() => onHistoryOnlyChange(!historyOnly)}
-            className={`flex items-center gap-1.5 flex-1 px-2 py-1 text-xs rounded ${
+            className={`flex items-center gap-1 flex-1 px-2 py-1 text-xs rounded ${
               historyOnly
                 ? 'bg-blue-600/20 text-blue-600 border border-blue-500/40 dark:text-blue-300'
                 : 'bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700'
             }`}
           >
-            <Database size={12} />
-            Nur mit History
-            <span className={`ml-auto ${historyOnly ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`}>{historyIds.size}</span>
+            <Database size={12} className="shrink-0" />
+            <span className="truncate">History</span>
+            <span className={`ml-auto shrink-0 ${historyOnly ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`}>{historyIds.size}</span>
           </button>
-        </div>
-        <div className="flex gap-1.5">
           <button
             onClick={() => onSmartOnlyChange(!smartOnly)}
-            className={`flex items-center gap-1.5 flex-1 px-2 py-1 text-xs rounded ${
+            className={`flex items-center gap-1 flex-1 px-2 py-1 text-xs rounded ${
               smartOnly
                 ? 'bg-violet-600/20 text-violet-600 border border-violet-500/40 dark:text-violet-300'
                 : 'bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700'
             }`}
           >
-            <Mic2 size={12} />
-            Nur mit SmartName
-            <span className={`ml-auto ${smartOnly ? 'text-violet-500 dark:text-violet-400' : 'text-gray-400 dark:text-gray-500'}`}>{smartIds.size}</span>
+            <Mic2 size={12} className="shrink-0" />
+            <span className="truncate">SmartName</span>
+            <span className={`ml-auto shrink-0 ${smartOnly ? 'text-violet-500 dark:text-violet-400' : 'text-gray-400 dark:text-gray-500'}`}>{smartIds.size}</span>
           </button>
+        </div>
+        <div className="flex gap-1.5">
           <button
             onClick={() => setExpandSignal(s => ({ depth: 9999, seq: s.seq + 1 }))}
-            className="px-2 py-1 text-xs rounded bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700"
+            className="flex items-center justify-center gap-1 flex-1 px-2 py-1 text-xs rounded bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700"
             title="Alle aufklappen"
           >
-            <ChevronsUpDown size={14} />
+            <ChevronsUpDown size={13} />
+            Aufklappen
           </button>
           <button
             onClick={() => setExpandSignal(s => ({ depth: 0, seq: s.seq + 1 }))}
-            className="px-2 py-1 text-xs rounded bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700"
+            className="flex items-center justify-center gap-1 flex-1 px-2 py-1 text-xs rounded bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700"
             title="Alle zuklappen"
           >
-            <ChevronsDownUp size={14} />
+            <ChevronsDownUp size={13} />
+            Zuklappen
           </button>
         </div>
       </div>
