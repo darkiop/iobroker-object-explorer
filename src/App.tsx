@@ -19,12 +19,17 @@ const queryClient = new QueryClient({
   },
 });
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE_OPTIONS = [25, 50, 100, 200, 500];
+const LS_PAGE_SIZE = 'iobroker-page-size';
 
 function AppContent() {
   const [pattern, setPattern] = useState('*');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState<number>(() => {
+    const stored = parseInt(localStorage.getItem(LS_PAGE_SIZE) ?? '', 10);
+    return PAGE_SIZE_OPTIONS.includes(stored) ? stored : 50;
+  });
   const [historyOnly, setHistoryOnly] = useState(false);
   const [smartOnly, setSmartOnly] = useState(false);
   const [colFilters, setColFilters] = useState<Partial<Record<SortKey, string>>>({});
@@ -63,12 +68,12 @@ function AppContent() {
   }, [objects, historyOnly, historyIds, smartOnly, smartIds, colFilters, roomMap]);
 
   const totalCount = objectIds.length;
-  const pageStart = page * PAGE_SIZE;
+  const pageStart = page * pageSize;
   const pageIds = useMemo(
-    () => objectIds.slice(pageStart, pageStart + PAGE_SIZE),
-    [objectIds, pageStart]
+    () => objectIds.slice(pageStart, pageStart + pageSize),
+    [objectIds, pageStart, pageSize]
   );
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+  const totalPages = Math.ceil(totalCount / pageSize);
 
   const { data: stateValues } = useStateValues(pageIds);
 
@@ -172,27 +177,44 @@ function AppContent() {
           />
         </div>
 
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between py-2 px-1 border-t border-gray-200 dark:border-gray-700 shrink-0">
-            <button
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              disabled={page === 0}
-              className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+        <div className="flex items-center justify-between py-2 px-1 border-t border-gray-200 dark:border-gray-700 shrink-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-gray-400 dark:text-gray-500">Zeilen:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10);
+                setPageSize(v);
+                setPage(0);
+                localStorage.setItem(LS_PAGE_SIZE, String(v));
+              }}
+              className="text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
             >
-              Zurück
-            </button>
-            <span className="text-xs text-gray-400 dark:text-gray-500">
-              Seite {page + 1} von {totalPages} ({pageStart + 1}–{Math.min(pageStart + PAGE_SIZE, totalCount)} von {totalCount})
-            </span>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-              disabled={page >= totalPages - 1}
-              className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-            >
-              Weiter
-            </button>
+              {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
           </div>
-        )}
+          {totalPages > 1 && (
+            <>
+              <button
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={page === 0}
+                className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+              >
+                Zurück
+              </button>
+              <span className="text-xs text-gray-400 dark:text-gray-500">
+                Seite {page + 1} von {totalPages} ({pageStart + 1}–{Math.min(pageStart + pageSize, totalCount)} von {totalCount})
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                disabled={page >= totalPages - 1}
+                className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+              >
+                Weiter
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </Layout>
   );
