@@ -679,20 +679,20 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                   {show('history') && (
                     <td data-col="history" className="px-3 py-2">
                       {obj && hasHistory(obj) && (
-                        <History size={13} className="text-blue-500 dark:text-blue-400" title="History aktiv (sql.0)" />
+                        <span title="History aktiv (sql.0)"><History size={13} className="text-blue-500 dark:text-blue-400" /></span>
                       )}
                     </td>
                   )}
                   {show('smart') && (
                     <td data-col="smart" className="px-3 py-2">
                       {obj && hasSmartName(obj) && (
-                        <Mic2 size={13} className="text-violet-500 dark:text-violet-400" title={
+                        <span title={
                           typeof obj.common.smartName === 'string'
                             ? obj.common.smartName
                             : typeof obj.common.smartName === 'object' && obj.common.smartName
                               ? Object.values(obj.common.smartName).join(' / ')
                               : ''
-                        } />
+                        }><Mic2 size={13} className="text-violet-500 dark:text-violet-400" /></span>
                       )}
                     </td>
                   )}

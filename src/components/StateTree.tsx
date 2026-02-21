@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText, Database, ChevronsDownUp, ChevronsUpDown, Copy, Check, Mic2 } from 'lucide-react';
-import { hasHistory, hasSmartName } from '../api/iobroker';
-import type { TreeNode } from '../types/iobroker';
+import type { TreeNode, IoBrokerObject } from '../types/iobroker';
 
 interface StateTreeProps {
   stateIds: string[];
@@ -117,7 +116,7 @@ function TreeNodeComponent({
           {node.name}
         </span>
         {isSmartEnabled && (
-          <Mic2 size={11} className="shrink-0 text-violet-500 dark:text-violet-400" title="SmartName vorhanden" />
+          <span title="SmartName vorhanden"><Mic2 size={11} className="shrink-0 text-violet-500 dark:text-violet-400" /></span>
         )}
         <button
             onClick={(e) => {
@@ -168,7 +167,7 @@ function TreeNodeComponent({
   );
 }
 
-export default function StateTree({ stateIds, objects, selectedId, onSelect, onSearch, historyOnly, onHistoryOnlyChange, smartOnly, onSmartOnlyChange, historyIds, smartIds }: StateTreeProps) {
+export default function StateTree({ stateIds, selectedId, onSelect, onSearch, historyOnly, onHistoryOnlyChange, smartOnly, onSmartOnlyChange, historyIds, smartIds }: StateTreeProps) {
   // positive = expand all, negative = collapse all, 0 = initial
   const [expandSignal, setExpandSignal] = useState(0);
 
