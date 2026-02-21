@@ -43,6 +43,8 @@ function EditableNameCell({ id, name }: { id: string; name: string }) {
   const [draft, setDraft] = useState(name);
   const extend = useExtendObject();
 
+  const [copied, setCopied] = useState(false);
+
   if (!editing) {
     return (
       <td data-col="name" className="px-3 py-2 overflow-hidden group/name">
@@ -58,6 +60,32 @@ function EditableNameCell({ id, name }: { id: string; name: string }) {
             title="Name bearbeiten"
           >
             <Pencil size={12} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              function done() { setCopied(true); setTimeout(() => setCopied(false), 1500); }
+              if (navigator.clipboard?.writeText) {
+                navigator.clipboard.writeText(name).then(done).catch(fallback);
+              } else {
+                fallback();
+              }
+              function fallback() {
+                const ta = document.createElement('textarea');
+                ta.value = name;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                done();
+              }
+            }}
+            className="opacity-0 group-hover/name:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
+            title="Name kopieren"
+          >
+            {copied ? <Check size={12} className="text-green-500 dark:text-green-400" /> : <Copy size={12} />}
           </button>
         </div>
       </td>
