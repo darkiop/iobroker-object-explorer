@@ -211,6 +211,7 @@ export default function StateTree({ stateIds, selectedId, onSelect, onSearch, hi
           >
             <Database size={12} className="shrink-0" />
             <span className="truncate">History</span>
+            <span className={`ml-auto shrink-0 ${historyOnly ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`}>{historyIds.size}</span>
           </button>
           <button
             onClick={() => onSmartOnlyChange(!smartOnly)}
@@ -222,6 +223,7 @@ export default function StateTree({ stateIds, selectedId, onSelect, onSearch, hi
           >
             <Mic2 size={12} className="shrink-0" />
             <span className="truncate">SmartName</span>
+            <span className={`ml-auto shrink-0 ${smartOnly ? 'text-violet-500 dark:text-violet-400' : 'text-gray-400 dark:text-gray-500'}`}>{smartIds.size}</span>
           </button>
         </div>
         <div className="flex gap-1.5">
