@@ -1,4 +1,4 @@
-import type { IoBrokerState, IoBrokerObject, HistoryEntry, HistoryOptions } from '../types/iobroker';
+import type { IoBrokerState, IoBrokerObject, IoBrokerObjectCommon, HistoryEntry, HistoryOptions } from '../types/iobroker';
 
 const BASE_URL = '/api/v1';
 
@@ -154,6 +154,16 @@ export function hasSmartName(obj: IoBrokerObject): boolean {
   if (typeof sn === 'string') return sn.trim().length > 0;
   if (typeof sn === 'object') return Object.values(sn).some((v) => v && String(v).trim().length > 0);
   return false;
+}
+
+export async function createObject(id: string, common: Partial<IoBrokerObjectCommon>): Promise<void> {
+  const res = await fetch(`${BASE_URL}/object/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'state', common, native: {} }),
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
+  objectsCache = null;
 }
 
 export async function extendObject(id: string, obj: { common: Partial<IoBrokerObject['common']> }): Promise<void> {

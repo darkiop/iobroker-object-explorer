@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, getAllRoles, getAllUnits, setState, getRoomMap } from '../api/iobroker';
+import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, createObject, getAllRoles, getAllUnits, setState, getRoomMap } from '../api/iobroker';
 import type { IoBrokerObject, IoBrokerObjectCommon, IoBrokerState, HistoryOptions } from '../types/iobroker';
 
 export function useFilteredObjects(pattern: string) {
@@ -115,6 +115,21 @@ export function useSetState() {
     mutationFn: ({ id, val }: { id: string; val: unknown }) => setState(id, val),
     onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['state', id] });
+    },
+  });
+}
+
+export function useCreateDatapoint() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, common, initialValue }: { id: string; common: Partial<IoBrokerObjectCommon>; initialValue?: string }) => {
+      await createObject(id, common);
+      if (initialValue !== undefined && initialValue !== '') {
+        await setState(id, initialValue);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['objects'] });
     },
   });
 }

@@ -1,7 +1,8 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, RotateCcw } from 'lucide-react';
+import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, RotateCcw, Plus } from 'lucide-react';
 import { useExtendObject, useAllRoles } from '../hooks/useStates';
+import NewDatapointModal from './NewDatapointModal';
 import { hasHistory } from '../api/iobroker';
 import type { IoBrokerState, IoBrokerObject } from '../types/iobroker';
 
@@ -417,6 +418,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
   const [visibleCols, setVisibleCols] = useState<SortKey[]>(loadVisibleCols);
   const [colWidths, setColWidths] = useState<Record<SortKey, number>>(loadColWidths);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [newDatapointOpen, setNewDatapointOpen] = useState(false);
   const { data: roles = [] } = useAllRoles();
 
   function handleColChange(cols: SortKey[]) {
@@ -602,9 +604,18 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
           <RotateCcw size={15} />
         </button>
         <ColPicker visible={visibleCols} onChange={handleColChange} />
+        <button
+          onClick={() => setNewDatapointOpen(true)}
+          title="Neuer Datenpunkt"
+          className="p-1.5 rounded-lg transition-colors text-gray-400 hover:text-green-600 hover:bg-green-500/10 dark:text-gray-500 dark:hover:text-green-400 dark:hover:bg-green-500/10"
+        >
+          <Plus size={15} />
+        </button>
       </div>
     </div>
   );
+
+  const existingIds = useMemo(() => new Set(Object.keys(objects)), [objects]);
 
   if (ids.length === 0) {
     return (
@@ -620,6 +631,12 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
   return (
     <div className="flex flex-col h-full">
       {toolbar}
+      {newDatapointOpen && (
+        <NewDatapointModal
+          onClose={() => setNewDatapointOpen(false)}
+          existingIds={existingIds}
+        />
+      )}
 
       <div ref={containerRef} className="overflow-x-auto overflow-y-auto flex-1">
         <table className="text-sm text-left table-fixed" style={{ width: totalWidth }}>
