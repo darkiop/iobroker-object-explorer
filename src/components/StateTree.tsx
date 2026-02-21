@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText, Database, ChevronsDownUp, ChevronsUpDown, Copy, Check, Mic2 } from 'lucide-react';
+import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText, Database, ChevronsDownUp, ChevronsUpDown, Copy, Check, Mic2, Search } from 'lucide-react';
 import type { TreeNode, IoBrokerObject } from '../types/iobroker';
 
 interface StateTreeProps {
@@ -118,6 +118,15 @@ function TreeNodeComponent({
         {isSmartEnabled && (
           <span title="SmartName vorhanden"><Mic2 size={11} className="shrink-0 text-violet-500 dark:text-violet-400" /></span>
         )}
+        {isFolder && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onSearch(`${node.fullPath}.*`); }}
+            className="ml-auto shrink-0 opacity-0 group-hover/row:opacity-100 text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 transition-opacity"
+            title={`Filter: ${node.fullPath}.*`}
+          >
+            <Search size={12} />
+          </button>
+        )}
         <button
             onClick={(e) => {
               e.stopPropagation();
@@ -143,7 +152,7 @@ function TreeNodeComponent({
                 setTimeout(() => setCopied(false), 1500);
               }
             }}
-            className="ml-auto shrink-0 opacity-0 group-hover/row:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-opacity"
+            className={`${!isFolder ? 'ml-auto' : ''} shrink-0 opacity-0 group-hover/row:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-opacity`}
             title={node.fullPath}
           >
             {copied ? <Check size={12} className="text-green-500 dark:text-green-400" /> : <Copy size={12} />}
