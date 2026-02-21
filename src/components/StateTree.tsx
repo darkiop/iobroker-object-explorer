@@ -91,7 +91,6 @@ function TreeNodeComponent({
             onSelect(node.fullPath);
           } else if (hasChildren) {
             setExpanded(!expanded);
-            onSearch(`${node.fullPath}.*`);
           }
         }}
       >
