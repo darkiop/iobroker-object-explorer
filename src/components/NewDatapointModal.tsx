@@ -120,7 +120,7 @@ export default function NewDatapointModal({ onClose, existingIds }: Props) {
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value as typeof type)}
-                className="px-2.5 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500"
+                className="px-2.5 py-1.5 h-[34px] text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500"
               >
                 {STATE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
@@ -132,7 +132,7 @@ export default function NewDatapointModal({ onClose, existingIds }: Props) {
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
                 placeholder="°C, %, …"
-                className="px-2.5 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500"
+                className="px-2.5 py-1.5 h-[34px] text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500"
               />
             </label>
           </div>
