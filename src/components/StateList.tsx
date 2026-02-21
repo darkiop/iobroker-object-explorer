@@ -470,14 +470,15 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
   function fitToContainer() {
     const containerWidth = containerRef.current?.clientWidth;
     if (!containerWidth) return;
+    const available = containerWidth - WRITE_COL_WIDTH;
     const currentTotal = visibleCols.reduce((sum, k) => sum + colWidths[k], 0);
-    const scale = containerWidth / currentTotal;
+    const scale = available / currentTotal;
     const next = { ...colWidths };
     let allocated = 0;
     for (let i = 0; i < visibleCols.length; i++) {
       const k = visibleCols[i];
       if (i === visibleCols.length - 1) {
-        next[k] = Math.max(40, containerWidth - allocated);
+        next[k] = Math.max(40, available - allocated);
       } else {
         next[k] = Math.max(40, Math.floor(colWidths[k] * scale));
         allocated += next[k];
@@ -629,7 +630,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
       )}
 
       <div ref={containerRef} className="overflow-x-auto overflow-y-auto flex-1">
-        <table className="text-sm text-left table-fixed" style={{ width: totalWidth }}>
+        <table className="text-sm text-left table-fixed" style={{ width: '100%', minWidth: totalWidth }}>
           <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-100 dark:bg-gray-800 sticky top-0 z-10">
             <tr>
               <th style={{ width: WRITE_COL_WIDTH, minWidth: WRITE_COL_WIDTH }} className="px-1 py-2" />
