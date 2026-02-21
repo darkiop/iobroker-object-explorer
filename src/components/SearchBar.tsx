@@ -1,30 +1,31 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 
-const DEFAULT_PATTERN = 'alias.0.*';
+const FIELD_DEFAULT = 'alias.0.*';
+const SEARCH_ALL = '*';
 
 interface SearchBarProps {
   onSearch: (pattern: string) => void;
   initialPattern?: string;
 }
 
-export default function SearchBar({ onSearch, initialPattern = '' }: SearchBarProps) {
-  const [value, setValue] = useState(initialPattern);
+export default function SearchBar({ onSearch, initialPattern }: SearchBarProps) {
+  const [value, setValue] = useState(FIELD_DEFAULT);
 
+  // Nur bei echten Baum-Navigationen synchronisieren (nicht beim App-Start mit '*')
   useEffect(() => {
-    setValue(initialPattern);
+    if (initialPattern && initialPattern !== SEARCH_ALL) {
+      setValue(initialPattern);
+    }
   }, [initialPattern]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (value.trim()) {
-      onSearch(value.trim());
-    }
+    onSearch(value.trim() || SEARCH_ALL);
   };
 
   const handleClear = () => {
-    setValue(DEFAULT_PATTERN);
-    onSearch(DEFAULT_PATTERN);
+    setValue(FIELD_DEFAULT);
   };
 
   return (
@@ -38,7 +39,7 @@ export default function SearchBar({ onSearch, initialPattern = '' }: SearchBarPr
           placeholder="Pattern eingeben, z.B. alias.0.energie.*"
           className="w-full px-3 py-2 pr-8 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-500"
         />
-        {value !== DEFAULT_PATTERN && (
+        {value !== FIELD_DEFAULT && (
           <button
             type="button"
             onClick={handleClear}
