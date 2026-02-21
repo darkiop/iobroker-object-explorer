@@ -3,4 +3,7 @@ services:
     build: .
     ports:
       - "8080:80"
+    environment:
+      IOBROKER_HOST: 10.4.0.20
+      IOBROKER_PORT: 8093
     restart: unless-stopped

@@ -42,7 +42,7 @@ function EditableNameCell({ id, name }: { id: string; name: string }) {
 
   if (!editing) {
     return (
-      <td className="px-3 py-2 overflow-hidden group/name">
+      <td data-col="name" className="px-3 py-2 overflow-hidden group/name">
         <div className="flex items-center gap-1.5">
           <span className="truncate">{name}</span>
           <button
@@ -62,7 +62,7 @@ function EditableNameCell({ id, name }: { id: string; name: string }) {
   }
 
   return (
-    <td className="px-3 py-1 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+    <td data-col="name" className="px-3 py-1 overflow-hidden" onClick={(e) => e.stopPropagation()}>
       <div className="flex items-center gap-1">
         <input
           type="text"
@@ -144,7 +144,7 @@ function EditableRoleCell({ id, role, suggestions }: { id: string; role: string;
 
   if (!editing) {
     return (
-      <td className="px-3 py-2 text-gray-500 dark:text-gray-400 text-xs font-mono overflow-hidden group/role">
+      <td data-col="role" className="px-3 py-2 text-gray-500 dark:text-gray-400 text-xs font-mono overflow-hidden group/role">
         <div className="flex items-center gap-1.5">
           <span className="truncate">{role}</span>
           <button
@@ -165,7 +165,7 @@ function EditableRoleCell({ id, role, suggestions }: { id: string; role: string;
   }
 
   return (
-    <td className="px-3 py-1 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+    <td data-col="role" className="px-3 py-1 overflow-hidden" onClick={(e) => e.stopPropagation()}>
       <div className="flex items-center gap-1">
         <div className="relative flex-1 min-w-0">
           <input
@@ -292,7 +292,7 @@ function loadVisibleCols(): SortKey[] {
 
 const DEFAULT_WIDTHS: Record<SortKey, number> = {
   id: 220, name: 160, room: 110, role: 130, value: 100,
-  unit: 70, ack: 50, ts: 160, history: 65, smart: 65,
+  unit: 70, ack: 35, ts: 160, history: 65, smart: 65,
 };
 const LS_WIDTHS_KEY = 'iobroker-col-widths';
 
@@ -369,7 +369,7 @@ function ColPicker({ visible, onChange }: { visible: SortKey[]; onChange: (cols:
 
 type SortDir = 'asc' | 'desc';
 
-function SortHeader({ label, sortKey, activeKey, dir, onSort, width, onResizeStart, className }: {
+function SortHeader({ label, sortKey, activeKey, dir, onSort, width, onResizeStart, onAutoFit, className }: {
   label: string;
   sortKey: SortKey;
   activeKey: SortKey;
@@ -377,11 +377,13 @@ function SortHeader({ label, sortKey, activeKey, dir, onSort, width, onResizeSta
   onSort: (key: SortKey) => void;
   width: number;
   onResizeStart: (e: React.MouseEvent, key: SortKey) => void;
+  onAutoFit: (key: SortKey) => void;
   className?: string;
 }) {
   const active = sortKey === activeKey;
   return (
     <th
+      data-col={sortKey}
       style={{ width, minWidth: 40 }}
       className={`relative px-3 py-2 cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200 overflow-hidden ${className || ''}`}
       onClick={() => onSort(sortKey)}
@@ -398,6 +400,7 @@ function SortHeader({ label, sortKey, activeKey, dir, onSort, width, onResizeSta
           e.preventDefault();
           onResizeStart(e, sortKey);
         }}
+        onDoubleClick={(e) => { e.stopPropagation(); onAutoFit(sortKey); }}
         onClick={(e) => e.stopPropagation()}
       >
         <span className="w-px h-4 bg-gray-400 dark:bg-gray-500 group-hover/resize:bg-blue-500 group-hover/resize:h-full transition-all" />
@@ -441,6 +444,23 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
 
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
+  }
+
+  function handleAutoFit(key: SortKey) {
+    if (!containerRef.current) return;
+    const cells = containerRef.current.querySelectorAll<HTMLElement>(`[data-col="${key}"]`);
+    let maxWidth = 0;
+    cells.forEach((cell) => {
+      const inner = cell.firstElementChild as HTMLElement | null;
+      maxWidth = Math.max(maxWidth, inner ? inner.scrollWidth : cell.scrollWidth);
+    });
+    if (maxWidth === 0) return;
+    const newWidth = Math.max(40, maxWidth + 24); // 24px = px-3 beidseitig
+    setColWidths((prev) => {
+      const next = { ...prev, [key]: newWidth };
+      localStorage.setItem(LS_WIDTHS_KEY, JSON.stringify(next));
+      return next;
+    });
   }
 
   function fitToContainer() {
@@ -581,16 +601,16 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
         <table className="text-sm text-left table-fixed" style={{ width: totalWidth }}>
           <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-100 dark:bg-gray-800 sticky top-0 z-10">
             <tr>
-              {show('id')      && <SortHeader label="ID" sortKey="id" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('id')} onResizeStart={handleResizeStart} />}
-              {show('name')    && <SortHeader label="Name" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('name')} onResizeStart={handleResizeStart} />}
-              {show('room')    && <SortHeader label="Raum" sortKey="room" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('room')} onResizeStart={handleResizeStart} />}
-              {show('role')    && <SortHeader label="Rolle" sortKey="role" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('role')} onResizeStart={handleResizeStart} />}
-              {show('value')   && <SortHeader label="Wert" sortKey="value" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('value')} onResizeStart={handleResizeStart} className="text-right" />}
-              {show('unit')    && <SortHeader label="Einheit" sortKey="unit" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('unit')} onResizeStart={handleResizeStart} />}
-              {show('ack')     && <SortHeader label="Ack" sortKey="ack" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('ack')} onResizeStart={handleResizeStart} />}
-              {show('ts')      && <SortHeader label="Letztes Update" sortKey="ts" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('ts')} onResizeStart={handleResizeStart} />}
-              {show('history') && <SortHeader label="History" sortKey="history" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('history')} onResizeStart={handleResizeStart} />}
-              {show('smart')   && <SortHeader label="Smart" sortKey="smart" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('smart')} onResizeStart={handleResizeStart} />}
+              {show('id')      && <SortHeader label="ID" sortKey="id" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('id')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
+              {show('name')    && <SortHeader label="Name" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('name')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
+              {show('room')    && <SortHeader label="Raum" sortKey="room" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('room')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
+              {show('role')    && <SortHeader label="Rolle" sortKey="role" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('role')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
+              {show('value')   && <SortHeader label="Wert" sortKey="value" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('value')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} className="text-right" />}
+              {show('unit')    && <SortHeader label="Einheit" sortKey="unit" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('unit')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
+              {show('ack')     && <SortHeader label="Ack" sortKey="ack" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('ack')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
+              {show('ts')      && <SortHeader label="Letztes Update" sortKey="ts" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('ts')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
+              {show('history') && <SortHeader label="History" sortKey="history" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('history')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
+              {show('smart')   && <SortHeader label="Smart" sortKey="smart" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('smart')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
             </tr>
           </thead>
           <tbody>
@@ -611,7 +631,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                   }`}
                 >
                   {show('id') && (
-                    <td className="px-3 py-2 font-mono text-xs text-gray-500 dark:text-gray-400 overflow-hidden group/id">
+                    <td data-col="id" className="px-3 py-2 font-mono text-xs text-gray-500 dark:text-gray-400 overflow-hidden group/id">
                       <div className="flex items-center gap-1.5">
                         <span className="truncate">{id}</span>
                         <CopyIdButton id={id} />
@@ -620,13 +640,13 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                   )}
                   {show('name') && <EditableNameCell id={id} name={name} />}
                   {show('room') && (
-                    <td className="px-3 py-2 text-gray-500 dark:text-gray-400 text-xs overflow-hidden">
+                    <td data-col="room" className="px-3 py-2 text-gray-500 dark:text-gray-400 text-xs overflow-hidden">
                       <span className="truncate block">{roomMap[id] || ''}</span>
                     </td>
                   )}
                   {show('role') && <EditableRoleCell id={id} role={obj?.common?.role || ''} suggestions={roles} />}
                   {show('value') && (
-                    <td className="px-3 py-2 text-right font-mono font-medium text-gray-900 dark:text-white overflow-hidden whitespace-nowrap">
+                    <td data-col="value" className="px-3 py-2 text-right font-mono font-medium text-gray-900 dark:text-white overflow-hidden whitespace-nowrap">
                       {state ? (() => {
                         const v = formatValue(state.val);
                         const truncated = v.length > 16 ? v.slice(0, 16) + '…' : v;
@@ -635,12 +655,12 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                     </td>
                   )}
                   {show('unit') && (
-                    <td className="px-3 py-2 text-gray-400 dark:text-gray-500 overflow-hidden">
+                    <td data-col="unit" className="px-3 py-2 text-gray-400 dark:text-gray-500 overflow-hidden">
                       <span className="truncate block">{unit}</span>
                     </td>
                   )}
                   {show('ack') && (
-                    <td className="px-3 py-2">
+                    <td data-col="ack" className="px-3 py-2">
                       {state ? (
                         <span
                           className={`inline-block w-2 h-2 rounded-full ${
@@ -652,19 +672,19 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                     </td>
                   )}
                   {show('ts') && (
-                    <td className="px-3 py-2 text-gray-400 dark:text-gray-500 text-xs overflow-hidden">
+                    <td data-col="ts" className="px-3 py-2 text-gray-400 dark:text-gray-500 text-xs overflow-hidden">
                       <span className="truncate block">{state ? formatTimestamp(state.ts) : ''}</span>
                     </td>
                   )}
                   {show('history') && (
-                    <td className="px-3 py-2">
+                    <td data-col="history" className="px-3 py-2">
                       {obj && hasHistory(obj) && (
                         <History size={13} className="text-blue-500 dark:text-blue-400" title="History aktiv (sql.0)" />
                       )}
                     </td>
                   )}
                   {show('smart') && (
-                    <td className="px-3 py-2">
+                    <td data-col="smart" className="px-3 py-2">
                       {obj && hasSmartName(obj) && (
                         <Mic2 size={13} className="text-violet-500 dark:text-violet-400" title={
                           typeof obj.common.smartName === 'string'
