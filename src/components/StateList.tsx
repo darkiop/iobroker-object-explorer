@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, RotateCcw, Plus } from 'lucide-react';
+import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, RotateCcw, Plus, Lock } from 'lucide-react';
 import { useExtendObject, useAllRoles } from '../hooks/useStates';
 import NewDatapointModal from './NewDatapointModal';
 import { hasHistory } from '../api/iobroker';
@@ -562,7 +562,8 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
 
   const hasColFilters = Object.values(colFilters).some((v) => v.trim() !== '');
 
-  const totalWidth = visibleCols.reduce((sum, k) => sum + colWidths[k], 0);
+  const WRITE_COL_WIDTH = 26;
+  const totalWidth = WRITE_COL_WIDTH + visibleCols.reduce((sum, k) => sum + colWidths[k], 0);
 
   const toolbar = (
     <div className="flex items-center justify-between px-3 py-1 shrink-0 border-b border-gray-200 dark:border-gray-800">
@@ -631,6 +632,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
         <table className="text-sm text-left table-fixed" style={{ width: totalWidth }}>
           <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-100 dark:bg-gray-800 sticky top-0 z-10">
             <tr>
+              <th style={{ width: WRITE_COL_WIDTH, minWidth: WRITE_COL_WIDTH }} className="px-1 py-2" />
               {show('id')      && <SortHeader label="ID" sortKey="id" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('id')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('name')    && <SortHeader label="Name" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('name')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('room')    && <SortHeader label="Raum" sortKey="room" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('room')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
@@ -643,6 +645,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
               {show('smart')   && <SortHeader label="Smart" sortKey="smart" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('smart')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
             </tr>
             <tr className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+              <th style={{ width: WRITE_COL_WIDTH, minWidth: WRITE_COL_WIDTH }} className="px-1 py-1" />
               {(['id','name','room','role','value','unit','ack','ts','history','smart'] as SortKey[]).filter(show).map((key) => {
                 const filterable = ['id','name','room','role','value','unit'].includes(key);
                 return (
@@ -679,7 +682,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
           <tbody>
             {filteredIds.length === 0 && (
               <tr>
-                <td colSpan={visibleCols.length} className="px-4 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
+                <td colSpan={visibleCols.length + 1} className="px-4 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
                   {ids.length === 0
                     ? 'Keine Datenpunkte gefunden. Verwende die Suche um Datenpunkte zu laden.'
                     : 'Keine Einträge entsprechen den gesetzten Filtern.'}
@@ -702,6 +705,13 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                       : 'hover:bg-gray-100/80 text-gray-700 dark:hover:bg-gray-800/50 dark:text-gray-300'
                   }`}
                 >
+                  <td style={{ width: WRITE_COL_WIDTH, minWidth: WRITE_COL_WIDTH }} className="px-1 py-2 text-center">
+                    {obj?.common?.write === false && (
+                      <span title="Schreibgeschützt">
+                        <Lock size={11} className="text-gray-400 dark:text-gray-500 inline-block" />
+                      </span>
+                    )}
+                  </td>
                   {show('id') && (
                     <td data-col="id" className="px-3 py-2 font-mono text-xs text-gray-500 dark:text-gray-400 overflow-hidden group/id">
                       <div className="flex items-center gap-1.5">
