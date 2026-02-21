@@ -17,6 +17,8 @@ export default function NewDatapointModal({ onClose, existingIds }: Props) {
   const [role, setRole] = useState('');
   const [unit, setUnit] = useState('');
   const [initialValue, setInitialValue] = useState('');
+  const [min, setMin] = useState('');
+  const [max, setMax] = useState('');
   const [read, setRead] = useState(true);
   const [write, setWrite] = useState(true);
   const [roleSuggestionsOpen, setRoleSuggestionsOpen] = useState(false);
@@ -62,6 +64,8 @@ export default function NewDatapointModal({ onClose, existingIds }: Props) {
           type,
           role: role.trim() || undefined,
           unit: unit.trim() || undefined,
+          min: type === 'number' && min.trim() !== '' ? Number(min) : undefined,
+          max: type === 'number' && max.trim() !== '' ? Number(max) : undefined,
           read,
           write,
         },
@@ -177,6 +181,32 @@ export default function NewDatapointModal({ onClose, existingIds }: Props) {
               className="px-2.5 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500"
             />
           </label>
+
+          {/* Min / Max — nur bei Typ number */}
+          {type === 'number' && (
+            <div className="flex gap-3">
+              <label className="flex flex-col gap-1 flex-1">
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Min <span className="text-gray-400 font-normal">(optional)</span></span>
+                <input
+                  type="number"
+                  value={min}
+                  onChange={(e) => setMin(e.target.value)}
+                  placeholder="0"
+                  className="px-2.5 py-1.5 h-[34px] text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500"
+                />
+              </label>
+              <label className="flex flex-col gap-1 flex-1">
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Max <span className="text-gray-400 font-normal">(optional)</span></span>
+                <input
+                  type="number"
+                  value={max}
+                  onChange={(e) => setMax(e.target.value)}
+                  placeholder="100"
+                  className="px-2.5 py-1.5 h-[34px] text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500"
+                />
+              </label>
+            </div>
+          )}
 
           {/* Read / Write */}
           <div className="flex gap-6">
