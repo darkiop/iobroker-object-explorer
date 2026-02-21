@@ -22,7 +22,7 @@ const queryClient = new QueryClient({
 const PAGE_SIZE = 50;
 
 function AppContent() {
-  const [pattern, setPattern] = useState('alias.0.*');
+  const [pattern, setPattern] = useState('*');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [historyOnly, setHistoryOnly] = useState(false);
@@ -98,7 +98,22 @@ function AppContent() {
         <div className="flex flex-col h-full">
           <div className="p-3 border-b border-gray-200 dark:border-gray-700">
             <SearchBar onSearch={handleSearch} initialPattern={pattern} />
-            <div className="mt-2 text-xs text-gray-400 dark:text-gray-500">
+            <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+              {['alias.0.*', 'javascript.0.*', '0_userdata.0.*'].map((q) => (
+                <button
+                  key={q}
+                  onClick={() => handleSearch(q)}
+                  className={`px-2 py-0.5 rounded text-xs font-mono transition-colors ${
+                    pattern === q
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+            <div className="mt-1 text-xs text-gray-400 dark:text-gray-500">
               {objectsLoading ? 'Objekte laden...' : `${totalCount} Datenpunkte`}
             </div>
           </div>

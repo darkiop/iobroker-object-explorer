@@ -10,7 +10,7 @@ interface SearchBarProps {
 }
 
 export default function SearchBar({ onSearch, initialPattern }: SearchBarProps) {
-  const [value, setValue] = useState(FIELD_DEFAULT);
+  const [value, setValue] = useState('');
 
   // Nur bei echten Baum-Navigationen synchronisieren (nicht beim App-Start mit '*')
   useEffect(() => {
