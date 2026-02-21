@@ -25,7 +25,7 @@ export default function SearchBar({ onSearch, initialPattern }: SearchBarProps) 
   };
 
   const handleClear = () => {
-    setValue(FIELD_DEFAULT);
+    setValue('');
   };
 
   return (
@@ -39,7 +39,7 @@ export default function SearchBar({ onSearch, initialPattern }: SearchBarProps) 
           placeholder="Pattern eingeben, z.B. alias.0.energie.*"
           className="w-full px-3 py-2 pr-8 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-500"
         />
-        {value !== FIELD_DEFAULT && (
+        {value !== '' && (
           <button
             type="button"
             onClick={handleClear}
