@@ -62,7 +62,7 @@ function TreeNodeComponent({
   smartIds: Set<string>;
   expandSignal: number;
 }) {
-  const [expanded, setExpanded] = useState(depth < 2);
+  const [expanded, setExpanded] = useState(depth < 1);
   const [copied, setCopied] = useState(false);
   const hasChildren = node.children.size > 0;
   const isFolder = hasChildren && !node.isLeaf;
