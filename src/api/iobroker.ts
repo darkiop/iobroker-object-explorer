@@ -129,8 +129,31 @@ export async function getAllRoles(): Promise<string[]> {
   return [...roles].sort();
 }
 
+export async function getRoomMap(): Promise<Record<string, string>> {
+  const all = await getAllObjects();
+  const map: Record<string, string> = {};
+  for (const [id, obj] of Object.entries(all)) {
+    if (!id.startsWith('enum.rooms.') || obj.type !== 'enum') continue;
+    const name = typeof obj.common?.name === 'string'
+      ? obj.common.name
+      : obj.common?.name?.de || obj.common?.name?.en || Object.values(obj.common?.name ?? {})[0] || id;
+    for (const memberId of obj.common?.members ?? []) {
+      map[memberId] = name;
+    }
+  }
+  return map;
+}
+
 export function hasHistory(obj: IoBrokerObject): boolean {
   return obj.common?.custom?.['sql.0']?.enabled === true;
+}
+
+export function hasSmartName(obj: IoBrokerObject): boolean {
+  const sn = obj.common?.smartName;
+  if (!sn) return false;
+  if (typeof sn === 'string') return sn.trim().length > 0;
+  if (typeof sn === 'object') return Object.values(sn).some((v) => v && String(v).trim().length > 0);
+  return false;
 }
 
 export async function extendObject(id: string, obj: { common: Partial<IoBrokerObject['common']> }): Promise<void> {

@@ -259,6 +259,8 @@ function ExpertControl({ val, onSet, isPending, unit, type }: { val: unknown; on
   );
 }
 
+type Tab = 'details' | 'object';
+
 export default function StateDetail({ stateId, onClose }: StateDetailProps) {
   const { data: state, isLoading: stateLoading } = useStateDetail(stateId);
   const { data: object, isLoading: objectLoading } = useObjectDetail(stateId);
@@ -267,8 +269,9 @@ export default function StateDetail({ stateId, onClose }: StateDetailProps) {
   const { data: roles } = useAllRoles();
   const { data: units } = useAllUnits();
   const [expertMode, setExpertMode] = useState(false);
+  const [activeTab, setActiveTab] = useState<Tab>('details');
 
-  useEffect(() => { setExpertMode(false); }, [stateId]);
+  useEffect(() => { setExpertMode(false); setActiveTab('details'); }, [stateId]);
 
   const isLoading = stateLoading || objectLoading;
 
@@ -314,9 +317,26 @@ export default function StateDetail({ stateId, onClose }: StateDetailProps) {
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-0 mb-3 border-b border-gray-200 dark:border-gray-700">
+        {(['details', 'object'] as Tab[]).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-3 py-1.5 text-xs font-medium transition-colors border-b-2 -mb-px ${
+              activeTab === tab
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+            }`}
+          >
+            {tab === 'details' ? 'Details' : 'Objekt'}
+          </button>
+        ))}
+      </div>
+
       {isLoading ? (
         <div className="text-gray-400 dark:text-gray-500 text-sm">Laden...</div>
-      ) : (
+      ) : activeTab === 'details' ? (
         <div className="space-y-0">
           {object && (
             <>
@@ -420,6 +440,10 @@ export default function StateDetail({ stateId, onClose }: StateDetailProps) {
             </div>
           )}
         </div>
+      ) : (
+        <pre className="text-xs font-mono text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-900/50 rounded p-3 overflow-auto max-h-[60vh] whitespace-pre-wrap break-all">
+          {object ? JSON.stringify(object, null, 2) : '—'}
+        </pre>
       )}
     </div>
   );

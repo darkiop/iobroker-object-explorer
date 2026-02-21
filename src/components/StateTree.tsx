@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
-import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText, Database, ChevronsDownUp, ChevronsUpDown, Copy, Check } from 'lucide-react';
-import { hasHistory } from '../api/iobroker';
-import type { TreeNode, IoBrokerObject } from '../types/iobroker';
+import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText, Database, ChevronsDownUp, ChevronsUpDown, Copy, Check, Mic2 } from 'lucide-react';
+import { hasHistory, hasSmartName } from '../api/iobroker';
+import type { TreeNode } from '../types/iobroker';
 
 interface StateTreeProps {
   stateIds: string[];
@@ -9,6 +9,12 @@ interface StateTreeProps {
   selectedId: string | null;
   onSelect: (id: string) => void;
   onSearch: (pattern: string) => void;
+  historyOnly: boolean;
+  onHistoryOnlyChange: (v: boolean) => void;
+  smartOnly: boolean;
+  onSmartOnlyChange: (v: boolean) => void;
+  historyIds: Set<string>;
+  smartIds: Set<string>;
 }
 
 function buildTree(ids: string[]): TreeNode {
@@ -45,6 +51,7 @@ function TreeNodeComponent({
   onSelect,
   onSearch,
   historyIds,
+  smartIds,
   expandSignal,
 }: {
   node: TreeNode;
@@ -53,6 +60,7 @@ function TreeNodeComponent({
   onSelect: (id: string) => void;
   onSearch: (pattern: string) => void;
   historyIds: Set<string>;
+  smartIds: Set<string>;
   expandSignal: number;
 }) {
   const [expanded, setExpanded] = useState(depth < 2);
@@ -60,6 +68,7 @@ function TreeNodeComponent({
   const hasChildren = node.children.size > 0;
   const isFolder = hasChildren && !node.isLeaf;
   const isHistoryEnabled = node.isLeaf && historyIds.has(node.fullPath);
+  const isSmartEnabled = node.isLeaf && smartIds.has(node.fullPath);
   const sortedChildren = useMemo(
     () => [...node.children.values()].sort((a, b) => a.name.localeCompare(b.name)),
     [node.children]
@@ -107,6 +116,9 @@ function TreeNodeComponent({
         <span className={`truncate ${node.isLeaf ? (isHistoryEnabled ? 'text-blue-500 dark:text-blue-400' : 'text-green-600 dark:text-green-400') : 'text-gray-600 font-medium dark:text-gray-400'}`}>
           {node.name}
         </span>
+        {isSmartEnabled && (
+          <Mic2 size={11} className="shrink-0 text-violet-500 dark:text-violet-400" title="SmartName vorhanden" />
+        )}
         <button
             onClick={(e) => {
               e.stopPropagation();
@@ -148,6 +160,7 @@ function TreeNodeComponent({
             onSelect={onSelect}
             onSearch={onSearch}
             historyIds={historyIds}
+            smartIds={smartIds}
             expandSignal={expandSignal}
           />
         ))}
@@ -155,23 +168,16 @@ function TreeNodeComponent({
   );
 }
 
-export default function StateTree({ stateIds, objects, selectedId, onSelect, onSearch }: StateTreeProps) {
-  const [historyOnly, setHistoryOnly] = useState(false);
+export default function StateTree({ stateIds, objects, selectedId, onSelect, onSearch, historyOnly, onHistoryOnlyChange, smartOnly, onSmartOnlyChange, historyIds, smartIds }: StateTreeProps) {
   // positive = expand all, negative = collapse all, 0 = initial
   const [expandSignal, setExpandSignal] = useState(0);
 
-  const historyIds = useMemo(() => {
-    const set = new Set<string>();
-    for (const [id, obj] of Object.entries(objects)) {
-      if (hasHistory(obj)) set.add(id);
-    }
-    return set;
-  }, [objects]);
-
-  const filteredIds = useMemo(
-    () => historyOnly ? stateIds.filter((id) => historyIds.has(id)) : stateIds,
-    [stateIds, historyOnly, historyIds]
-  );
+  const filteredIds = useMemo(() => {
+    return stateIds.filter((id) =>
+      (!historyOnly || historyIds.has(id)) &&
+      (!smartOnly || smartIds.has(id))
+    );
+  }, [stateIds, historyOnly, historyIds, smartOnly, smartIds]);
 
   const tree = useMemo(() => buildTree(filteredIds), [filteredIds]);
   const sortedChildren = useMemo(
@@ -179,42 +185,56 @@ export default function StateTree({ stateIds, objects, selectedId, onSelect, onS
     [tree.children]
   );
 
-  if (stateIds.length === 0) {
-    return <div className="text-gray-400 dark:text-gray-500 text-sm p-4">Keine Datenpunkte geladen</div>;
-  }
-
   return (
     <div className="overflow-y-auto">
-      <div className="px-2 py-1.5 flex gap-1.5">
-        <button
-          onClick={() => setHistoryOnly(!historyOnly)}
-          className={`flex items-center gap-1.5 flex-1 px-2 py-1 text-xs rounded ${
-            historyOnly
-              ? 'bg-blue-600/20 text-blue-600 border border-blue-500/40 dark:text-blue-300'
-              : 'bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700'
-          }`}
-        >
-          <Database size={12} />
-          Nur mit History
-          <span className={`ml-auto ${historyOnly ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`}>{historyIds.size}</span>
-        </button>
-        <button
-          onClick={() => setExpandSignal((s) => Math.abs(s) + 1)}
-          className="px-2 py-1 text-xs rounded bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700"
-          title="Alle aufklappen"
-        >
-          <ChevronsUpDown size={14} />
-        </button>
-        <button
-          onClick={() => setExpandSignal((s) => -(Math.abs(s) + 1))}
-          className="px-2 py-1 text-xs rounded bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700"
-          title="Alle zuklappen"
-        >
-          <ChevronsDownUp size={14} />
-        </button>
+      <div className="px-2 py-1.5 flex flex-col gap-1.5">
+        <div className="flex gap-1.5">
+          <button
+            onClick={() => onHistoryOnlyChange(!historyOnly)}
+            className={`flex items-center gap-1.5 flex-1 px-2 py-1 text-xs rounded ${
+              historyOnly
+                ? 'bg-blue-600/20 text-blue-600 border border-blue-500/40 dark:text-blue-300'
+                : 'bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700'
+            }`}
+          >
+            <Database size={12} />
+            Nur mit History
+            <span className={`ml-auto ${historyOnly ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`}>{historyIds.size}</span>
+          </button>
+        </div>
+        <div className="flex gap-1.5">
+          <button
+            onClick={() => onSmartOnlyChange(!smartOnly)}
+            className={`flex items-center gap-1.5 flex-1 px-2 py-1 text-xs rounded ${
+              smartOnly
+                ? 'bg-violet-600/20 text-violet-600 border border-violet-500/40 dark:text-violet-300'
+                : 'bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700'
+            }`}
+          >
+            <Mic2 size={12} />
+            Nur mit SmartName
+            <span className={`ml-auto ${smartOnly ? 'text-violet-500 dark:text-violet-400' : 'text-gray-400 dark:text-gray-500'}`}>{smartIds.size}</span>
+          </button>
+          <button
+            onClick={() => setExpandSignal((s) => Math.abs(s) + 1)}
+            className="px-2 py-1 text-xs rounded bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700"
+            title="Alle aufklappen"
+          >
+            <ChevronsUpDown size={14} />
+          </button>
+          <button
+            onClick={() => setExpandSignal((s) => -(Math.abs(s) + 1))}
+            className="px-2 py-1 text-xs rounded bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700"
+            title="Alle zuklappen"
+          >
+            <ChevronsDownUp size={14} />
+          </button>
+        </div>
       </div>
       {filteredIds.length === 0 ? (
-        <div className="text-gray-400 dark:text-gray-500 text-sm p-4">Keine Datenpunkte mit History</div>
+        <div className="text-gray-400 dark:text-gray-500 text-sm p-4">
+          {stateIds.length === 0 ? 'Keine Datenpunkte geladen' : 'Keine Datenpunkte gefunden'}
+        </div>
       ) : (
         sortedChildren.map((child) => (
           <TreeNodeComponent
@@ -225,6 +245,7 @@ export default function StateTree({ stateIds, objects, selectedId, onSelect, onS
             onSelect={onSelect}
             onSearch={onSearch}
             historyIds={historyIds}
+            smartIds={smartIds}
             expandSignal={expandSignal}
           />
         ))

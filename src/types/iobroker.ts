@@ -22,6 +22,8 @@ export interface IoBrokerObjectCommon {
   states?: Record<string, string>;
   custom?: Record<string, { enabled?: boolean }>;
   desc?: string;
+  members?: string[];
+  smartName?: string | Record<string, string> | false;
 }
 
 export interface IoBrokerObject {

@@ -6,7 +6,8 @@ import SearchBar from './components/SearchBar';
 import StateTree from './components/StateTree';
 import StateList from './components/StateList';
 import StateDetail from './components/StateDetail';
-import { useFilteredObjects, useStateValues } from './hooks/useStates';
+import { useFilteredObjects, useStateValues, useRoomMap } from './hooks/useStates';
+import { hasHistory, hasSmartName } from './api/iobroker';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -23,13 +24,33 @@ function AppContent() {
   const [pattern, setPattern] = useState('alias.0.*');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [page, setPage] = useState(0);
+  const [historyOnly, setHistoryOnly] = useState(false);
+  const [smartOnly, setSmartOnly] = useState(false);
 
   const { data: objects, isLoading: objectsLoading, error: objectsError } = useFilteredObjects(pattern);
 
-  const objectIds = useMemo(
-    () => (objects ? Object.keys(objects).sort() : []),
-    [objects]
-  );
+  const historyIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const [id, obj] of Object.entries(objects ?? {})) {
+      if (hasHistory(obj)) set.add(id);
+    }
+    return set;
+  }, [objects]);
+
+  const smartIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const [id, obj] of Object.entries(objects ?? {})) {
+      if (hasSmartName(obj)) set.add(id);
+    }
+    return set;
+  }, [objects]);
+
+  const objectIds = useMemo(() => {
+    let ids = objects ? Object.keys(objects).sort() : [];
+    if (historyOnly) ids = ids.filter((id) => historyIds.has(id));
+    if (smartOnly) ids = ids.filter((id) => smartIds.has(id));
+    return ids;
+  }, [objects, historyOnly, historyIds, smartOnly, smartIds]);
 
   const totalCount = objectIds.length;
   const pageStart = page * PAGE_SIZE;
@@ -40,6 +61,7 @@ function AppContent() {
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   const { data: stateValues } = useStateValues(pageIds);
+  const { data: roomMap } = useRoomMap();
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -53,6 +75,8 @@ function AppContent() {
     setPattern(newPattern);
     setPage(0);
     setSelectedId(null);
+    setHistoryOnly(false);
+    setSmartOnly(false);
   };
 
   return (
@@ -66,7 +90,19 @@ function AppContent() {
             </div>
           </div>
           <div className="flex-1 overflow-y-auto py-1">
-            <StateTree stateIds={objectIds} objects={objects || {}} selectedId={selectedId} onSelect={setSelectedId} onSearch={handleSearch} />
+            <StateTree
+              stateIds={objectIds}
+              objects={objects || {}}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              onSearch={handleSearch}
+              historyOnly={historyOnly}
+              onHistoryOnlyChange={(v) => { setHistoryOnly(v); setPage(0); }}
+              smartOnly={smartOnly}
+              onSmartOnlyChange={(v) => { setSmartOnly(v); setPage(0); }}
+              historyIds={historyIds}
+              smartIds={smartIds}
+            />
           </div>
         </div>
       }
@@ -95,8 +131,10 @@ function AppContent() {
         <div className="flex-1 min-h-0">
           <StateList
             ids={pageIds}
+            totalCount={totalCount}
             states={stateValues || {}}
             objects={objects || {}}
+            roomMap={roomMap || {}}
             selectedId={selectedId}
             onSelect={setSelectedId}
           />
