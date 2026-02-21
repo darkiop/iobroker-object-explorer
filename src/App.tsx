@@ -8,6 +8,7 @@ import StateList from './components/StateList';
 import StateDetail from './components/StateDetail';
 import { useFilteredObjects, useStateValues, useRoomMap } from './hooks/useStates';
 import { hasHistory, hasSmartName } from './api/iobroker';
+import type { SortKey } from './components/StateList';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,6 +27,7 @@ function AppContent() {
   const [page, setPage] = useState(0);
   const [historyOnly, setHistoryOnly] = useState(false);
   const [smartOnly, setSmartOnly] = useState(false);
+  const [colFilters, setColFilters] = useState<Partial<Record<SortKey, string>>>({});
 
   const { data: objects, isLoading: objectsLoading, error: objectsError } = useFilteredObjects(pattern);
 
@@ -49,8 +51,14 @@ function AppContent() {
     let ids = objects ? Object.keys(objects).sort() : [];
     if (historyOnly) ids = ids.filter((id) => historyIds.has(id));
     if (smartOnly) ids = ids.filter((id) => smartIds.has(id));
+    const rm = roomMap || {};
+    if (colFilters.id?.trim())   { const f = colFilters.id.trim().toLowerCase();   ids = ids.filter((id) => id.toLowerCase().includes(f)); }
+    if (colFilters.name?.trim()) { const f = colFilters.name.trim().toLowerCase();  ids = ids.filter((id) => { const n = objects![id]?.common?.name; const s = typeof n === 'string' ? n : (n && (n.de || n.en || Object.values(n)[0])) || ''; return s.toLowerCase().includes(f); }); }
+    if (colFilters.room?.trim()) { const f = colFilters.room.trim().toLowerCase();  ids = ids.filter((id) => (rm[id] || '').toLowerCase().includes(f)); }
+    if (colFilters.role?.trim()) { const f = colFilters.role.trim().toLowerCase();  ids = ids.filter((id) => (objects![id]?.common?.role || '').toLowerCase().includes(f)); }
+    if (colFilters.unit?.trim()) { const f = colFilters.unit.trim().toLowerCase();  ids = ids.filter((id) => (objects![id]?.common?.unit || '').toLowerCase().includes(f)); }
     return ids;
-  }, [objects, historyOnly, historyIds, smartOnly, smartIds]);
+  }, [objects, historyOnly, historyIds, smartOnly, smartIds, colFilters, roomMap]);
 
   const totalCount = objectIds.length;
   const pageStart = page * PAGE_SIZE;
@@ -78,6 +86,11 @@ function AppContent() {
     setHistoryOnly(false);
     setSmartOnly(false);
   };
+
+  function handleColFilterChange(filters: Partial<Record<SortKey, string>>) {
+    setColFilters(filters);
+    setPage(0);
+  }
 
   return (
     <Layout
@@ -137,6 +150,8 @@ function AppContent() {
             roomMap={roomMap || {}}
             selectedId={selectedId}
             onSelect={setSelectedId}
+            colFilters={colFilters}
+            onColFilterChange={handleColFilterChange}
           />
         </div>
 

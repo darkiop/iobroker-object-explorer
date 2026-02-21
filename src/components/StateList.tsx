@@ -13,6 +13,8 @@ interface StateListProps {
   roomMap: Record<string, string>;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  colFilters: Partial<Record<SortKey, string>>;
+  onColFilterChange: (filters: Partial<Record<SortKey, string>>) => void;
 }
 
 function formatTimestamp(ts: number): string {
@@ -260,7 +262,7 @@ function CopyIdButton({ id }: { id: string }) {
   );
 }
 
-type SortKey = 'id' | 'name' | 'room' | 'role' | 'value' | 'unit' | 'ack' | 'ts' | 'history' | 'smart';
+export type SortKey = 'id' | 'name' | 'room' | 'role' | 'value' | 'unit' | 'ack' | 'ts' | 'history' | 'smart';
 
 const ALL_COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'id',      label: 'ID' },
@@ -409,13 +411,12 @@ function SortHeader({ label, sortKey, activeKey, dir, onSort, width, onResizeSta
   );
 }
 
-export default function StateList({ ids, totalCount, states, objects, roomMap, selectedId, onSelect }: StateListProps) {
+export default function StateList({ ids, totalCount, states, objects, roomMap, selectedId, onSelect, colFilters, onColFilterChange }: StateListProps) {
   const [sortKey, setSortKey] = useState<SortKey>('id');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [visibleCols, setVisibleCols] = useState<SortKey[]>(loadVisibleCols);
   const [colWidths, setColWidths] = useState<Record<SortKey, number>>(loadColWidths);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [colFilters, setColFilters] = useState<Partial<Record<SortKey, string>>>({});
   const { data: roles = [] } = useAllRoles();
 
   function handleColChange(cols: SortKey[]) {
@@ -547,26 +548,15 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
     });
   }, [ids, states, objects, roomMap, sortKey, sortDir]);
 
+  // metadata filters (id, name, room, role, unit) are applied in App.tsx before pagination
+  // only value is filtered here (page-local, state data)
   const filteredIds = useMemo(() => {
-    const active = (Object.entries(colFilters) as [SortKey, string][]).filter(([, v]) => v.trim() !== '');
-    if (active.length === 0) return sortedIds;
-    return sortedIds.filter((id) => {
-      const obj = objects[id];
-      const state = states[id];
-      return active.every(([key, filter]) => {
-        const f = filter.toLowerCase();
-        switch (key) {
-          case 'id':    return id.toLowerCase().includes(f);
-          case 'name':  return getObjectName(obj).toLowerCase().includes(f);
-          case 'room':  return (roomMap[id] || '').toLowerCase().includes(f);
-          case 'role':  return (obj?.common?.role || '').toLowerCase().includes(f);
-          case 'value': return formatValue(state?.val).toLowerCase().includes(f);
-          case 'unit':  return (obj?.common?.unit || '').toLowerCase().includes(f);
-          default: return true;
-        }
-      });
-    });
-  }, [sortedIds, colFilters, objects, states, roomMap]);
+    const valueFilter = colFilters.value?.trim().toLowerCase();
+    if (!valueFilter) return sortedIds;
+    return sortedIds.filter((id) =>
+      formatValue(states[id]?.val).toLowerCase().includes(valueFilter)
+    );
+  }, [sortedIds, colFilters.value, states]);
 
   const hasColFilters = Object.values(colFilters).some((v) => v.trim() !== '');
 
@@ -591,7 +581,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
         </button>
         {hasColFilters && (
           <button
-            onClick={() => setColFilters({})}
+            onClick={() => onColFilterChange({})}
             title="Spaltenfilter löschen"
             className="p-1.5 rounded-lg transition-colors text-blue-500 hover:text-blue-700 hover:bg-blue-500/10 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-500/10"
           >
@@ -604,7 +594,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
             localStorage.removeItem(LS_WIDTHS_KEY);
             setVisibleCols(DEFAULT_COLS);
             setColWidths({ ...DEFAULT_WIDTHS });
-            setColFilters({});
+            onColFilterChange({});
           }}
           title="Einstellungen zurücksetzen"
           className="p-1.5 rounded-lg transition-colors text-gray-400 hover:text-red-500 hover:bg-red-500/10 dark:text-gray-500 dark:hover:text-red-400 dark:hover:bg-red-500/10"
@@ -646,7 +636,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
               {show('history') && <SortHeader label="History" sortKey="history" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('history')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('smart')   && <SortHeader label="Smart" sortKey="smart" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('smart')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
             </tr>
-            <tr className="bg-gray-50 dark:bg-gray-850 border-b border-gray-200 dark:border-gray-700">
+            <tr className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
               {(['id','name','room','role','value','unit','ack','ts','history','smart'] as SortKey[]).filter(show).map((key) => {
                 const filterable = ['id','name','room','role','value','unit'].includes(key);
                 return (
@@ -655,13 +645,13 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                       <input
                         type="text"
                         value={colFilters[key] || ''}
-                        onChange={(e) => setColFilters((prev) => ({ ...prev, [key]: e.target.value }))}
+                        onChange={(e) => onColFilterChange({ ...colFilters, [key]: e.target.value })}
                         onClick={(e) => e.stopPropagation()}
                         placeholder="Filter..."
-                        className={`w-full px-1.5 py-0.5 text-xs rounded border bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 placeholder-gray-300 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500 ${
+                        className={`w-full px-1.5 py-0.5 text-xs rounded border bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500 ${
                           colFilters[key]?.trim()
                             ? 'border-blue-400 dark:border-blue-500'
-                            : 'border-gray-200 dark:border-gray-600'
+                            : 'border-gray-300 dark:border-gray-600'
                         }`}
                       />
                     ) : null}
