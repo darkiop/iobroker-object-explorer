@@ -35,7 +35,7 @@ function AppContent() {
   const [colFilters, setColFilters] = useState<Partial<Record<SortKey, string>>>({});
   const [treeExpandSignal, setTreeExpandSignal] = useState<{ depth: number; seq: number } | undefined>(undefined);
 
-  const { data: objects, isLoading: objectsLoading, error: objectsError } = useFilteredObjects(pattern);
+  const { data: objects, error: objectsError } = useFilteredObjects(pattern);
   const { data: roomMap } = useRoomMap();
 
   const historyIds = useMemo(() => {
@@ -118,9 +118,6 @@ function AppContent() {
                   {q}
                 </button>
               ))}
-            </div>
-            <div className="mt-1 text-xs text-gray-400 dark:text-gray-500">
-              {objectsLoading ? 'Objekte laden...' : `${totalCount} Datenpunkte`}
             </div>
           </div>
           <div className="flex-1 overflow-y-auto py-1">
