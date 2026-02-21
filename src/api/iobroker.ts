@@ -136,7 +136,17 @@ export async function getRoomMap(): Promise<Record<string, string>> {
     if (!obj.enums) continue;
     for (const [enumId, enumName] of Object.entries(obj.enums)) {
       if (enumId.startsWith('enum.rooms.')) {
-        map[id] = enumName;
+        const raw = enumName as unknown;
+        let name: string;
+        if (typeof raw === 'string') {
+          name = raw;
+        } else if (raw && typeof raw === 'object') {
+          const langs = raw as Record<string, string>;
+          name = langs.de || langs.en || Object.values(langs)[0] || '';
+        } else {
+          name = '';
+        }
+        map[id] = name;
         break;
       }
     }

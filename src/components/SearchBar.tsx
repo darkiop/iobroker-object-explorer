@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 
-const FIELD_DEFAULT = 'alias.0.*';
 const SEARCH_ALL = '*';
 
 interface SearchBarProps {
