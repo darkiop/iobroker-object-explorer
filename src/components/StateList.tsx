@@ -648,18 +648,27 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                 return (
                   <th key={key} style={{ width: w(key) }} className="px-2 py-1 normal-case font-normal">
                     {filterable ? (
-                      <input
-                        type="text"
-                        value={colFilters[key] || ''}
-                        onChange={(e) => onColFilterChange({ ...colFilters, [key]: e.target.value })}
-                        onClick={(e) => e.stopPropagation()}
-                        placeholder="Filter..."
-                        className={`w-full px-1.5 py-0.5 text-xs rounded border bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500 ${
-                          colFilters[key]?.trim()
-                            ? 'border-blue-400 dark:border-blue-500'
-                            : 'border-gray-300 dark:border-gray-600'
-                        }`}
-                      />
+                      <div className="relative flex items-center" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="text"
+                          value={colFilters[key] || ''}
+                          onChange={(e) => onColFilterChange({ ...colFilters, [key]: e.target.value })}
+                          placeholder="Filter..."
+                          className={`w-full py-0.5 text-xs rounded border bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500 ${
+                            colFilters[key]?.trim()
+                              ? 'pl-1.5 pr-5 border-blue-400 dark:border-blue-500'
+                              : 'px-1.5 border-gray-300 dark:border-gray-600'
+                          }`}
+                        />
+                        {colFilters[key]?.trim() && (
+                          <button
+                            onMouseDown={(e) => { e.preventDefault(); onColFilterChange({ ...colFilters, [key]: '' }); }}
+                            className="absolute right-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                          >
+                            <X size={10} />
+                          </button>
+                        )}
+                      </div>
                     ) : null}
                   </th>
                 );
