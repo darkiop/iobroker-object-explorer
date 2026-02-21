@@ -17,6 +17,8 @@ export default function NewDatapointModal({ onClose, existingIds }: Props) {
   const [role, setRole] = useState('');
   const [unit, setUnit] = useState('');
   const [initialValue, setInitialValue] = useState('');
+  const [read, setRead] = useState(true);
+  const [write, setWrite] = useState(true);
   const [roleSuggestionsOpen, setRoleSuggestionsOpen] = useState(false);
   const [error, setError] = useState('');
 
@@ -60,8 +62,8 @@ export default function NewDatapointModal({ onClose, existingIds }: Props) {
           type,
           role: role.trim() || undefined,
           unit: unit.trim() || undefined,
-          read: true,
-          write: true,
+          read,
+          write,
         },
         initialValue: initialValue.trim() || undefined,
       },
@@ -175,6 +177,28 @@ export default function NewDatapointModal({ onClose, existingIds }: Props) {
               className="px-2.5 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500"
             />
           </label>
+
+          {/* Read / Write */}
+          <div className="flex gap-6">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={read}
+                onChange={(e) => setRead(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-400"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-200">Lesbar</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={write}
+                onChange={(e) => setWrite(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-400"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-200">Schreibbar</span>
+            </label>
+          </div>
 
           {/* Error */}
           {error && (
