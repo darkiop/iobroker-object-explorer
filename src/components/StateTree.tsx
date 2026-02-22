@@ -248,7 +248,7 @@ export default function StateTree({ stateIds, allObjects, selectedId, onSelect, 
         <div className="flex gap-1.5">
           <button
             onClick={() => onHistoryOnlyChange(!historyOnly)}
-            className={`flex items-center gap-1 flex-1 px-2 py-1 text-xs rounded ${
+            className={`flex items-center justify-center gap-1 flex-1 px-2 py-1 text-xs rounded ${
               historyOnly
                 ? 'bg-blue-600/20 text-blue-600 border border-blue-500/40 dark:text-blue-300'
                 : 'bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700'
@@ -256,11 +256,11 @@ export default function StateTree({ stateIds, allObjects, selectedId, onSelect, 
           >
             <Database size={12} className="shrink-0" />
             <span className="truncate">History</span>
-            <span className={`ml-auto shrink-0 ${historyOnly ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`}>{historyIds.size}</span>
+            <span className={`shrink-0 ${historyOnly ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`}>{historyIds.size}</span>
           </button>
           <button
             onClick={() => onSmartOnlyChange(!smartOnly)}
-            className={`flex items-center gap-1 flex-1 px-2 py-1 text-xs rounded ${
+            className={`flex items-center justify-center gap-1 flex-1 px-2 py-1 text-xs rounded ${
               smartOnly
                 ? 'bg-violet-600/20 text-violet-600 border border-violet-500/40 dark:text-violet-300'
                 : 'bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700'
@@ -268,7 +268,7 @@ export default function StateTree({ stateIds, allObjects, selectedId, onSelect, 
           >
             <Mic2 size={12} className="shrink-0" />
             <span className="truncate">SmartName</span>
-            <span className={`ml-auto shrink-0 ${smartOnly ? 'text-violet-500 dark:text-violet-400' : 'text-gray-400 dark:text-gray-500'}`}>{smartIds.size}</span>
+            <span className={`shrink-0 ${smartOnly ? 'text-violet-500 dark:text-violet-400' : 'text-gray-400 dark:text-gray-500'}`}>{smartIds.size}</span>
           </button>
         </div>
         <div className="flex gap-1.5">
