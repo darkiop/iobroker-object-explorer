@@ -292,9 +292,10 @@ function CopyIdButton({ id }: { id: string }) {
   );
 }
 
-export type SortKey = 'id' | 'name' | 'room' | 'role' | 'value' | 'unit' | 'ack' | 'ts' | 'history' | 'smart';
+export type SortKey = 'write' | 'id' | 'name' | 'room' | 'role' | 'value' | 'unit' | 'ack' | 'ts' | 'history' | 'smart';
 
 const ALL_COLUMNS: { key: SortKey; label: string }[] = [
+  { key: 'write',   label: 'Schreibschutz' },
   { key: 'id',      label: 'ID' },
   { key: 'name',    label: 'Name' },
   { key: 'room',    label: 'Raum' },
@@ -307,7 +308,7 @@ const ALL_COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'smart',   label: 'SmartName' },
 ];
 
-const DEFAULT_COLS: SortKey[] = ['id', 'name', 'room', 'role', 'value', 'unit', 'ack', 'ts', 'history', 'smart'];
+const DEFAULT_COLS: SortKey[] = ['write', 'id', 'name', 'room', 'role', 'value', 'unit', 'ack', 'ts', 'history', 'smart'];
 const LS_KEY = 'iobroker-visible-cols';
 
 function loadVisibleCols(): SortKey[] {
@@ -323,7 +324,7 @@ function loadVisibleCols(): SortKey[] {
 }
 
 const DEFAULT_WIDTHS: Record<SortKey, number> = {
-  id: 220, name: 160, room: 110, role: 130, value: 100,
+  write: 26, id: 220, name: 160, room: 110, role: 130, value: 100,
   unit: 70, ack: 35, ts: 160, history: 65, smart: 65,
 };
 const LS_WIDTHS_KEY = 'iobroker-col-widths';
@@ -506,14 +507,16 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
   function fitToContainer() {
     const containerWidth = containerRef.current?.clientWidth;
     if (!containerWidth) return;
-    const available = containerWidth - WRITE_COL_WIDTH;
-    const currentTotal = visibleCols.reduce((sum, k) => sum + colWidths[k], 0);
+    const scalable = visibleCols.filter((k) => k !== 'write');
+    const writeWidth = show('write') ? colWidths['write'] : 0;
+    const available = containerWidth - writeWidth;
+    const currentTotal = scalable.reduce((sum, k) => sum + colWidths[k], 0);
     const scale = available / currentTotal;
     const next = { ...colWidths };
     let allocated = 0;
-    for (let i = 0; i < visibleCols.length; i++) {
-      const k = visibleCols[i];
-      if (i === visibleCols.length - 1) {
+    for (let i = 0; i < scalable.length; i++) {
+      const k = scalable[i];
+      if (i === scalable.length - 1) {
         next[k] = Math.max(40, available - allocated);
       } else {
         next[k] = Math.max(40, Math.floor(colWidths[k] * scale));
@@ -523,6 +526,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
     setColWidths(next);
     localStorage.setItem(LS_WIDTHS_KEY, JSON.stringify(next));
   }
+
 
   const show = (key: SortKey) => visibleCols.includes(key);
   const w = (key: SortKey) => colWidths[key];
@@ -599,8 +603,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
 
   const hasColFilters = Object.values(colFilters).some((v) => v.trim() !== '');
 
-  const WRITE_COL_WIDTH = 26;
-  const totalWidth = WRITE_COL_WIDTH + visibleCols.reduce((sum, k) => sum + colWidths[k], 0);
+  const totalWidth = visibleCols.reduce((sum, k) => sum + colWidths[k], 0);
 
   const toolbar = (
     <div className="flex items-center justify-between px-3 py-1 shrink-0 border-b border-gray-200 dark:border-gray-800">
@@ -667,7 +670,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
         <table className="text-sm text-left table-fixed" style={{ width: '100%', minWidth: totalWidth }}>
           <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-100 dark:bg-gray-800 sticky top-0 z-10">
             <tr>
-              <th style={{ width: WRITE_COL_WIDTH, minWidth: WRITE_COL_WIDTH }} className="px-1 py-2" />
+              {show('write') && <th style={{ width: colWidths['write'], minWidth: colWidths['write'] }} className="px-1 py-2 text-center" title="Schreibschutz"><Lock size={11} className="inline-block text-gray-400 dark:text-gray-500" /></th>}
               {show('id')      && <SortHeader label="ID" sortKey="id" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('id')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('name')    && <SortHeader label="Name" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('name')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('room')    && <SortHeader label="Raum" sortKey="room" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('room')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
@@ -680,8 +683,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
               {show('smart')   && <SortHeader label="Smart" sortKey="smart" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('smart')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
             </tr>
             <tr className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-              <th style={{ width: WRITE_COL_WIDTH, minWidth: WRITE_COL_WIDTH }} className="px-1 py-1" />
-              {(['id','name','room','role','value','unit','ack','ts','history','smart'] as SortKey[]).filter(show).map((key) => {
+              {(['write','id','name','room','role','value','unit','ack','ts','history','smart'] as SortKey[]).filter(show).map((key) => {
                 const filterable = ['id','name','room','role','value','unit'].includes(key);
                 return (
                   <th key={key} style={{ width: w(key) }} className="px-2 py-1 normal-case font-normal">
@@ -717,7 +719,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
           <tbody>
             {filteredIds.length === 0 && (
               <tr>
-                <td colSpan={visibleCols.length + 1} className="px-4 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
+                <td colSpan={visibleCols.length} className="px-4 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
                   {ids.length === 0
                     ? 'Keine Datenpunkte gefunden. Verwende die Suche um Datenpunkte zu laden.'
                     : 'Keine Einträge entsprechen den gesetzten Filtern.'}
@@ -740,13 +742,15 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                       : 'hover:bg-gray-100/80 text-gray-700 dark:hover:bg-gray-800/50 dark:text-gray-300'
                   }`}
                 >
-                  <td style={{ width: WRITE_COL_WIDTH, minWidth: WRITE_COL_WIDTH }} className="px-1 py-2 text-center">
-                    {obj?.common?.write === false && (
-                      <span title="Schreibgeschützt">
-                        <Lock size={11} className="text-gray-400 dark:text-gray-500 inline-block" />
-                      </span>
-                    )}
-                  </td>
+                  {show('write') && (
+                    <td style={{ width: colWidths['write'], minWidth: colWidths['write'] }} className="px-1 py-2 text-center">
+                      {obj?.common?.write === false && (
+                        <span title="Schreibgeschützt">
+                          <Lock size={11} className="text-gray-400 dark:text-gray-500 inline-block" />
+                        </span>
+                      )}
+                    </td>
+                  )}
                   {show('id') && (
                     <td data-col="id" className="px-3 py-2 font-mono text-xs text-gray-500 dark:text-gray-400 overflow-hidden group/id">
                       <div className="flex items-center gap-1.5">
