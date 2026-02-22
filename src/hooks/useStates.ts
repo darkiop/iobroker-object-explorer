@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, createObject, deleteObject, getAllRoles, getAllUnits, setState, getRoomMap, getAllObjects } from '../api/iobroker';
+import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, putFullObject, createObject, deleteObject, getAllRoles, getAllUnits, setState, getRoomMap, getAllObjects } from '../api/iobroker';
 import type { IoBrokerObject, IoBrokerObjectCommon, IoBrokerState, HistoryOptions } from '../types/iobroker';
 
 export function useFilteredObjects(pattern: string) {
@@ -121,8 +121,15 @@ export function useSetState() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, val }: { id: string; val: unknown }) => setState(id, val),
-    onSuccess: (_data, { id }) => {
+    onSuccess: (_data, { id, val }) => {
       queryClient.invalidateQueries({ queryKey: ['state', id] });
+      queryClient.setQueriesData(
+        { queryKey: ['stateValues'] },
+        (old: Record<string, IoBrokerState> | undefined) => {
+          if (!old || !(id in old)) return old;
+          return { ...old, [id]: { ...old[id], val, ts: Date.now(), ack: false } };
+        }
+      );
     },
   });
 }
@@ -156,6 +163,21 @@ export function useDeleteObject() {
           return next;
         }
       );
+    },
+  });
+}
+
+export function usePutObject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, obj }: { id: string; obj: IoBrokerObject }) => putFullObject(id, obj),
+    onSuccess: (_data, { id, obj }) => {
+      queryClient.setQueriesData(
+        { queryKey: ['objects'] },
+        (old: Record<string, IoBrokerObject> | undefined) =>
+          old ? { ...old, [id]: obj } : old
+      );
+      queryClient.setQueryData(['object', id], obj);
     },
   });
 }

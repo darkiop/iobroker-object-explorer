@@ -23,11 +23,18 @@ export default function NewDatapointModal({ onClose, existingIds, initialId = ''
   const [read, setRead] = useState(true);
   const [write, setWrite] = useState(true);
   const [roleSuggestionsOpen, setRoleSuggestionsOpen] = useState(false);
+  const [idSuggestionsOpen, setIdSuggestionsOpen] = useState(false);
+  const [idActiveIndex, setIdActiveIndex] = useState(-1);
   const [error, setError] = useState('');
 
   const { data: roles = [] } = useAllRoles();
   const createDatapoint = useCreateDatapoint();
   const idRef = useRef<HTMLInputElement>(null);
+
+  const existingIdsSorted = useState(() => [...existingIds].sort())[0];
+  const filteredIdSuggestions = id.trim()
+    ? existingIdsSorted.filter((s) => s.toLowerCase().startsWith(id.toLowerCase())).slice(0, 30)
+    : [];
 
   useEffect(() => {
     idRef.current?.focus();
@@ -96,17 +103,40 @@ export default function NewDatapointModal({ onClose, existingIds, initialId = ''
         {/* Form */}
         <form onSubmit={handleSubmit} className="px-5 py-4 flex flex-col gap-3">
           {/* ID */}
-          <label className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1 relative">
             <span className="text-xs font-medium text-gray-500 dark:text-gray-400">ID <span className="text-red-500">*</span></span>
             <input
               ref={idRef}
               type="text"
               value={id}
-              onChange={(e) => { setId(e.target.value); setError(''); }}
+              onChange={(e) => { setId(e.target.value); setError(''); setIdActiveIndex(-1); setIdSuggestionsOpen(true); }}
+              onFocus={() => setIdSuggestionsOpen(true)}
+              onBlur={() => setTimeout(() => setIdSuggestionsOpen(false), 150)}
+              onKeyDown={(e) => {
+                if (!idSuggestionsOpen || filteredIdSuggestions.length === 0) return;
+                if (e.key === 'ArrowDown') { e.preventDefault(); setIdActiveIndex((i) => Math.min(i + 1, filteredIdSuggestions.length - 1)); }
+                else if (e.key === 'ArrowUp') { e.preventDefault(); setIdActiveIndex((i) => Math.max(i - 1, -1)); }
+                else if (e.key === 'Enter' && idActiveIndex >= 0) { e.preventDefault(); setId(filteredIdSuggestions[idActiveIndex]); setIdSuggestionsOpen(false); setIdActiveIndex(-1); }
+                else if (e.key === 'Escape') { setIdSuggestionsOpen(false); }
+              }}
               placeholder="z.B. javascript.0.meinWert"
               className="px-2.5 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500 font-mono"
             />
-          </label>
+            {idSuggestionsOpen && filteredIdSuggestions.length > 0 && (
+              <ul className="absolute top-full left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg z-50 text-sm">
+                {filteredIdSuggestions.map((s, i) => (
+                  <li
+                    key={s}
+                    onMouseDown={() => { setId(s); setIdSuggestionsOpen(false); setIdActiveIndex(-1); }}
+                    onMouseEnter={() => setIdActiveIndex(i)}
+                    className={`px-2.5 py-1 cursor-pointer font-mono text-xs ${i === idActiveIndex ? 'bg-blue-600 text-white' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                  >
+                    {s}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
 
           {/* Name */}
           <label className="flex flex-col gap-1">

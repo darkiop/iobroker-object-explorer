@@ -187,6 +187,16 @@ export async function deleteObject(id: string): Promise<void> {
   objectsCache = null;
 }
 
+export async function putFullObject(id: string, obj: IoBrokerObject): Promise<void> {
+  const res = await fetch(`${BASE_URL}/object/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(obj),
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
+  objectsCache = null;
+}
+
 export async function extendObject(id: string, obj: { common: Partial<IoBrokerObject['common']> }): Promise<void> {
   const res = await fetch(`${BASE_URL}/object/${encodeURIComponent(id)}`, {
     method: 'PUT',

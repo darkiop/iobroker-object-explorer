@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, RotateCcw, Plus, Lock, Trash2 } from 'lucide-react';
-import { useExtendObject, useAllRoles, useDeleteObject } from '../hooks/useStates';
+import { useExtendObject, useAllRoles, useDeleteObject, useSetState } from '../hooks/useStates';
 import NewDatapointModal from './NewDatapointModal';
 import HistoryModal from './HistoryModal';
 import ConfirmDialog from './ConfirmDialog';
@@ -250,6 +250,80 @@ function EditableRoleCell({ id, role, suggestions }: { id: string; role: string;
           disabled={extend.isPending}
           className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 disabled:opacity-50"
         >
+          <X size={14} />
+        </button>
+      </div>
+    </td>
+  );
+}
+
+function EditableValueCell({ id, state, obj }: { id: string; state: IoBrokerState | undefined; obj: IoBrokerObject | undefined }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const setStateVal = useSetState();
+
+  const isReadonly = obj?.common?.write === false;
+  const valType = obj?.common?.type;
+
+  function startEdit() {
+    setDraft(state ? formatValue(state.val) : '');
+    setEditing(true);
+  }
+
+  function commit() {
+    let parsed: unknown = draft;
+    if (valType === 'number') {
+      const n = parseFloat(draft);
+      if (!isNaN(n)) parsed = n;
+    } else if (valType === 'boolean') {
+      parsed = draft === 'true' || draft === '1';
+    }
+    setStateVal.mutate({ id, val: parsed });
+    setEditing(false);
+  }
+
+  if (!editing) {
+    return (
+      <td data-col="value" className="px-3 py-2 text-right font-mono font-medium text-gray-900 dark:text-white overflow-hidden whitespace-nowrap group/value">
+        <div className="flex items-center justify-end gap-1.5">
+          {!isReadonly && (
+            <button
+              onClick={(e) => { e.stopPropagation(); startEdit(); }}
+              className="opacity-0 group-hover/value:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
+              title="Wert bearbeiten"
+            >
+              <Pencil size={12} />
+            </button>
+          )}
+          {state ? (() => {
+            const v = formatValue(state.val);
+            const truncated = v.length > 16 ? v.slice(0, 16) + '…' : v;
+            return <span title={v}>{truncated}</span>;
+          })() : <span className="text-gray-300 dark:text-gray-600">...</span>}
+        </div>
+      </td>
+    );
+  }
+
+  return (
+    <td data-col="value" className="px-3 py-1 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-center gap-1 justify-end">
+        <input
+          type="text"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') commit();
+            if (e.key === 'Escape') setEditing(false);
+          }}
+          autoFocus
+          disabled={setStateVal.isPending}
+          className="flex-1 min-w-0 bg-white text-gray-800 text-sm rounded px-2 py-0.5 border border-gray-300 focus:border-blue-500 focus:outline-none disabled:opacity-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 text-right font-mono"
+        />
+        <button onClick={commit} disabled={setStateVal.isPending} className="text-green-500 hover:text-green-600 dark:text-green-400 dark:hover:text-green-300 shrink-0 disabled:opacity-50">
+          <Check size={14} />
+        </button>
+        <button onClick={() => setEditing(false)} disabled={setStateVal.isPending} className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 disabled:opacity-50">
           <X size={14} />
         </button>
       </div>
@@ -548,7 +622,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
     const ICON_COLS: SortKey[] = ['write', 'history', 'smart'];
     const scalable = visibleCols.filter((k) => !ICON_COLS.includes(k));
     const iconWidth = ICON_COLS.filter((k) => show(k)).reduce((s, k) => s + colWidths[k], 0);
-    const available = containerWidth - iconWidth - PLUS_COL_WIDTH - DEL_COL_WIDTH - CHK_COL_WIDTH;
+    const available = containerWidth - iconWidth - DEL_COL_WIDTH - CHK_COL_WIDTH;
     const currentTotal = scalable.reduce((sum, k) => sum + colWidths[k], 0);
     const scale = available / currentTotal;
     const next = { ...colWidths };
@@ -652,7 +726,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
 
   const hasColFilters = Object.values(colFilters).some((v) => v.trim() !== '');
 
-  const totalWidth = CHK_COL_WIDTH + PLUS_COL_WIDTH + DEL_COL_WIDTH + visibleCols.reduce((sum, k) => sum + colWidths[k], 0);
+  const totalWidth = CHK_COL_WIDTH + DEL_COL_WIDTH + visibleCols.reduce((sum, k) => sum + colWidths[k], 0);
 
   const allOnPageChecked = filteredIds.length > 0 && filteredIds.every((id) => checkedIds.has(id));
   const someChecked = filteredIds.some((id) => checkedIds.has(id));
@@ -677,21 +751,29 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
   }
 
   const toolbar = (
-    <div className="relative flex items-center justify-end px-3 py-1 shrink-0 border-b border-gray-200 dark:border-gray-800">
-      {checkedIds.size > 0 ? (
+    <div className="flex items-center justify-between pl-1 pr-3 py-1 shrink-0 border-b border-gray-200 dark:border-gray-800">
+      <div className="flex items-center gap-2">
         <button
-          onClick={() => setMultiDeleteOpen(true)}
-          className="absolute left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-red-600 bg-red-500/10 hover:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/20 transition-colors"
+          onClick={() => setNewDatapointOpen(true)}
+          title="Neuer Datenpunkt"
+          className="flex items-center justify-center w-7 h-7 rounded-lg text-green-600 bg-green-500/10 hover:bg-green-500/20 dark:text-green-400 dark:hover:bg-green-500/20 transition-colors"
         >
-          <Trash2 size={13} />
-          {checkedIds.size} löschen
+          <Plus size={16} />
         </button>
-      ) : (
-        <span className="absolute left-1/2 -translate-x-1/2 text-xs text-gray-400 dark:text-gray-500 tabular-nums">
-          <span className="text-gray-600 dark:text-gray-300 font-medium">{totalCount}</span>
-          {' '}Datenpunkte
-        </span>
-      )}
+        {checkedIds.size > 0 && (
+          <button
+            onClick={() => setMultiDeleteOpen(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-red-600 bg-red-500/10 hover:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/20 transition-colors"
+          >
+            <Trash2 size={13} />
+            {checkedIds.size} löschen
+          </button>
+        )}
+      </div>
+      <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums">
+        <span className="text-gray-600 dark:text-gray-300 font-medium">{totalCount}</span>
+        {' '}Datenpunkte
+      </span>
       <div className="flex items-center gap-1">
         <button
           onClick={fitToContainer}
@@ -767,24 +849,8 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
         <table className="text-sm text-left table-fixed" style={{ width: totalWidth }}>
           <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-100 dark:bg-gray-800 sticky top-0 z-10">
             <tr>
-              <th style={{ width: CHK_COL_WIDTH, minWidth: CHK_COL_WIDTH }} className="py-2 text-center" onClick={(e) => e.stopPropagation()}>
-                <StyledCheckbox
-                  checked={allOnPageChecked}
-                  indeterminate={someChecked && !allOnPageChecked}
-                  onChange={toggleCheckAll}
-                  title="Alle auswählen"
-                />
-              </th>
-              <th style={{ width: PLUS_COL_WIDTH, minWidth: PLUS_COL_WIDTH }} className="py-1 text-center">
-                <button
-                  onClick={() => setNewDatapointOpen(true)}
-                  title="Neuer Datenpunkt"
-                  className="p-1 rounded transition-colors text-green-600 bg-green-500/10 hover:bg-green-500/20 dark:text-green-400 dark:hover:bg-green-500/20"
-                >
-                  <Plus size={13} />
-                </button>
-              </th>
-              {show('write')   && <th style={{ width: colWidths['write'],   minWidth: colWidths['write']   }} className="py-2 pl-2 text-center" title="Schreibschutz"><Lock    size={11} className="text-gray-400 dark:text-gray-500" /></th>}
+              <th style={{ width: CHK_COL_WIDTH, minWidth: CHK_COL_WIDTH }} />
+              {show('write')   && <th style={{ width: colWidths['write'],   minWidth: colWidths['write']   }} className="py-2 text-center" title="Schreibschutz"><Lock    size={11} className="text-gray-400 dark:text-gray-500" /></th>}
               {show('history') && <th style={{ width: colWidths['history'], minWidth: colWidths['history'] }} className="py-2 text-center" title="History">     <History size={11} className="text-gray-400 dark:text-gray-500" /></th>}
               {show('smart')   && <th style={{ width: colWidths['smart'],   minWidth: colWidths['smart']   }} className="py-2 text-center" title="SmartName">   <Mic2    size={11} className="text-gray-400 dark:text-gray-500" /></th>}
               {show('id')      && <SortHeader label="ID" sortKey="id" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('id')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
@@ -798,8 +864,14 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
               <th style={{ width: DEL_COL_WIDTH, minWidth: DEL_COL_WIDTH }} />
             </tr>
             <tr className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-              <th style={{ width: CHK_COL_WIDTH, minWidth: CHK_COL_WIDTH }} />
-              <th style={{ width: PLUS_COL_WIDTH, minWidth: PLUS_COL_WIDTH }} />
+              <th style={{ width: CHK_COL_WIDTH, minWidth: CHK_COL_WIDTH }} className="py-1 text-center" onClick={(e) => e.stopPropagation()}>
+                <StyledCheckbox
+                  checked={allOnPageChecked}
+                  indeterminate={someChecked && !allOnPageChecked}
+                  onChange={toggleCheckAll}
+                  title="Alle auswählen"
+                />
+              </th>
               {(['write','history','smart','id','name','room','role','value','unit','ack','ts'] as SortKey[]).filter(show).map((key) => {
                 const filterable = ['id','name','room','role','value','unit'].includes(key);
                 return (
@@ -872,9 +944,8 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                       }}
                     />
                   </td>
-                  <td style={{ width: PLUS_COL_WIDTH, minWidth: PLUS_COL_WIDTH }} />
                   {show('write') && (
-                    <td style={{ width: colWidths['write'], minWidth: colWidths['write'] }} className="py-2 pl-2 text-center" title={obj?.common?.write === false ? 'Schreibgeschützt' : undefined}>
+                    <td style={{ width: colWidths['write'], minWidth: colWidths['write'] }} className="py-2 text-center" title={obj?.common?.write === false ? 'Schreibgeschützt' : undefined}>
                       {obj?.common?.write === false && (
                         <Lock size={11} className="text-gray-400 dark:text-gray-500" />
                       )}
@@ -921,15 +992,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                     </td>
                   )}
                   {show('role') && <EditableRoleCell id={id} role={obj?.common?.role || ''} suggestions={roles} />}
-                  {show('value') && (
-                    <td data-col="value" className="px-3 py-2 text-right font-mono font-medium text-gray-900 dark:text-white overflow-hidden whitespace-nowrap">
-                      {state ? (() => {
-                        const v = formatValue(state.val);
-                        const truncated = v.length > 16 ? v.slice(0, 16) + '…' : v;
-                        return <span title={v}>{truncated}</span>;
-                      })() : <span className="text-gray-300 dark:text-gray-600">...</span>}
-                    </td>
-                  )}
+                  {show('value') && <EditableValueCell id={id} state={state} obj={obj} />}
                   {show('unit') && (
                     <td data-col="unit" className="px-3 py-2 text-gray-400 dark:text-gray-500 overflow-hidden">
                       <span className="truncate block">{unit}</span>

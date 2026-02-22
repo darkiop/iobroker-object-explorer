@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
-import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive } from 'lucide-react';
+import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil } from 'lucide-react';
 import type { TreeNode, IoBrokerObject } from '../types/iobroker';
+import ObjectEditModal from './ObjectEditModal';
 
 interface StateTreeProps {
   stateIds: string[];
@@ -67,6 +68,7 @@ function TreeNodeComponent({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const hasChildren = node.children.size > 0;
   const isFolder = hasChildren && !node.isLeaf;
   const isHistoryEnabled = node.isLeaf && historyIds.has(node.fullPath);
@@ -84,6 +86,13 @@ function TreeNodeComponent({
 
   return (
     <div>
+      {editOpen && (
+        <ObjectEditModal
+          id={node.fullPath}
+          obj={allObjects[node.fullPath] ?? { _id: node.fullPath, type: 'folder', common: { name: node.name }, native: {} } as IoBrokerObject}
+          onClose={() => setEditOpen(false)}
+        />
+      )}
       <div
         className={`group/row flex items-center gap-1.5 px-2 py-1 cursor-pointer hover:bg-gray-200/50 dark:hover:bg-gray-700/50 rounded text-sm ${
           selectedId === node.fullPath ? 'bg-blue-600/30 text-blue-600 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300'
@@ -131,7 +140,7 @@ function TreeNodeComponent({
           {node.name}
         </span>
         {isFolder && depth >= 2 && objectType && (
-          <span className="text-[10px] uppercase text-gray-400 dark:text-gray-500 tracking-wide">
+          <span className="text-[10px] uppercase text-gray-400 dark:text-gray-500 tracking-wide shrink-0">
             {objectType}
           </span>
         )}
@@ -140,43 +149,52 @@ function TreeNodeComponent({
         )}
         {isFolder && (
           <button
+            onClick={(e) => { e.stopPropagation(); setEditOpen(true); }}
+            className="ml-auto shrink-0 opacity-0 group-hover/row:opacity-100 text-gray-400 hover:text-yellow-500 dark:text-gray-500 dark:hover:text-yellow-400 transition-opacity"
+            title="Objekt bearbeiten"
+          >
+            <Pencil size={12} />
+          </button>
+        )}
+        {isFolder && (
+          <button
             onClick={(e) => { e.stopPropagation(); onFolderSearch(`${node.fullPath}.*`); }}
-            className="ml-auto shrink-0 opacity-0 group-hover/row:opacity-100 text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 transition-opacity"
+            className="shrink-0 opacity-0 group-hover/row:opacity-100 text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 transition-opacity"
             title={`Filter: ${node.fullPath}.*`}
           >
             <Search size={12} />
           </button>
         )}
         <button
-            onClick={(e) => {
-              e.stopPropagation();
-              const text = node.isLeaf ? node.fullPath : `${node.fullPath}.*`;
-              if (navigator.clipboard?.writeText) {
-                navigator.clipboard.writeText(text).then(() => {
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 1500);
-                }).catch(() => fallbackCopy(text));
-              } else {
-                fallbackCopy(text);
-              }
-              function fallbackCopy(val: string) {
-                const ta = document.createElement('textarea');
-                ta.value = val;
-                ta.style.position = 'fixed';
-                ta.style.opacity = '0';
-                document.body.appendChild(ta);
-                ta.select();
-                document.execCommand('copy');
-                document.body.removeChild(ta);
+          onClick={(e) => {
+            e.stopPropagation();
+            const text = node.isLeaf ? node.fullPath : `${node.fullPath}.*`;
+            if (navigator.clipboard?.writeText) {
+              navigator.clipboard.writeText(text).then(() => {
                 setCopied(true);
                 setTimeout(() => setCopied(false), 1500);
-              }
-            }}
-            className={`${!isFolder ? 'ml-auto' : ''} shrink-0 opacity-0 group-hover/row:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-opacity`}
-            title={node.fullPath}
-          >
-            {copied ? <Check size={12} className="text-green-500 dark:text-green-400" /> : <Copy size={12} />}
-          </button>
+              }).catch(() => fallbackCopy(text));
+            } else {
+              fallbackCopy(text);
+            }
+            function fallbackCopy(val: string) {
+              const ta = document.createElement('textarea');
+              ta.value = val;
+              ta.style.position = 'fixed';
+              ta.style.opacity = '0';
+              document.body.appendChild(ta);
+              ta.select();
+              document.execCommand('copy');
+              document.body.removeChild(ta);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            }
+          }}
+          className={`${!isFolder ? 'ml-auto' : ''} shrink-0 opacity-0 group-hover/row:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-opacity`}
+          title={node.fullPath}
+        >
+          {copied ? <Check size={12} className="text-green-500 dark:text-green-400" /> : <Copy size={12} />}
+        </button>
       </div>
       {expanded &&
         sortedChildren.map((child) => (
