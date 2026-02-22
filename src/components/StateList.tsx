@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, RotateCcw, Plus, Lock } from 'lucide-react';
 import { useExtendObject, useAllRoles } from '../hooks/useStates';
 import NewDatapointModal from './NewDatapointModal';
+import HistoryModal from './HistoryModal';
 import { hasHistory } from '../api/iobroker';
 import type { IoBrokerState, IoBrokerObject } from '../types/iobroker';
 
@@ -457,6 +458,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
   const [colWidths, setColWidths] = useState<Record<SortKey, number>>(loadColWidths);
   const containerRef = useRef<HTMLDivElement>(null);
   const [newDatapointOpen, setNewDatapointOpen] = useState(false);
+  const [historyModalId, setHistoryModalId] = useState<string | null>(null);
   const { data: roles = [] } = useAllRoles();
 
   function handleColChange(cols: SortKey[]) {
@@ -671,6 +673,13 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
           initialId={patternToInitialId(pattern)}
         />
       )}
+      {historyModalId && (
+        <HistoryModal
+          stateId={historyModalId}
+          unit={objects[historyModalId]?.common?.unit}
+          onClose={() => setHistoryModalId(null)}
+        />
+      )}
 
       <div ref={containerRef} className="overflow-x-auto overflow-y-auto flex-1">
         <table className="text-sm text-left table-fixed" style={{ width: totalWidth }}>
@@ -760,7 +769,13 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                   {show('history') && (
                     <td style={{ width: colWidths['history'], minWidth: colWidths['history'] }} className="px-1 py-2 text-center">
                       {obj && hasHistory(obj) && (
-                        <span title="History aktiv (sql.0)"><History size={13} className="text-blue-500 dark:text-blue-400" /></span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setHistoryModalId(id); }}
+                          title="History anzeigen"
+                          className="text-blue-500 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                        >
+                          <History size={13} />
+                        </button>
                       )}
                     </td>
                   )}
