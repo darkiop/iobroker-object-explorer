@@ -329,6 +329,7 @@ const DEFAULT_WIDTHS: Record<SortKey, number> = {
   id: 220, name: 160, room: 110, role: 130, value: 100,
   unit: 70, ack: 35, ts: 160,
 };
+const PLUS_COL_WIDTH = 30;
 const LS_WIDTHS_KEY = 'iobroker-col-widths';
 
 function loadColWidths(): Record<SortKey, number> {
@@ -513,7 +514,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
     const ICON_COLS: SortKey[] = ['write', 'history', 'smart'];
     const scalable = visibleCols.filter((k) => !ICON_COLS.includes(k));
     const iconWidth = ICON_COLS.filter((k) => show(k)).reduce((s, k) => s + colWidths[k], 0);
-    const available = containerWidth - iconWidth;
+    const available = containerWidth - iconWidth - PLUS_COL_WIDTH;
     const currentTotal = scalable.reduce((sum, k) => sum + colWidths[k], 0);
     const scale = available / currentTotal;
     const next = { ...colWidths };
@@ -611,17 +612,10 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
 
   const hasColFilters = Object.values(colFilters).some((v) => v.trim() !== '');
 
-  const totalWidth = visibleCols.reduce((sum, k) => sum + colWidths[k], 0);
+  const totalWidth = PLUS_COL_WIDTH + visibleCols.reduce((sum, k) => sum + colWidths[k], 0);
 
   const toolbar = (
-    <div className="relative flex items-center justify-between px-3 py-1 shrink-0 border-b border-gray-200 dark:border-gray-800">
-      <button
-        onClick={() => setNewDatapointOpen(true)}
-        title="Neuer Datenpunkt"
-        className="p-2 rounded-lg transition-colors text-green-600 bg-green-500/10 hover:bg-green-500/20 dark:text-green-400 dark:bg-green-500/10 dark:hover:bg-green-500/20"
-      >
-        <Plus size={18} />
-      </button>
+    <div className="relative flex items-center justify-end px-3 py-1 shrink-0 border-b border-gray-200 dark:border-gray-800">
       <span className="absolute left-1/2 -translate-x-1/2 text-xs text-gray-400 dark:text-gray-500 tabular-nums">
         <span className="text-gray-600 dark:text-gray-300 font-medium">{totalCount}</span>
         {' '}Datenpunkte
@@ -630,17 +624,17 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
         <button
           onClick={fitToContainer}
           title="Spalten auf 100% strecken"
-          className="p-1.5 rounded-lg transition-colors text-gray-400 hover:text-gray-600 hover:bg-gray-200 dark:text-gray-500 dark:hover:text-gray-300 dark:hover:bg-gray-700"
+          className="p-2 rounded-lg transition-colors text-gray-400 hover:text-gray-600 hover:bg-gray-200 dark:text-gray-500 dark:hover:text-gray-300 dark:hover:bg-gray-700"
         >
-          <Maximize2 size={15} />
+          <Maximize2 size={17} />
         </button>
         {hasColFilters && (
           <button
             onClick={() => onColFilterChange({})}
             title="Spaltenfilter löschen"
-            className="p-1.5 rounded-lg transition-colors text-blue-500 hover:text-blue-700 hover:bg-blue-500/10 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-500/10"
+            className="p-2 rounded-lg transition-colors text-blue-500 hover:text-blue-700 hover:bg-blue-500/10 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-500/10"
           >
-            <X size={15} />
+            <X size={17} />
           </button>
         )}
         <button
@@ -652,9 +646,9 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
             onColFilterChange({});
           }}
           title="Einstellungen zurücksetzen"
-          className="p-1.5 rounded-lg transition-colors text-gray-400 hover:text-red-500 hover:bg-red-500/10 dark:text-gray-500 dark:hover:text-red-400 dark:hover:bg-red-500/10"
+          className="p-2 rounded-lg transition-colors text-gray-400 hover:text-red-500 hover:bg-red-500/10 dark:text-gray-500 dark:hover:text-red-400 dark:hover:bg-red-500/10"
         >
-          <RotateCcw size={15} />
+          <RotateCcw size={17} />
         </button>
         <ColPicker visible={visibleCols} onChange={handleColChange} />
       </div>
@@ -685,7 +679,16 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
         <table className="text-sm text-left table-fixed" style={{ width: totalWidth }}>
           <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-100 dark:bg-gray-800 sticky top-0 z-10">
             <tr>
-              {show('write')   && <th style={{ width: colWidths['write'],   minWidth: colWidths['write']   }} className="py-2 text-center" title="Schreibschutz"><Lock    size={11} className="text-gray-400 dark:text-gray-500" /></th>}
+              <th style={{ width: PLUS_COL_WIDTH, minWidth: PLUS_COL_WIDTH }} className="py-1 text-center">
+                <button
+                  onClick={() => setNewDatapointOpen(true)}
+                  title="Neuer Datenpunkt"
+                  className="p-1 rounded transition-colors text-green-600 bg-green-500/10 hover:bg-green-500/20 dark:text-green-400 dark:hover:bg-green-500/20"
+                >
+                  <Plus size={13} />
+                </button>
+              </th>
+              {show('write')   && <th style={{ width: colWidths['write'],   minWidth: colWidths['write']   }} className="py-2 pl-2 text-center" title="Schreibschutz"><Lock    size={11} className="text-gray-400 dark:text-gray-500" /></th>}
               {show('history') && <th style={{ width: colWidths['history'], minWidth: colWidths['history'] }} className="py-2 text-center" title="History">     <History size={11} className="text-gray-400 dark:text-gray-500" /></th>}
               {show('smart')   && <th style={{ width: colWidths['smart'],   minWidth: colWidths['smart']   }} className="py-2 text-center" title="SmartName">   <Mic2    size={11} className="text-gray-400 dark:text-gray-500" /></th>}
               {show('id')      && <SortHeader label="ID" sortKey="id" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('id')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
@@ -698,6 +701,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
               {show('ts')      && <SortHeader label="Letztes Update" sortKey="ts" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('ts')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
             </tr>
             <tr className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+              <th style={{ width: PLUS_COL_WIDTH, minWidth: PLUS_COL_WIDTH }} />
               {(['write','history','smart','id','name','room','role','value','unit','ack','ts'] as SortKey[]).filter(show).map((key) => {
                 const filterable = ['id','name','room','role','value','unit'].includes(key);
                 return (
@@ -734,7 +738,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
           <tbody>
             {filteredIds.length === 0 && (
               <tr>
-                <td colSpan={visibleCols.length} className="px-4 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
+                <td colSpan={visibleCols.length + 1} className="px-4 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
                   {ids.length === 0
                     ? 'Keine Datenpunkte gefunden. Verwende die Suche um Datenpunkte zu laden.'
                     : 'Keine Einträge entsprechen den gesetzten Filtern.'}
@@ -757,8 +761,9 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                       : 'hover:bg-gray-100/80 text-gray-700 dark:hover:bg-gray-800/50 dark:text-gray-300'
                   }`}
                 >
+                  <td style={{ width: PLUS_COL_WIDTH, minWidth: PLUS_COL_WIDTH }} />
                   {show('write') && (
-                    <td style={{ width: colWidths['write'], minWidth: colWidths['write'] }} className="py-2 text-center" title={obj?.common?.write === false ? 'Schreibgeschützt' : undefined}>
+                    <td style={{ width: colWidths['write'], minWidth: colWidths['write'] }} className="py-2 pl-2 text-center" title={obj?.common?.write === false ? 'Schreibgeschützt' : undefined}>
                       {obj?.common?.write === false && (
                         <Lock size={11} className="text-gray-400 dark:text-gray-500" />
                       )}
