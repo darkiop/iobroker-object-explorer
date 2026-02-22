@@ -608,20 +608,18 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
   const totalWidth = visibleCols.reduce((sum, k) => sum + colWidths[k], 0);
 
   const toolbar = (
-    <div className="flex items-center justify-between px-3 py-1 shrink-0 border-b border-gray-200 dark:border-gray-800">
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => setNewDatapointOpen(true)}
-          title="Neuer Datenpunkt"
-          className="p-2 rounded-lg transition-colors text-gray-400 hover:text-green-600 hover:bg-green-500/10 dark:text-gray-500 dark:hover:text-green-400 dark:hover:bg-green-500/10"
-        >
-          <Plus size={18} />
-        </button>
-        <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums">
-          <span className="text-gray-600 dark:text-gray-300 font-medium">{totalCount}</span>
-          {' '}Datenpunkte
-        </span>
-      </div>
+    <div className="relative flex items-center justify-between px-3 py-1 shrink-0 border-b border-gray-200 dark:border-gray-800">
+      <button
+        onClick={() => setNewDatapointOpen(true)}
+        title="Neuer Datenpunkt"
+        className="p-2 rounded-lg transition-colors text-green-600 bg-green-500/10 hover:bg-green-500/20 dark:text-green-400 dark:bg-green-500/10 dark:hover:bg-green-500/20"
+      >
+        <Plus size={18} />
+      </button>
+      <span className="absolute left-1/2 -translate-x-1/2 text-xs text-gray-400 dark:text-gray-500 tabular-nums">
+        <span className="text-gray-600 dark:text-gray-300 font-medium">{totalCount}</span>
+        {' '}Datenpunkte
+      </span>
       <div className="flex items-center gap-1">
         <button
           onClick={fitToContainer}
