@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Background -->
+  <rect width="32" height="32" rx="7" fill="#0f172a"/>
+
+  <!-- Vertical backbone -->
+  <line x1="8" y1="8" x2="8" y2="26" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round"/>
+
+  <!-- Root node -->
+  <circle cx="8" cy="8" r="3.5" fill="#60a5fa"/>
+
+  <!-- Branch 1: horizontal connector -->
+  <line x1="8" y1="15" x2="15" y2="15" stroke="#2563eb" stroke-width="2" stroke-linecap="round"/>
+  <!-- Branch 1: object chip -->
+  <rect x="15" y="12" width="13" height="6" rx="3" fill="#1d4ed8"/>
+  <!-- Branch 1: inner highlight line -->
+  <rect x="18" y="14.5" width="7" height="1" rx="0.5" fill="#93c5fd" opacity="0.6"/>
+
+  <!-- Branch 2: horizontal connector -->
+  <line x1="8" y1="23" x2="15" y2="23" stroke="#1e40af" stroke-width="2" stroke-linecap="round"/>
+  <!-- Branch 2: object chip -->
+  <rect x="15" y="20" width="13" height="6" rx="3" fill="#1e3a8a"/>
+  <!-- Branch 2: inner highlight line -->
+  <rect x="18" y="22.5" width="7" height="1" rx="0.5" fill="#60a5fa" opacity="0.5"/>
+
+  <!-- Bottom leaf node -->
+  <circle cx="8" cy="26" r="2" fill="#3b82f6"/>
+</svg>
