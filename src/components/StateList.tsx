@@ -1,9 +1,10 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, RotateCcw, Plus, Lock } from 'lucide-react';
-import { useExtendObject, useAllRoles } from '../hooks/useStates';
+import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, RotateCcw, Plus, Lock, Trash2 } from 'lucide-react';
+import { useExtendObject, useAllRoles, useDeleteObject } from '../hooks/useStates';
 import NewDatapointModal from './NewDatapointModal';
 import HistoryModal from './HistoryModal';
+import ConfirmDialog from './ConfirmDialog';
 import { hasHistory } from '../api/iobroker';
 import type { IoBrokerState, IoBrokerObject } from '../types/iobroker';
 
@@ -330,6 +331,7 @@ const DEFAULT_WIDTHS: Record<SortKey, number> = {
   unit: 70, ack: 35, ts: 160,
 };
 const PLUS_COL_WIDTH = 30;
+const DEL_COL_WIDTH = 32;
 const LS_WIDTHS_KEY = 'iobroker-col-widths';
 
 function loadColWidths(): Record<SortKey, number> {
@@ -460,6 +462,8 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
   const containerRef = useRef<HTMLDivElement>(null);
   const [newDatapointOpen, setNewDatapointOpen] = useState(false);
   const [historyModalId, setHistoryModalId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const deleteObject = useDeleteObject();
   const { data: roles = [] } = useAllRoles();
 
   function handleColChange(cols: SortKey[]) {
@@ -514,7 +518,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
     const ICON_COLS: SortKey[] = ['write', 'history', 'smart'];
     const scalable = visibleCols.filter((k) => !ICON_COLS.includes(k));
     const iconWidth = ICON_COLS.filter((k) => show(k)).reduce((s, k) => s + colWidths[k], 0);
-    const available = containerWidth - iconWidth - PLUS_COL_WIDTH;
+    const available = containerWidth - iconWidth - PLUS_COL_WIDTH - DEL_COL_WIDTH;
     const currentTotal = scalable.reduce((sum, k) => sum + colWidths[k], 0);
     const scale = available / currentTotal;
     const next = { ...colWidths };
@@ -612,7 +616,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
 
   const hasColFilters = Object.values(colFilters).some((v) => v.trim() !== '');
 
-  const totalWidth = PLUS_COL_WIDTH + visibleCols.reduce((sum, k) => sum + colWidths[k], 0);
+  const totalWidth = PLUS_COL_WIDTH + DEL_COL_WIDTH + visibleCols.reduce((sum, k) => sum + colWidths[k], 0);
 
   const toolbar = (
     <div className="relative flex items-center justify-end px-3 py-1 shrink-0 border-b border-gray-200 dark:border-gray-800">
@@ -674,6 +678,14 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
           onClose={() => setHistoryModalId(null)}
         />
       )}
+      {deletingId && (
+        <ConfirmDialog
+          title="Datenpunkt löschen"
+          message={deletingId}
+          onConfirm={() => { deleteObject.mutate(deletingId); setDeletingId(null); }}
+          onCancel={() => setDeletingId(null)}
+        />
+      )}
 
       <div ref={containerRef} className="overflow-x-auto overflow-y-auto flex-1">
         <table className="text-sm text-left table-fixed" style={{ width: totalWidth }}>
@@ -699,6 +711,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
               {show('unit')    && <SortHeader label="Einheit" sortKey="unit" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('unit')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('ack')     && <SortHeader label="Ack" sortKey="ack" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('ack')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('ts')      && <SortHeader label="Letztes Update" sortKey="ts" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('ts')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
+              <th style={{ width: DEL_COL_WIDTH, minWidth: DEL_COL_WIDTH }} />
             </tr>
             <tr className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
               <th style={{ width: PLUS_COL_WIDTH, minWidth: PLUS_COL_WIDTH }} />
@@ -733,12 +746,13 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                   </th>
                 );
               })}
+              <th style={{ width: DEL_COL_WIDTH, minWidth: DEL_COL_WIDTH }} />
             </tr>
           </thead>
           <tbody>
             {filteredIds.length === 0 && (
               <tr>
-                <td colSpan={visibleCols.length + 1} className="px-4 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
+                <td colSpan={visibleCols.length + 2} className="px-4 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
                   {ids.length === 0
                     ? 'Keine Datenpunkte gefunden. Verwende die Suche um Datenpunkte zu laden.'
                     : 'Keine Einträge entsprechen den gesetzten Filtern.'}
@@ -841,6 +855,13 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                       <span className="truncate block">{state ? formatTimestamp(state.ts) : ''}</span>
                     </td>
                   )}
+                  <td style={{ width: DEL_COL_WIDTH, minWidth: DEL_COL_WIDTH }} className="py-1 text-center" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => setDeletingId(id)}
+                      title="Datenpunkt löschen"
+                      className="p-1 rounded text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                    ><Trash2 size={13} /></button>
+                  </td>
                 </tr>
               );
             })}

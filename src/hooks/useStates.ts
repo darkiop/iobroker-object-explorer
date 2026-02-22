@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, createObject, getAllRoles, getAllUnits, setState, getRoomMap, getAllObjects } from '../api/iobroker';
+import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, createObject, deleteObject, getAllRoles, getAllUnits, setState, getRoomMap, getAllObjects } from '../api/iobroker';
 import type { IoBrokerObject, IoBrokerObjectCommon, IoBrokerState, HistoryOptions } from '../types/iobroker';
 
 export function useFilteredObjects(pattern: string) {
@@ -138,6 +138,24 @@ export function useCreateDatapoint() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['objects'] });
+    },
+  });
+}
+
+export function useDeleteObject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteObject(id),
+    onSuccess: (_data, id) => {
+      queryClient.setQueriesData(
+        { queryKey: ['objects'] },
+        (old: Record<string, IoBrokerObject> | undefined) => {
+          if (!old || !(id in old)) return old;
+          const next = { ...old };
+          delete next[id];
+          return next;
+        }
+      );
     },
   });
 }

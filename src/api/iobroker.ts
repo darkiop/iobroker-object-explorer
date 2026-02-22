@@ -176,6 +176,12 @@ export async function createObject(id: string, common: Partial<IoBrokerObjectCom
   objectsCache = null;
 }
 
+export async function deleteObject(id: string): Promise<void> {
+  const res = await fetch(`${BASE_URL}/object/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
+  objectsCache = null;
+}
+
 export async function extendObject(id: string, obj: { common: Partial<IoBrokerObject['common']> }): Promise<void> {
   const res = await fetch(`${BASE_URL}/object/${encodeURIComponent(id)}`, {
     method: 'PUT',
