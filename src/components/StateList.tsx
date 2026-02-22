@@ -324,7 +324,7 @@ function loadVisibleCols(): SortKey[] {
 }
 
 const DEFAULT_WIDTHS: Record<SortKey, number> = {
-  write: 26, history: 26, smart: 26,
+  write: 20, history: 20, smart: 20,
   id: 220, name: 160, room: 110, role: 130, value: 100,
   unit: 70, ack: 35, ts: 160,
 };
