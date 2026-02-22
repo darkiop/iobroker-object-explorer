@@ -50,6 +50,7 @@ function TreeNodeComponent({
   selectedId,
   onSelect,
   onSearch,
+  onFolderSearch,
   historyIds,
   smartIds,
   expandSignal,
@@ -60,6 +61,7 @@ function TreeNodeComponent({
   selectedId: string | null;
   onSelect: (id: string) => void;
   onSearch: (pattern: string) => void;
+  onFolderSearch: (pattern: string) => void;
   historyIds: Set<string>;
   smartIds: Set<string>;
   expandSignal: { depth: number; seq: number };
@@ -146,7 +148,7 @@ function TreeNodeComponent({
         )}
         {isFolder && (
           <button
-            onClick={(e) => { e.stopPropagation(); onSearch(`${node.fullPath}.*`); }}
+            onClick={(e) => { e.stopPropagation(); onFolderSearch(`${node.fullPath}.*`); }}
             className="ml-auto shrink-0 opacity-0 group-hover/row:opacity-100 text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 transition-opacity"
             title={`Filter: ${node.fullPath}.*`}
           >
@@ -193,6 +195,7 @@ function TreeNodeComponent({
             selectedId={selectedId}
             onSelect={onSelect}
             onSearch={onSearch}
+            onFolderSearch={onFolderSearch}
             historyIds={historyIds}
             smartIds={smartIds}
             expandSignal={expandSignal}
@@ -215,6 +218,11 @@ function resolveFolderType(rawType: string | undefined, childTypes: Set<string>)
 
 export default function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, historyOnly, onHistoryOnlyChange, smartOnly, onSmartOnlyChange, historyIds, smartIds, expandToDepth }: StateTreeProps) {
   const [expandSignal, setExpandSignal] = useState<{ depth: number; seq: number }>({ depth: 0, seq: 0 });
+
+  function handleFolderSearch(pattern: string) {
+    onSearch(pattern);
+    setExpandSignal(s => ({ depth: 9999, seq: s.seq + 1 }));
+  }
 
   useEffect(() => {
     if (!expandToDepth) return;
@@ -295,6 +303,7 @@ export default function StateTree({ stateIds, allObjects, selectedId, onSelect, 
             selectedId={selectedId}
             onSelect={onSelect}
             onSearch={onSearch}
+            onFolderSearch={handleFolderSearch}
             historyIds={historyIds}
             smartIds={smartIds}
             expandSignal={expandSignal}
