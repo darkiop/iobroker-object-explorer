@@ -44,6 +44,7 @@ export default function Layout({ sidebar, children }: LayoutProps) {
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-3 bg-gray-100 border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700 shrink-0">
         <div className="flex items-center gap-3">
+          <img src="/favicon.svg" alt="" className="w-6 h-6 shrink-0" />
           <h1 className="text-lg font-semibold text-gray-900 dark:text-white">ioBroker Object Explorer</h1>
         </div>
         <div className="flex items-center gap-3">
