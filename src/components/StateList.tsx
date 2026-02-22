@@ -405,7 +405,6 @@ const DEFAULT_WIDTHS: Record<SortKey, number> = {
   id: 220, name: 160, room: 110, role: 130, value: 100,
   unit: 70, ack: 35, ts: 160,
 };
-const PLUS_COL_WIDTH = 30;
 const DEL_COL_WIDTH = 32;
 const CHK_COL_WIDTH = 28;
 const LS_WIDTHS_KEY = 'iobroker-col-widths';

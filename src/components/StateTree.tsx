@@ -121,15 +121,15 @@ function TreeNodeComponent({
               ? <FolderOpen size={15} className="text-yellow-500/80 shrink-0" />
               : <Folder    size={15} className="text-yellow-600/70 shrink-0" />
           ) : depth === 1 ? (
-            <HardDrive size={15} className="text-amber-500/80 shrink-0" title="Adapter-Instanz" />
+            <HardDrive size={15} className="text-amber-500/80 shrink-0" />
           ) : objectType === 'device' ? (
-            <Cpu    size={15} className="text-sky-500/80    shrink-0" title="device" />
+            <Cpu    size={15} className="text-sky-500/80    shrink-0" />
           ) : objectType === 'channel' ? (
-            <Layers size={15} className="text-indigo-500/80 shrink-0" title="channel" />
+            <Layers size={15} className="text-indigo-500/80 shrink-0" />
           ) : (
             expanded
-              ? <FolderOpen size={15} className="text-yellow-500/80 shrink-0" title="folder" />
-              : <Folder     size={15} className="text-yellow-600/70 shrink-0" title="folder" />
+              ? <FolderOpen size={15} className="text-yellow-500/80 shrink-0" />
+              : <Folder     size={15} className="text-yellow-600/70 shrink-0" />
           )
         ) : isHistoryEnabled ? (
           <Database size={14} className="text-blue-400/80 shrink-0" />
