@@ -296,6 +296,8 @@ export type SortKey = 'write' | 'id' | 'name' | 'room' | 'role' | 'value' | 'uni
 
 const ALL_COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'write',   label: 'Schreibschutz' },
+  { key: 'history', label: 'History' },
+  { key: 'smart',   label: 'SmartName' },
   { key: 'id',      label: 'ID' },
   { key: 'name',    label: 'Name' },
   { key: 'room',    label: 'Raum' },
@@ -304,11 +306,9 @@ const ALL_COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'unit',    label: 'Einheit' },
   { key: 'ack',     label: 'Ack' },
   { key: 'ts',      label: 'Letztes Update' },
-  { key: 'history', label: 'History' },
-  { key: 'smart',   label: 'SmartName' },
 ];
 
-const DEFAULT_COLS: SortKey[] = ['write', 'id', 'name', 'room', 'role', 'value', 'unit', 'ack', 'ts', 'history', 'smart'];
+const DEFAULT_COLS: SortKey[] = ['write', 'history', 'smart', 'id', 'name', 'room', 'role', 'value', 'unit', 'ack', 'ts'];
 const LS_KEY = 'iobroker-visible-cols';
 
 function loadVisibleCols(): SortKey[] {
@@ -324,8 +324,9 @@ function loadVisibleCols(): SortKey[] {
 }
 
 const DEFAULT_WIDTHS: Record<SortKey, number> = {
-  write: 26, id: 220, name: 160, room: 110, role: 130, value: 100,
-  unit: 70, ack: 35, ts: 160, history: 65, smart: 65,
+  write: 26, history: 26, smart: 26,
+  id: 220, name: 160, room: 110, role: 130, value: 100,
+  unit: 70, ack: 35, ts: 160,
 };
 const LS_WIDTHS_KEY = 'iobroker-col-widths';
 
@@ -507,9 +508,10 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
   function fitToContainer() {
     const containerWidth = containerRef.current?.clientWidth;
     if (!containerWidth) return;
-    const scalable = visibleCols.filter((k) => k !== 'write');
-    const writeWidth = show('write') ? colWidths['write'] : 0;
-    const available = containerWidth - writeWidth;
+    const ICON_COLS: SortKey[] = ['write', 'history', 'smart'];
+    const scalable = visibleCols.filter((k) => !ICON_COLS.includes(k));
+    const iconWidth = ICON_COLS.filter((k) => show(k)).reduce((s, k) => s + colWidths[k], 0);
+    const available = containerWidth - iconWidth;
     const currentTotal = scalable.reduce((sum, k) => sum + colWidths[k], 0);
     const scale = available / currentTotal;
     const next = { ...colWidths };
@@ -670,7 +672,9 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
         <table className="text-sm text-left table-fixed" style={{ width: '100%', minWidth: totalWidth }}>
           <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-100 dark:bg-gray-800 sticky top-0 z-10">
             <tr>
-              {show('write') && <th style={{ width: colWidths['write'], minWidth: colWidths['write'] }} className="px-1 py-2 text-center" title="Schreibschutz"><Lock size={11} className="inline-block text-gray-400 dark:text-gray-500" /></th>}
+              {show('write')   && <th style={{ width: colWidths['write'],   minWidth: colWidths['write']   }} className="px-1 py-2 text-center" title="Schreibschutz"><Lock    size={11} className="inline-block text-gray-400 dark:text-gray-500" /></th>}
+              {show('history') && <th style={{ width: colWidths['history'], minWidth: colWidths['history'] }} className="px-1 py-2 text-center" title="History">     <History size={11} className="inline-block text-gray-400 dark:text-gray-500" /></th>}
+              {show('smart')   && <th style={{ width: colWidths['smart'],   minWidth: colWidths['smart']   }} className="px-1 py-2 text-center" title="SmartName">   <Mic2    size={11} className="inline-block text-gray-400 dark:text-gray-500" /></th>}
               {show('id')      && <SortHeader label="ID" sortKey="id" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('id')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('name')    && <SortHeader label="Name" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('name')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('room')    && <SortHeader label="Raum" sortKey="room" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('room')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
@@ -679,11 +683,9 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
               {show('unit')    && <SortHeader label="Einheit" sortKey="unit" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('unit')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('ack')     && <SortHeader label="Ack" sortKey="ack" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('ack')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('ts')      && <SortHeader label="Letztes Update" sortKey="ts" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('ts')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
-              {show('history') && <SortHeader label="History" sortKey="history" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('history')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
-              {show('smart')   && <SortHeader label="Smart" sortKey="smart" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('smart')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
             </tr>
             <tr className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-              {(['write','id','name','room','role','value','unit','ack','ts','history','smart'] as SortKey[]).filter(show).map((key) => {
+              {(['write','history','smart','id','name','room','role','value','unit','ack','ts'] as SortKey[]).filter(show).map((key) => {
                 const filterable = ['id','name','room','role','value','unit'].includes(key);
                 return (
                   <th key={key} style={{ width: w(key) }} className="px-2 py-1 normal-case font-normal">
@@ -751,6 +753,26 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                       )}
                     </td>
                   )}
+                  {show('history') && (
+                    <td style={{ width: colWidths['history'], minWidth: colWidths['history'] }} className="px-1 py-2 text-center">
+                      {obj && hasHistory(obj) && (
+                        <span title="History aktiv (sql.0)"><History size={13} className="text-blue-500 dark:text-blue-400" /></span>
+                      )}
+                    </td>
+                  )}
+                  {show('smart') && (
+                    <td style={{ width: colWidths['smart'], minWidth: colWidths['smart'] }} className="px-1 py-2 text-center">
+                      {obj && hasSmartName(obj) && (
+                        <span title={
+                          typeof obj.common.smartName === 'string'
+                            ? obj.common.smartName
+                            : typeof obj.common.smartName === 'object' && obj.common.smartName
+                              ? Object.values(obj.common.smartName).join(' / ')
+                              : ''
+                        }><Mic2 size={13} className="text-violet-500 dark:text-violet-400" /></span>
+                      )}
+                    </td>
+                  )}
                   {show('id') && (
                     <td data-col="id" className="px-3 py-2 font-mono text-xs text-gray-500 dark:text-gray-400 overflow-hidden group/id">
                       <div className="flex items-center gap-1.5">
@@ -795,26 +817,6 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                   {show('ts') && (
                     <td data-col="ts" className="px-3 py-2 text-gray-400 dark:text-gray-500 text-xs overflow-hidden">
                       <span className="truncate block">{state ? formatTimestamp(state.ts) : ''}</span>
-                    </td>
-                  )}
-                  {show('history') && (
-                    <td data-col="history" className="px-3 py-2">
-                      {obj && hasHistory(obj) && (
-                        <span title="History aktiv (sql.0)"><History size={13} className="text-blue-500 dark:text-blue-400" /></span>
-                      )}
-                    </td>
-                  )}
-                  {show('smart') && (
-                    <td data-col="smart" className="px-3 py-2">
-                      {obj && hasSmartName(obj) && (
-                        <span title={
-                          typeof obj.common.smartName === 'string'
-                            ? obj.common.smartName
-                            : typeof obj.common.smartName === 'object' && obj.common.smartName
-                              ? Object.values(obj.common.smartName).join(' / ')
-                              : ''
-                        }><Mic2 size={13} className="text-violet-500 dark:text-violet-400" /></span>
-                      )}
                     </td>
                   )}
                 </tr>
