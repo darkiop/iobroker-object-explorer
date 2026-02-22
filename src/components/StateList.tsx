@@ -525,6 +525,10 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
         allocated += next[k];
       }
     }
+    // Icon cols stay at their fixed default width — never modified by fitToContainer
+    for (const k of ICON_COLS) {
+      next[k] = DEFAULT_WIDTHS[k];
+    }
     setColWidths(next);
     localStorage.setItem(LS_WIDTHS_KEY, JSON.stringify(next));
   }
