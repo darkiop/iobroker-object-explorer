@@ -673,7 +673,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
       )}
 
       <div ref={containerRef} className="overflow-x-auto overflow-y-auto flex-1">
-        <table className="text-sm text-left table-fixed" style={{ width: '100%', minWidth: totalWidth }}>
+        <table className="text-sm text-left table-fixed" style={{ width: totalWidth }}>
           <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-100 dark:bg-gray-800 sticky top-0 z-10">
             <tr>
               {show('write')   && <th style={{ width: colWidths['write'],   minWidth: colWidths['write']   }} className="px-1 py-2 text-center" title="Schreibschutz"><Lock    size={11} className="inline-block text-gray-400 dark:text-gray-500" /></th>}
