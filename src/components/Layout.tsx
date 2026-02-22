@@ -48,7 +48,7 @@ export default function Layout({ sidebar, children }: LayoutProps) {
           <h1 className="text-lg font-semibold text-gray-900 dark:text-white">ioBroker Object Explorer</h1>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-400 dark:text-gray-500">REST-API: 10.4.0.20:8093</span>
+          <span className="text-xs text-gray-400 dark:text-gray-500">REST-API: {new URL(__IOBROKER_TARGET__).host}</span>
           <button
             onClick={toggle}
             className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
