@@ -244,7 +244,7 @@ export default function StateTree({ stateIds, allObjects, selectedId, onSelect, 
   );
 
   return (
-    <div className="overflow-y-auto">
+    <div className="overflow-y-auto px-2">
       {filteredIds.length === 0 ? (
         <div className="text-gray-400 dark:text-gray-500 text-sm p-4">
           {stateIds.length === 0 ? 'Keine Datenpunkte geladen' : 'Keine Datenpunkte gefunden'}

@@ -714,8 +714,8 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
     });
   }, [ids, states, objects, roomMap, sortKey, sortDir]);
 
-  // metadata filters (id, name, room, role, unit) are applied in App.tsx before pagination
-  // only value is filtered here (page-local, state data)
+  // metadata + icon filters applied in App.tsx before pagination
+  // only value is filtered here (page-local, requires state data)
   const filteredIds = useMemo(() => {
     const valueFilter = colFilters.value?.trim().toLowerCase();
     if (!valueFilter) return sortedIds;
@@ -850,9 +850,9 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
           <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-100 dark:bg-gray-800 sticky top-0 z-10">
             <tr>
               <th style={{ width: CHK_COL_WIDTH, minWidth: CHK_COL_WIDTH }} />
-              {show('write')   && <th style={{ width: colWidths['write'],   minWidth: colWidths['write']   }} className="py-2 text-center" title="Schreibschutz"><Lock    size={11} className="text-gray-400 dark:text-gray-500" /></th>}
-              {show('history') && <th style={{ width: colWidths['history'], minWidth: colWidths['history'] }} className="py-2 text-center" title="History">     <History size={11} className="text-gray-400 dark:text-gray-500" /></th>}
-              {show('smart')   && <th style={{ width: colWidths['smart'],   minWidth: colWidths['smart']   }} className="py-2 text-center" title="SmartName">   <Mic2    size={11} className="text-gray-400 dark:text-gray-500" /></th>}
+              {show('write')   && <th style={{ width: colWidths['write'],   minWidth: colWidths['write']   }} />}
+              {show('history') && <th style={{ width: colWidths['history'], minWidth: colWidths['history'] }} />}
+              {show('smart')   && <th style={{ width: colWidths['smart'],   minWidth: colWidths['smart']   }} />}
               {show('id')      && <SortHeader label="ID" sortKey="id" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('id')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('name')    && <SortHeader label="Name" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('name')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('room')    && <SortHeader label="Raum" sortKey="room" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('room')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
@@ -864,7 +864,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
               <th style={{ width: DEL_COL_WIDTH, minWidth: DEL_COL_WIDTH }} />
             </tr>
             <tr className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-              <th style={{ width: CHK_COL_WIDTH, minWidth: CHK_COL_WIDTH }} className="py-1 text-center" onClick={(e) => e.stopPropagation()}>
+              <th style={{ width: CHK_COL_WIDTH, minWidth: CHK_COL_WIDTH }} className="py-1 text-center align-middle" onClick={(e) => e.stopPropagation()}>
                 <StyledCheckbox
                   checked={allOnPageChecked}
                   indeterminate={someChecked && !allOnPageChecked}
@@ -874,8 +874,35 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
               </th>
               {(['write','history','smart','id','name','room','role','value','unit','ack','ts'] as SortKey[]).filter(show).map((key) => {
                 const filterable = ['id','name','room','role','value','unit'].includes(key);
+                const isIconToggle = ['write','history','smart'].includes(key);
+                const isActive = colFilters[key] === '1';
+
+                if (isIconToggle) {
+                  const icon = key === 'write'
+                    ? <Lock size={11} />
+                    : key === 'history'
+                    ? <History size={11} />
+                    : <Mic2 size={11} />;
+                  const activeClass = key === 'write'
+                    ? 'text-gray-500 dark:text-gray-300 bg-gray-300/60 dark:bg-gray-500/40'
+                    : key === 'history'
+                    ? 'text-blue-500 bg-blue-500/20'
+                    : 'text-violet-500 bg-violet-500/20';
+                  return (
+                    <th key={key} style={{ width: w(key) }} className="py-1 text-center align-middle" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => onColFilterChange({ ...colFilters, [key]: isActive ? '' : '1' })}
+                        title={key === 'write' ? 'Nur Schreibgeschützte' : key === 'history' ? 'Nur mit History' : 'Nur mit SmartName'}
+                        className={`p-0.5 rounded transition-colors ${isActive ? activeClass : 'text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400'}`}
+                      >
+                        {icon}
+                      </button>
+                    </th>
+                  );
+                }
+
                 return (
-                  <th key={key} style={{ width: w(key) }} className="px-2 py-1 normal-case font-normal">
+                  <th key={key} style={{ width: w(key) }} className="px-2 py-1 normal-case font-normal align-middle">
                     {filterable ? (
                       <div className="relative flex items-center" onClick={(e) => e.stopPropagation()}>
                         <input
@@ -932,7 +959,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                       : 'hover:bg-gray-100/80 text-gray-700 dark:hover:bg-gray-800/50 dark:text-gray-300'
                   }`}
                 >
-                  <td style={{ width: CHK_COL_WIDTH, minWidth: CHK_COL_WIDTH }} className="text-center" onClick={(e) => e.stopPropagation()}>
+                  <td style={{ width: CHK_COL_WIDTH, minWidth: CHK_COL_WIDTH }} className="py-2 text-center align-middle" onClick={(e) => e.stopPropagation()}>
                     <StyledCheckbox
                       checked={checkedIds.has(id)}
                       onChange={(e) => {

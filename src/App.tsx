@@ -66,6 +66,9 @@ function AppContent() {
     if (colFilters.room?.trim()) { const f = colFilters.room.trim().toLowerCase();  ids = ids.filter((id) => (rm[id] || '').toLowerCase().includes(f)); }
     if (colFilters.role?.trim()) { const f = colFilters.role.trim().toLowerCase();  ids = ids.filter((id) => (stateObjects![id]?.common?.role || '').toLowerCase().includes(f)); }
     if (colFilters.unit?.trim()) { const f = colFilters.unit.trim().toLowerCase();  ids = ids.filter((id) => (stateObjects![id]?.common?.unit || '').toLowerCase().includes(f)); }
+    if (colFilters.write === '1')   ids = ids.filter((id) => stateObjects![id]?.common?.write === false);
+    if (colFilters.history === '1') ids = ids.filter((id) => historyIds.has(id));
+    if (colFilters.smart === '1')   ids = ids.filter((id) => smartIds.has(id));
     return ids;
   }, [stateObjects, historyOnly, historyIds, smartOnly, smartIds, colFilters, roomMap]);
 
