@@ -25,10 +25,15 @@ export async function getAllObjects(): Promise<Record<string, IoBrokerObject>> {
   if (objectsCache) return objectsCache;
   if (objectsCachePromise) return objectsCachePromise;
 
-  objectsCachePromise = fetchApi<Record<string, IoBrokerObject>>('/objects').then((data) => {
-    objectsCache = data;
+  objectsCachePromise = Promise.all([
+    fetchApi<Record<string, IoBrokerObject>>('/objects'),
+    fetchApi<Record<string, IoBrokerObject>>('/objects?type=device'),
+    fetchApi<Record<string, IoBrokerObject>>('/objects?type=channel'),
+    fetchApi<Record<string, IoBrokerObject>>('/objects?type=folder'),
+  ]).then(([states, devices, channels, folders]) => {
+    objectsCache = { ...states, ...devices, ...channels, ...folders };
     objectsCachePromise = null;
-    return data;
+    return objectsCache;
   });
 
   return objectsCachePromise;
