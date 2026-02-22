@@ -971,36 +971,42 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                     />
                   </td>
                   {show('write') && (
-                    <td style={{ width: colWidths['write'], minWidth: colWidths['write'] }} className="py-2 text-center" title={obj?.common?.write === false ? 'Schreibgeschützt' : undefined}>
-                      {obj?.common?.write === false && (
-                        <Lock size={11} className="text-gray-400 dark:text-gray-500" />
-                      )}
+                    <td style={{ width: colWidths['write'], minWidth: colWidths['write'] }} className="py-2 align-middle" title={obj?.common?.write === false ? 'Schreibgeschützt' : undefined}>
+                      <div className="flex items-center justify-center">
+                        {obj?.common?.write === false && (
+                          <Lock size={11} className="text-gray-400 dark:text-gray-500" />
+                        )}
+                      </div>
                     </td>
                   )}
                   {show('history') && (
-                    <td style={{ width: colWidths['history'], minWidth: colWidths['history'] }} className="py-2 text-center">
-                      {obj && hasHistory(obj) && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setHistoryModalId(id); }}
-                          title="History anzeigen"
-                          className="text-blue-500 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
-                        >
-                          <History size={13} />
-                        </button>
-                      )}
+                    <td style={{ width: colWidths['history'], minWidth: colWidths['history'] }} className="py-2 align-middle">
+                      <div className="flex items-center justify-center">
+                        {obj && hasHistory(obj) && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setHistoryModalId(id); }}
+                            title="History anzeigen"
+                            className="text-blue-500 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                          >
+                            <History size={13} />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   )}
                   {show('smart') && (
-                    <td style={{ width: colWidths['smart'], minWidth: colWidths['smart'] }} className="py-2 text-center" title={obj && hasSmartName(obj) ? (
+                    <td style={{ width: colWidths['smart'], minWidth: colWidths['smart'] }} className="py-2 align-middle" title={obj && hasSmartName(obj) ? (
                       typeof obj.common.smartName === 'string'
                         ? obj.common.smartName
                         : typeof obj.common.smartName === 'object' && obj.common.smartName
                           ? Object.values(obj.common.smartName).join(' / ')
                           : 'SmartName'
                     ) : undefined}>
-                      {obj && hasSmartName(obj) && (
-                        <Mic2 size={13} className="text-violet-500 dark:text-violet-400" />
-                      )}
+                      <div className="flex items-center justify-center">
+                        {obj && hasSmartName(obj) && (
+                          <Mic2 size={13} className="text-violet-500 dark:text-violet-400" />
+                        )}
+                      </div>
                     </td>
                   )}
                   {show('id') && (
