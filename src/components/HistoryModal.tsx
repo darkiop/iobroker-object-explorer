@@ -40,8 +40,8 @@ export default function HistoryModal({ stateId, unit, onClose }: Props) {
         </div>
 
         {/* Chart */}
-        <div className="px-5 py-4 overflow-y-auto flex-1 min-h-0">
-          <HistoryChart stateId={stateId} unit={unit} />
+        <div className="px-5 py-4 flex-1 min-h-0 flex flex-col">
+          <HistoryChart stateId={stateId} unit={unit} fillHeight />
         </div>
       </div>
     </div>,

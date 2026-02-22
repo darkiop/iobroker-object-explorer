@@ -20,6 +20,7 @@ import type { HistoryOptions } from '../types/iobroker';
 interface HistoryChartProps {
   stateId: string;
   unit?: string;
+  fillHeight?: boolean;
 }
 
 type ChartType = 'line' | 'area' | 'bar';
@@ -138,7 +139,7 @@ function ConfirmDialog({ message, onConfirm, onCancel, isPending }: {
   );
 }
 
-export default function HistoryChart({ stateId, unit }: HistoryChartProps) {
+export default function HistoryChart({ stateId, unit, fillHeight = false }: HistoryChartProps) {
   const { dark } = useTheme();
   const axes = makeAxes(dark);
   const [rangeMs, setRangeMs] = useState<number | null>(24 * 60 * 60 * 1000);
@@ -286,8 +287,8 @@ export default function HistoryChart({ stateId, unit }: HistoryChartProps) {
   }
 
   return (
-    <div className="mt-4 relative">
-      <div className="flex flex-col gap-2 mb-3">
+    <div className={`relative ${fillHeight ? 'h-full flex flex-col' : 'mt-4'}`}>
+      <div className={`flex flex-col gap-2 mb-3 ${fillHeight ? 'shrink-0' : ''}`}>
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex gap-1">
             {PRESETS.map((p) => (
@@ -405,7 +406,7 @@ export default function HistoryChart({ stateId, unit }: HistoryChartProps) {
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center h-48 text-gray-400 dark:text-gray-500 text-sm">
+        <div className={`flex items-center justify-center text-gray-400 dark:text-gray-500 text-sm ${fillHeight ? 'flex-1' : 'h-48'}`}>
           <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
@@ -413,17 +414,19 @@ export default function HistoryChart({ stateId, unit }: HistoryChartProps) {
           Lade History-Daten...
         </div>
       ) : isError ? (
-        <div className="flex items-center justify-center h-48 text-red-400 text-sm">
+        <div className={`flex items-center justify-center text-red-400 text-sm ${fillHeight ? 'flex-1' : 'h-48'}`}>
           Fehler beim Laden der History-Daten
         </div>
       ) : chartData.length === 0 ? (
-        <div className="flex items-center justify-center h-48 text-gray-400 dark:text-gray-500 text-sm">
+        <div className={`flex items-center justify-center text-gray-400 dark:text-gray-500 text-sm ${fillHeight ? 'flex-1' : 'h-48'}`}>
           Keine History-Daten im Zeitraum gefunden
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height={250}>
-          {renderChart()}
-        </ResponsiveContainer>
+        <div className={fillHeight ? 'flex-1 min-h-0' : ''}>
+          <ResponsiveContainer width="100%" height={fillHeight ? '100%' : 250}>
+            {renderChart()}
+          </ResponsiveContainer>
+        </div>
       )}
 
       {confirmAction && (
