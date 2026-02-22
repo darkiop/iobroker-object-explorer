@@ -6,7 +6,7 @@ import SearchBar from './components/SearchBar';
 import StateTree from './components/StateTree';
 import StateList from './components/StateList';
 import StateDetail from './components/StateDetail';
-import { useFilteredObjects, useStateValues, useRoomMap } from './hooks/useStates';
+import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap } from './hooks/useStates';
 import { hasHistory, hasSmartName } from './api/iobroker';
 import type { SortKey } from './components/StateList';
 
@@ -35,37 +35,38 @@ function AppContent() {
   const [colFilters, setColFilters] = useState<Partial<Record<SortKey, string>>>({});
   const [treeExpandSignal, setTreeExpandSignal] = useState<{ depth: number; seq: number } | undefined>(undefined);
 
-  const { data: objects, error: objectsError } = useFilteredObjects(pattern);
+  const { data: stateObjects, error: objectsError } = useFilteredObjects(pattern);
+  const { data: allObjects } = useAllObjects();
   const { data: roomMap } = useRoomMap();
 
   const historyIds = useMemo(() => {
     const set = new Set<string>();
-    for (const [id, obj] of Object.entries(objects ?? {})) {
+    for (const [id, obj] of Object.entries(stateObjects ?? {})) {
       if (hasHistory(obj)) set.add(id);
     }
     return set;
-  }, [objects]);
+  }, [stateObjects]);
 
   const smartIds = useMemo(() => {
     const set = new Set<string>();
-    for (const [id, obj] of Object.entries(objects ?? {})) {
+    for (const [id, obj] of Object.entries(stateObjects ?? {})) {
       if (hasSmartName(obj)) set.add(id);
     }
     return set;
-  }, [objects]);
+  }, [stateObjects]);
 
   const objectIds = useMemo(() => {
-    let ids = objects ? Object.keys(objects).sort() : [];
+    let ids = stateObjects ? Object.keys(stateObjects).sort() : [];
     if (historyOnly) ids = ids.filter((id) => historyIds.has(id));
     if (smartOnly) ids = ids.filter((id) => smartIds.has(id));
     const rm = roomMap || {};
     if (colFilters.id?.trim())   { const f = colFilters.id.trim().toLowerCase();   ids = ids.filter((id) => id.toLowerCase().includes(f)); }
-    if (colFilters.name?.trim()) { const f = colFilters.name.trim().toLowerCase();  ids = ids.filter((id) => { const n = objects![id]?.common?.name; const s = typeof n === 'string' ? n : (n && (n.de || n.en || Object.values(n)[0])) || ''; return s.toLowerCase().includes(f); }); }
+    if (colFilters.name?.trim()) { const f = colFilters.name.trim().toLowerCase();  ids = ids.filter((id) => { const n = stateObjects![id]?.common?.name; const s = typeof n === 'string' ? n : (n && (n.de || n.en || Object.values(n)[0])) || ''; return s.toLowerCase().includes(f); }); }
     if (colFilters.room?.trim()) { const f = colFilters.room.trim().toLowerCase();  ids = ids.filter((id) => (rm[id] || '').toLowerCase().includes(f)); }
-    if (colFilters.role?.trim()) { const f = colFilters.role.trim().toLowerCase();  ids = ids.filter((id) => (objects![id]?.common?.role || '').toLowerCase().includes(f)); }
-    if (colFilters.unit?.trim()) { const f = colFilters.unit.trim().toLowerCase();  ids = ids.filter((id) => (objects![id]?.common?.unit || '').toLowerCase().includes(f)); }
+    if (colFilters.role?.trim()) { const f = colFilters.role.trim().toLowerCase();  ids = ids.filter((id) => (stateObjects![id]?.common?.role || '').toLowerCase().includes(f)); }
+    if (colFilters.unit?.trim()) { const f = colFilters.unit.trim().toLowerCase();  ids = ids.filter((id) => (stateObjects![id]?.common?.unit || '').toLowerCase().includes(f)); }
     return ids;
-  }, [objects, historyOnly, historyIds, smartOnly, smartIds, colFilters, roomMap]);
+  }, [stateObjects, historyOnly, historyIds, smartOnly, smartIds, colFilters, roomMap]);
 
   const totalCount = objectIds.length;
   const pageStart = page * pageSize;
@@ -123,7 +124,7 @@ function AppContent() {
           <div className="flex-1 overflow-y-auto py-1">
             <StateTree
               stateIds={objectIds}
-              objects={objects || {}}
+              allObjects={allObjects || {}}
               selectedId={selectedId}
               onSelect={setSelectedId}
               onSearch={handleSearch}
@@ -165,12 +166,13 @@ function AppContent() {
             ids={pageIds}
             totalCount={totalCount}
             states={stateValues || {}}
-            objects={objects || {}}
+            objects={stateObjects || {}}
             roomMap={roomMap || {}}
             selectedId={selectedId}
             onSelect={setSelectedId}
             colFilters={colFilters}
             onColFilterChange={handleColFilterChange}
+            pattern={pattern}
           />
         </div>
 

@@ -16,6 +16,7 @@ interface StateListProps {
   onSelect: (id: string) => void;
   colFilters: Partial<Record<SortKey, string>>;
   onColFilterChange: (filters: Partial<Record<SortKey, string>>) => void;
+  pattern?: string;
 }
 
 function formatTimestamp(ts: number): string {
@@ -440,7 +441,14 @@ function SortHeader({ label, sortKey, activeKey, dir, onSort, width, onResizeSta
   );
 }
 
-export default function StateList({ ids, totalCount, states, objects, roomMap, selectedId, onSelect, colFilters, onColFilterChange }: StateListProps) {
+function patternToInitialId(pattern: string): string {
+  if (!pattern || pattern === '*') return '';
+  if (pattern.endsWith('.*')) return pattern.slice(0, -1); // e.g. "javascript.0.*" → "javascript.0."
+  if (pattern.endsWith('*')) return pattern.slice(0, -1);
+  return pattern;
+}
+
+export default function StateList({ ids, totalCount, states, objects, roomMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*' }: StateListProps) {
   const [sortKey, setSortKey] = useState<SortKey>('id');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [visibleCols, setVisibleCols] = useState<SortKey[]>(loadVisibleCols);
@@ -651,6 +659,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
         <NewDatapointModal
           onClose={() => setNewDatapointOpen(false)}
           existingIds={existingIds}
+          initialId={patternToInitialId(pattern)}
         />
       )}
 

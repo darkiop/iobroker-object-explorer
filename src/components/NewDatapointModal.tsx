@@ -8,10 +8,11 @@ const STATE_TYPES = ['number', 'string', 'boolean', 'mixed'] as const;
 interface Props {
   onClose: () => void;
   existingIds: Set<string>;
+  initialId?: string;
 }
 
-export default function NewDatapointModal({ onClose, existingIds }: Props) {
-  const [id, setId] = useState('');
+export default function NewDatapointModal({ onClose, existingIds, initialId = '' }: Props) {
+  const [id, setId] = useState(initialId);
   const [name, setName] = useState('');
   const [type, setType] = useState<'number' | 'string' | 'boolean' | 'mixed'>('number');
   const [role, setRole] = useState('');

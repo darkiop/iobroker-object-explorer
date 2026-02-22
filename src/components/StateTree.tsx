@@ -1,10 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
-import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText, Database, ChevronsDownUp, ChevronsUpDown, Copy, Check, Mic2, Search } from 'lucide-react';
+import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText, Database, ChevronsDownUp, ChevronsUpDown, Copy, Check, Mic2, Search, Cpu, Layers } from 'lucide-react';
 import type { TreeNode, IoBrokerObject } from '../types/iobroker';
 
 interface StateTreeProps {
   stateIds: string[];
-  objects: Record<string, IoBrokerObject>;
+  allObjects: Record<string, IoBrokerObject>;
   selectedId: string | null;
   onSelect: (id: string) => void;
   onSearch: (pattern: string) => void;
@@ -53,6 +53,7 @@ function TreeNodeComponent({
   historyIds,
   smartIds,
   expandSignal,
+  allObjects,
 }: {
   node: TreeNode;
   depth: number;
@@ -62,6 +63,7 @@ function TreeNodeComponent({
   historyIds: Set<string>;
   smartIds: Set<string>;
   expandSignal: { depth: number; seq: number };
+  allObjects: Record<string, IoBrokerObject>;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -69,6 +71,19 @@ function TreeNodeComponent({
   const isFolder = hasChildren && !node.isLeaf;
   const isHistoryEnabled = node.isLeaf && historyIds.has(node.fullPath);
   const isSmartEnabled = node.isLeaf && smartIds.has(node.fullPath);
+  const folderTypeRaw = isFolder
+    ? (allObjects[node.fullPath]?.type ?? allObjects[node.fullPath]?.common?.type)
+    : undefined;
+  const childTypes = useMemo(() => {
+    if (!isFolder) return new Set<string>();
+    const types = new Set<string>();
+    for (const child of node.children.values()) {
+      const type = allObjects[child.fullPath]?.type ?? allObjects[child.fullPath]?.common?.type;
+      if (type) types.add(type);
+    }
+    return types;
+  }, [allObjects, isFolder, node.children]);
+  const folderType = isFolder ? resolveFolderType(folderTypeRaw, childTypes) : undefined;
   const sortedChildren = useMemo(
     () => [...node.children.values()].sort((a, b) => a.name.localeCompare(b.name)),
     [node.children]
@@ -104,9 +119,15 @@ function TreeNodeComponent({
         )}
         {!isFolder && <span className="w-5 shrink-0" />}
         {isFolder ? (
-          expanded
-            ? <FolderOpen size={15} className="text-yellow-500/80 shrink-0" />
-            : <Folder size={15} className="text-yellow-600/70 shrink-0" />
+          folderType === 'device'
+            ? <Cpu size={15} className="text-sky-500/80 shrink-0" title="device" />
+            : folderType === 'channel'
+              ? <Layers size={15} className="text-indigo-500/80 shrink-0" title="channel" />
+              : (
+                expanded
+                  ? <FolderOpen size={15} className="text-yellow-500/80 shrink-0" title="folder" />
+                  : <Folder size={15} className="text-yellow-600/70 shrink-0" title="folder" />
+              )
         ) : isHistoryEnabled ? (
           <Database size={14} className="text-blue-400/80 shrink-0" />
         ) : (
@@ -115,6 +136,11 @@ function TreeNodeComponent({
         <span className={`truncate ${node.isLeaf ? (isHistoryEnabled ? 'text-blue-500 dark:text-blue-400' : 'text-green-600 dark:text-green-400') : 'text-gray-600 font-medium dark:text-gray-400'}`}>
           {node.name}
         </span>
+        {folderType && (
+          <span className="text-[10px] uppercase text-gray-400 dark:text-gray-500 tracking-wide">
+            {folderType}
+          </span>
+        )}
         {isSmartEnabled && (
           <span title="SmartName vorhanden"><Mic2 size={11} className="shrink-0 text-violet-500 dark:text-violet-400" /></span>
         )}
@@ -170,13 +196,24 @@ function TreeNodeComponent({
             historyIds={historyIds}
             smartIds={smartIds}
             expandSignal={expandSignal}
+            allObjects={allObjects}
           />
         ))}
     </div>
   );
 }
 
-export default function StateTree({ stateIds, selectedId, onSelect, onSearch, historyOnly, onHistoryOnlyChange, smartOnly, onSmartOnlyChange, historyIds, smartIds, expandToDepth }: StateTreeProps) {
+function resolveFolderType(rawType: string | undefined, childTypes: Set<string>): 'folder' | 'device' | 'channel' {
+  if (rawType === 'folder' || rawType === 'device' || rawType === 'channel') {
+    return rawType;
+  }
+  if (childTypes.has('device') || childTypes.has('folder')) return 'folder';
+  if (childTypes.has('channel')) return 'device';
+  if (childTypes.has('state')) return 'channel';
+  return 'folder';
+}
+
+export default function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, historyOnly, onHistoryOnlyChange, smartOnly, onSmartOnlyChange, historyIds, smartIds, expandToDepth }: StateTreeProps) {
   const [expandSignal, setExpandSignal] = useState<{ depth: number; seq: number }>({ depth: 0, seq: 0 });
 
   useEffect(() => {
@@ -261,6 +298,7 @@ export default function StateTree({ stateIds, selectedId, onSelect, onSearch, hi
             historyIds={historyIds}
             smartIds={smartIds}
             expandSignal={expandSignal}
+            allObjects={allObjects}
           />
         ))
       )}

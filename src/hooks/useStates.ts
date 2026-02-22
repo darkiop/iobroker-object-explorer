@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, createObject, getAllRoles, getAllUnits, setState, getRoomMap } from '../api/iobroker';
+import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, createObject, getAllRoles, getAllUnits, setState, getRoomMap, getAllObjects } from '../api/iobroker';
 import type { IoBrokerObject, IoBrokerObjectCommon, IoBrokerState, HistoryOptions } from '../types/iobroker';
 
 export function useFilteredObjects(pattern: string) {
@@ -7,6 +7,14 @@ export function useFilteredObjects(pattern: string) {
     queryKey: ['objects', pattern],
     queryFn: () => getObjectsByPattern(pattern),
     enabled: pattern.length > 0,
+  });
+}
+
+export function useAllObjects() {
+  return useQuery({
+    queryKey: ['objects', 'all'],
+    queryFn: () => getAllObjects(),
+    staleTime: Infinity,
   });
 }
 
