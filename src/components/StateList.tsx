@@ -609,10 +609,19 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
 
   const toolbar = (
     <div className="flex items-center justify-between px-3 py-1 shrink-0 border-b border-gray-200 dark:border-gray-800">
-      <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums">
-        <span className="text-gray-600 dark:text-gray-300 font-medium">{totalCount}</span>
-        {' '}Datenpunkte
-      </span>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setNewDatapointOpen(true)}
+          title="Neuer Datenpunkt"
+          className="p-2 rounded-lg transition-colors text-gray-400 hover:text-green-600 hover:bg-green-500/10 dark:text-gray-500 dark:hover:text-green-400 dark:hover:bg-green-500/10"
+        >
+          <Plus size={18} />
+        </button>
+        <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums">
+          <span className="text-gray-600 dark:text-gray-300 font-medium">{totalCount}</span>
+          {' '}Datenpunkte
+        </span>
+      </div>
       <div className="flex items-center gap-1">
         <button
           onClick={fitToContainer}
@@ -644,13 +653,6 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
           <RotateCcw size={15} />
         </button>
         <ColPicker visible={visibleCols} onChange={handleColChange} />
-        <button
-          onClick={() => setNewDatapointOpen(true)}
-          title="Neuer Datenpunkt"
-          className="p-1.5 rounded-lg transition-colors text-gray-400 hover:text-green-600 hover:bg-green-500/10 dark:text-gray-500 dark:hover:text-green-400 dark:hover:bg-green-500/10"
-        >
-          <Plus size={15} />
-        </button>
       </div>
     </div>
   );
