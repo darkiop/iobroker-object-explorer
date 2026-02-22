@@ -487,6 +487,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
   const [visibleCols, setVisibleCols] = useState<SortKey[]>(loadVisibleCols);
   const [colWidths, setColWidths] = useState<Record<SortKey, number>>(loadColWidths);
   const containerRef = useRef<HTMLDivElement>(null);
+  const autoFitRef = useRef(!localStorage.getItem(LS_WIDTHS_KEY));
   const [newDatapointOpen, setNewDatapointOpen] = useState(false);
   const [historyModalId, setHistoryModalId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -569,6 +570,12 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
     localStorage.setItem(LS_WIDTHS_KEY, JSON.stringify(next));
   }
 
+  useEffect(() => {
+    if (!autoFitRef.current || ids.length === 0) return;
+    autoFitRef.current = false;
+    requestAnimationFrame(() => fitToContainer());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ids]);
 
   const show = (key: SortKey) => visibleCols.includes(key);
   const w = (key: SortKey) => colWidths[key];
