@@ -24,7 +24,8 @@ export default function HistoryModal({ stateId, unit, onClose }: Props) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-4xl bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[90vh]"
+        className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col"
+        style={{ width: '80vw', height: '75vh' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -39,7 +40,7 @@ export default function HistoryModal({ stateId, unit, onClose }: Props) {
         </div>
 
         {/* Chart */}
-        <div className="px-5 py-4 overflow-y-auto">
+        <div className="px-5 py-4 overflow-y-auto flex-1 min-h-0">
           <HistoryChart stateId={stateId} unit={unit} />
         </div>
       </div>
