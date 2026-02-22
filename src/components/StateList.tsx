@@ -5,6 +5,7 @@ import { useExtendObject, useAllRoles, useDeleteObject } from '../hooks/useState
 import NewDatapointModal from './NewDatapointModal';
 import HistoryModal from './HistoryModal';
 import ConfirmDialog from './ConfirmDialog';
+import MultiDeleteDialog from './MultiDeleteDialog';
 import { hasHistory } from '../api/iobroker';
 import type { IoBrokerState, IoBrokerObject } from '../types/iobroker';
 
@@ -332,6 +333,7 @@ const DEFAULT_WIDTHS: Record<SortKey, number> = {
 };
 const PLUS_COL_WIDTH = 30;
 const DEL_COL_WIDTH = 32;
+const CHK_COL_WIDTH = 28;
 const LS_WIDTHS_KEY = 'iobroker-col-widths';
 
 function loadColWidths(): Record<SortKey, number> {
@@ -386,22 +388,47 @@ function ColPicker({ visible, onChange }: { visible: SortKey[]; onChange: (cols:
       {open && (
         <div className="absolute right-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-2 min-w-[140px]">
           {ALL_COLUMNS.map(({ key, label }) => (
-            <label
+            <div
               key={key}
+              onClick={() => toggle(key)}
               className="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 select-none"
             >
-              <input
-                type="checkbox"
-                checked={visible.includes(key)}
-                onChange={() => toggle(key)}
-                className="accent-blue-500"
-              />
+              <StyledCheckbox checked={visible.includes(key)} onChange={() => toggle(key)} />
               {label}
-            </label>
+            </div>
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+function StyledCheckbox({ checked, indeterminate, onChange, title }: {
+  checked: boolean;
+  indeterminate?: boolean;
+  onChange: React.ChangeEventHandler<HTMLInputElement>;
+  title?: string;
+}) {
+  return (
+    <label className="inline-flex items-center justify-center cursor-pointer select-none" title={title}>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+        ref={(el) => { if (el) el.indeterminate = !!indeterminate; }}
+        className="sr-only"
+      />
+      <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
+        checked
+          ? 'bg-blue-500 border-blue-500'
+          : indeterminate
+          ? 'bg-blue-400/60 border-blue-400'
+          : 'bg-gray-100 dark:bg-gray-700 border-gray-400 dark:border-gray-500'
+      }`}>
+        {checked && <Check size={9} className="text-white" strokeWidth={3} />}
+        {!checked && indeterminate && <span className="block w-2 h-[1.5px] bg-white rounded" />}
+      </span>
+    </label>
   );
 }
 
@@ -463,6 +490,8 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
   const [newDatapointOpen, setNewDatapointOpen] = useState(false);
   const [historyModalId, setHistoryModalId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const [multiDeleteOpen, setMultiDeleteOpen] = useState(false);
   const deleteObject = useDeleteObject();
   const { data: roles = [] } = useAllRoles();
 
@@ -518,7 +547,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
     const ICON_COLS: SortKey[] = ['write', 'history', 'smart'];
     const scalable = visibleCols.filter((k) => !ICON_COLS.includes(k));
     const iconWidth = ICON_COLS.filter((k) => show(k)).reduce((s, k) => s + colWidths[k], 0);
-    const available = containerWidth - iconWidth - PLUS_COL_WIDTH - DEL_COL_WIDTH;
+    const available = containerWidth - iconWidth - PLUS_COL_WIDTH - DEL_COL_WIDTH - CHK_COL_WIDTH;
     const currentTotal = scalable.reduce((sum, k) => sum + colWidths[k], 0);
     const scale = available / currentTotal;
     const next = { ...colWidths };
@@ -616,14 +645,46 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
 
   const hasColFilters = Object.values(colFilters).some((v) => v.trim() !== '');
 
-  const totalWidth = PLUS_COL_WIDTH + DEL_COL_WIDTH + visibleCols.reduce((sum, k) => sum + colWidths[k], 0);
+  const totalWidth = CHK_COL_WIDTH + PLUS_COL_WIDTH + DEL_COL_WIDTH + visibleCols.reduce((sum, k) => sum + colWidths[k], 0);
+
+  const allOnPageChecked = filteredIds.length > 0 && filteredIds.every((id) => checkedIds.has(id));
+  const someChecked = filteredIds.some((id) => checkedIds.has(id));
+
+  function toggleCheckAll() {
+    if (allOnPageChecked) {
+      setCheckedIds((prev) => { const next = new Set(prev); filteredIds.forEach((id) => next.delete(id)); return next; });
+    } else {
+      setCheckedIds((prev) => new Set([...prev, ...filteredIds]));
+    }
+  }
+
+  function handleDeleteOne(id: string) {
+    deleteObject.mutate(id);
+    setCheckedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+  }
+
+  function handleDeleteAll(ids: string[]) {
+    Promise.all(ids.map((id) => deleteObject.mutateAsync(id))).then(() => {
+      setCheckedIds((prev) => { const next = new Set(prev); ids.forEach((id) => next.delete(id)); return next; });
+    });
+  }
 
   const toolbar = (
     <div className="relative flex items-center justify-end px-3 py-1 shrink-0 border-b border-gray-200 dark:border-gray-800">
-      <span className="absolute left-1/2 -translate-x-1/2 text-xs text-gray-400 dark:text-gray-500 tabular-nums">
-        <span className="text-gray-600 dark:text-gray-300 font-medium">{totalCount}</span>
-        {' '}Datenpunkte
-      </span>
+      {checkedIds.size > 0 ? (
+        <button
+          onClick={() => setMultiDeleteOpen(true)}
+          className="absolute left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-red-600 bg-red-500/10 hover:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/20 transition-colors"
+        >
+          <Trash2 size={13} />
+          {checkedIds.size} löschen
+        </button>
+      ) : (
+        <span className="absolute left-1/2 -translate-x-1/2 text-xs text-gray-400 dark:text-gray-500 tabular-nums">
+          <span className="text-gray-600 dark:text-gray-300 font-medium">{totalCount}</span>
+          {' '}Datenpunkte
+        </span>
+      )}
       <div className="flex items-center gap-1">
         <button
           onClick={fitToContainer}
@@ -686,11 +747,27 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
           onCancel={() => setDeletingId(null)}
         />
       )}
+      {multiDeleteOpen && (
+        <MultiDeleteDialog
+          ids={[...checkedIds]}
+          onDeleteOne={handleDeleteOne}
+          onDeleteAll={handleDeleteAll}
+          onClose={() => setMultiDeleteOpen(false)}
+        />
+      )}
 
       <div ref={containerRef} className="overflow-x-auto overflow-y-auto flex-1">
         <table className="text-sm text-left table-fixed" style={{ width: totalWidth }}>
           <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-100 dark:bg-gray-800 sticky top-0 z-10">
             <tr>
+              <th style={{ width: CHK_COL_WIDTH, minWidth: CHK_COL_WIDTH }} className="py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                <StyledCheckbox
+                  checked={allOnPageChecked}
+                  indeterminate={someChecked && !allOnPageChecked}
+                  onChange={toggleCheckAll}
+                  title="Alle auswählen"
+                />
+              </th>
               <th style={{ width: PLUS_COL_WIDTH, minWidth: PLUS_COL_WIDTH }} className="py-1 text-center">
                 <button
                   onClick={() => setNewDatapointOpen(true)}
@@ -714,6 +791,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
               <th style={{ width: DEL_COL_WIDTH, minWidth: DEL_COL_WIDTH }} />
             </tr>
             <tr className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+              <th style={{ width: CHK_COL_WIDTH, minWidth: CHK_COL_WIDTH }} />
               <th style={{ width: PLUS_COL_WIDTH, minWidth: PLUS_COL_WIDTH }} />
               {(['write','history','smart','id','name','room','role','value','unit','ack','ts'] as SortKey[]).filter(show).map((key) => {
                 const filterable = ['id','name','room','role','value','unit'].includes(key);
@@ -752,7 +830,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
           <tbody>
             {filteredIds.length === 0 && (
               <tr>
-                <td colSpan={visibleCols.length + 2} className="px-4 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
+                <td colSpan={visibleCols.length + 3} className="px-4 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
                   {ids.length === 0
                     ? 'Keine Datenpunkte gefunden. Verwende die Suche um Datenpunkte zu laden.'
                     : 'Keine Einträge entsprechen den gesetzten Filtern.'}
@@ -775,6 +853,18 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                       : 'hover:bg-gray-100/80 text-gray-700 dark:hover:bg-gray-800/50 dark:text-gray-300'
                   }`}
                 >
+                  <td style={{ width: CHK_COL_WIDTH, minWidth: CHK_COL_WIDTH }} className="text-center" onClick={(e) => e.stopPropagation()}>
+                    <StyledCheckbox
+                      checked={checkedIds.has(id)}
+                      onChange={(e) => {
+                        setCheckedIds((prev) => {
+                          const next = new Set(prev);
+                          e.target.checked ? next.add(id) : next.delete(id);
+                          return next;
+                        });
+                      }}
+                    />
+                  </td>
                   <td style={{ width: PLUS_COL_WIDTH, minWidth: PLUS_COL_WIDTH }} />
                   {show('write') && (
                     <td style={{ width: colWidths['write'], minWidth: colWidths['write'] }} className="py-2 pl-2 text-center" title={obj?.common?.write === false ? 'Schreibgeschützt' : undefined}>
@@ -855,7 +945,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                       <span className="truncate block">{state ? formatTimestamp(state.ts) : ''}</span>
                     </td>
                   )}
-                  <td style={{ width: DEL_COL_WIDTH, minWidth: DEL_COL_WIDTH }} className="py-1 text-center" onClick={(e) => e.stopPropagation()}>
+                  <td style={{ width: DEL_COL_WIDTH, minWidth: DEL_COL_WIDTH }} className="py-1 pr-2 text-center" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => setDeletingId(id)}
                       title="Datenpunkt löschen"

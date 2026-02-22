@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
-import { Pencil, Check, X, Wrench } from 'lucide-react';
-import { useStateDetail, useObjectDetail, useExtendObject, useAllRoles, useAllUnits, useSetState } from '../hooks/useStates';
+import { Pencil, Check, X, Wrench, Trash2 } from 'lucide-react';
+import { useStateDetail, useObjectDetail, useExtendObject, useAllRoles, useAllUnits, useSetState, useDeleteObject } from '../hooks/useStates';
 import { hasHistory } from '../api/iobroker';
 import HistoryChart from './HistoryChart';
+import ConfirmDialog from './ConfirmDialog';
 
 interface StateDetailProps {
   stateId: string;
@@ -297,6 +298,8 @@ export default function StateDetail({ stateId, onClose }: StateDetailProps) {
   const { data: units } = useAllUnits();
   const [expertMode, setExpertMode] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('details');
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const deleteObject = useDeleteObject();
 
   useEffect(() => { setExpertMode(false); setActiveTab('details'); }, [stateId]);
 
@@ -319,6 +322,14 @@ export default function StateDetail({ stateId, onClose }: StateDetailProps) {
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4 dark:bg-gray-800/80 dark:border-gray-700">
+      {confirmDelete && (
+        <ConfirmDialog
+          title="Datenpunkt löschen"
+          message={stateId}
+          onConfirm={() => { deleteObject.mutate(stateId, { onSuccess: onClose }); setConfirmDelete(false); }}
+          onCancel={() => setConfirmDelete(false)}
+        />
+      )}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate pr-4">{stateId}</h3>
         <div className="flex items-center gap-1 shrink-0">
@@ -335,6 +346,13 @@ export default function StateDetail({ stateId, onClose }: StateDetailProps) {
               <Wrench size={16} />
             </button>
           )}
+          <button
+            onClick={() => setConfirmDelete(true)}
+            title="Datenpunkt löschen"
+            className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-500/10 dark:text-gray-500 dark:hover:text-red-400 dark:hover:bg-red-500/10 transition-colors"
+          >
+            <Trash2 size={15} />
+          </button>
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-200 dark:text-gray-500 dark:hover:text-gray-300 dark:hover:bg-gray-700 transition-colors text-lg leading-none"
