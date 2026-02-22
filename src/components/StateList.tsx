@@ -685,9 +685,9 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
         <table className="text-sm text-left table-fixed" style={{ width: totalWidth }}>
           <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-100 dark:bg-gray-800 sticky top-0 z-10">
             <tr>
-              {show('write')   && <th style={{ width: colWidths['write'],   minWidth: colWidths['write']   }} className="py-2 text-center" title="Schreibschutz"><div className="flex items-center justify-center"><Lock    size={11} className="text-gray-400 dark:text-gray-500" /></div></th>}
-              {show('history') && <th style={{ width: colWidths['history'], minWidth: colWidths['history'] }} className="py-2 text-center" title="History">     <div className="flex items-center justify-center"><History size={11} className="text-gray-400 dark:text-gray-500" /></div></th>}
-              {show('smart')   && <th style={{ width: colWidths['smart'],   minWidth: colWidths['smart']   }} className="py-2 text-center" title="SmartName">   <div className="flex items-center justify-center"><Mic2    size={11} className="text-gray-400 dark:text-gray-500" /></div></th>}
+              {show('write')   && <th style={{ width: colWidths['write'],   minWidth: colWidths['write']   }} className="py-2 text-center" title="Schreibschutz"><Lock    size={11} className="text-gray-400 dark:text-gray-500" /></th>}
+              {show('history') && <th style={{ width: colWidths['history'], minWidth: colWidths['history'] }} className="py-2 text-center" title="History">     <History size={11} className="text-gray-400 dark:text-gray-500" /></th>}
+              {show('smart')   && <th style={{ width: colWidths['smart'],   minWidth: colWidths['smart']   }} className="py-2 text-center" title="SmartName">   <Mic2    size={11} className="text-gray-400 dark:text-gray-500" /></th>}
               {show('id')      && <SortHeader label="ID" sortKey="id" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('id')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('name')    && <SortHeader label="Name" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('name')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('room')    && <SortHeader label="Raum" sortKey="room" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('room')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
@@ -758,42 +758,36 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                   }`}
                 >
                   {show('write') && (
-                    <td style={{ width: colWidths['write'], minWidth: colWidths['write'] }} className="py-2">
-                      <div className="flex items-center justify-center">
-                        {obj?.common?.write === false && (
-                          <Lock size={11} className="text-gray-400 dark:text-gray-500" title="Schreibgeschützt" />
-                        )}
-                      </div>
+                    <td style={{ width: colWidths['write'], minWidth: colWidths['write'] }} className="py-2 text-center" title={obj?.common?.write === false ? 'Schreibgeschützt' : undefined}>
+                      {obj?.common?.write === false && (
+                        <Lock size={11} className="text-gray-400 dark:text-gray-500" />
+                      )}
                     </td>
                   )}
                   {show('history') && (
-                    <td style={{ width: colWidths['history'], minWidth: colWidths['history'] }} className="py-2">
-                      <div className="flex items-center justify-center">
-                        {obj && hasHistory(obj) && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setHistoryModalId(id); }}
-                            title="History anzeigen"
-                            className="flex items-center justify-center text-blue-500 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
-                          >
-                            <History size={13} />
-                          </button>
-                        )}
-                      </div>
+                    <td style={{ width: colWidths['history'], minWidth: colWidths['history'] }} className="py-2 text-center">
+                      {obj && hasHistory(obj) && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setHistoryModalId(id); }}
+                          title="History anzeigen"
+                          className="text-blue-500 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                        >
+                          <History size={13} />
+                        </button>
+                      )}
                     </td>
                   )}
                   {show('smart') && (
-                    <td style={{ width: colWidths['smart'], minWidth: colWidths['smart'] }} className="py-2">
-                      <div className="flex items-center justify-center">
-                        {obj && hasSmartName(obj) && (
-                          <Mic2 size={13} className="text-violet-500 dark:text-violet-400" title={
-                            typeof obj.common.smartName === 'string'
-                              ? obj.common.smartName
-                              : typeof obj.common.smartName === 'object' && obj.common.smartName
-                                ? Object.values(obj.common.smartName).join(' / ')
-                                : ''
-                          } />
-                        )}
-                      </div>
+                    <td style={{ width: colWidths['smart'], minWidth: colWidths['smart'] }} className="py-2 text-center" title={obj && hasSmartName(obj) ? (
+                      typeof obj.common.smartName === 'string'
+                        ? obj.common.smartName
+                        : typeof obj.common.smartName === 'object' && obj.common.smartName
+                          ? Object.values(obj.common.smartName).join(' / ')
+                          : 'SmartName'
+                    ) : undefined}>
+                      {obj && hasSmartName(obj) && (
+                        <Mic2 size={13} className="text-violet-500 dark:text-violet-400" />
+                      )}
                     </td>
                   )}
                   {show('id') && (
