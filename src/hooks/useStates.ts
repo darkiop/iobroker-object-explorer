@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, putFullObject, createObject, deleteObject, getAllRoles, getAllUnits, setState, getRoomMap, getAllObjects } from '../api/iobroker';
+import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, putFullObject, createObject, deleteObject, getAllRoles, getAllUnits, setState, getRoomMap, getAllObjects, getRoomEnums, updateRoomMembership } from '../api/iobroker';
 import type { IoBrokerObject, IoBrokerObjectCommon, IoBrokerState, HistoryOptions } from '../types/iobroker';
 
 export function useFilteredObjects(pattern: string) {
@@ -178,6 +178,26 @@ export function usePutObject() {
           old ? { ...old, [id]: obj } : old
       );
       queryClient.setQueryData(['object', id], obj);
+    },
+  });
+}
+
+export function useRoomEnums() {
+  return useQuery({
+    queryKey: ['roomEnums'],
+    queryFn: getRoomEnums,
+    staleTime: Infinity,
+  });
+}
+
+export function useUpdateRoomMembership() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ objectId, oldRoomEnumId, newRoomEnumId }: { objectId: string; oldRoomEnumId: string | null; newRoomEnumId: string | null }) =>
+      updateRoomMembership(objectId, oldRoomEnumId, newRoomEnumId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['objects'] });
+      queryClient.invalidateQueries({ queryKey: ['roomMap'] });
     },
   });
 }

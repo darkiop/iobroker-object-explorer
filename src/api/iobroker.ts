@@ -159,6 +159,22 @@ export async function getRoomMap(): Promise<Record<string, string>> {
   return map;
 }
 
+/**
+ * Builds a reverse alias map: for each non-alias data point, lists which alias.0.* IDs point to it.
+ * alias.0.xxx { common.alias.id: 'source.id' }  →  map.get('source.id') === ['alias.0.xxx']
+ */
+export function buildAliasReverseMap(allObjects: Record<string, IoBrokerObject>): Map<string, string[]> {
+  const map = new Map<string, string[]>();
+  for (const [id, obj] of Object.entries(allObjects)) {
+    if (!id.startsWith('alias.0.')) continue;
+    const targetId = obj.common?.alias?.id ?? obj.common?.alias?.read;
+    if (!targetId) continue;
+    if (!map.has(targetId)) map.set(targetId, []);
+    map.get(targetId)!.push(id);
+  }
+  return map;
+}
+
 export function hasHistory(obj: IoBrokerObject): boolean {
   return obj.common?.custom?.['sql.0']?.enabled === true;
 }
@@ -214,6 +230,40 @@ export async function getObject(id: string): Promise<IoBrokerObject> {
   const all = await getAllObjects();
   if (all[id]) return all[id];
   return fetchApi<IoBrokerObject>(`/object/${encodeURIComponent(id)}`);
+}
+
+export async function getRoomEnums(): Promise<Array<{ id: string; name: string }>> {
+  const res = await fetchApi<Record<string, IoBrokerObject>>('/objects?type=enum');
+  const rooms: Array<{ id: string; name: string }> = [];
+  for (const [id, obj] of Object.entries(res)) {
+    if (!id.startsWith('enum.rooms.')) continue;
+    const raw = obj.common?.name;
+    let name = '';
+    if (typeof raw === 'string') name = raw;
+    else if (raw && typeof raw === 'object') {
+      const langs = raw as Record<string, string>;
+      name = langs.de || langs.en || Object.values(langs)[0] || id;
+    }
+    rooms.push({ id, name });
+  }
+  return rooms.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function updateRoomMembership(objectId: string, oldRoomEnumId: string | null, newRoomEnumId: string | null): Promise<void> {
+  if (oldRoomEnumId === newRoomEnumId) return;
+  const res = await fetchApi<Record<string, IoBrokerObject>>('/objects?type=enum');
+
+  if (oldRoomEnumId && res[oldRoomEnumId]) {
+    const obj = res[oldRoomEnumId];
+    const members = (obj.common?.members ?? []).filter((m) => m !== objectId);
+    await putFullObject(oldRoomEnumId, { ...obj, common: { ...obj.common, members } });
+  }
+  if (newRoomEnumId && res[newRoomEnumId]) {
+    const obj = res[newRoomEnumId];
+    const members = [...new Set([...(obj.common?.members ?? []), objectId])];
+    await putFullObject(newRoomEnumId, { ...obj, common: { ...obj.common, members } });
+  }
+  objectsCache = null;
 }
 
 export async function setState(id: string, val: unknown): Promise<void> {

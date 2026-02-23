@@ -7,7 +7,7 @@ import StateTree from './components/StateTree';
 import StateList from './components/StateList';
 import StateDetail from './components/StateDetail';
 import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap } from './hooks/useStates';
-import { hasHistory, hasSmartName } from './api/iobroker';
+import { hasHistory, hasSmartName, buildAliasReverseMap } from './api/iobroker';
 import type { SortKey } from './components/StateList';
 import { Database, Mic2, ChevronsUpDown, ChevronsDownUp } from 'lucide-react';
 
@@ -56,6 +56,9 @@ function AppContent() {
     return set;
   }, [stateObjects]);
 
+  // Reverse alias map: non-alias data point ID → [alias.0.* IDs that point to it]
+  const aliasMap = useMemo(() => buildAliasReverseMap(allObjects ?? {}), [allObjects]);
+
   const objectIds = useMemo(() => {
     let ids = stateObjects ? Object.keys(stateObjects).sort() : [];
     if (historyOnly) ids = ids.filter((id) => historyIds.has(id));
@@ -69,8 +72,9 @@ function AppContent() {
     if (colFilters.write === '1')   ids = ids.filter((id) => stateObjects![id]?.common?.write === false);
     if (colFilters.history === '1') ids = ids.filter((id) => historyIds.has(id));
     if (colFilters.smart === '1')   ids = ids.filter((id) => smartIds.has(id));
+    if (colFilters.alias === '1')   ids = ids.filter((id) => aliasMap.has(id) || !!(stateObjects![id]?.common?.alias?.id));
     return ids;
-  }, [stateObjects, historyOnly, historyIds, smartOnly, smartIds, colFilters, roomMap]);
+  }, [stateObjects, historyOnly, historyIds, smartOnly, smartIds, colFilters, roomMap, aliasMap]);
 
   const totalCount = objectIds.length;
   const pageStart = page * pageSize;
@@ -101,6 +105,17 @@ function AppContent() {
   function handleColFilterChange(filters: Partial<Record<SortKey, string>>) {
     setColFilters(filters);
     setPage(0);
+  }
+
+  function handleNavigateTo(ids: string[]) {
+    // Navigate to show specific alias ID(s) or source data point
+    const pattern = ids.length === 1 ? ids[0] : 'alias.0.*';
+    setPattern(pattern);
+    setPage(0);
+    setSelectedId(null);
+    setHistoryOnly(false);
+    setSmartOnly(false);
+    setColFilters({});
   }
 
   return (
@@ -219,6 +234,8 @@ function AppContent() {
             colFilters={colFilters}
             onColFilterChange={handleColFilterChange}
             pattern={pattern}
+            aliasMap={aliasMap}
+            onNavigateTo={handleNavigateTo}
           />
         </div>
 

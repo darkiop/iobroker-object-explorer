@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, RotateCcw, Plus, Lock, Trash2, Search } from 'lucide-react';
-import { useExtendObject, useAllRoles, useDeleteObject, useSetState } from '../hooks/useStates';
+import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, RotateCcw, Plus, Lock, Trash2, Search, Link2 } from 'lucide-react';
+import { useExtendObject, useAllRoles, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
 import NewDatapointModal from './NewDatapointModal';
@@ -22,6 +22,8 @@ interface StateListProps {
   colFilters: Partial<Record<SortKey, string>>;
   onColFilterChange: (filters: Partial<Record<SortKey, string>>) => void;
   pattern?: string;
+  aliasMap?: Map<string, string[]>;
+  onNavigateTo?: (ids: string[]) => void;
 }
 
 function formatTimestamp(ts: number): string {
@@ -386,13 +388,113 @@ function CopyIdButton({ id }: { id: string }) {
   );
 }
 
-export type SortKey = 'checkbox' | 'write' | 'id' | 'name' | 'room' | 'role' | 'value' | 'unit' | 'ack' | 'ts' | 'history' | 'smart';
+function EditableRoomCell({ id, currentRoomEnumId, roomName, forceEdit, onEditEnd }: {
+  id: string;
+  currentRoomEnumId: string | null;
+  roomName: string;
+  forceEdit?: boolean;
+  onEditEnd?: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [cellRect, setCellRect] = useState<DOMRect | null>(null);
+  const cellRef = useRef<HTMLTableCellElement>(null);
+  const { data: roomEnums = [] } = useRoomEnums();
+  const update = useUpdateRoomMembership();
+
+  useEffect(() => {
+    if (forceEdit && !editing) {
+      if (cellRef.current) setCellRect(cellRef.current.getBoundingClientRect());
+      setEditing(true);
+    }
+  }, [forceEdit]);
+
+  function openEdit() {
+    if (cellRef.current) setCellRect(cellRef.current.getBoundingClientRect());
+    setEditing(true);
+  }
+
+  function close() {
+    setEditing(false);
+    onEditEnd?.();
+  }
+
+  function select(newRoomEnumId: string | null) {
+    update.mutate({ objectId: id, oldRoomEnumId: currentRoomEnumId, newRoomEnumId });
+    close();
+  }
+
+  return (
+    <td
+      ref={cellRef}
+      data-col="room"
+      className="px-3 py-2 text-gray-500 dark:text-gray-400 text-xs overflow-hidden group/room"
+      onClick={(e) => { e.stopPropagation(); openEdit(); }}
+    >
+      <div className="flex items-center gap-1.5">
+        {roomName ? (
+          <>
+            <span className="truncate">{roomName}</span>
+            <Pencil
+              size={12}
+              className="opacity-0 group-hover/room:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
+            />
+          </>
+        ) : (
+          <span className="text-gray-300 dark:text-gray-600 italic">Raum wählen…</span>
+        )}
+      </div>
+      {editing && cellRect && createPortal(
+        <>
+          <div className="fixed inset-0 z-[9998]" onMouseDown={close} />
+          <div
+            style={{ position: 'fixed', top: cellRect.bottom + 2, left: cellRect.left, zIndex: 9999, minWidth: 160 }}
+            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg overflow-hidden"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <ul className="max-h-56 overflow-y-auto py-1">
+              <li
+                onMouseDown={(e) => { e.preventDefault(); select(null); }}
+                className={`px-3 py-1.5 text-xs cursor-pointer flex items-center gap-1.5 ${
+                  !currentRoomEnumId
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 italic'
+                }`}
+              >
+                Kein Raum
+              </li>
+              {roomEnums.map((room) => (
+                <li
+                  key={room.id}
+                  onMouseDown={(e) => { e.preventDefault(); select(room.id); }}
+                  className={`px-3 py-1.5 text-xs cursor-pointer ${
+                    currentRoomEnumId === room.id
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  {room.name}
+                </li>
+              ))}
+              {roomEnums.length === 0 && (
+                <li className="px-3 py-1.5 text-xs text-gray-400 dark:text-gray-500 italic">Lädt…</li>
+              )}
+            </ul>
+          </div>
+        </>,
+        document.body
+      )}
+    </td>
+  );
+}
+
+export type SortKey = 'checkbox' | 'write' | 'alias' | 'id' | 'name' | 'room' | 'role' | 'value' | 'unit' | 'ack' | 'ts' | 'history' | 'smart';
 
 const ALL_COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'checkbox', label: 'Auswahl' },
   { key: 'write',   label: 'Schreibschutz' },
   { key: 'history', label: 'History' },
   { key: 'smart',   label: 'SmartName' },
+  { key: 'alias',   label: 'Alias' },
   { key: 'id',      label: 'ID' },
   { key: 'name',    label: 'Name' },
   { key: 'room',    label: 'Raum' },
@@ -403,7 +505,7 @@ const ALL_COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'ts',      label: 'Letztes Update' },
 ];
 
-const DEFAULT_COLS: SortKey[] = ['checkbox', 'write', 'history', 'smart', 'id', 'name', 'room', 'role', 'value', 'unit', 'ack', 'ts'];
+const DEFAULT_COLS: SortKey[] = ['checkbox', 'write', 'history', 'smart', 'alias', 'id', 'name', 'room', 'role', 'value', 'unit', 'ack', 'ts'];
 const LS_KEY = 'iobroker-visible-cols';
 
 function loadVisibleCols(): SortKey[] {
@@ -422,7 +524,7 @@ const DEL_COL_WIDTH = 32;
 const CHK_COL_WIDTH = 28;
 const DEFAULT_WIDTHS: Record<SortKey, number> = {
   checkbox: CHK_COL_WIDTH,
-  write: 22, history: 22, smart: 22,
+  write: 22, history: 22, smart: 22, alias: 22,
   id: 220, name: 160, room: 110, role: 130, value: 100,
   unit: 70, ack: 35, ts: 160,
 };
@@ -573,7 +675,7 @@ function patternToInitialId(pattern: string): string {
   return pattern;
 }
 
-export default function StateList({ ids, totalCount, states, objects, roomMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*' }: StateListProps) {
+export default function StateList({ ids, totalCount, states, objects, roomMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, onNavigateTo }: StateListProps) {
   const [sortKey, setSortKey] = useState<SortKey>('id');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [visibleCols, setVisibleCols] = useState<SortKey[]>(loadVisibleCols);
@@ -588,6 +690,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
   const deleteObject = useDeleteObject();
   const { data: roles = [] } = useAllRoles();
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; id: string } | null>(null);
+  const [roomEditId, setRoomEditId] = useState<string | null>(null);
 
   function handleColChange(cols: SortKey[]) {
     setVisibleCols(cols);
@@ -638,7 +741,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
   function fitToContainer() {
     const containerWidth = containerRef.current?.clientWidth;
     if (!containerWidth) return;
-    const ICON_COLS: SortKey[] = ['checkbox', 'write', 'history', 'smart'];
+    const ICON_COLS: SortKey[] = ['checkbox', 'write', 'history', 'smart', 'alias'];
     const scalable = visibleCols.filter((k) => !ICON_COLS.includes(k));
     const iconWidth = ICON_COLS.filter((k) => show(k)).reduce((s, k) => s + colWidths[k], 0);
     const available = containerWidth - iconWidth - DEL_COL_WIDTH;
@@ -879,6 +982,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
           items.push({ separator: true } as const);
         }
         items.push({ icon: <Search size={13} />, label: 'Als Filter setzen', onClick: () => onColFilterChange({ ...colFilters, id: ctxId }) });
+        items.push({ icon: <Pencil size={13} />, label: 'Raum bearbeiten', onClick: () => setRoomEditId(ctxId) });
         items.push({ separator: true } as const);
         items.push({ icon: <Trash2 size={13} />, label: 'Datenpunkt löschen', onClick: () => setDeletingId(ctxId), danger: true });
         return <ContextMenu x={x} y={y} items={items} onClose={() => setCtxMenu(null)} />;
@@ -892,6 +996,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
               {show('write')   && <th style={{ width: colWidths['write'],   minWidth: colWidths['write']   }} />}
               {show('history') && <th style={{ width: colWidths['history'], minWidth: colWidths['history'] }} />}
               {show('smart')   && <th style={{ width: colWidths['smart'],   minWidth: colWidths['smart']   }} />}
+              {show('alias')   && <th style={{ width: w('alias'),           minWidth: w('alias')           }} />}
               {show('id')      && <SortHeader label="ID" sortKey="id" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('id')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('name')    && <SortHeader label="Name" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('name')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('room')    && <SortHeader label="Raum" sortKey="room" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('room')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
@@ -913,9 +1018,9 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                   />
                 </th>
               )}
-              {(['write','history','smart','id','name','room','role','value','unit','ack','ts'] as SortKey[]).filter(show).map((key) => {
+              {(['write','history','smart','alias','id','name','room','role','value','unit','ack','ts'] as SortKey[]).filter(show).map((key) => {
                 const filterable = ['id','name','room','role','value','unit'].includes(key);
-                const isIconToggle = ['write','history','smart'].includes(key);
+                const isIconToggle = ['write','history','smart','alias'].includes(key);
                 const isActive = colFilters[key] === '1';
 
                 if (isIconToggle) {
@@ -923,17 +1028,22 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                     ? <Lock size={11} />
                     : key === 'history'
                     ? <History size={11} />
+                    : key === 'alias'
+                    ? <Link2 size={11} />
                     : <Mic2 size={11} />;
                   const activeClass = key === 'write'
                     ? 'text-gray-500 dark:text-gray-300 bg-gray-300/60 dark:bg-gray-500/40'
                     : key === 'history'
                     ? 'text-blue-500 bg-blue-500/20'
+                    : key === 'alias'
+                    ? 'text-amber-500 bg-amber-500/20'
                     : 'text-violet-500 bg-violet-500/20';
+                  const title = key === 'write' ? 'Nur Schreibgeschützte' : key === 'history' ? 'Nur mit History' : key === 'alias' ? 'Nur mit Alias' : 'Nur mit SmartName';
                   return (
                     <th key={key} style={{ width: w(key) }} className="py-1 text-center align-middle" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => onColFilterChange({ ...colFilters, [key]: isActive ? '' : '1' })}
-                        title={key === 'write' ? 'Nur Schreibgeschützte' : key === 'history' ? 'Nur mit History' : 'Nur mit SmartName'}
+                        title={title}
                         className={`p-0.5 rounded transition-colors ${isActive ? activeClass : 'text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400'}`}
                       >
                         {icon}
@@ -1056,6 +1166,35 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                       </div>
                     </td>
                   )}
+                  {show('alias') && (() => {
+                    const aliasIds = aliasMap?.get(id);
+                    const ownTarget = obj?.common?.alias?.id ?? obj?.common?.alias?.read;
+                    const hasAlias = (aliasIds && aliasIds.length > 0) || !!ownTarget;
+                    const tooltip = aliasIds?.length
+                      ? `Alias: ${aliasIds.join(', ')}`
+                      : ownTarget
+                      ? `Quelle: ${ownTarget}`
+                      : undefined;
+                    return (
+                      <td style={{ width: w('alias'), minWidth: w('alias') }} className="py-2 align-middle">
+                        <div className="flex items-center justify-center">
+                          {hasAlias && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const targets = aliasIds?.length ? aliasIds : ownTarget ? [ownTarget] : [];
+                                onNavigateTo?.(targets);
+                              }}
+                              title={tooltip}
+                              className="text-amber-500 hover:text-amber-600 dark:text-amber-400 dark:hover:text-amber-300 transition-colors"
+                            >
+                              <Link2 size={13} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    );
+                  })()}
                   {show('id') && (
                     <td data-col="id" className="px-3 py-2 font-mono text-xs text-gray-500 dark:text-gray-400 overflow-hidden group/id">
                       <div className="flex items-center gap-1.5">
@@ -1066,9 +1205,13 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                   )}
                   {show('name') && <EditableNameCell id={id} name={name} />}
                   {show('room') && (
-                    <td data-col="room" className="px-3 py-2 text-gray-500 dark:text-gray-400 text-xs overflow-hidden">
-                      <span className="truncate block">{roomMap[id] || ''}</span>
-                    </td>
+                    <EditableRoomCell
+                      id={id}
+                      currentRoomEnumId={Object.keys(obj?.enums ?? {}).find(k => k.startsWith('enum.rooms.')) ?? null}
+                      roomName={roomMap[id] || ''}
+                      forceEdit={roomEditId === id}
+                      onEditEnd={() => setRoomEditId(null)}
+                    />
                   )}
                   {show('role') && <EditableRoleCell id={id} role={obj?.common?.role || ''} suggestions={roles} />}
                   {show('value') && <EditableValueCell id={id} state={state} obj={obj} />}
