@@ -16,7 +16,7 @@ npm run lint       # ESLint
 npx tsc --noEmit   # nur Type-Check
 ```
 
-**Voraussetzungen:** ioBroker mit aktivem [REST API Adapter](https://github.com/ioBroker/ioBroker.rest-api) (Port `8093`), für Historydaten zusätzlich der `sql.0`-Adapter.
+**Voraussetzungen:** ioBroker mit aktivem [REST API Adapter](https://github.com/ioBroker/ioBroker.rest-api) (Port `8093`). Für Historydaten wird aktuell **ausschließlich der `sql.0`-Adapter** unterstützt (History- und InfluxDB-Adapter werden nicht erkannt).
 
 Der Vite-Dev-Server proxied `/api` → `http://10.4.0.20:8093` (konfigurierbar in `vite.config.ts`).
 
@@ -139,6 +139,8 @@ Alle Datenspalten (außer + und Löschen) können über das **Spalten-Picker-Dro
 ---
 
 ### History-Diagramm
+
+> **Hinweis:** Aktuell wird für History-Abfragen und -Löschoperationen ausschließlich der **`sql.0`-Adapter** unterstützt. Datenpunkte ohne aktive `sql.0`-Aufzeichnung werden kein History-Icon anzeigen.
 
 **Zeitraum**
 - Voreinstellungen: 1 h, 6 h, 24 h, 7 d, 30 d, 1 Jahr
