@@ -1,10 +1,11 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, RotateCcw, Plus, Lock, Trash2, Search, Link2 } from 'lucide-react';
+import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, RotateCcw, Plus, Lock, Trash2, Search, Link2, FileEdit } from 'lucide-react';
 import { useExtendObject, useAllRoles, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useFunctionEnums, useUpdateFunctionMembership } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
 import NewDatapointModal from './NewDatapointModal';
+import ObjectEditModal from './ObjectEditModal';
 import CreateAliasModal from './CreateAliasModal';
 import CopyDatapointModal from './CopyDatapointModal';
 import HistoryModal from './HistoryModal';
@@ -787,6 +788,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, f
   const [fnEditId, setFnEditId] = useState<string | null>(null);
   const [aliasSourceId, setAliasSourceId] = useState<string | null>(null);
   const [copySourceId, setCopySourceId] = useState<string | null>(null);
+  const [editObjId, setEditObjId] = useState<string | null>(null);
 
   function handleColChange(cols: SortKey[]) {
     setVisibleCols(cols);
@@ -1081,6 +1083,13 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, f
           onClose={() => setCopySourceId(null)}
         />
       )}
+      {editObjId && objects[editObjId] && (
+        <ObjectEditModal
+          id={editObjId}
+          obj={objects[editObjId]}
+          onClose={() => setEditObjId(null)}
+        />
+      )}
 
       {ctxMenu && (() => {
         const { x, y, id: ctxId } = ctxMenu;
@@ -1099,6 +1108,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, f
         items.push({ icon: <Search size={13} />, label: 'Als Filter setzen', onClick: () => onColFilterChange({ ...colFilters, id: ctxId }) });
         items.push({ icon: <Pencil size={13} />, label: 'Raum bearbeiten', onClick: () => setRoomEditId(ctxId) });
         items.push({ icon: <Pencil size={13} />, label: 'Funktion bearbeiten', onClick: () => setFnEditId(ctxId) });
+        items.push({ icon: <FileEdit size={13} />, label: 'Objekt bearbeiten', onClick: () => setEditObjId(ctxId) });
         items.push({ separator: true } as const);
         items.push({ icon: <Copy size={13} />, label: 'Datenpunkt kopieren', onClick: () => setCopySourceId(ctxId) });
         if (!ctxId.startsWith('alias.0.')) {
