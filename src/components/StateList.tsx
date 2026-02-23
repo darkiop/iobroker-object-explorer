@@ -157,121 +157,111 @@ function EditableNameCell({ id, name }: { id: string; name: string }) {
 
 function EditableRoleCell({ id, role, suggestions }: { id: string; role: string; suggestions: string[] }) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(role);
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [filter, setFilter] = useState('');
   const [activeIndex, setActiveIndex] = useState(-1);
-  const [dropdownRect, setDropdownRect] = useState<DOMRect | null>(null);
-  const extend = useExtendObject();
+  const [cellRect, setCellRect] = useState<DOMRect | null>(null);
+  const cellRef = useRef<HTMLTableCellElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const extend = useExtendObject();
 
-  const filtered = draft
-    ? suggestions.filter((s) => s.toLowerCase().includes(draft.toLowerCase()))
+  const filtered = filter
+    ? suggestions.filter((s) => s.toLowerCase().includes(filter.toLowerCase()))
     : suggestions;
 
   useEffect(() => {
-    if (!showSuggestions) return;
-    function onOutside(e: MouseEvent) {
-      if (inputRef.current && !inputRef.current.contains(e.target as Node))
-        setShowSuggestions(false);
-    }
-    document.addEventListener('mousedown', onOutside);
-    return () => document.removeEventListener('mousedown', onOutside);
-  }, [showSuggestions]);
-
-  useEffect(() => {
-    if (editing && inputRef.current) {
-      setDropdownRect(inputRef.current.getBoundingClientRect());
-      setShowSuggestions(true);
-    }
+    if (editing) setTimeout(() => inputRef.current?.focus(), 0);
   }, [editing]);
 
-  function openSuggestions() {
-    if (inputRef.current) setDropdownRect(inputRef.current.getBoundingClientRect());
-    setShowSuggestions(true);
+  function openEdit() {
+    if (cellRef.current) setCellRect(cellRef.current.getBoundingClientRect());
+    setFilter('');
+    setActiveIndex(-1);
+    setEditing(true);
+  }
+
+  function close() {
+    setEditing(false);
+    setFilter('');
   }
 
   function commit(val: string) {
     extend.mutate({ id, common: { role: val } });
-    setEditing(false);
-    setShowSuggestions(false);
-  }
-
-  if (!editing) {
-    return (
-      <td data-col="role" className="px-3 py-2 text-gray-500 dark:text-gray-400 text-xs font-mono overflow-hidden group/role">
-        <div className="flex items-center gap-1.5">
-          <span className="truncate">{role}</span>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setDraft(role);
-              setActiveIndex(-1);
-              setEditing(true);
-            }}
-            className="opacity-0 group-hover/role:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
-            title="Rolle bearbeiten"
-          >
-            <Pencil size={12} />
-          </button>
-        </div>
-      </td>
-    );
+    close();
   }
 
   return (
-    <td data-col="role" className="px-3 py-1 overflow-hidden" onClick={(e) => e.stopPropagation()}>
-      <div className="flex items-center gap-1">
-        <div className="relative flex-1 min-w-0">
-          <input
-            ref={inputRef}
-            type="text"
-            value={draft}
-            onChange={(e) => { setDraft(e.target.value); openSuggestions(); setActiveIndex(-1); }}
-            onFocus={openSuggestions}
-            onKeyDown={(e) => {
-              if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIndex((i) => Math.min(i + 1, filtered.length - 1)); }
-              else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIndex((i) => Math.max(i - 1, -1)); }
-              else if (e.key === 'Enter') { activeIndex >= 0 && filtered[activeIndex] ? commit(filtered[activeIndex]) : commit(draft); }
-              else if (e.key === 'Escape') { showSuggestions ? setShowSuggestions(false) : setEditing(false); }
-            }}
-            autoFocus
-            disabled={extend.isPending}
-            className="w-full bg-white text-gray-800 text-xs font-mono rounded px-2 py-0.5 border border-gray-300 focus:border-blue-500 focus:outline-none disabled:opacity-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600"
-          />
-          {showSuggestions && filtered.length > 0 && dropdownRect && createPortal(
-            <ul
-              style={{ position: 'fixed', top: dropdownRect.bottom + 2, left: dropdownRect.left, width: dropdownRect.width, zIndex: 9999 }}
-              className="max-h-48 overflow-y-auto bg-white border border-gray-200 rounded shadow-lg dark:bg-gray-800 dark:border-gray-600"
-            >
+    <td
+      ref={cellRef}
+      data-col="role"
+      className="px-3 py-2 text-gray-500 dark:text-gray-400 text-xs font-mono overflow-hidden group/role"
+      onClick={(e) => { e.stopPropagation(); openEdit(); }}
+    >
+      <div className="flex items-center gap-1.5">
+        {role ? (
+          <>
+            <span className="truncate">{role}</span>
+            <Pencil size={12} className="opacity-0 group-hover/role:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity" />
+          </>
+        ) : (
+          <span className="text-gray-300 dark:text-gray-600 italic font-sans">Rolle wählen…</span>
+        )}
+      </div>
+      {editing && cellRect && createPortal(
+        <>
+          <div className="fixed inset-0 z-[9998]" onMouseDown={close} />
+          <div
+            style={{ position: 'fixed', top: cellRect.bottom + 2, left: cellRect.left, zIndex: 9999, minWidth: Math.max(180, cellRect.width) }}
+            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg overflow-hidden"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="p-1.5 border-b border-gray-200 dark:border-gray-700">
+              <input
+                ref={inputRef}
+                type="text"
+                value={filter}
+                onChange={(e) => { setFilter(e.target.value); setActiveIndex(-1); }}
+                onKeyDown={(e) => {
+                  if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIndex((i) => Math.min(i + 1, filtered.length - 1)); }
+                  else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIndex((i) => Math.max(i - 1, -1)); }
+                  else if (e.key === 'Enter') {
+                    if (activeIndex >= 0 && filtered[activeIndex]) commit(filtered[activeIndex]);
+                    else if (filter.trim()) commit(filter.trim());
+                    else close();
+                  }
+                  else if (e.key === 'Escape') close();
+                }}
+                placeholder="Filtern…"
+                className="w-full bg-gray-50 dark:bg-gray-700 text-xs rounded px-2 py-1 border border-gray-300 dark:border-gray-600 focus:outline-none focus:border-blue-400 dark:focus:border-blue-500 text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500"
+              />
+            </div>
+            <ul className="max-h-48 overflow-y-auto py-1">
+              {filtered.length === 0 && filter.trim() && (
+                <li
+                  onMouseDown={(e) => { e.preventDefault(); commit(filter.trim()); }}
+                  className="px-3 py-1.5 text-xs cursor-pointer text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 italic"
+                >
+                  „{filter.trim()}" verwenden
+                </li>
+              )}
               {filtered.map((s, i) => (
                 <li
                   key={s}
                   onMouseDown={(e) => { e.preventDefault(); commit(s); }}
                   onMouseEnter={() => setActiveIndex(i)}
-                  className={`px-2 py-1 text-xs font-mono cursor-pointer ${i === activeIndex ? 'bg-blue-600 text-white' : 'text-gray-800 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700'}`}
+                  className={`px-3 py-1.5 text-xs font-mono cursor-pointer ${
+                    i === activeIndex || (activeIndex < 0 && s === role)
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
                 >
                   {s}
                 </li>
               ))}
-            </ul>,
-            document.body
-          )}
-        </div>
-        <button
-          onClick={() => commit(draft)}
-          disabled={extend.isPending}
-          className="text-green-500 hover:text-green-600 dark:text-green-400 dark:hover:text-green-300 shrink-0 disabled:opacity-50"
-        >
-          <Check size={14} />
-        </button>
-        <button
-          onClick={() => setEditing(false)}
-          disabled={extend.isPending}
-          className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 disabled:opacity-50"
-        >
-          <X size={14} />
-        </button>
-      </div>
+            </ul>
+          </div>
+        </>,
+        document.body
+      )}
     </td>
   );
 }
