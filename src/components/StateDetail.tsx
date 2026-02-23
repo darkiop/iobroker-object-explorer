@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { Pencil, Check, X, Wrench, Trash2 } from 'lucide-react';
-import { useStateDetail, useObjectDetail, useExtendObject, useAllRoles, useAllUnits, useSetState, useDeleteObject } from '../hooks/useStates';
+import { Pencil, Check, X, Wrench, Trash2, Link2 } from 'lucide-react';
+import { useStateDetail, useObjectDetail, useExtendObject, useAllRoles, useAllUnits, useSetState, useDeleteObject, usePutObject } from '../hooks/useStates';
 import { hasHistory } from '../api/iobroker';
 import HistoryChart from './HistoryChart';
 import ConfirmDialog from './ConfirmDialog';
@@ -287,7 +287,7 @@ function ExpertControl({ val, onSet, isPending, unit, type }: { val: unknown; on
   );
 }
 
-type Tab = 'details' | 'object';
+type Tab = 'details' | 'object' | 'alias';
 
 export default function StateDetail({ stateId, onClose }: StateDetailProps) {
   const { data: state, isLoading: stateLoading } = useStateDetail(stateId);
@@ -300,13 +300,45 @@ export default function StateDetail({ stateId, onClose }: StateDetailProps) {
   const [activeTab, setActiveTab] = useState<Tab>('details');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const deleteObject = useDeleteObject();
+  const putObject = usePutObject();
 
-  useEffect(() => { setExpertMode(false); setActiveTab('details'); }, [stateId]);
+  // Alias tab form state
+  const [aliasId, setAliasId] = useState('');
+  const [aliasRead, setAliasRead] = useState('');
+  const [aliasWrite, setAliasWrite] = useState('');
+
+  useEffect(() => {
+    setExpertMode(false);
+    setActiveTab('details');
+  }, [stateId]);
+
+  // Sync alias form when object loads / changes
+  useEffect(() => {
+    setAliasId(object?.common?.alias?.id ?? '');
+    setAliasRead(object?.common?.alias?.read ?? '');
+    setAliasWrite(object?.common?.alias?.write ?? '');
+  }, [object]);
 
   const isLoading = stateLoading || objectLoading;
 
   function saveField(field: string, value: string) {
     extend.mutate({ id: stateId, common: { [field]: value } });
+  }
+
+  function saveAlias() {
+    if (!object) return;
+    const trimmedId = aliasId.trim();
+    const newCommon = { ...object.common };
+    if (trimmedId) {
+      newCommon.alias = {
+        id: trimmedId,
+        ...(aliasRead.trim() ? { read: aliasRead.trim() } : {}),
+        ...(aliasWrite.trim() ? { write: aliasWrite.trim() } : {}),
+      };
+    } else {
+      delete newCommon.alias;
+    }
+    putObject.mutate({ id: stateId, obj: { ...object, common: newCommon } });
   }
 
   function handleSet(val: unknown) {
@@ -364,7 +396,7 @@ export default function StateDetail({ stateId, onClose }: StateDetailProps) {
 
       {/* Tabs */}
       <div className="flex gap-0 mb-3 border-b border-gray-200 dark:border-gray-700">
-        {(['details', 'object'] as Tab[]).map((tab) => (
+        {(['details', 'object', 'alias'] as Tab[]).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -374,7 +406,7 @@ export default function StateDetail({ stateId, onClose }: StateDetailProps) {
                 : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
             }`}
           >
-            {tab === 'details' ? 'Details' : 'Objekt'}
+            {tab === 'details' ? 'Details' : tab === 'object' ? 'Objekt' : 'Alias'}
           </button>
         ))}
       </div>
@@ -494,10 +526,85 @@ export default function StateDetail({ stateId, onClose }: StateDetailProps) {
             </div>
           )}
         </div>
-      ) : (
+      ) : activeTab === 'object' ? (
         <pre className="text-xs font-mono text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-900/50 rounded p-3 overflow-auto max-h-[60vh] whitespace-pre-wrap break-all">
           {object ? JSON.stringify(object, null, 2) : '—'}
         </pre>
+      ) : (
+        /* Alias tab */
+        <div className="space-y-4">
+          {/* Alias target */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+              <Link2 size={11} className="text-amber-500" />
+              Ziel-Datenpunkt (alias.id)
+            </label>
+            <input
+              type="text"
+              value={aliasId}
+              onChange={(e) => setAliasId(e.target.value)}
+              className="px-2.5 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 font-mono placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+              placeholder="z.B. hm-rpc.0.ABC123.1.STATE"
+              spellCheck={false}
+            />
+            <p className="text-[11px] text-gray-400 dark:text-gray-500">
+              ID des Quell-Datenpunkts. Leer lassen, um den Alias zu entfernen.
+            </p>
+          </div>
+
+          {/* Read formula */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+              Lese-Formel (alias.read){' '}
+              <span className="font-normal text-gray-400 dark:text-gray-500">– optional</span>
+            </label>
+            <input
+              type="text"
+              value={aliasRead}
+              onChange={(e) => setAliasRead(e.target.value)}
+              className="px-2.5 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 font-mono placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+              placeholder="val / 10"
+              spellCheck={false}
+            />
+          </div>
+
+          {/* Write formula */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+              Schreib-Formel (alias.write){' '}
+              <span className="font-normal text-gray-400 dark:text-gray-500">– optional</span>
+            </label>
+            <input
+              type="text"
+              value={aliasWrite}
+              onChange={(e) => setAliasWrite(e.target.value)}
+              className="px-2.5 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 font-mono placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+              placeholder="val * 10"
+              spellCheck={false}
+            />
+          </div>
+
+          <button
+            onClick={saveAlias}
+            disabled={putObject.isPending || !object}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors disabled:opacity-50"
+          >
+            <Check size={13} />
+            {putObject.isPending ? 'Speichern…' : 'Speichern'}
+          </button>
+
+          {object?.common?.alias && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2.5 text-xs border border-amber-200 dark:border-amber-800/40">
+              <div className="text-amber-600 dark:text-amber-400 font-medium mb-1 flex items-center gap-1.5">
+                <Link2 size={11} />
+                Aktuell gespeicherter Alias
+              </div>
+              <pre className="font-mono text-gray-600 dark:text-gray-300 whitespace-pre-wrap break-all">
+                {JSON.stringify(object.common.alias, null, 2)}
+              </pre>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
