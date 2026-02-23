@@ -617,7 +617,7 @@ const DEL_COL_WIDTH = 32;
 const CHK_COL_WIDTH = 28;
 const DEFAULT_WIDTHS: Record<SortKey, number> = {
   checkbox: CHK_COL_WIDTH,
-  write: 22, history: 22, smart: 22, alias: 22,
+  write: 22, history: 22, smart: 22, alias: 30,
   id: 220, name: 160, room: 110, function: 110, role: 130, value: 100,
   unit: 70, ack: 35, ts: 160,
 };
@@ -1308,9 +1308,14 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, f
                                 onNavigateTo?.(targets);
                               }}
                               title={tooltip}
-                              className="text-amber-500 hover:text-amber-600 dark:text-amber-400 dark:hover:text-amber-300 transition-colors"
+                              className="relative text-amber-500 hover:text-amber-600 dark:text-amber-400 dark:hover:text-amber-300 transition-colors"
                             >
                               <Link2 size={13} />
+                              {aliasIds && aliasIds.length > 1 && (
+                                <span className="absolute -top-1.5 -right-2 text-[8px] font-bold leading-none bg-amber-500 text-white rounded-full min-w-[13px] h-[13px] flex items-center justify-center px-0.5">
+                                  {aliasIds.length}
+                                </span>
+                              )}
                             </button>
                           )}
                         </div>
