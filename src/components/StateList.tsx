@@ -1,7 +1,9 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, RotateCcw, Plus, Lock, Trash2 } from 'lucide-react';
+import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, RotateCcw, Plus, Lock, Trash2, Search } from 'lucide-react';
 import { useExtendObject, useAllRoles, useDeleteObject, useSetState } from '../hooks/useStates';
+import ContextMenu from './ContextMenu';
+import type { ContextMenuEntry } from './ContextMenu';
 import NewDatapointModal from './NewDatapointModal';
 import HistoryModal from './HistoryModal';
 import ConfirmDialog from './ConfirmDialog';
@@ -40,6 +42,21 @@ function getObjectName(obj: IoBrokerObject | undefined): string {
   if (!obj?.common?.name) return '';
   if (typeof obj.common.name === 'string') return obj.common.name;
   return obj.common.name.de || obj.common.name.en || Object.values(obj.common.name)[0] || '';
+}
+
+function copyText(text: string) {
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).catch(() => copyTextFallback(text));
+  } else {
+    copyTextFallback(text);
+  }
+}
+function copyTextFallback(text: string) {
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
 }
 
 function EditableNameCell({ id, name }: { id: string; name: string }) {
@@ -369,9 +386,10 @@ function CopyIdButton({ id }: { id: string }) {
   );
 }
 
-export type SortKey = 'write' | 'id' | 'name' | 'room' | 'role' | 'value' | 'unit' | 'ack' | 'ts' | 'history' | 'smart';
+export type SortKey = 'checkbox' | 'write' | 'id' | 'name' | 'room' | 'role' | 'value' | 'unit' | 'ack' | 'ts' | 'history' | 'smart';
 
 const ALL_COLUMNS: { key: SortKey; label: string }[] = [
+  { key: 'checkbox', label: 'Auswahl' },
   { key: 'write',   label: 'Schreibschutz' },
   { key: 'history', label: 'History' },
   { key: 'smart',   label: 'SmartName' },
@@ -385,7 +403,7 @@ const ALL_COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'ts',      label: 'Letztes Update' },
 ];
 
-const DEFAULT_COLS: SortKey[] = ['write', 'history', 'smart', 'id', 'name', 'room', 'role', 'value', 'unit', 'ack', 'ts'];
+const DEFAULT_COLS: SortKey[] = ['checkbox', 'write', 'history', 'smart', 'id', 'name', 'room', 'role', 'value', 'unit', 'ack', 'ts'];
 const LS_KEY = 'iobroker-visible-cols';
 
 function loadVisibleCols(): SortKey[] {
@@ -400,13 +418,14 @@ function loadVisibleCols(): SortKey[] {
   return DEFAULT_COLS;
 }
 
+const DEL_COL_WIDTH = 32;
+const CHK_COL_WIDTH = 28;
 const DEFAULT_WIDTHS: Record<SortKey, number> = {
+  checkbox: CHK_COL_WIDTH,
   write: 22, history: 22, smart: 22,
   id: 220, name: 160, room: 110, role: 130, value: 100,
   unit: 70, ack: 35, ts: 160,
 };
-const DEL_COL_WIDTH = 32;
-const CHK_COL_WIDTH = 28;
 const LS_WIDTHS_KEY = 'iobroker-col-widths';
 
 function loadColWidths(): Record<SortKey, number> {
@@ -568,6 +587,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
   const [multiDeleteOpen, setMultiDeleteOpen] = useState(false);
   const deleteObject = useDeleteObject();
   const { data: roles = [] } = useAllRoles();
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; id: string } | null>(null);
 
   function handleColChange(cols: SortKey[]) {
     setVisibleCols(cols);
@@ -618,10 +638,10 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
   function fitToContainer() {
     const containerWidth = containerRef.current?.clientWidth;
     if (!containerWidth) return;
-    const ICON_COLS: SortKey[] = ['write', 'history', 'smart'];
+    const ICON_COLS: SortKey[] = ['checkbox', 'write', 'history', 'smart'];
     const scalable = visibleCols.filter((k) => !ICON_COLS.includes(k));
     const iconWidth = ICON_COLS.filter((k) => show(k)).reduce((s, k) => s + colWidths[k], 0);
-    const available = containerWidth - iconWidth - DEL_COL_WIDTH - CHK_COL_WIDTH;
+    const available = containerWidth - iconWidth - DEL_COL_WIDTH;
     const currentTotal = scalable.reduce((sum, k) => sum + colWidths[k], 0);
     const scale = available / currentTotal;
     const next = { ...colWidths };
@@ -725,7 +745,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
 
   const hasColFilters = Object.values(colFilters).some((v) => v.trim() !== '');
 
-  const totalWidth = CHK_COL_WIDTH + DEL_COL_WIDTH + visibleCols.reduce((sum, k) => sum + colWidths[k], 0);
+  const totalWidth = DEL_COL_WIDTH + visibleCols.reduce((sum, k) => sum + colWidths[k], 0);
 
   const allOnPageChecked = filteredIds.length > 0 && filteredIds.every((id) => checkedIds.has(id));
   const someChecked = filteredIds.some((id) => checkedIds.has(id));
@@ -844,11 +864,31 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
         />
       )}
 
+      {ctxMenu && (() => {
+        const { x, y, id: ctxId } = ctxMenu;
+        const ctxState = states[ctxId];
+        const ctxObj = objects[ctxId];
+        const ctxName = getObjectName(ctxObj);
+        const items: ContextMenuEntry[] = [];
+        items.push({ icon: <Copy size={13} />, label: 'ID kopieren', onClick: () => copyText(ctxId) });
+        if (ctxName) items.push({ icon: <Copy size={13} />, label: 'Name kopieren', onClick: () => copyText(ctxName) });
+        if (ctxState) items.push({ icon: <Copy size={13} />, label: 'Wert kopieren', onClick: () => copyText(formatValue(ctxState.val)) });
+        items.push({ separator: true } as const);
+        if (ctxObj && hasHistory(ctxObj)) {
+          items.push({ icon: <History size={13} />, label: 'History anzeigen', onClick: () => setHistoryModalId(ctxId) });
+          items.push({ separator: true } as const);
+        }
+        items.push({ icon: <Search size={13} />, label: 'Als Filter setzen', onClick: () => onColFilterChange({ ...colFilters, id: ctxId }) });
+        items.push({ separator: true } as const);
+        items.push({ icon: <Trash2 size={13} />, label: 'Datenpunkt löschen', onClick: () => setDeletingId(ctxId), danger: true });
+        return <ContextMenu x={x} y={y} items={items} onClose={() => setCtxMenu(null)} />;
+      })()}
+
       <div ref={containerRef} className="overflow-x-auto overflow-y-auto flex-1">
         <table className="text-sm text-left table-fixed" style={{ width: totalWidth }}>
           <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-100 dark:bg-gray-800 sticky top-0 z-10">
             <tr>
-              <th style={{ width: CHK_COL_WIDTH, minWidth: CHK_COL_WIDTH }} />
+              {show('checkbox') && <th style={{ width: w('checkbox'), minWidth: w('checkbox') }} />}
               {show('write')   && <th style={{ width: colWidths['write'],   minWidth: colWidths['write']   }} />}
               {show('history') && <th style={{ width: colWidths['history'], minWidth: colWidths['history'] }} />}
               {show('smart')   && <th style={{ width: colWidths['smart'],   minWidth: colWidths['smart']   }} />}
@@ -863,14 +903,16 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
               <th style={{ width: DEL_COL_WIDTH, minWidth: DEL_COL_WIDTH }} />
             </tr>
             <tr className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-              <th style={{ width: CHK_COL_WIDTH, minWidth: CHK_COL_WIDTH }} className="py-1 text-center align-middle" onClick={(e) => e.stopPropagation()}>
-                <StyledCheckbox
-                  checked={allOnPageChecked}
-                  indeterminate={someChecked && !allOnPageChecked}
-                  onChange={toggleCheckAll}
-                  title="Alle auswählen"
-                />
-              </th>
+              {show('checkbox') && (
+                <th style={{ width: w('checkbox'), minWidth: w('checkbox') }} className="py-1 text-center align-middle" onClick={(e) => e.stopPropagation()}>
+                  <StyledCheckbox
+                    checked={allOnPageChecked}
+                    indeterminate={someChecked && !allOnPageChecked}
+                    onChange={toggleCheckAll}
+                    title="Alle auswählen"
+                  />
+                </th>
+              )}
               {(['write','history','smart','id','name','room','role','value','unit','ack','ts'] as SortKey[]).filter(show).map((key) => {
                 const filterable = ['id','name','room','role','value','unit'].includes(key);
                 const isIconToggle = ['write','history','smart'].includes(key);
@@ -952,26 +994,29 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                 <tr
                   key={id}
                   onClick={() => onSelect(id)}
+                  onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, id }); }}
                   className={`border-b border-gray-200 dark:border-gray-800 cursor-pointer transition-colors ${
                     selectedId === id
                       ? 'bg-blue-600/20 text-blue-700 dark:text-blue-200'
                       : 'hover:bg-gray-100/80 text-gray-700 dark:hover:bg-gray-800/50 dark:text-gray-300'
                   }`}
                 >
-                  <td style={{ width: CHK_COL_WIDTH, minWidth: CHK_COL_WIDTH }} className="py-2 align-middle" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-center">
-                      <StyledCheckbox
-                        checked={checkedIds.has(id)}
-                        onChange={(e) => {
-                          setCheckedIds((prev) => {
-                            const next = new Set(prev);
-                            e.target.checked ? next.add(id) : next.delete(id);
-                            return next;
-                          });
-                        }}
-                      />
-                    </div>
-                  </td>
+                  {show('checkbox') && (
+                    <td style={{ width: w('checkbox'), minWidth: w('checkbox') }} className="py-2 align-middle" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-center">
+                        <StyledCheckbox
+                          checked={checkedIds.has(id)}
+                          onChange={(e) => {
+                            setCheckedIds((prev) => {
+                              const next = new Set(prev);
+                              e.target.checked ? next.add(id) : next.delete(id);
+                              return next;
+                            });
+                          }}
+                        />
+                      </div>
+                    </td>
+                  )}
                   {show('write') && (
                     <td style={{ width: colWidths['write'], minWidth: colWidths['write'] }} className="py-2 align-middle" title={obj?.common?.write === false ? 'Schreibgeschützt' : undefined}>
                       <div className="flex items-center justify-center">

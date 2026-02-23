@@ -2,6 +2,23 @@ import { useState, useMemo, useEffect } from 'react';
 import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil } from 'lucide-react';
 import type { TreeNode, IoBrokerObject } from '../types/iobroker';
 import ObjectEditModal from './ObjectEditModal';
+import ContextMenu from './ContextMenu';
+import type { ContextMenuEntry } from './ContextMenu';
+
+function copyText(text: string) {
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).catch(() => copyTextFallback(text));
+  } else {
+    copyTextFallback(text);
+  }
+}
+function copyTextFallback(text: string) {
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+}
 
 interface StateTreeProps {
   stateIds: string[];
@@ -69,6 +86,7 @@ function TreeNodeComponent({
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const hasChildren = node.children.size > 0;
   const isFolder = hasChildren && !node.isLeaf;
   const isHistoryEnabled = node.isLeaf && historyIds.has(node.fullPath);
@@ -93,11 +111,31 @@ function TreeNodeComponent({
           onClose={() => setEditOpen(false)}
         />
       )}
+      {ctxMenu && (() => {
+        const items: ContextMenuEntry[] = [];
+        if (node.isLeaf) {
+          items.push({ icon: <Check size={13} />, label: 'Auswählen', onClick: () => onSelect(node.fullPath) });
+          items.push({ separator: true } as const);
+          items.push({ icon: <Copy size={13} />, label: 'ID kopieren', onClick: () => copyText(node.fullPath) });
+          items.push({ separator: true } as const);
+          items.push({ icon: <Search size={13} />, label: 'Als Filter setzen', onClick: () => onSearch(node.fullPath) });
+        } else {
+          items.push({ icon: <Search size={13} />, label: `Filter: ${node.fullPath}.*`, onClick: () => onFolderSearch(`${node.fullPath}.*`) });
+          items.push({ separator: true } as const);
+          items.push({ icon: <Copy size={13} />, label: 'ID kopieren', onClick: () => copyText(node.fullPath) });
+          items.push({ icon: <Copy size={13} />, label: 'Muster kopieren', onClick: () => copyText(`${node.fullPath}.*`) });
+          items.push({ separator: true } as const);
+          items.push({ icon: <Pencil size={13} />, label: 'Objekt bearbeiten', onClick: () => setEditOpen(true) });
+        }
+        return <ContextMenu x={ctxMenu.x} y={ctxMenu.y} items={items} onClose={() => setCtxMenu(null)} />;
+      })()}
+
       <div
         className={`group/row flex items-center gap-1.5 px-2 py-1 cursor-pointer hover:bg-gray-200/50 dark:hover:bg-gray-700/50 rounded text-sm ${
           selectedId === node.fullPath ? 'bg-blue-600/30 text-blue-600 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300'
         }`}
         style={{ paddingLeft: `${depth * 14 + 4}px` }}
+        onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY }); }}
         onClick={() => {
           if (node.isLeaf) {
             onSelect(node.fullPath);
