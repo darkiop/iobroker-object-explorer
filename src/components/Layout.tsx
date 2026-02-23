@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 interface LayoutProps {
@@ -9,6 +9,7 @@ interface LayoutProps {
 
 export default function Layout({ sidebar, children }: LayoutProps) {
   const [sidebarWidth, setSidebarWidth] = useState(360);
+  const [collapsed, setCollapsed] = useState(false);
   const dragging = useRef(false);
   const startX = useRef(0);
   const startWidth = useRef(0);
@@ -44,6 +45,13 @@ export default function Layout({ sidebar, children }: LayoutProps) {
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-3 bg-gray-100 border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700 shrink-0">
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setCollapsed((c) => !c)}
+            className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
+            title={collapsed ? 'Sidebar ausklappen' : 'Sidebar einklappen'}
+          >
+            {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+          </button>
           <img src="/favicon.svg" alt="" className="w-6 h-6 shrink-0" />
           <h1 className="text-lg font-semibold text-gray-900 dark:text-white">ioBroker Object Explorer</h1>
         </div>
@@ -63,17 +71,19 @@ export default function Layout({ sidebar, children }: LayoutProps) {
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <aside
-          className="border-r border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900 overflow-y-auto shrink-0"
-          style={{ width: sidebarWidth }}
+          className="border-r border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900 overflow-hidden shrink-0 transition-[width] duration-200"
+          style={{ width: collapsed ? 0 : sidebarWidth }}
         >
           {sidebar}
         </aside>
 
-        {/* Resize Handle */}
-        <div
-          className="w-1 shrink-0 cursor-col-resize hover:bg-blue-500/50 active:bg-blue-500/70 transition-colors"
-          onMouseDown={handleMouseDown}
-        />
+        {/* Resize Handle – nur wenn ausgeklappt */}
+        {!collapsed && (
+          <div
+            className="w-1 shrink-0 cursor-col-resize hover:bg-blue-500/50 active:bg-blue-500/70 transition-colors"
+            onMouseDown={handleMouseDown}
+          />
+        )}
 
         {/* Main Content */}
         <main className="flex-1 overflow-hidden p-4 flex flex-col">{children}</main>
