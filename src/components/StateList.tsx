@@ -958,17 +958,19 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                       : 'hover:bg-gray-100/80 text-gray-700 dark:hover:bg-gray-800/50 dark:text-gray-300'
                   }`}
                 >
-                  <td style={{ width: CHK_COL_WIDTH, minWidth: CHK_COL_WIDTH }} className="py-2 text-center align-middle" onClick={(e) => e.stopPropagation()}>
-                    <StyledCheckbox
-                      checked={checkedIds.has(id)}
-                      onChange={(e) => {
-                        setCheckedIds((prev) => {
-                          const next = new Set(prev);
-                          e.target.checked ? next.add(id) : next.delete(id);
-                          return next;
-                        });
-                      }}
-                    />
+                  <td style={{ width: CHK_COL_WIDTH, minWidth: CHK_COL_WIDTH }} className="py-2 align-middle" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-center">
+                      <StyledCheckbox
+                        checked={checkedIds.has(id)}
+                        onChange={(e) => {
+                          setCheckedIds((prev) => {
+                            const next = new Set(prev);
+                            e.target.checked ? next.add(id) : next.delete(id);
+                            return next;
+                          });
+                        }}
+                      />
+                    </div>
                   </td>
                   {show('write') && (
                     <td style={{ width: colWidths['write'], minWidth: colWidths['write'] }} className="py-2 align-middle" title={obj?.common?.write === false ? 'Schreibgeschützt' : undefined}>
