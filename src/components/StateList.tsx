@@ -5,6 +5,8 @@ import { useExtendObject, useAllRoles, useDeleteObject, useSetState, useRoomEnum
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
 import NewDatapointModal from './NewDatapointModal';
+import CreateAliasModal from './CreateAliasModal';
+import CopyDatapointModal from './CopyDatapointModal';
 import HistoryModal from './HistoryModal';
 import ConfirmDialog from './ConfirmDialog';
 import MultiDeleteDialog from './MultiDeleteDialog';
@@ -783,6 +785,8 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, f
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; id: string } | null>(null);
   const [roomEditId, setRoomEditId] = useState<string | null>(null);
   const [fnEditId, setFnEditId] = useState<string | null>(null);
+  const [aliasSourceId, setAliasSourceId] = useState<string | null>(null);
+  const [copySourceId, setCopySourceId] = useState<string | null>(null);
 
   function handleColChange(cols: SortKey[]) {
     setVisibleCols(cols);
@@ -1060,6 +1064,23 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, f
           onClose={() => setMultiDeleteOpen(false)}
         />
       )}
+      {aliasSourceId && (
+        <CreateAliasModal
+          sourceId={aliasSourceId}
+          sourceObj={objects[aliasSourceId]}
+          existingIds={existingIds}
+          onClose={() => setAliasSourceId(null)}
+          onCreated={(newId) => onNavigateTo?.([newId])}
+        />
+      )}
+      {copySourceId && (
+        <CopyDatapointModal
+          sourceId={copySourceId}
+          sourceObj={objects[copySourceId]}
+          existingIds={existingIds}
+          onClose={() => setCopySourceId(null)}
+        />
+      )}
 
       {ctxMenu && (() => {
         const { x, y, id: ctxId } = ctxMenu;
@@ -1078,6 +1099,11 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, f
         items.push({ icon: <Search size={13} />, label: 'Als Filter setzen', onClick: () => onColFilterChange({ ...colFilters, id: ctxId }) });
         items.push({ icon: <Pencil size={13} />, label: 'Raum bearbeiten', onClick: () => setRoomEditId(ctxId) });
         items.push({ icon: <Pencil size={13} />, label: 'Funktion bearbeiten', onClick: () => setFnEditId(ctxId) });
+        items.push({ separator: true } as const);
+        items.push({ icon: <Copy size={13} />, label: 'Datenpunkt kopieren', onClick: () => setCopySourceId(ctxId) });
+        if (!ctxId.startsWith('alias.0.')) {
+          items.push({ icon: <Link2 size={13} />, label: 'Alias anlegen', onClick: () => setAliasSourceId(ctxId) });
+        }
         items.push({ separator: true } as const);
         items.push({ icon: <Trash2 size={13} />, label: 'Datenpunkt löschen', onClick: () => setDeletingId(ctxId), danger: true });
         return <ContextMenu x={x} y={y} items={items} onClose={() => setCtxMenu(null)} />;
