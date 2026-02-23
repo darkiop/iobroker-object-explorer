@@ -232,6 +232,65 @@ export async function getObject(id: string): Promise<IoBrokerObject> {
   return fetchApi<IoBrokerObject>(`/object/${encodeURIComponent(id)}`);
 }
 
+export async function getFunctionMap(): Promise<Record<string, string>> {
+  const all = await getAllObjects();
+  const map: Record<string, string> = {};
+  for (const [id, obj] of Object.entries(all)) {
+    if (!obj.enums) continue;
+    for (const [enumId, enumName] of Object.entries(obj.enums)) {
+      if (enumId.startsWith('enum.functions.')) {
+        const raw = enumName as unknown;
+        let name: string;
+        if (typeof raw === 'string') {
+          name = raw;
+        } else if (raw && typeof raw === 'object') {
+          const langs = raw as Record<string, string>;
+          name = langs.de || langs.en || Object.values(langs)[0] || '';
+        } else {
+          name = '';
+        }
+        map[id] = name;
+        break;
+      }
+    }
+  }
+  return map;
+}
+
+export async function getFunctionEnums(): Promise<Array<{ id: string; name: string }>> {
+  const res = await fetchApi<Record<string, IoBrokerObject>>('/objects?type=enum');
+  const fns: Array<{ id: string; name: string }> = [];
+  for (const [id, obj] of Object.entries(res)) {
+    if (!id.startsWith('enum.functions.')) continue;
+    const raw = obj.common?.name;
+    let name = '';
+    if (typeof raw === 'string') name = raw;
+    else if (raw && typeof raw === 'object') {
+      const langs = raw as Record<string, string>;
+      name = langs.de || langs.en || Object.values(langs)[0] || id;
+    }
+    fns.push({ id, name });
+  }
+  return fns.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function updateFunctionMembership(objectId: string, oldFnEnumId: string | null, newFnEnumId: string | null): Promise<void> {
+  if (oldFnEnumId === newFnEnumId) return;
+  const res = await fetchApi<Record<string, IoBrokerObject>>('/objects?type=enum');
+
+  if (oldFnEnumId && res[oldFnEnumId]) {
+    const obj = res[oldFnEnumId];
+    const members = (obj.common?.members ?? []).filter((m) => m !== objectId);
+    await putFullObject(oldFnEnumId, { ...obj, common: { ...obj.common, members } });
+  }
+  if (newFnEnumId && res[newFnEnumId]) {
+    const obj = res[newFnEnumId];
+    const members = [...new Set([...(obj.common?.members ?? []), objectId])];
+    await putFullObject(newFnEnumId, { ...obj, common: { ...obj.common, members } });
+  }
+  objectsCache = null;
+}
+
 export async function getRoomEnums(): Promise<Array<{ id: string; name: string }>> {
   const res = await fetchApi<Record<string, IoBrokerObject>>('/objects?type=enum');
   const rooms: Array<{ id: string; name: string }> = [];

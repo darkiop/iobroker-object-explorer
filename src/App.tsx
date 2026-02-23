@@ -6,7 +6,7 @@ import SearchBar from './components/SearchBar';
 import StateTree from './components/StateTree';
 import StateList from './components/StateList';
 import StateDetail from './components/StateDetail';
-import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap } from './hooks/useStates';
+import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunctionMap } from './hooks/useStates';
 import { hasHistory, hasSmartName, buildAliasReverseMap } from './api/iobroker';
 import type { SortKey } from './components/StateList';
 import { Database, Mic2, ChevronsUpDown, ChevronsDownUp } from 'lucide-react';
@@ -39,6 +39,7 @@ function AppContent() {
   const { data: stateObjects, error: objectsError } = useFilteredObjects(pattern);
   const { data: allObjects } = useAllObjects();
   const { data: roomMap } = useRoomMap();
+  const { data: functionMap } = useFunctionMap();
 
   const historyIds = useMemo(() => {
     const set = new Set<string>();
@@ -64,17 +65,19 @@ function AppContent() {
     if (historyOnly) ids = ids.filter((id) => historyIds.has(id));
     if (smartOnly) ids = ids.filter((id) => smartIds.has(id));
     const rm = roomMap || {};
-    if (colFilters.id?.trim())   { const f = colFilters.id.trim().toLowerCase();   ids = ids.filter((id) => id.toLowerCase().includes(f)); }
-    if (colFilters.name?.trim()) { const f = colFilters.name.trim().toLowerCase();  ids = ids.filter((id) => { const n = stateObjects![id]?.common?.name; const s = typeof n === 'string' ? n : (n && (n.de || n.en || Object.values(n)[0])) || ''; return s.toLowerCase().includes(f); }); }
-    if (colFilters.room?.trim()) { const f = colFilters.room.trim().toLowerCase();  ids = ids.filter((id) => (rm[id] || '').toLowerCase().includes(f)); }
-    if (colFilters.role?.trim()) { const f = colFilters.role.trim().toLowerCase();  ids = ids.filter((id) => (stateObjects![id]?.common?.role || '').toLowerCase().includes(f)); }
-    if (colFilters.unit?.trim()) { const f = colFilters.unit.trim().toLowerCase();  ids = ids.filter((id) => (stateObjects![id]?.common?.unit || '').toLowerCase().includes(f)); }
+    const fm = functionMap || {};
+    if (colFilters.id?.trim())       { const f = colFilters.id.trim().toLowerCase();       ids = ids.filter((id) => id.toLowerCase().includes(f)); }
+    if (colFilters.name?.trim())     { const f = colFilters.name.trim().toLowerCase();      ids = ids.filter((id) => { const n = stateObjects![id]?.common?.name; const s = typeof n === 'string' ? n : (n && (n.de || n.en || Object.values(n)[0])) || ''; return s.toLowerCase().includes(f); }); }
+    if (colFilters.room?.trim())     { const f = colFilters.room.trim().toLowerCase();      ids = ids.filter((id) => (rm[id] || '').toLowerCase().includes(f)); }
+    if (colFilters.function?.trim()) { const f = colFilters.function.trim().toLowerCase();  ids = ids.filter((id) => (fm[id] || '').toLowerCase().includes(f)); }
+    if (colFilters.role?.trim())     { const f = colFilters.role.trim().toLowerCase();      ids = ids.filter((id) => (stateObjects![id]?.common?.role || '').toLowerCase().includes(f)); }
+    if (colFilters.unit?.trim())     { const f = colFilters.unit.trim().toLowerCase();      ids = ids.filter((id) => (stateObjects![id]?.common?.unit || '').toLowerCase().includes(f)); }
     if (colFilters.write === '1')   ids = ids.filter((id) => stateObjects![id]?.common?.write === false);
     if (colFilters.history === '1') ids = ids.filter((id) => historyIds.has(id));
     if (colFilters.smart === '1')   ids = ids.filter((id) => smartIds.has(id));
     if (colFilters.alias === '1')   ids = ids.filter((id) => aliasMap.has(id) || !!(stateObjects![id]?.common?.alias?.id));
     return ids;
-  }, [stateObjects, historyOnly, historyIds, smartOnly, smartIds, colFilters, roomMap, aliasMap]);
+  }, [stateObjects, historyOnly, historyIds, smartOnly, smartIds, colFilters, roomMap, functionMap, aliasMap]);
 
   const totalCount = objectIds.length;
   const pageStart = page * pageSize;
@@ -229,6 +232,7 @@ function AppContent() {
             states={stateValues || {}}
             objects={stateObjects || {}}
             roomMap={roomMap || {}}
+            functionMap={functionMap || {}}
             selectedId={selectedId}
             onSelect={setSelectedId}
             colFilters={colFilters}
@@ -239,43 +243,50 @@ function AppContent() {
           />
         </div>
 
-        <div className="flex items-center justify-between py-2 px-1 border-t border-gray-200 dark:border-gray-700 shrink-0">
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-gray-400 dark:text-gray-500">Zeilen:</span>
-            <select
-              value={pageSize}
-              onChange={(e) => {
-                const v = parseInt(e.target.value, 10);
-                setPageSize(v);
-                setPage(0);
-                localStorage.setItem(LS_PAGE_SIZE, String(v));
-              }}
-              className="text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
+        <div className="grid grid-cols-3 items-center py-2 px-1 border-t border-gray-200 dark:border-gray-700 shrink-0">
+          {/* Left: Zurück + Zeilenauswahl */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0 || totalPages <= 1}
+              className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
             >
-              {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </div>
-          {totalPages > 1 && (
-            <>
-              <button
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-                disabled={page === 0}
-                className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+              Zurück
+            </button>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-gray-400 dark:text-gray-500">Zeilen:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10);
+                  setPageSize(v);
+                  setPage(0);
+                  localStorage.setItem(LS_PAGE_SIZE, String(v));
+                }}
+                className="text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
               >
-                Zurück
-              </button>
+                {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </div>
+          </div>
+          {/* Center: Paginierungsinfo */}
+          <div className="text-center">
+            {totalPages > 1 && (
               <span className="text-xs text-gray-400 dark:text-gray-500">
                 Seite {page + 1} von {totalPages} ({pageStart + 1}–{Math.min(pageStart + pageSize, totalCount)} von {totalCount})
               </span>
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                disabled={page >= totalPages - 1}
-                className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-              >
-                Weiter
-              </button>
-            </>
-          )}
+            )}
+          </div>
+          {/* Right: Weiter */}
+          <div className="flex justify-end">
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={page >= totalPages - 1 || totalPages <= 1}
+              className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+            >
+              Weiter
+            </button>
+          </div>
         </div>
       </div>
     </Layout>

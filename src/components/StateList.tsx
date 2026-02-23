@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, RotateCcw, Plus, Lock, Trash2, Search, Link2 } from 'lucide-react';
-import { useExtendObject, useAllRoles, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership } from '../hooks/useStates';
+import { useExtendObject, useAllRoles, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useFunctionEnums, useUpdateFunctionMembership } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
 import NewDatapointModal from './NewDatapointModal';
@@ -17,6 +17,7 @@ interface StateListProps {
   states: Record<string, IoBrokerState>;
   objects: Record<string, IoBrokerObject>;
   roomMap: Record<string, string>;
+  functionMap: Record<string, string>;
   selectedId: string | null;
   onSelect: (id: string) => void;
   colFilters: Partial<Record<SortKey, string>>;
@@ -477,7 +478,106 @@ function EditableRoomCell({ id, currentRoomEnumId, roomName, forceEdit, onEditEn
   );
 }
 
-export type SortKey = 'checkbox' | 'write' | 'alias' | 'id' | 'name' | 'room' | 'role' | 'value' | 'unit' | 'ack' | 'ts' | 'history' | 'smart';
+function EditableFunctionCell({ id, currentFnEnumId, fnName, forceEdit, onEditEnd }: {
+  id: string;
+  currentFnEnumId: string | null;
+  fnName: string;
+  forceEdit?: boolean;
+  onEditEnd?: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [cellRect, setCellRect] = useState<DOMRect | null>(null);
+  const cellRef = useRef<HTMLTableCellElement>(null);
+  const { data: fnEnums = [] } = useFunctionEnums();
+  const update = useUpdateFunctionMembership();
+
+  useEffect(() => {
+    if (forceEdit && !editing) {
+      if (cellRef.current) setCellRect(cellRef.current.getBoundingClientRect());
+      setEditing(true);
+    }
+  }, [forceEdit]);
+
+  function openEdit() {
+    if (cellRef.current) setCellRect(cellRef.current.getBoundingClientRect());
+    setEditing(true);
+  }
+
+  function close() {
+    setEditing(false);
+    onEditEnd?.();
+  }
+
+  function select(newFnEnumId: string | null) {
+    update.mutate({ objectId: id, oldFnEnumId: currentFnEnumId, newFnEnumId });
+    close();
+  }
+
+  return (
+    <td
+      ref={cellRef}
+      data-col="function"
+      className="px-3 py-2 text-gray-500 dark:text-gray-400 text-xs overflow-hidden group/fn"
+      onClick={(e) => { e.stopPropagation(); openEdit(); }}
+    >
+      <div className="flex items-center gap-1.5">
+        {fnName ? (
+          <>
+            <span className="truncate">{fnName}</span>
+            <Pencil
+              size={12}
+              className="opacity-0 group-hover/fn:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
+            />
+          </>
+        ) : (
+          <span className="text-gray-300 dark:text-gray-600 italic">Funktion wählen…</span>
+        )}
+      </div>
+      {editing && cellRect && createPortal(
+        <>
+          <div className="fixed inset-0 z-[9998]" onMouseDown={close} />
+          <div
+            style={{ position: 'fixed', top: cellRect.bottom + 2, left: cellRect.left, zIndex: 9999, minWidth: 160 }}
+            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg overflow-hidden"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <ul className="max-h-56 overflow-y-auto py-1">
+              <li
+                onMouseDown={(e) => { e.preventDefault(); select(null); }}
+                className={`px-3 py-1.5 text-xs cursor-pointer flex items-center gap-1.5 ${
+                  !currentFnEnumId
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 italic'
+                }`}
+              >
+                Keine Funktion
+              </li>
+              {fnEnums.map((fn) => (
+                <li
+                  key={fn.id}
+                  onMouseDown={(e) => { e.preventDefault(); select(fn.id); }}
+                  className={`px-3 py-1.5 text-xs cursor-pointer ${
+                    currentFnEnumId === fn.id
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  {fn.name}
+                </li>
+              ))}
+              {fnEnums.length === 0 && (
+                <li className="px-3 py-1.5 text-xs text-gray-400 dark:text-gray-500 italic">Lädt…</li>
+              )}
+            </ul>
+          </div>
+        </>,
+        document.body
+      )}
+    </td>
+  );
+}
+
+export type SortKey = 'checkbox' | 'write' | 'alias' | 'id' | 'name' | 'room' | 'function' | 'role' | 'value' | 'unit' | 'ack' | 'ts' | 'history' | 'smart';
 
 const ALL_COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'checkbox', label: 'Auswahl' },
@@ -487,7 +587,8 @@ const ALL_COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'alias',   label: 'Alias' },
   { key: 'id',      label: 'ID' },
   { key: 'name',    label: 'Name' },
-  { key: 'room',    label: 'Raum' },
+  { key: 'room',      label: 'Raum' },
+  { key: 'function',  label: 'Funktion' },
   { key: 'role',    label: 'Rolle' },
   { key: 'value',   label: 'Wert' },
   { key: 'unit',    label: 'Einheit' },
@@ -495,7 +596,7 @@ const ALL_COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'ts',      label: 'Letztes Update' },
 ];
 
-const DEFAULT_COLS: SortKey[] = ['checkbox', 'write', 'history', 'smart', 'alias', 'id', 'name', 'room', 'role', 'value', 'unit', 'ack', 'ts'];
+const DEFAULT_COLS: SortKey[] = ['checkbox', 'write', 'history', 'smart', 'alias', 'id', 'name', 'room', 'function', 'role', 'value', 'unit', 'ack', 'ts'];
 const LS_KEY = 'iobroker-visible-cols';
 
 function loadVisibleCols(): SortKey[] {
@@ -515,7 +616,7 @@ const CHK_COL_WIDTH = 28;
 const DEFAULT_WIDTHS: Record<SortKey, number> = {
   checkbox: CHK_COL_WIDTH,
   write: 22, history: 22, smart: 22, alias: 22,
-  id: 220, name: 160, room: 110, role: 130, value: 100,
+  id: 220, name: 160, room: 110, function: 110, role: 130, value: 100,
   unit: 70, ack: 35, ts: 160,
 };
 const LS_WIDTHS_KEY = 'iobroker-col-widths';
@@ -665,7 +766,7 @@ function patternToInitialId(pattern: string): string {
   return pattern;
 }
 
-export default function StateList({ ids, totalCount, states, objects, roomMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, onNavigateTo }: StateListProps) {
+export default function StateList({ ids, totalCount, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, onNavigateTo }: StateListProps) {
   const [sortKey, setSortKey] = useState<SortKey>('id');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [visibleCols, setVisibleCols] = useState<SortKey[]>(loadVisibleCols);
@@ -681,6 +782,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
   const { data: roles = [] } = useAllRoles();
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; id: string } | null>(null);
   const [roomEditId, setRoomEditId] = useState<string | null>(null);
+  const [fnEditId, setFnEditId] = useState<string | null>(null);
 
   function handleColChange(cols: SortKey[]) {
     setVisibleCols(cols);
@@ -799,6 +901,8 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
         }
         case 'room':
           return mul * (roomMap[a] || '').localeCompare(roomMap[b] || '');
+        case 'function':
+          return mul * (functionMap[a] || '').localeCompare(functionMap[b] || '');
         case 'role':
           return mul * (objA?.common?.role || '').localeCompare(objB?.common?.role || '');
         case 'history': {
@@ -973,6 +1077,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
         }
         items.push({ icon: <Search size={13} />, label: 'Als Filter setzen', onClick: () => onColFilterChange({ ...colFilters, id: ctxId }) });
         items.push({ icon: <Pencil size={13} />, label: 'Raum bearbeiten', onClick: () => setRoomEditId(ctxId) });
+        items.push({ icon: <Pencil size={13} />, label: 'Funktion bearbeiten', onClick: () => setFnEditId(ctxId) });
         items.push({ separator: true } as const);
         items.push({ icon: <Trash2 size={13} />, label: 'Datenpunkt löschen', onClick: () => setDeletingId(ctxId), danger: true });
         return <ContextMenu x={x} y={y} items={items} onClose={() => setCtxMenu(null)} />;
@@ -989,7 +1094,8 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
               {show('alias')   && <th style={{ width: w('alias'),           minWidth: w('alias')           }} />}
               {show('id')      && <SortHeader label="ID" sortKey="id" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('id')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('name')    && <SortHeader label="Name" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('name')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
-              {show('room')    && <SortHeader label="Raum" sortKey="room" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('room')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
+              {show('room')     && <SortHeader label="Raum"     sortKey="room"     activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('room')}     onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
+              {show('function') && <SortHeader label="Funktion" sortKey="function" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('function')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('role')    && <SortHeader label="Rolle" sortKey="role" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('role')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('value')   && <SortHeader label="Wert" sortKey="value" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('value')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} className="text-right" />}
               {show('unit')    && <SortHeader label="Einheit" sortKey="unit" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('unit')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
@@ -1008,8 +1114,8 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                   />
                 </th>
               )}
-              {(['write','history','smart','alias','id','name','room','role','value','unit','ack','ts'] as SortKey[]).filter(show).map((key) => {
-                const filterable = ['id','name','room','role','value','unit'].includes(key);
+              {(['write','history','smart','alias','id','name','room','function','role','value','unit','ack','ts'] as SortKey[]).filter(show).map((key) => {
+                const filterable = ['id','name','room','function','role','value','unit'].includes(key);
                 const isIconToggle = ['write','history','smart','alias'].includes(key);
                 const isActive = colFilters[key] === '1';
 
@@ -1201,6 +1307,15 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, s
                       roomName={roomMap[id] || ''}
                       forceEdit={roomEditId === id}
                       onEditEnd={() => setRoomEditId(null)}
+                    />
+                  )}
+                  {show('function') && (
+                    <EditableFunctionCell
+                      id={id}
+                      currentFnEnumId={Object.keys(obj?.enums ?? {}).find(k => k.startsWith('enum.functions.')) ?? null}
+                      fnName={functionMap[id] || ''}
+                      forceEdit={fnEditId === id}
+                      onEditEnd={() => setFnEditId(null)}
                     />
                   )}
                   {show('role') && <EditableRoleCell id={id} role={obj?.common?.role || ''} suggestions={roles} />}
