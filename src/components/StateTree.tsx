@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil } from 'lucide-react';
+import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil, Eye, EyeOff } from 'lucide-react';
 import type { TreeNode, IoBrokerObject } from '../types/iobroker';
 import ObjectEditModal from './ObjectEditModal';
 import ContextMenu from './ContextMenu';
@@ -71,6 +71,7 @@ function TreeNodeComponent({
   smartIds,
   expandSignal,
   allObjects,
+  showStates,
 }: {
   node: TreeNode;
   depth: number;
@@ -82,6 +83,7 @@ function TreeNodeComponent({
   smartIds: Set<string>;
   expandSignal: { depth: number; seq: number };
   allObjects: Record<string, IoBrokerObject>;
+  showStates: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -101,6 +103,8 @@ function TreeNodeComponent({
     if (expandSignal.seq === 0) return;
     setExpanded(depth < expandSignal.depth);
   }, [expandSignal]);
+
+  if (node.isLeaf && !showStates) return null;
 
   return (
     <div>
@@ -248,6 +252,7 @@ function TreeNodeComponent({
             smartIds={smartIds}
             expandSignal={expandSignal}
             allObjects={allObjects}
+            showStates={showStates}
           />
         ))}
     </div>
@@ -257,6 +262,7 @@ function TreeNodeComponent({
 
 export default function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, historyOnly, smartOnly, historyIds, smartIds, expandToDepth }: StateTreeProps) {
   const [expandSignal, setExpandSignal] = useState<{ depth: number; seq: number }>({ depth: 0, seq: 0 });
+  const [showStates, setShowStates] = useState(true);
 
   function handleFolderSearch(pattern: string) {
     onSearch(pattern);
@@ -282,28 +288,47 @@ export default function StateTree({ stateIds, allObjects, selectedId, onSelect, 
   );
 
   return (
-    <div className="overflow-y-auto px-2">
-      {filteredIds.length === 0 ? (
-        <div className="text-gray-400 dark:text-gray-500 text-sm p-4">
-          {stateIds.length === 0 ? 'Keine Datenpunkte geladen' : 'Keine Datenpunkte gefunden'}
-        </div>
-      ) : (
-        sortedChildren.map((child) => (
-          <TreeNodeComponent
-            key={child.fullPath}
-            node={child}
-            depth={0}
-            selectedId={selectedId}
-            onSelect={onSelect}
-            onSearch={onSearch}
-            onFolderSearch={handleFolderSearch}
-            historyIds={historyIds}
-            smartIds={smartIds}
-            expandSignal={expandSignal}
-            allObjects={allObjects}
-          />
-        ))
-      )}
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Toolbar */}
+      <div className="flex items-center justify-end px-2 py-1 border-b border-gray-200 dark:border-gray-700 shrink-0">
+        <button
+          onClick={() => setShowStates((v) => !v)}
+          title={showStates ? 'Datenpunkte ausblenden' : 'Datenpunkte einblenden'}
+          className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${
+            showStates
+              ? 'text-green-600 dark:text-green-400 hover:bg-gray-200/60 dark:hover:bg-gray-700/60'
+              : 'text-gray-400 dark:text-gray-500 hover:bg-gray-200/60 dark:hover:bg-gray-700/60'
+          }`}
+        >
+          {showStates ? <Eye size={13} /> : <EyeOff size={13} />}
+          <span>States</span>
+        </button>
+      </div>
+
+      <div className="overflow-y-auto px-2 flex-1">
+        {filteredIds.length === 0 ? (
+          <div className="text-gray-400 dark:text-gray-500 text-sm p-4">
+            {stateIds.length === 0 ? 'Keine Datenpunkte geladen' : 'Keine Datenpunkte gefunden'}
+          </div>
+        ) : (
+          sortedChildren.map((child) => (
+            <TreeNodeComponent
+              key={child.fullPath}
+              node={child}
+              depth={0}
+              selectedId={selectedId}
+              onSelect={onSelect}
+              onSearch={onSearch}
+              onFolderSearch={handleFolderSearch}
+              historyIds={historyIds}
+              smartIds={smartIds}
+              expandSignal={expandSignal}
+              allObjects={allObjects}
+              showStates={showStates}
+            />
+          ))
+        )}
+      </div>
     </div>
   );
 }
