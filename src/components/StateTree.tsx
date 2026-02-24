@@ -84,6 +84,9 @@ function TreeNodeComponent({
   expandSignal: { depth: number; seq: number };
   allObjects: Record<string, IoBrokerObject>;
   showStates: boolean;
+  showFolders: boolean;
+  showDevices: boolean;
+  showChannels: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -105,6 +108,11 @@ function TreeNodeComponent({
   }, [expandSignal]);
 
   if (node.isLeaf && !showStates) return null;
+  if (!node.isLeaf) {
+    if (objectType === 'device'  && !showDevices)  return null;
+    if (objectType === 'channel' && !showChannels) return null;
+    if (objectType !== 'device' && objectType !== 'channel' && !showFolders) return null;
+  }
 
   return (
     <div>
@@ -254,6 +262,9 @@ function TreeNodeComponent({
             expandSignal={expandSignal}
             allObjects={allObjects}
             showStates={showStates}
+            showFolders={showFolders}
+            showDevices={showDevices}
+            showChannels={showChannels}
           />
         ))}
     </div>
@@ -263,7 +274,10 @@ function TreeNodeComponent({
 
 export default function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, historyOnly, smartOnly, historyIds, smartIds, expandToDepth }: StateTreeProps) {
   const [expandSignal, setExpandSignal] = useState<{ depth: number; seq: number }>({ depth: 0, seq: 0 });
-  const [showStates, setShowStates] = useState(true);
+  const [showStates,   setShowStates]   = useState(true);
+  const [showFolders,  setShowFolders]  = useState(true);
+  const [showDevices,  setShowDevices]  = useState(true);
+  const [showChannels, setShowChannels] = useState(true);
 
   function handleFolderSearch(pattern: string) {
     onSearch(pattern);
@@ -291,19 +305,25 @@ export default function StateTree({ stateIds, allObjects, selectedId, onSelect, 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Toolbar */}
-      <div className="flex items-center justify-end px-2 py-1 border-b border-gray-200 dark:border-gray-700 shrink-0">
-        <button
-          onClick={() => setShowStates((v) => !v)}
-          title={showStates ? 'Datenpunkte ausblenden' : 'Datenpunkte einblenden'}
-          className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${
-            showStates
-              ? 'text-green-600 dark:text-green-400 hover:bg-gray-200/60 dark:hover:bg-gray-700/60'
-              : 'text-gray-400 dark:text-gray-500 hover:bg-gray-200/60 dark:hover:bg-gray-700/60'
-          }`}
-        >
-          {showStates ? <Eye size={13} /> : <EyeOff size={13} />}
-          <span>States</span>
-        </button>
+      <div className="flex items-center gap-0.5 px-2 py-1 border-b border-gray-200 dark:border-gray-700 shrink-0 flex-wrap">
+        {([
+          { key: 'folders',  label: 'Folder',   active: showFolders,  set: setShowFolders,  icon: <Folder  size={12} />, color: 'text-yellow-600 dark:text-yellow-500' },
+          { key: 'devices',  label: 'Device',   active: showDevices,  set: setShowDevices,  icon: <Cpu     size={12} />, color: 'text-sky-600   dark:text-sky-400'    },
+          { key: 'channels', label: 'Channel',  active: showChannels, set: setShowChannels, icon: <Layers  size={12} />, color: 'text-indigo-600 dark:text-indigo-400' },
+          { key: 'states',   label: 'State',    active: showStates,   set: setShowStates,   icon: <FileText size={12} />, color: 'text-green-600 dark:text-green-400' },
+        ] as const).map(({ key, label, active, set, icon, color }) => (
+          <button
+            key={key}
+            onClick={() => set((v) => !v)}
+            title={active ? `${label}s ausblenden` : `${label}s einblenden`}
+            className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs transition-colors hover:bg-gray-200/60 dark:hover:bg-gray-700/60 ${
+              active ? color : 'text-gray-400 dark:text-gray-600'
+            }`}
+          >
+            {icon}
+            <span>{label}</span>
+          </button>
+        ))}
       </div>
 
       <div className="overflow-y-auto px-2 flex-1">
@@ -326,6 +346,9 @@ export default function StateTree({ stateIds, allObjects, selectedId, onSelect, 
               expandSignal={expandSignal}
               allObjects={allObjects}
               showStates={showStates}
+              showFolders={showFolders}
+              showDevices={showDevices}
+              showChannels={showChannels}
             />
           ))
         )}
