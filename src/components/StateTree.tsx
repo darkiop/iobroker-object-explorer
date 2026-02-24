@@ -74,6 +74,9 @@ function TreeNodeComponent({
   expandSignal,
   allObjects,
   showStates,
+  showFolders,
+  showDevices,
+  showChannels,
 }: {
   node: TreeNode;
   depth: number;
