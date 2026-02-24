@@ -5,7 +5,7 @@ import Layout from './components/Layout';
 import SearchBar from './components/SearchBar';
 import StateTree from './components/StateTree';
 import StateList from './components/StateList';
-import StateDetail from './components/StateDetail';
+import ObjectEditModal from './components/ObjectEditModal';
 import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunctionMap } from './hooks/useStates';
 import { hasHistory, hasSmartName, buildAliasReverseMap } from './api/iobroker';
 import type { SortKey } from './components/StateList';
@@ -211,18 +211,12 @@ function AppContent() {
           </div>
         )}
 
-        {selectedId && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-            onClick={() => setSelectedId(null)}
-          >
-            <div
-              className="w-full max-w-5xl max-h-[90vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <StateDetail stateId={selectedId} onClose={() => setSelectedId(null)} />
-            </div>
-          </div>
+        {selectedId && allObjects?.[selectedId] && (
+          <ObjectEditModal
+            id={selectedId}
+            obj={allObjects[selectedId]}
+            onClose={() => setSelectedId(null)}
+          />
         )}
 
         <div className="flex-1 min-h-0 flex flex-col">
