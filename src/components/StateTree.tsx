@@ -26,6 +26,7 @@ interface StateTreeProps {
   selectedId: string | null;
   onSelect: (id: string) => void;
   onSearch: (pattern: string) => void;
+  onTreeSelect: (prefix: string) => void;
   historyOnly: boolean;
   smartOnly: boolean;
   historyIds: Set<string>;
@@ -67,6 +68,7 @@ function TreeNodeComponent({
   onSelect,
   onSearch,
   onFolderSearch,
+  onTreeSelect,
   historyIds,
   smartIds,
   expandSignal,
@@ -79,6 +81,7 @@ function TreeNodeComponent({
   onSelect: (id: string) => void;
   onSearch: (pattern: string) => void;
   onFolderSearch: (pattern: string) => void;
+  onTreeSelect: (prefix: string) => void;
   historyIds: Set<string>;
   smartIds: Set<string>;
   expandSignal: { depth: number; seq: number };
@@ -153,7 +156,7 @@ function TreeNodeComponent({
             onSelect(node.fullPath);
           } else if (hasChildren) {
             setExpanded(!expanded);
-            onSearch(`${node.fullPath}.*`);
+            onTreeSelect(`${node.fullPath}.`);
           }
         }}
       >
@@ -257,6 +260,7 @@ function TreeNodeComponent({
             onSelect={onSelect}
             onSearch={onSearch}
             onFolderSearch={onFolderSearch}
+            onTreeSelect={onTreeSelect}
             historyIds={historyIds}
             smartIds={smartIds}
             expandSignal={expandSignal}
@@ -272,7 +276,7 @@ function TreeNodeComponent({
 }
 
 
-export default function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, historyOnly, smartOnly, historyIds, smartIds, expandToDepth }: StateTreeProps) {
+export default function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeSelect, historyOnly, smartOnly, historyIds, smartIds, expandToDepth }: StateTreeProps) {
   const [expandSignal, setExpandSignal] = useState<{ depth: number; seq: number }>({ depth: 0, seq: 0 });
   const [showStates,   setShowStates]   = useState(true);
   const [showFolders,  setShowFolders]  = useState(true);
@@ -305,7 +309,7 @@ export default function StateTree({ stateIds, allObjects, selectedId, onSelect, 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Toolbar */}
-      <div className="flex items-center gap-0.5 px-2 py-1 border-b border-gray-200 dark:border-gray-700 shrink-0 flex-wrap">
+      <div className="flex items-center justify-center gap-0.5 px-2 py-1 border-b border-gray-200 dark:border-gray-700 shrink-0 flex-wrap">
         {([
           { key: 'folders',  label: 'Folder',   active: showFolders,  set: setShowFolders,  icon: <Folder  size={12} />, color: 'text-yellow-600 dark:text-yellow-500' },
           { key: 'devices',  label: 'Device',   active: showDevices,  set: setShowDevices,  icon: <Cpu     size={12} />, color: 'text-sky-600   dark:text-sky-400'    },
@@ -341,6 +345,7 @@ export default function StateTree({ stateIds, allObjects, selectedId, onSelect, 
               onSelect={onSelect}
               onSearch={onSearch}
               onFolderSearch={handleFolderSearch}
+              onTreeSelect={onTreeSelect}
               historyIds={historyIds}
               smartIds={smartIds}
               expandSignal={expandSignal}

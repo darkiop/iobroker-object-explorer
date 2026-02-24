@@ -9,7 +9,7 @@ import ObjectEditModal from './components/ObjectEditModal';
 import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunctionMap } from './hooks/useStates';
 import { hasHistory, hasSmartName, buildAliasReverseMap } from './api/iobroker';
 import type { SortKey } from './components/StateList';
-import { Database, Mic2, ChevronsUpDown, ChevronsDownUp } from 'lucide-react';
+import { Database, Mic2, ChevronsUpDown, ChevronsDownUp, X } from 'lucide-react';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -35,6 +35,7 @@ function AppContent() {
   const [smartOnly, setSmartOnly] = useState(false);
   const [colFilters, setColFilters] = useState<Partial<Record<SortKey, string>>>({});
   const [treeExpandSignal, setTreeExpandSignal] = useState<{ depth: number; seq: number } | undefined>(undefined);
+  const [treeFilter, setTreeFilter] = useState<string | null>(null);
 
   const { data: stateObjects, error: objectsError } = useFilteredObjects(pattern);
   const { data: allObjects } = useAllObjects();
@@ -76,8 +77,9 @@ function AppContent() {
     if (colFilters.history === '1') ids = ids.filter((id) => historyIds.has(id));
     if (colFilters.smart === '1')   ids = ids.filter((id) => smartIds.has(id));
     if (colFilters.alias === '1')   ids = ids.filter((id) => aliasMap.has(id) || !!(stateObjects![id]?.common?.alias?.id));
+    if (treeFilter) ids = ids.filter((id) => id.startsWith(treeFilter));
     return ids;
-  }, [stateObjects, historyOnly, historyIds, smartOnly, smartIds, colFilters, roomMap, functionMap, aliasMap]);
+  }, [stateObjects, historyOnly, historyIds, smartOnly, smartIds, colFilters, roomMap, functionMap, aliasMap, treeFilter]);
 
   const totalCount = objectIds.length;
   const pageStart = page * pageSize;
@@ -168,6 +170,14 @@ function AppContent() {
                 <span className={`shrink-0 ${smartOnly ? 'text-violet-500 dark:text-violet-400' : 'text-gray-400 dark:text-gray-500'}`}>{smartIds.size}</span>
               </button>
             </div>
+            {treeFilter && (
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-blue-500/15 border border-blue-400/30 text-blue-600 dark:text-blue-400 text-xs">
+                <span className="truncate font-mono">{treeFilter.replace(/\.$/, '')}</span>
+                <button onClick={() => setTreeFilter(null)} className="shrink-0 hover:text-blue-800 dark:hover:text-blue-200" title="Filter entfernen">
+                  <X size={11} />
+                </button>
+              </div>
+            )}
             <div className="flex gap-1.5">
               <button
                 onClick={() => setTreeExpandSignal(s => ({ depth: 9999, seq: (s?.seq ?? 0) + 1 }))}
@@ -194,6 +204,7 @@ function AppContent() {
               selectedId={selectedId}
               onSelect={setSelectedId}
               onSearch={handleSearch}
+              onTreeSelect={(prefix) => { setTreeFilter(prefix); setPage(0); }}
               historyOnly={historyOnly}
               smartOnly={smartOnly}
               historyIds={historyIds}
