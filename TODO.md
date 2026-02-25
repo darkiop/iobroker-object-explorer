@@ -8,7 +8,7 @@
 | FE-006 | Löschen-Button in Tabellenzeile: Rechts je Zeile ein Löschen-Icon, mit Confirmation Dialog; Mehrfachauswahl + Bulk-Delete prüfen. | Feature | hoch | M | offen |
 | FE-007 | Fehlerbehandlung verbessern: Aussagekräftige Fehlermeldungen statt „API error", Toast-Notifications für Mutations-Erfolg/-Fehler. | Code Quality | hoch | M | offen |
 | FE-008 | Virtualisierung (react-window o.ä.) für StateList einsetzen: Bei 1000+ Einträgen werden alle DOM-Knoten gerendert. | Performance | hoch | L | offen |
-| FE-009 | Hardcodierte IP `10.4.0.20:8093` aus `vite.config.ts` in `.env.local` auslagern; Dev-Setup-Dokumentation aktualisieren. | DX | mittel | S | offen |
+| FE-009 | Hardcodierte IP `10.4.0.20:8093` aus `vite.config.ts` in `.env.local` auslagern; Dev-Setup-Dokumentation aktualisieren. | DX | mittel | S | umgesetzt |
 | FE-010 | Spaltenreihenfolge in Tabelle anpassen: ID, Name, Typ, Rolle, Funktion, Wert, Einheit, ACK, Letztes Update. | UX | mittel | S | offen |
 | FE-011 | Typ-Spalte in Tabelle hinzufügen (folder/device/channel/state) mit entsprechendem Icon. | Feature | mittel | S | umgesetzt |
 | FE-012 | Alias-Quelle/Ziel in Tabellenspalte ID anzeigen (zweite Zeile, kleinere Schrift); Quelle/Ziel anklickbar machen und im Baum anspringen. | Feature | mittel | M | offen |
@@ -18,8 +18,8 @@
 | FE-016 | QueryKey-Hierarchie nach TanStack React Query Best Practices strukturieren (z.B. `['objects', pattern]` statt loses String-Pattern). | Code Quality | mittel | S | offen |
 | FE-017 | Column-Filter-Logik in `App.tsx` (~75 Zeilen verschachtelte if/filter) in separate Utility-Funktion `filterObjectIds()` auslagern. | Code Quality | mittel | S | offen |
 | FE-018 | API-Batch-Größe in `getStatesBatch()` von 20 auf 50+ erhöhen und konfigurierbar machen. | Performance | mittel | S | umgesetzt |
-| FE-019 | `useStateValues()`-Hook: Refetch pausieren wenn Tab/Window nicht sichtbar (Page Visibility API). | Performance | mittel | S | offen |
-| FE-020 | `buildAliasReverseMap()` in QueryClient cachen statt bei jedem Re-Render neu berechnen. | Performance | mittel | S | offen |
+| FE-019 | `useStateValues()`-Hook: Refetch pausieren wenn Tab/Window nicht sichtbar (Page Visibility API). | Performance | mittel | S | umgesetzt |
+| FE-020 | `buildAliasReverseMap()` in QueryClient cachen statt bei jedem Re-Render neu berechnen. | Performance | mittel | S | umgesetzt |
 | FE-021 | Keyboard-Navigation ergänzen: Arrow Keys in Tabelle, Tab für Fokus, Enter zum Öffnen des Modals. | UX | mittel | M | offen |
 | FE-022 | Debouncing (300–500ms) für SearchBar und Column-Filter-Inputs statt sofortiger Filterung bei jedem Tastendruck. | UX | mittel | S | offen |
 | FE-023 | E2E-Tests mit Playwright implementieren: Critical Paths Search→Select→Edit→Save abdecken. | Tooling | mittel | L | offen |
@@ -41,7 +41,7 @@
 | FE-039 | Boolean-States als Gantt-/Zeitbalken-Chart: Zeigt „An"-Perioden als farbige Balken statt als Linie — ideal für Schalter, Bewegungsmelder, Türen. | Chart | mittel | M | offen |
 | FE-040 | Chart-Export als PNG: Button im HistoryModal der den Chart als Bilddatei herunterlädt (via html2canvas oder Recharts SVG-Export). | Chart | mittel | S | umgesetzt |
 | FE-041 | History-Adapter auswählbar: Aktuell hardcodiert auf `sql.0`; Unterstützung für `influxdb.0` und `history.0` Adapter ergänzen. | Feature | mittel | M | offen |
-| FE-042 | Batch-Bearbeitung: Mehrere selektierte Zeilen gleichzeitig editieren (gleiche Rolle, Einheit, Raum oder Funktion für alle setzen). | Feature | mittel | M | offen |
+| FE-042 | Batch-Bearbeitung: Mehrere selektierte Zeilen gleichzeitig editieren (gleiche Rolle, Einheit, Raum oder Funktion für alle setzen). | Feature | mittel | M | umgesetzt |
 | FE-043 | Schwellwert-Highlighting: Benutzer definiert Min/Max-Schwellwerte pro Datenpunkt; Zeile leuchtet rot/gelb wenn Wert außerhalb liegt. | Feature | mittel | M | offen |
 | FE-044 | Alias-Formel-Tester: Read/Write-Formeln im Alias-Tab direkt testbar machen — Eingabe eines Testwertes, Ausgabe des umgerechneten Resultats. | Feature | mittel | S | offen |
 | FE-045 | Adapter-Gruppierung im Baum: Optionale Ansicht die Datenpunkte nach Adapter (hm-rpc.0, deconz.0, …) statt nach Pfadhierarchie gruppiert. | Feature | niedrig | L | offen |

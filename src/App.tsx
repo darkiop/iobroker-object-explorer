@@ -7,8 +7,8 @@ import StateTree from './components/StateTree';
 import StateList from './components/StateList';
 import ObjectEditModal from './components/ObjectEditModal';
 import HistoryModal from './components/HistoryModal';
-import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunctionMap, useRoomEnums, useFunctionEnums } from './hooks/useStates';
-import { hasHistory, hasSmartName, buildAliasReverseMap } from './api/iobroker';
+import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunctionMap, useRoomEnums, useFunctionEnums, useAliasMap } from './hooks/useStates';
+import { hasHistory, hasSmartName } from './api/iobroker';
 import type { SortKey } from './components/StateList';
 import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RotateCcw, Layers } from 'lucide-react';
 
@@ -68,7 +68,8 @@ function AppContent() {
   }, [stateObjects]);
 
   // Reverse alias map: non-alias data point ID → [alias.0.* IDs that point to it]
-  const aliasMap = useMemo(() => buildAliasReverseMap(allObjects ?? {}), [allObjects]);
+  // Cached in QueryClient via useAliasMap (select on ['objects','all'])
+  const { data: aliasMap = new Map() } = useAliasMap();
 
   const objectIds = useMemo(() => {
     let ids = stateObjects ? Object.keys(stateObjects).sort() : [];
@@ -160,32 +161,6 @@ function AppContent() {
         <div className="flex flex-col h-full">
           <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex flex-col gap-2">
             <SearchBar onSearch={handleSearch} initialPattern={pattern} />
-            <div className="flex gap-1.5">
-              <button
-                onClick={() => { setHistoryOnly(!historyOnly); setPage(0); }}
-                className={`flex items-center justify-center gap-1 flex-1 px-2 py-1 text-xs rounded ${
-                  historyOnly
-                    ? 'bg-blue-600/20 text-blue-600 border border-blue-500/40 dark:text-blue-300'
-                    : 'bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700'
-                }`}
-              >
-                <Database size={12} className="shrink-0" />
-                <span className="truncate">History</span>
-                <span className={`shrink-0 ${historyOnly ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`}>{historyIds.size}</span>
-              </button>
-              <button
-                onClick={() => { setSmartOnly(!smartOnly); setPage(0); }}
-                className={`flex items-center justify-center gap-1 flex-1 px-2 py-1 text-xs rounded ${
-                  smartOnly
-                    ? 'bg-violet-600/20 text-violet-600 border border-violet-500/40 dark:text-violet-300'
-                    : 'bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700'
-                }`}
-              >
-                <Mic2 size={12} className="shrink-0" />
-                <span className="truncate">SmartName</span>
-                <span className={`shrink-0 ${smartOnly ? 'text-violet-500 dark:text-violet-400' : 'text-gray-400 dark:text-gray-500'}`}>{smartIds.size}</span>
-              </button>
-            </div>
             {hasAnyFilter && (
               <button
                 onClick={resetAllFilters}
@@ -208,6 +183,8 @@ function AppContent() {
                 {(['alias.0.*', 'javascript.0.*', '0_userdata.0.*'].includes(pattern)) && (
                   <span className="px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 text-[10px] truncate max-w-[80px]">{pattern}</span>
                 )}
+                {historyOnly && <span className="px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 text-[10px]">History</span>}
+                {smartOnly && <span className="px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 text-[10px]">Smart</span>}
               </span>
               {quickOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
             </button>
@@ -226,6 +203,26 @@ function AppContent() {
                     {q}
                   </button>
                 ))}
+                <button
+                  onClick={() => { setHistoryOnly(!historyOnly); setPage(0); }}
+                  className={`px-2 py-0.5 rounded text-xs transition-colors flex items-center gap-1 ${
+                    historyOnly
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  <Database size={11} /> History {historyIds.size}
+                </button>
+                <button
+                  onClick={() => { setSmartOnly(!smartOnly); setPage(0); }}
+                  className={`px-2 py-0.5 rounded text-xs transition-colors flex items-center gap-1 ${
+                    smartOnly
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  <Mic2 size={11} /> SmartName {smartIds.size}
+                </button>
               </div>
             )}
           </div>

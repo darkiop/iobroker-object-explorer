@@ -932,8 +932,17 @@ function StateList({ ids, totalCount, states, objects, roomMap, functionMap, sel
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [multiDeleteOpen, setMultiDeleteOpen] = useState(false);
   const deleteObject = useDeleteObject();
+  const extend = useExtendObject();
   const { data: roles = [] } = useAllRoles();
   const { data: units = [] } = useAllUnits();
+  const { data: roomEnums = [] } = useRoomEnums();
+  const { data: fnEnums = [] } = useFunctionEnums();
+  const updateRoom = useUpdateRoomMembership();
+  const updateFn = useUpdateFunctionMembership();
+  const [batchRole, setBatchRole] = useState('');
+  const [batchUnit, setBatchUnit] = useState('');
+  const [batchRoomEnumId, setBatchRoomEnumId] = useState('');
+  const [batchFnEnumId, setBatchFnEnumId] = useState('');
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; id: string } | null>(null);
   const [roomEditId, setRoomEditId] = useState<string | null>(null);
   const [fnEditId, setFnEditId] = useState<string | null>(null);
@@ -1126,6 +1135,34 @@ function StateList({ ids, totalCount, states, objects, roomMap, functionMap, sel
     });
   }
 
+  function handleBatchApply() {
+    const ids = [...checkedIds];
+    if (batchRole.trim()) {
+      ids.forEach((id) => extend.mutate({ id, common: { role: batchRole.trim() } }));
+    }
+    if (batchUnit.trim()) {
+      ids.forEach((id) => extend.mutate({ id, common: { unit: batchUnit.trim() } }));
+    }
+    if (batchRoomEnumId !== '') {
+      const newRoomEnumId = batchRoomEnumId === '__none__' ? null : batchRoomEnumId;
+      ids.forEach((id) => {
+        const oldRoomEnumId = Object.keys(objects[id]?.enums ?? {}).find((k) => k.startsWith('enum.rooms.')) ?? null;
+        updateRoom.mutate({ objectId: id, oldRoomEnumId, newRoomEnumId });
+      });
+    }
+    if (batchFnEnumId !== '') {
+      const newFnEnumId = batchFnEnumId === '__none__' ? null : batchFnEnumId;
+      ids.forEach((id) => {
+        const oldFnEnumId = Object.keys(objects[id]?.enums ?? {}).find((k) => k.startsWith('enum.functions.')) ?? null;
+        updateFn.mutate({ objectId: id, oldFnEnumId, newFnEnumId });
+      });
+    }
+    setBatchRole('');
+    setBatchUnit('');
+    setBatchRoomEnumId('');
+    setBatchFnEnumId('');
+  }
+
   function handleExport(format: 'json' | 'csv') {
     const allIds = exportIds ?? ids;
     const rows = allIds.map((id) => {
@@ -1258,9 +1295,65 @@ function StateList({ ids, totalCount, states, objects, roomMap, functionMap, sel
 
   const existingIds = useMemo(() => new Set(Object.keys(objects)), [objects]);
 
+  const batchCanApply = batchRole.trim() !== '' || batchUnit.trim() !== '' || batchRoomEnumId !== '' || batchFnEnumId !== '';
+
   return (
     <div className="flex flex-col h-full">
       {toolbar}
+      {checkedIds.size > 0 && (
+        <div className="flex items-center gap-2 px-3 py-1.5 shrink-0 border-b border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20 flex-wrap">
+          <span className="text-xs text-blue-600 dark:text-blue-400 font-medium shrink-0 whitespace-nowrap">
+            {checkedIds.size} ausgewählt:
+          </span>
+          <input
+            type="text"
+            value={batchRole}
+            onChange={(e) => setBatchRole(e.target.value)}
+            list="batch-roles"
+            placeholder="Rolle…"
+            className="px-2 py-0.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 w-28"
+          />
+          <datalist id="batch-roles">
+            {roles.map((r) => <option key={r} value={r} />)}
+          </datalist>
+          <input
+            type="text"
+            value={batchUnit}
+            onChange={(e) => setBatchUnit(e.target.value)}
+            list="batch-units"
+            placeholder="Einheit…"
+            className="px-2 py-0.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 w-20"
+          />
+          <datalist id="batch-units">
+            {units.map((u) => <option key={u} value={u} />)}
+          </datalist>
+          <select
+            value={batchRoomEnumId}
+            onChange={(e) => setBatchRoomEnumId(e.target.value)}
+            className="px-2 py-0.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400"
+          >
+            <option value="">Raum…</option>
+            <option value="__none__">— Kein Raum —</option>
+            {roomEnums.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+          </select>
+          <select
+            value={batchFnEnumId}
+            onChange={(e) => setBatchFnEnumId(e.target.value)}
+            className="px-2 py-0.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400"
+          >
+            <option value="">Funktion…</option>
+            <option value="__none__">— Keine Funktion —</option>
+            {fnEnums.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+          </select>
+          <button
+            onClick={handleBatchApply}
+            disabled={!batchCanApply}
+            className="px-2.5 py-0.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            Anwenden
+          </button>
+        </div>
+      )}
       {newDatapointOpen && (
         <NewDatapointModal
           onClose={() => setNewDatapointOpen(false)}

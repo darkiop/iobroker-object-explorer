@@ -347,7 +347,7 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Typ-Filter (collapsible) */}
+      {/* Objekt-Baum Filter (collapsible) */}
       <div className="border-b border-gray-200 dark:border-gray-700 shrink-0">
         <button
           onClick={() => setTypesOpen((v) => !v)}
@@ -355,7 +355,7 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
         >
           <span className="flex items-center gap-1.5 font-medium">
             <Layers size={12} />
-            Typ
+            Objekt-Baum Filter
             {hiddenCount > 0 && (
               <span className="px-1.5 py-0.5 rounded-full bg-orange-500/15 text-orange-600 dark:text-orange-400 text-[10px]">
                 {4 - hiddenCount}/4

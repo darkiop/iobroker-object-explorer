@@ -1,6 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, putFullObject, createObject, deleteObject, getAllRoles, getAllUnits, setState, getRoomMap, getAllObjects, getRoomEnums, updateRoomMembership, getFunctionMap, getFunctionEnums, updateFunctionMembership } from '../api/iobroker';
+import { useState, useEffect } from 'react';
+import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, putFullObject, createObject, deleteObject, getAllRoles, getAllUnits, setState, getRoomMap, getAllObjects, getRoomEnums, updateRoomMembership, getFunctionMap, getFunctionEnums, updateFunctionMembership, buildAliasReverseMap } from '../api/iobroker';
 import type { IoBrokerObject, IoBrokerObjectCommon, IoBrokerState, HistoryOptions } from '../types/iobroker';
+
+function usePageVisible() {
+  const [visible, setVisible] = useState(() => !document.hidden);
+  useEffect(() => {
+    const handler = () => setVisible(!document.hidden);
+    document.addEventListener('visibilitychange', handler);
+    return () => document.removeEventListener('visibilitychange', handler);
+  }, []);
+  return visible;
+}
 
 export function useFilteredObjects(pattern: string) {
   return useQuery({
@@ -19,11 +30,21 @@ export function useAllObjects() {
 }
 
 export function useStateValues(ids: string[]) {
+  const pageVisible = usePageVisible();
   return useQuery({
     queryKey: ['stateValues', ids],
     queryFn: () => getStatesBatch(ids),
-    enabled: ids.length > 0,
+    enabled: ids.length > 0 && pageVisible,
     refetchInterval: 30_000,
+  });
+}
+
+export function useAliasMap() {
+  return useQuery({
+    queryKey: ['objects', 'all'],
+    queryFn: getAllObjects,
+    staleTime: Infinity,
+    select: buildAliasReverseMap,
   });
 }
 
