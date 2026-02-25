@@ -2,11 +2,9 @@ import { useState, useMemo, useCallback, useRef } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import {
   ComposedChart,
-  LineChart,
   Line,
   BarChart,
   Bar,
-  AreaChart,
   Area,
   XAxis,
   YAxis,
@@ -119,7 +117,7 @@ function makeAxes(dark: boolean) {
       labelStyle: { color: dark ? '#9ca3af' : '#6b7280' },
       itemStyle: { color: '#60a5fa' },
       labelFormatter: (ts: unknown) => formatTooltipTime(ts as number),
-      formatter: (value: number | undefined, name: string) => {
+      formatter: (value: number | undefined, name: string | undefined) => {
         const label = hasCompare && name === 'valComp' ? 'Vergleich' : 'Wert';
         return [unit && value !== undefined ? `${value} ${unit}` : value ?? '', label] as [string | number, string];
       },
@@ -350,10 +348,10 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
             contentStyle={{ backgroundColor: dark ? '#1f2937' : '#ffffff', border: `1px solid ${dark ? '#374151' : '#e5e7eb'}`, borderRadius: 6 }}
             labelStyle={{ color: dark ? '#9ca3af' : '#6b7280' }}
             labelFormatter={(ts: unknown) => formatTooltipTime(ts as number)}
-            formatter={(value: unknown, name: string) => {
+            formatter={(value: unknown, name: string | undefined) => {
               const s = seriesMeta.find(x => x.key === name);
               const v = value as number | undefined;
-              return [s?.unit && v != null ? `${v} ${s.unit}` : (v ?? ''), s?.label ?? name] as [string | number, string];
+              return [s?.unit && v != null ? `${v} ${s.unit}` : (v ?? ''), s?.label ?? name ?? ''] as [string | number, string];
             }}
           />
           {seriesMeta.map(({ key, color }) => (

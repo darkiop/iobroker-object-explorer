@@ -340,7 +340,7 @@ function TreeNodeComponent({
 }
 
 
-function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeSelect, historyOnly, smartOnly, historyIds, smartIds, expandToDepth, treeFilter, onClearTreeFilter }: StateTreeProps) {
+function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeSelect, historyOnly, smartOnly, historyIds, smartIds, expandToDepth }: StateTreeProps) {
   const [expandSignal, setExpandSignal] = useState<{ depth: number; seq: number }>({ depth: 0, seq: 0 });
   const [showStates,   setShowStates]   = useState(true);
   const [showFolders,  setShowFolders]  = useState(true);
