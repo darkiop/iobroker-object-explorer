@@ -1,7 +1,7 @@
 | ID | Beschreibung | Kategorie | Priorität | Aufwand | Status |
 |---|---|---|---|---|---|
 | FE-001 | Type Safety verbessern: 19+ unsichere `as unknown`/`as any`-Casts entfernen, v.a. bei Enum-Name-Parsing und API-Responses. | Code Quality | hoch | M | offen |
-| FE-002 | `React.memo()` für `StateList` und `StateTree` einsetzen, da beide bei jedem App-Re-Render neu rendern trotz unveränderter Props. | Performance | hoch | M | offen |
+| FE-002 | `React.memo()` für `StateList` und `StateTree` einsetzen, da beide bei jedem App-Re-Render neu rendern trotz unveränderter Props. | Performance | hoch | M | umgesetzt |
 | FE-003 | Input-Validierung hinzufügen: Regex für Object-IDs, Min/Max für numerische Felder, XSS-Escaping für Namen-Eingaben in allen Edit-Feldern. | Security | hoch | S | offen |
 | FE-004 | XSS-Schutz für JSON-Editor und Alias/Function-Namen sicherstellen; keine Raw-HTML-Injection über Objektfelder möglich machen. | Security | hoch | S | offen |
 | FE-005 | Spalten-Sortierung in StateList implementieren: Klick auf Spaltenheader sortiert aufsteigend/absteigend (ID, Name, Rolle, Raum, Wert, Einheit). | Feature | hoch | M | offen |

@@ -919,7 +919,7 @@ function patternToInitialId(pattern: string): string {
   return pattern;
 }
 
-export default function StateList({ ids, totalCount, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, onNavigateTo, exportIds, treeFilter, onClearTreeFilter }: StateListProps) {
+function StateList({ ids, totalCount, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, onNavigateTo, exportIds, treeFilter, onClearTreeFilter }: StateListProps) {
   const [sortKey, setSortKey] = useState<SortKey>('id');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [visibleCols, setVisibleCols] = useState<SortKey[]>(loadVisibleCols);
@@ -1628,3 +1628,5 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, f
     </div>
   );
 }
+
+export default React.memo(StateList);

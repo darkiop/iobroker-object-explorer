@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, memo } from 'react';
 import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil } from 'lucide-react';
 import type { TreeNode, IoBrokerObject } from '../types/iobroker';
 import ObjectEditModal from './ObjectEditModal';
@@ -306,7 +306,7 @@ function TreeNodeComponent({
 }
 
 
-export default function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeSelect, historyOnly, smartOnly, historyIds, smartIds, expandToDepth, treeFilter, onClearTreeFilter }: StateTreeProps) {
+function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeSelect, historyOnly, smartOnly, historyIds, smartIds, expandToDepth, treeFilter, onClearTreeFilter }: StateTreeProps) {
   const [expandSignal, setExpandSignal] = useState<{ depth: number; seq: number }>({ depth: 0, seq: 0 });
   const [showStates,   setShowStates]   = useState(true);
   const [showFolders,  setShowFolders]  = useState(true);
@@ -416,3 +416,5 @@ export default function StateTree({ stateIds, allObjects, selectedId, onSelect, 
     </div>
   );
 }
+
+export default memo(StateTree);
