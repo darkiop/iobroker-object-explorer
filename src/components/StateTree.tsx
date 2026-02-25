@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, memo } from 'react';
-import { ChevronRight, ChevronDown, ChevronsUpDown, ChevronsDownUp, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil } from 'lucide-react';
+import { ChevronRight, ChevronDown, ChevronsUpDown, ChevronsDownUp, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil, LayoutList, LayoutGrid } from 'lucide-react';
 import type { TreeNode, IoBrokerObject } from '../types/iobroker';
 import ObjectEditModal from './ObjectEditModal';
 import ContextMenu from './ContextMenu';
@@ -57,6 +57,37 @@ function buildTree(ids: string[]): TreeNode {
       if (i === parts.length - 1) {
         current.isLeaf = true;
       }
+    }
+  }
+
+  return root;
+}
+
+function buildAdapterTree(ids: string[]): TreeNode {
+  const root: TreeNode = { name: 'root', fullPath: '', children: new Map(), isLeaf: false };
+
+  for (const id of ids) {
+    const parts = id.split('.');
+    const adapterKey = parts.length >= 2 ? `${parts[0]}.${parts[1]}` : parts[0];
+    if (!root.children.has(adapterKey)) {
+      root.children.set(adapterKey, {
+        name: adapterKey, fullPath: adapterKey, children: new Map(), isLeaf: false, count: 0,
+      });
+    }
+    const adapterNode = root.children.get(adapterKey)!;
+    adapterNode.count = (adapterNode.count ?? 0) + 1;
+    const remaining = parts.slice(parts.length >= 2 ? 2 : 1);
+    let current = adapterNode;
+    for (let i = 0; i < remaining.length; i++) {
+      const seg = remaining[i];
+      const childPath = `${current.fullPath}.${seg}`;
+      if (!current.children.has(seg)) {
+        current.children.set(seg, {
+          name: seg, fullPath: childPath, children: new Map(), isLeaf: i === remaining.length - 1,
+        });
+      }
+      current = current.children.get(seg)!;
+      if (i === remaining.length - 1) current.isLeaf = true;
     }
   }
 
@@ -223,6 +254,9 @@ function TreeNodeComponent({
         <span className={`truncate ${node.isLeaf ? (isHistoryEnabled ? 'text-blue-500 dark:text-blue-400' : 'text-green-600 dark:text-green-400') : 'text-gray-600 font-medium dark:text-gray-400'}`}>
           {node.name}
         </span>
+        {node.count !== undefined && node.count > 0 && (
+          <span className="shrink-0 text-[10px] text-gray-400 dark:text-gray-500">({node.count})</span>
+        )}
         {isFolder && objectType && (
           <span className="text-[10px] uppercase text-gray-400 dark:text-gray-500 tracking-wide shrink-0">
             {objectType}
@@ -313,6 +347,7 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
   const [showDevices,  setShowDevices]  = useState(true);
   const [showChannels, setShowChannels] = useState(true);
   const [typesOpen,    setTypesOpen]    = useState(false);
+  const [treeViewMode, setTreeViewMode] = useState<'path' | 'adapter'>('path');
 
   function handleFolderSearch(pattern: string) {
     onSearch(pattern);
@@ -331,7 +366,10 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
     );
   }, [stateIds, historyOnly, historyIds, smartOnly, smartIds]);
 
-  const tree = useMemo(() => buildTree(filteredIds), [filteredIds]);
+  const tree = useMemo(
+    () => treeViewMode === 'adapter' ? buildAdapterTree(filteredIds) : buildTree(filteredIds),
+    [filteredIds, treeViewMode]
+  );
   const sortedChildren = useMemo(
     () => [...tree.children.values()].sort((a, b) => a.name.localeCompare(b.name)),
     [tree.children]
@@ -401,6 +439,17 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
         >
           <ChevronsDownUp size={13} />
           Zuklappen
+        </button>
+        <button
+          onClick={() => setTreeViewMode(m => m === 'path' ? 'adapter' : 'path')}
+          className={`flex items-center justify-center gap-1 px-2 py-1 text-xs rounded border transition-colors ${
+            treeViewMode === 'adapter'
+              ? 'bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-400/40 hover:bg-blue-500/30'
+              : 'bg-gray-200/50 text-gray-500 border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700'
+          }`}
+          title={treeViewMode === 'adapter' ? 'Pfad-Ansicht' : 'Adapter-Ansicht'}
+        >
+          {treeViewMode === 'adapter' ? <LayoutList size={13} /> : <LayoutGrid size={13} />}
         </button>
       </div>
       <div className="overflow-y-auto px-2 flex-1">

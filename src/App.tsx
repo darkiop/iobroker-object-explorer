@@ -160,7 +160,7 @@ function AppContent() {
       sidebar={
         <div className="flex flex-col h-full">
           <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex flex-col gap-2">
-            <SearchBar onSearch={handleSearch} initialPattern={pattern} />
+            <SearchBar onSearch={handleSearch} initialPattern={pattern} onReset={resetAllFilters} />
             {hasAnyFilter && (
               <button
                 onClick={resetAllFilters}

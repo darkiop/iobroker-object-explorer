@@ -6,9 +6,10 @@ const SEARCH_ALL = '*';
 interface SearchBarProps {
   onSearch: (pattern: string) => void;
   initialPattern?: string;
+  onReset?: () => void;
 }
 
-export default function SearchBar({ onSearch, initialPattern }: SearchBarProps) {
+export default function SearchBar({ onSearch, initialPattern, onReset }: SearchBarProps) {
   const [value, setValue] = useState('');
 
   // Nur bei echten Baum-Navigationen synchronisieren (nicht beim App-Start mit '*')
@@ -25,6 +26,11 @@ export default function SearchBar({ onSearch, initialPattern }: SearchBarProps) 
 
   const handleClear = () => {
     setValue('');
+    if (onReset) {
+      onReset();
+    } else {
+      onSearch(SEARCH_ALL);
+    }
   };
 
   return (
