@@ -55,9 +55,9 @@ export async function getState(id: string): Promise<IoBrokerState> {
   return fetchApi<IoBrokerState>(`/state/${encodeURIComponent(id)}`);
 }
 
-// Batch: mehrere States parallel laden (in 20er-Gruppen)
-export async function getStatesBatch(ids: string[]): Promise<Record<string, IoBrokerState>> {
-  const BATCH_SIZE = 20;
+// Batch: mehrere States parallel laden (in konfigurierbaren Gruppen)
+export async function getStatesBatch(ids: string[], batchSize = 50): Promise<Record<string, IoBrokerState>> {
+  const BATCH_SIZE = batchSize;
   const record: Record<string, IoBrokerState> = {};
   for (let i = 0; i < ids.length; i += BATCH_SIZE) {
     const batch = ids.slice(i, i + BATCH_SIZE);

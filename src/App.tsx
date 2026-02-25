@@ -10,7 +10,7 @@ import HistoryModal from './components/HistoryModal';
 import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunctionMap, useRoomEnums, useFunctionEnums } from './hooks/useStates';
 import { hasHistory, hasSmartName, buildAliasReverseMap } from './api/iobroker';
 import type { SortKey } from './components/StateList';
-import { Database, Mic2, ChevronsUpDown, ChevronsDownUp, ChevronDown, ChevronRight, Home, Zap, RotateCcw, Layers } from 'lucide-react';
+import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RotateCcw, Layers } from 'lucide-react';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -184,24 +184,6 @@ function AppContent() {
                 <Mic2 size={12} className="shrink-0" />
                 <span className="truncate">SmartName</span>
                 <span className={`shrink-0 ${smartOnly ? 'text-violet-500 dark:text-violet-400' : 'text-gray-400 dark:text-gray-500'}`}>{smartIds.size}</span>
-              </button>
-            </div>
-            <div className="flex gap-1.5">
-              <button
-                onClick={() => setTreeExpandSignal(s => ({ depth: 9999, seq: (s?.seq ?? 0) + 1 }))}
-                className="flex items-center justify-center gap-1 flex-1 px-2 py-1 text-xs rounded bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700"
-                title="Alle aufklappen"
-              >
-                <ChevronsUpDown size={13} />
-                Aufklappen
-              </button>
-              <button
-                onClick={() => setTreeExpandSignal(s => ({ depth: 0, seq: (s?.seq ?? 0) + 1 }))}
-                className="flex items-center justify-center gap-1 flex-1 px-2 py-1 text-xs rounded bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700"
-                title="Alle zuklappen"
-              >
-                <ChevronsDownUp size={13} />
-                Zuklappen
               </button>
             </div>
             {hasAnyFilter && (

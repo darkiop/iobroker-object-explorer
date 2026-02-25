@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, memo } from 'react';
-import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil } from 'lucide-react';
+import { ChevronRight, ChevronDown, ChevronsUpDown, ChevronsDownUp, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil } from 'lucide-react';
 import type { TreeNode, IoBrokerObject } from '../types/iobroker';
 import ObjectEditModal from './ObjectEditModal';
 import ContextMenu from './ContextMenu';
@@ -385,6 +385,24 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
         )}
       </div>
 
+      <div className="flex gap-1.5 px-3 py-2 border-b border-gray-200 dark:border-gray-700 shrink-0">
+        <button
+          onClick={() => setExpandSignal(s => ({ depth: 9999, seq: s.seq + 1 }))}
+          className="flex items-center justify-center gap-1 flex-1 px-2 py-1 text-xs rounded bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700"
+          title="Alle aufklappen"
+        >
+          <ChevronsUpDown size={13} />
+          Aufklappen
+        </button>
+        <button
+          onClick={() => setExpandSignal(s => ({ depth: 0, seq: s.seq + 1 }))}
+          className="flex items-center justify-center gap-1 flex-1 px-2 py-1 text-xs rounded bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700"
+          title="Alle zuklappen"
+        >
+          <ChevronsDownUp size={13} />
+          Zuklappen
+        </button>
+      </div>
       <div className="overflow-y-auto px-2 flex-1">
         {filteredIds.length === 0 ? (
           <div className="text-gray-400 dark:text-gray-500 text-sm p-4">

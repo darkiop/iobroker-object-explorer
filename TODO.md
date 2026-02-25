@@ -17,7 +17,7 @@
 | FE-015 | Doppelte `copyText()`-Implementierung aus `StateList.tsx` und `StateTree.tsx` in `src/utils/clipboard.ts` auslagern. | Code Quality | mittel | S | offen |
 | FE-016 | QueryKey-Hierarchie nach TanStack React Query Best Practices strukturieren (z.B. `['objects', pattern]` statt loses String-Pattern). | Code Quality | mittel | S | offen |
 | FE-017 | Column-Filter-Logik in `App.tsx` (~75 Zeilen verschachtelte if/filter) in separate Utility-Funktion `filterObjectIds()` auslagern. | Code Quality | mittel | S | offen |
-| FE-018 | API-Batch-Größe in `getStatesBatch()` von 20 auf 50+ erhöhen und konfigurierbar machen. | Performance | mittel | S | offen |
+| FE-018 | API-Batch-Größe in `getStatesBatch()` von 20 auf 50+ erhöhen und konfigurierbar machen. | Performance | mittel | S | umgesetzt |
 | FE-019 | `useStateValues()`-Hook: Refetch pausieren wenn Tab/Window nicht sichtbar (Page Visibility API). | Performance | mittel | S | offen |
 | FE-020 | `buildAliasReverseMap()` in QueryClient cachen statt bei jedem Re-Render neu berechnen. | Performance | mittel | S | offen |
 | FE-021 | Keyboard-Navigation ergänzen: Arrow Keys in Tabelle, Tab für Fokus, Enter zum Öffnen des Modals. | UX | mittel | M | offen |
