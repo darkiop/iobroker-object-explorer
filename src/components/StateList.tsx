@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, RotateCcw, Plus, Lock, Trash2, Search, Link2, FileEdit, Download } from 'lucide-react';
-import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useFunctionEnums, useUpdateFunctionMembership } from '../hooks/useStates';
+import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
 import NewDatapointModal from './NewDatapointModal';
@@ -938,7 +938,9 @@ function StateList({ ids, totalCount, states, objects, roomMap, functionMap, sel
   const { data: roomEnums = [] } = useRoomEnums();
   const { data: fnEnums = [] } = useFunctionEnums();
   const updateRoom = useUpdateRoomMembership();
+  const updateRoomBatch = useUpdateRoomMembershipBatch();
   const updateFn = useUpdateFunctionMembership();
+  const updateFnBatch = useUpdateFunctionMembershipBatch();
   const [batchRole, setBatchRole] = useState('');
   const [batchUnit, setBatchUnit] = useState('');
   const [batchRoomEnumId, setBatchRoomEnumId] = useState('');
@@ -1145,17 +1147,11 @@ function StateList({ ids, totalCount, states, objects, roomMap, functionMap, sel
     }
     if (batchRoomEnumId !== '') {
       const newRoomEnumId = batchRoomEnumId === '__none__' ? null : batchRoomEnumId;
-      ids.forEach((id) => {
-        const oldRoomEnumId = Object.keys(objects[id]?.enums ?? {}).find((k) => k.startsWith('enum.rooms.')) ?? null;
-        updateRoom.mutate({ objectId: id, oldRoomEnumId, newRoomEnumId });
-      });
+      updateRoomBatch.mutate({ objectIds: ids, newRoomEnumId });
     }
     if (batchFnEnumId !== '') {
       const newFnEnumId = batchFnEnumId === '__none__' ? null : batchFnEnumId;
-      ids.forEach((id) => {
-        const oldFnEnumId = Object.keys(objects[id]?.enums ?? {}).find((k) => k.startsWith('enum.functions.')) ?? null;
-        updateFn.mutate({ objectId: id, oldFnEnumId, newFnEnumId });
-      });
+      updateFnBatch.mutate({ objectIds: ids, newFnEnumId });
     }
     setBatchRole('');
     setBatchUnit('');

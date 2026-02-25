@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
-import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, putFullObject, createObject, deleteObject, getAllRoles, getAllUnits, setState, getRoomMap, getAllObjects, getRoomEnums, updateRoomMembership, getFunctionMap, getFunctionEnums, updateFunctionMembership, buildAliasReverseMap } from '../api/iobroker';
+import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, putFullObject, createObject, deleteObject, getAllRoles, getAllUnits, setState, getRoomMap, getAllObjects, getRoomEnums, updateRoomMembership, updateRoomMembershipBatch, getFunctionMap, getFunctionEnums, updateFunctionMembership, updateFunctionMembershipBatch, buildAliasReverseMap } from '../api/iobroker';
 import type { IoBrokerObject, IoBrokerObjectCommon, IoBrokerState, HistoryOptions } from '../types/iobroker';
 
 function usePageVisible() {
@@ -231,6 +231,18 @@ export function useUpdateFunctionMembership() {
   });
 }
 
+export function useUpdateFunctionMembershipBatch() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ objectIds, newFnEnumId }: { objectIds: string[]; newFnEnumId: string | null }) =>
+      updateFunctionMembershipBatch(objectIds, newFnEnumId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['objects'] });
+      queryClient.invalidateQueries({ queryKey: ['functionMap'] });
+    },
+  });
+}
+
 export function useRoomEnums() {
   return useQuery({
     queryKey: ['roomEnums'],
@@ -244,6 +256,18 @@ export function useUpdateRoomMembership() {
   return useMutation({
     mutationFn: ({ objectId, oldRoomEnumId, newRoomEnumId }: { objectId: string; oldRoomEnumId: string | null; newRoomEnumId: string | null }) =>
       updateRoomMembership(objectId, oldRoomEnumId, newRoomEnumId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['objects'] });
+      queryClient.invalidateQueries({ queryKey: ['roomMap'] });
+    },
+  });
+}
+
+export function useUpdateRoomMembershipBatch() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ objectIds, newRoomEnumId }: { objectIds: string[]; newRoomEnumId: string | null }) =>
+      updateRoomMembershipBatch(objectIds, newRoomEnumId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['objects'] });
       queryClient.invalidateQueries({ queryKey: ['roomMap'] });

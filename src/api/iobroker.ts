@@ -291,6 +291,29 @@ export async function updateFunctionMembership(objectId: string, oldFnEnumId: st
   objectsCache = null;
 }
 
+export async function updateFunctionMembershipBatch(objectIds: string[], newFnEnumId: string | null): Promise<void> {
+  const res = await fetchApi<Record<string, IoBrokerObject>>('/objects?type=enum');
+  const objectIdSet = new Set(objectIds);
+
+  // Remove selected IDs from all function enums they currently belong to
+  for (const [enumId, enumObj] of Object.entries(res)) {
+    if (!enumId.startsWith('enum.functions.') || enumId === newFnEnumId) continue;
+    const currentMembers = enumObj.common?.members ?? [];
+    if (currentMembers.some((m) => objectIdSet.has(m))) {
+      const members = currentMembers.filter((m) => !objectIdSet.has(m));
+      await putFullObject(enumId, { ...enumObj, common: { ...enumObj.common, members } });
+    }
+  }
+
+  // Add all to the new function enum in one write
+  if (newFnEnumId && res[newFnEnumId]) {
+    const obj = res[newFnEnumId];
+    const members = [...new Set([...(obj.common?.members ?? []), ...objectIds])];
+    await putFullObject(newFnEnumId, { ...obj, common: { ...obj.common, members } });
+  }
+  objectsCache = null;
+}
+
 export async function getRoomEnums(): Promise<Array<{ id: string; name: string }>> {
   const res = await fetchApi<Record<string, IoBrokerObject>>('/objects?type=enum');
   const rooms: Array<{ id: string; name: string }> = [];
@@ -320,6 +343,29 @@ export async function updateRoomMembership(objectId: string, oldRoomEnumId: stri
   if (newRoomEnumId && res[newRoomEnumId]) {
     const obj = res[newRoomEnumId];
     const members = [...new Set([...(obj.common?.members ?? []), objectId])];
+    await putFullObject(newRoomEnumId, { ...obj, common: { ...obj.common, members } });
+  }
+  objectsCache = null;
+}
+
+export async function updateRoomMembershipBatch(objectIds: string[], newRoomEnumId: string | null): Promise<void> {
+  const res = await fetchApi<Record<string, IoBrokerObject>>('/objects?type=enum');
+  const objectIdSet = new Set(objectIds);
+
+  // Remove selected IDs from all room enums they currently belong to
+  for (const [enumId, enumObj] of Object.entries(res)) {
+    if (!enumId.startsWith('enum.rooms.') || enumId === newRoomEnumId) continue;
+    const currentMembers = enumObj.common?.members ?? [];
+    if (currentMembers.some((m) => objectIdSet.has(m))) {
+      const members = currentMembers.filter((m) => !objectIdSet.has(m));
+      await putFullObject(enumId, { ...enumObj, common: { ...enumObj.common, members } });
+    }
+  }
+
+  // Add all to the new room enum in one write
+  if (newRoomEnumId && res[newRoomEnumId]) {
+    const obj = res[newRoomEnumId];
+    const members = [...new Set([...(obj.common?.members ?? []), ...objectIds])];
     await putFullObject(newRoomEnumId, { ...obj, common: { ...obj.common, members } });
   }
   objectsCache = null;
