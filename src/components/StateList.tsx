@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, RotateCcw, Plus, Lock, Trash2, Search, Link2, FileEdit, Download } from 'lucide-react';
-import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch } from '../hooks/useStates';
+import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembershipBatch } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
 import NewDatapointModal from './NewDatapointModal';
@@ -938,9 +938,7 @@ function StateList({ ids, totalCount, states, objects, roomMap, functionMap, sel
   const { data: units = [] } = useAllUnits();
   const { data: roomEnums = [] } = useRoomEnums();
   const { data: fnEnums = [] } = useFunctionEnums();
-  const updateRoom = useUpdateRoomMembership();
   const updateRoomBatch = useUpdateRoomMembershipBatch();
-  const updateFn = useUpdateFunctionMembership();
   const updateFnBatch = useUpdateFunctionMembershipBatch();
   const [batchRole, setBatchRole] = useState('');
   const [batchUnit, setBatchUnit] = useState('');
