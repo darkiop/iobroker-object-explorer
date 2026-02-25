@@ -5,9 +5,10 @@ import { useTheme } from '../context/ThemeContext';
 interface LayoutProps {
   sidebar: React.ReactNode;
   children: React.ReactNode;
+  onSidebarToggle?: () => void;
 }
 
-export default function Layout({ sidebar, children }: LayoutProps) {
+export default function Layout({ sidebar, children, onSidebarToggle }: LayoutProps) {
   const [sidebarWidth, setSidebarWidth] = useState(360);
   const [collapsed, setCollapsed] = useState(false);
   const dragging = useRef(false);
@@ -46,7 +47,7 @@ export default function Layout({ sidebar, children }: LayoutProps) {
       <header className="flex items-center justify-between px-4 py-3 bg-gray-100 border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700 shrink-0">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setCollapsed((c) => !c)}
+            onClick={() => { setCollapsed((c) => !c); if (onSidebarToggle) setTimeout(onSidebarToggle, 210); }}
             className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
             title={collapsed ? 'Sidebar ausklappen' : 'Sidebar einklappen'}
           >

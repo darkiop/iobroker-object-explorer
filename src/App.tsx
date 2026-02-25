@@ -36,6 +36,7 @@ function AppContent() {
   const [smartOnly, setSmartOnly] = useState(false);
   const [colFilters, setColFilters] = useState<Partial<Record<SortKey, string>>>({});
   const [treeExpandSignal, setTreeExpandSignal] = useState<{ depth: number; seq: number } | undefined>(undefined);
+  const [sidebarToggleSeq, setSidebarToggleSeq] = useState(0);
   const [treeFilter, setTreeFilter] = useState<string | null>(null);
   const [roomFilter, setRoomFilter] = useState<string | null>(null);
   const [roomsOpen, setRoomsOpen] = useState(false);
@@ -157,6 +158,7 @@ function AppContent() {
 
   return (
     <Layout
+      onSidebarToggle={() => setSidebarToggleSeq((s) => s + 1)}
       sidebar={
         <div className="flex flex-col h-full">
           <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex flex-col gap-2">
@@ -352,6 +354,7 @@ function AppContent() {
             exportIds={tableIds}
             treeFilter={treeFilter}
             onClearTreeFilter={() => setTreeFilter(null)}
+            sidebarToggleSeq={sidebarToggleSeq}
           />
         </div>
 
