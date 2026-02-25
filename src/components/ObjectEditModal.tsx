@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Save, AlertTriangle, Link2, Pencil, Check, Wrench, Trash2 } from 'lucide-react';
+import { X, Save, AlertTriangle, Link2, Pencil, Check, Wrench, Trash2, Maximize2 } from 'lucide-react';
 import { usePutObject, useExtendObject, useStateDetail, useSetState, useAllRoles, useAllUnits, useDeleteObject } from '../hooks/useStates';
 import { hasHistory } from '../api/iobroker';
 import HistoryChart from './HistoryChart';
@@ -11,6 +11,7 @@ interface Props {
   id: string;
   obj: IoBrokerObject;
   onClose: () => void;
+  onOpenHistory?: () => void;
 }
 
 type Tab = 'details' | 'json' | 'alias';
@@ -224,7 +225,7 @@ function ExpertControl({ val, onSet, isPending, unit, type }: { val: unknown; on
 
 // ── main component ─────────────────────────────────────────────────────────
 
-export default function ObjectEditModal({ id, obj, onClose }: Props) {
+export default function ObjectEditModal({ id, obj, onClose, onOpenHistory }: Props) {
   const [tab, setTab] = useState<Tab>('details');
   const [draft, setDraft] = useState(() => JSON.stringify(obj, null, 2));
   const [jsonError, setJsonError] = useState<string | null>(null);
@@ -422,8 +423,20 @@ export default function ObjectEditModal({ id, obj, onClose }: Props) {
 
                 {hasHistory(obj) && (
                   <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
-                    <div className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">History</div>
-                    <HistoryChart stateId={id} unit={obj.common?.unit} />
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">History</span>
+                      {onOpenHistory && (
+                        <button
+                          onClick={() => { onClose(); onOpenHistory(); }}
+                          className="flex items-center gap-0.5 text-[11px] text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                          title="Im History-Modal öffnen"
+                        >
+                          <Maximize2 size={11} />
+                          Vollbild
+                        </button>
+                      )}
+                    </div>
+                    <HistoryChart stateId={id} unit={obj.common?.unit} settingsCollapsible />
                   </div>
                 )}
               </div>

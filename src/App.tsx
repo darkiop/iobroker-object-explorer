@@ -6,10 +6,11 @@ import SearchBar from './components/SearchBar';
 import StateTree from './components/StateTree';
 import StateList from './components/StateList';
 import ObjectEditModal from './components/ObjectEditModal';
-import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunctionMap } from './hooks/useStates';
+import HistoryModal from './components/HistoryModal';
+import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunctionMap, useRoomEnums, useFunctionEnums } from './hooks/useStates';
 import { hasHistory, hasSmartName, buildAliasReverseMap } from './api/iobroker';
 import type { SortKey } from './components/StateList';
-import { Database, Mic2, ChevronsUpDown, ChevronsDownUp, X } from 'lucide-react';
+import { Database, Mic2, ChevronsUpDown, ChevronsDownUp, ChevronDown, ChevronRight, Home, Zap, RotateCcw, Layers } from 'lucide-react';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -36,11 +37,19 @@ function AppContent() {
   const [colFilters, setColFilters] = useState<Partial<Record<SortKey, string>>>({});
   const [treeExpandSignal, setTreeExpandSignal] = useState<{ depth: number; seq: number } | undefined>(undefined);
   const [treeFilter, setTreeFilter] = useState<string | null>(null);
+  const [roomFilter, setRoomFilter] = useState<string | null>(null);
+  const [roomsOpen, setRoomsOpen] = useState(false);
+  const [functionFilter, setFunctionFilter] = useState<string | null>(null);
+  const [functionsOpen, setFunctionsOpen] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
+  const [historyModalId, setHistoryModalId] = useState<string | null>(null);
 
   const { data: stateObjects, error: objectsError } = useFilteredObjects(pattern);
   const { data: allObjects } = useAllObjects();
   const { data: roomMap } = useRoomMap();
   const { data: functionMap } = useFunctionMap();
+  const { data: roomEnums = [] } = useRoomEnums();
+  const { data: functionEnums = [] } = useFunctionEnums();
 
   const historyIds = useMemo(() => {
     const set = new Set<string>();
@@ -77,15 +86,21 @@ function AppContent() {
     if (colFilters.history === '1') ids = ids.filter((id) => historyIds.has(id));
     if (colFilters.smart === '1')   ids = ids.filter((id) => smartIds.has(id));
     if (colFilters.alias === '1')   ids = ids.filter((id) => aliasMap.has(id) || !!(stateObjects![id]?.common?.alias?.id));
-    if (treeFilter) ids = ids.filter((id) => id.startsWith(treeFilter));
+    if (roomFilter) ids = ids.filter((id) => (roomMap || {})[id] === roomFilter);
+    if (functionFilter) ids = ids.filter((id) => (functionMap || {})[id] === functionFilter);
     return ids;
-  }, [stateObjects, historyOnly, historyIds, smartOnly, smartIds, colFilters, roomMap, functionMap, aliasMap, treeFilter]);
+  }, [stateObjects, historyOnly, historyIds, smartOnly, smartIds, colFilters, roomMap, functionMap, aliasMap, roomFilter, functionFilter]);
 
-  const totalCount = objectIds.length;
+  const tableIds = useMemo(
+    () => treeFilter ? objectIds.filter((id) => id.startsWith(treeFilter)) : objectIds,
+    [objectIds, treeFilter]
+  );
+
+  const totalCount = tableIds.length;
   const pageStart = page * pageSize;
   const pageIds = useMemo(
-    () => objectIds.slice(pageStart, pageStart + pageSize),
-    [objectIds, pageStart, pageSize]
+    () => tableIds.slice(pageStart, pageStart + pageSize),
+    [tableIds, pageStart, pageSize]
   );
   const totalPages = Math.ceil(totalCount / pageSize);
 
@@ -105,11 +120,27 @@ function AppContent() {
     setSelectedId(null);
     setHistoryOnly(false);
     setSmartOnly(false);
+    setRoomFilter(null);
+    setFunctionFilter(null);
   };
 
   function handleColFilterChange(filters: Partial<Record<SortKey, string>>) {
     setColFilters(filters);
     setPage(0);
+  }
+
+  const hasAnyFilter = pattern !== '*' || historyOnly || smartOnly || !!roomFilter || !!functionFilter || !!treeFilter || Object.values(colFilters).some((v) => v.trim() !== '');
+
+  function resetAllFilters() {
+    setPattern('*');
+    setPage(0);
+    setSelectedId(null);
+    setHistoryOnly(false);
+    setSmartOnly(false);
+    setRoomFilter(null);
+    setFunctionFilter(null);
+    setTreeFilter(null);
+    setColFilters({});
   }
 
   function handleNavigateTo(ids: string[]) {
@@ -129,21 +160,6 @@ function AppContent() {
         <div className="flex flex-col h-full">
           <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex flex-col gap-2">
             <SearchBar onSearch={handleSearch} initialPattern={pattern} />
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {['alias.0.*', 'javascript.0.*', '0_userdata.0.*'].map((q) => (
-                <button
-                  key={q}
-                  onClick={() => { handleSearch(pattern === q ? '*' : q); if (pattern !== q) setTreeExpandSignal(s => ({ depth: 2, seq: (s?.seq ?? 0) + 1 })); }}
-                  className={`px-2 py-0.5 rounded text-xs font-mono transition-colors ${
-                    pattern === q
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  {q}
-                </button>
-              ))}
-            </div>
             <div className="flex gap-1.5">
               <button
                 onClick={() => { setHistoryOnly(!historyOnly); setPage(0); }}
@@ -170,14 +186,6 @@ function AppContent() {
                 <span className={`shrink-0 ${smartOnly ? 'text-violet-500 dark:text-violet-400' : 'text-gray-400 dark:text-gray-500'}`}>{smartIds.size}</span>
               </button>
             </div>
-            {treeFilter && (
-              <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-blue-500/15 border border-blue-400/30 text-blue-600 dark:text-blue-400 text-xs">
-                <span className="truncate font-mono">{treeFilter.replace(/\.$/, '')}</span>
-                <button onClick={() => setTreeFilter(null)} className="shrink-0 hover:text-blue-800 dark:hover:text-blue-200" title="Filter entfernen">
-                  <X size={11} />
-                </button>
-              </div>
-            )}
             <div className="flex gap-1.5">
               <button
                 onClick={() => setTreeExpandSignal(s => ({ depth: 9999, seq: (s?.seq ?? 0) + 1 }))}
@@ -196,7 +204,113 @@ function AppContent() {
                 Zuklappen
               </button>
             </div>
+            {hasAnyFilter && (
+              <button
+                onClick={resetAllFilters}
+                className="flex items-center justify-center gap-1.5 w-full px-2 py-1 text-xs rounded text-red-500 hover:text-red-700 hover:bg-red-500/10 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-500/10 transition-colors"
+                title="Alle Filter zurücksetzen"
+              >
+                <RotateCcw size={11} />
+                Filter zurücksetzen
+              </button>
+            )}
           </div>
+          <div className="border-b border-gray-200 dark:border-gray-700">
+            <button
+              onClick={() => setQuickOpen((v) => !v)}
+              className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
+            >
+              <span className="flex items-center gap-1.5 font-medium">
+                <Layers size={12} />
+                Schnellfilter
+                {(['alias.0.*', 'javascript.0.*', '0_userdata.0.*'].includes(pattern)) && (
+                  <span className="px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 text-[10px] truncate max-w-[80px]">{pattern}</span>
+                )}
+              </span>
+              {quickOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+            </button>
+            {quickOpen && (
+              <div className="px-3 pt-1.5 pb-3 flex flex-wrap gap-1.5">
+                {(['alias.0.*', 'javascript.0.*', '0_userdata.0.*'] as const).map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => { handleSearch(pattern === q ? '*' : q); if (pattern !== q) setTreeExpandSignal(s => ({ depth: 2, seq: (s?.seq ?? 0) + 1 })); }}
+                    className={`px-2 py-0.5 rounded text-xs font-mono transition-colors ${
+                      pattern === q
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {roomEnums.length > 0 && (
+            <div className="border-b border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => setRoomsOpen((v) => !v)}
+                className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
+              >
+                <span className="flex items-center gap-1.5 font-medium">
+                  <Home size={12} />
+                  Räume
+                  {roomFilter && <span className="px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 text-[10px]">{roomFilter}</span>}
+                </span>
+                {roomsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+              </button>
+              {roomsOpen && (
+                <div className="px-3 pt-1.5 pb-3 flex flex-wrap gap-1.5">
+                  {roomEnums.map(({ name }) => (
+                    <button
+                      key={name}
+                      onClick={() => { setRoomFilter(roomFilter === name ? null : name); setPage(0); }}
+                      className={`px-2 py-0.5 rounded text-xs transition-colors ${
+                        roomFilter === name
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {functionEnums.length > 0 && (
+            <div className="border-b border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => setFunctionsOpen((v) => !v)}
+                className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
+              >
+                <span className="flex items-center gap-1.5 font-medium">
+                  <Zap size={12} />
+                  Funktionen
+                  {functionFilter && <span className="px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 text-[10px]">{functionFilter}</span>}
+                </span>
+                {functionsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+              </button>
+              {functionsOpen && (
+                <div className="px-3 pt-1.5 pb-3 flex flex-wrap gap-1.5">
+                  {functionEnums.map(({ name }) => (
+                    <button
+                      key={name}
+                      onClick={() => { setFunctionFilter(functionFilter === name ? null : name); setPage(0); }}
+                      className={`px-2 py-0.5 rounded text-xs transition-colors ${
+                        functionFilter === name
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <div className="flex-1 overflow-y-auto py-1">
             <StateTree
               stateIds={objectIds}
@@ -210,6 +324,8 @@ function AppContent() {
               historyIds={historyIds}
               smartIds={smartIds}
               expandToDepth={treeExpandSignal}
+              treeFilter={treeFilter}
+              onClearTreeFilter={() => setTreeFilter(null)}
             />
           </div>
         </div>
@@ -227,6 +343,15 @@ function AppContent() {
             id={selectedId}
             obj={allObjects[selectedId]}
             onClose={() => setSelectedId(null)}
+            onOpenHistory={hasHistory(allObjects[selectedId]) ? () => setHistoryModalId(selectedId) : undefined}
+          />
+        )}
+        {historyModalId && (
+          <HistoryModal
+            stateId={historyModalId}
+            unit={allObjects?.[historyModalId]?.common?.unit}
+            objects={allObjects ?? undefined}
+            onClose={() => setHistoryModalId(null)}
           />
         )}
 
@@ -245,6 +370,9 @@ function AppContent() {
             pattern={pattern}
             aliasMap={aliasMap}
             onNavigateTo={handleNavigateTo}
+            exportIds={tableIds}
+            treeFilter={treeFilter}
+            onClearTreeFilter={() => setTreeFilter(null)}
           />
         </div>
 

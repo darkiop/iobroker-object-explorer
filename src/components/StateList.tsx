@@ -1,7 +1,7 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, RotateCcw, Plus, Lock, Trash2, Search, Link2, FileEdit } from 'lucide-react';
-import { useExtendObject, useAllRoles, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useFunctionEnums, useUpdateFunctionMembership } from '../hooks/useStates';
+import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, RotateCcw, Plus, Lock, Trash2, Search, Link2, FileEdit, Download } from 'lucide-react';
+import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useFunctionEnums, useUpdateFunctionMembership } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
 import NewDatapointModal from './NewDatapointModal';
@@ -28,6 +28,9 @@ interface StateListProps {
   pattern?: string;
   aliasMap?: Map<string, string[]>;
   onNavigateTo?: (ids: string[]) => void;
+  exportIds?: string[];
+  treeFilter?: string | null;
+  onClearTreeFilter?: () => void;
 }
 
 function formatTimestamp(ts: number): string {
@@ -76,7 +79,7 @@ function EditableNameCell({ id, name }: { id: string; name: string }) {
     return (
       <td data-col="name" className="px-3 py-2 overflow-hidden group/name">
         <div className="flex items-center gap-1.5">
-          <span className="truncate">{name}</span>
+          <span className="truncate" title={name}>{name}</span>
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -203,7 +206,7 @@ function EditableRoleCell({ id, role, suggestions }: { id: string; role: string;
       <div className="flex items-center gap-1.5">
         {role ? (
           <>
-            <span className="truncate">{role}</span>
+            <span className="truncate" title={role}>{role}</span>
             <Pencil size={12} className="opacity-0 group-hover/role:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity" />
           </>
         ) : (
@@ -270,10 +273,126 @@ function EditableRoleCell({ id, role, suggestions }: { id: string; role: string;
   );
 }
 
+function EditableUnitCell({ id, unit, suggestions }: { id: string; unit: string; suggestions: string[] }) {
+  const [editing, setEditing] = useState(false);
+  const [filter, setFilter] = useState('');
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const [cellRect, setCellRect] = useState<DOMRect | null>(null);
+  const cellRef = useRef<HTMLTableCellElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const extend = useExtendObject();
+
+  const filtered = filter
+    ? suggestions.filter((s) => s.toLowerCase().includes(filter.toLowerCase()))
+    : suggestions;
+
+  useEffect(() => {
+    if (editing) setTimeout(() => inputRef.current?.focus(), 0);
+  }, [editing]);
+
+  function openEdit() {
+    if (cellRef.current) setCellRect(cellRef.current.getBoundingClientRect());
+    setFilter('');
+    setActiveIndex(-1);
+    setEditing(true);
+  }
+
+  function close() { setEditing(false); setFilter(''); }
+
+  function commit(val: string) {
+    extend.mutate({ id, common: { unit: val } });
+    close();
+  }
+
+  return (
+    <td
+      ref={cellRef}
+      data-col="unit"
+      className="px-3 py-2 text-gray-500 dark:text-gray-400 text-xs font-mono overflow-hidden group/unit"
+      onClick={(e) => { e.stopPropagation(); openEdit(); }}
+    >
+      <div className="flex items-center gap-1.5">
+        {unit ? (
+          <>
+            <span className="truncate" title={unit}>{unit}</span>
+            <Pencil size={12} className="opacity-0 group-hover/unit:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity" />
+          </>
+        ) : (
+          <span className="text-gray-300 dark:text-gray-600 italic font-sans">Einheit…</span>
+        )}
+      </div>
+      {editing && cellRect && createPortal(
+        <>
+          <div className="fixed inset-0 z-[9998]" onMouseDown={close} />
+          <div
+            style={{ position: 'fixed', top: cellRect.bottom + 2, left: cellRect.left, zIndex: 9999, minWidth: Math.max(140, cellRect.width) }}
+            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg overflow-hidden"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="p-1.5 border-b border-gray-200 dark:border-gray-700">
+              <input
+                ref={inputRef}
+                type="text"
+                value={filter}
+                onChange={(e) => { setFilter(e.target.value); setActiveIndex(-1); }}
+                onKeyDown={(e) => {
+                  if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIndex((i) => Math.min(i + 1, filtered.length - 1)); }
+                  else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIndex((i) => Math.max(i - 1, -1)); }
+                  else if (e.key === 'Enter') {
+                    if (activeIndex >= 0 && filtered[activeIndex]) commit(filtered[activeIndex]);
+                    else if (filter.trim()) commit(filter.trim());
+                    else close();
+                  }
+                  else if (e.key === 'Escape') close();
+                }}
+                placeholder="Filtern…"
+                className="w-full bg-gray-50 dark:bg-gray-700 text-xs rounded px-2 py-1 border border-gray-300 dark:border-gray-600 focus:outline-none focus:border-blue-400 dark:focus:border-blue-500 text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500"
+              />
+            </div>
+            <ul className="max-h-48 overflow-y-auto py-1">
+              {filtered.length === 0 && filter.trim() && (
+                <li
+                  onMouseDown={(e) => { e.preventDefault(); commit(filter.trim()); }}
+                  className="px-3 py-1.5 text-xs cursor-pointer text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 italic"
+                >
+                  „{filter.trim()}" verwenden
+                </li>
+              )}
+              {unit && (
+                <li
+                  onMouseDown={(e) => { e.preventDefault(); commit(''); }}
+                  className="px-3 py-1.5 text-xs cursor-pointer text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 italic"
+                >
+                  — leer —
+                </li>
+              )}
+              {filtered.map((s, i) => (
+                <li
+                  key={s}
+                  onMouseDown={(e) => { e.preventDefault(); commit(s); }}
+                  className={`px-3 py-1.5 text-xs cursor-pointer ${
+                    i === activeIndex
+                      ? 'bg-blue-500 text-white'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  {s}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </>,
+        document.body
+      )}
+    </td>
+  );
+}
+
 function EditableValueCell({ id, state, obj }: { id: string; state: IoBrokerState | undefined; obj: IoBrokerObject | undefined }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const setStateVal = useSetState();
+  const prevValRef = useRef<unknown>(undefined);
 
   const isReadonly = obj?.common?.write === false;
   const valType = obj?.common?.type;
@@ -296,9 +415,27 @@ function EditableValueCell({ id, state, obj }: { id: string; state: IoBrokerStat
   }
 
   if (!editing) {
+    const val = state?.val;
+    const isNull = val === null || val === undefined;
+    const isBoolean = typeof val === 'boolean';
+    const isNumber = typeof val === 'number';
+
+    let valueColor = 'text-gray-900 dark:text-white';
+    if (isNull) valueColor = 'text-gray-300 dark:text-gray-600';
+    else if (isBoolean) valueColor = val ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400';
+
+    let trendIcon: React.ReactNode = null;
+    const prev = prevValRef.current;
+    if (isNumber && prev !== undefined && prev !== val) {
+      trendIcon = (val as number) > (prev as number)
+        ? <ArrowUp  size={10} className="text-green-500 dark:text-green-400 shrink-0" />
+        : <ArrowDown size={10} className="text-red-400 dark:text-red-400 shrink-0" />;
+    }
+    prevValRef.current = val;
+
     return (
-      <td data-col="value" className="px-3 py-2 text-right font-mono font-medium text-gray-900 dark:text-white overflow-hidden whitespace-nowrap group/value">
-        <div className="flex items-center justify-end gap-1.5">
+      <td data-col="value" className="px-3 py-2 text-right font-mono font-medium overflow-hidden whitespace-nowrap group/value">
+        <div className={`flex items-center justify-end gap-1 ${valueColor}`}>
           {!isReadonly && (
             <button
               onClick={(e) => { e.stopPropagation(); startEdit(); }}
@@ -308,11 +445,12 @@ function EditableValueCell({ id, state, obj }: { id: string; state: IoBrokerStat
               <Pencil size={12} />
             </button>
           )}
+          {trendIcon}
           {state ? (() => {
-            const v = formatValue(state.val);
+            const v = formatValue(val);
             const truncated = v.length > 16 ? v.slice(0, 16) + '…' : v;
             return <span title={v}>{truncated}</span>;
-          })() : <span className="text-gray-300 dark:text-gray-600">...</span>}
+          })() : <span className="text-gray-300 dark:text-gray-600">…</span>}
         </div>
       </td>
     );
@@ -427,7 +565,7 @@ function EditableRoomCell({ id, currentRoomEnumId, roomName, forceEdit, onEditEn
       <div className="flex items-center gap-1.5">
         {roomName ? (
           <>
-            <span className="truncate">{roomName}</span>
+            <span className="truncate" title={roomName}>{roomName}</span>
             <Pencil
               size={12}
               className="opacity-0 group-hover/room:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
@@ -526,7 +664,7 @@ function EditableFunctionCell({ id, currentFnEnumId, fnName, forceEdit, onEditEn
       <div className="flex items-center gap-1.5">
         {fnName ? (
           <>
-            <span className="truncate">{fnName}</span>
+            <span className="truncate" title={fnName}>{fnName}</span>
             <Pencil
               size={12}
               className="opacity-0 group-hover/fn:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
@@ -580,7 +718,7 @@ function EditableFunctionCell({ id, currentFnEnumId, fnName, forceEdit, onEditEn
   );
 }
 
-export type SortKey = 'checkbox' | 'write' | 'alias' | 'id' | 'name' | 'room' | 'function' | 'role' | 'value' | 'unit' | 'ack' | 'ts' | 'history' | 'smart';
+export type SortKey = 'checkbox' | 'write' | 'alias' | 'id' | 'name' | 'room' | 'function' | 'type' | 'role' | 'value' | 'unit' | 'ack' | 'ts' | 'history' | 'smart';
 
 const ALL_COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'checkbox', label: 'Auswahl' },
@@ -592,6 +730,7 @@ const ALL_COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'name',    label: 'Name' },
   { key: 'room',      label: 'Raum' },
   { key: 'function',  label: 'Funktion' },
+  { key: 'type',    label: 'Typ' },
   { key: 'role',    label: 'Rolle' },
   { key: 'value',   label: 'Wert' },
   { key: 'unit',    label: 'Einheit' },
@@ -599,7 +738,7 @@ const ALL_COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'ts',      label: 'Letztes Update' },
 ];
 
-const DEFAULT_COLS: SortKey[] = ['checkbox', 'write', 'history', 'smart', 'alias', 'id', 'name', 'room', 'function', 'role', 'value', 'unit', 'ack', 'ts'];
+const DEFAULT_COLS: SortKey[] = ['checkbox', 'write', 'history', 'smart', 'alias', 'id', 'name', 'room', 'function', 'type', 'role', 'value', 'unit', 'ack', 'ts'];
 const LS_KEY = 'iobroker-visible-cols';
 
 function loadVisibleCols(): SortKey[] {
@@ -619,7 +758,7 @@ const CHK_COL_WIDTH = 28;
 const DEFAULT_WIDTHS: Record<SortKey, number> = {
   checkbox: CHK_COL_WIDTH,
   write: 22, history: 22, smart: 22, alias: 30,
-  id: 220, name: 160, room: 110, function: 110, role: 130, value: 100,
+  id: 220, name: 160, room: 110, function: 110, type: 70, role: 130, value: 100,
   unit: 70, ack: 35, ts: 160,
 };
 const LS_WIDTHS_KEY = 'iobroker-col-widths';
@@ -762,6 +901,17 @@ function SortHeader({ label, sortKey, activeKey, dir, onSort, width, onResizeSta
   );
 }
 
+function TypeBadge({ type }: { type?: string }) {
+  const cfg: Record<string, { label: string; cls: string }> = {
+    folder:  { label: 'folder',  cls: 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400' },
+    device:  { label: 'device',  cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' },
+    channel: { label: 'channel', cls: 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-400' },
+    state:   { label: 'state',   cls: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' },
+  };
+  const { label, cls } = cfg[type ?? ''] ?? { label: type ?? '—', cls: 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500' };
+  return <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-mono leading-tight ${cls}`}>{label}</span>;
+}
+
 function patternToInitialId(pattern: string): string {
   if (!pattern || pattern === '*') return '';
   if (pattern.endsWith('.*')) return pattern.slice(0, -1); // e.g. "javascript.0.*" → "javascript.0."
@@ -769,7 +919,7 @@ function patternToInitialId(pattern: string): string {
   return pattern;
 }
 
-export default function StateList({ ids, totalCount, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, onNavigateTo }: StateListProps) {
+export default function StateList({ ids, totalCount, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, onNavigateTo, exportIds, treeFilter, onClearTreeFilter }: StateListProps) {
   const [sortKey, setSortKey] = useState<SortKey>('id');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [visibleCols, setVisibleCols] = useState<SortKey[]>(loadVisibleCols);
@@ -783,6 +933,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, f
   const [multiDeleteOpen, setMultiDeleteOpen] = useState(false);
   const deleteObject = useDeleteObject();
   const { data: roles = [] } = useAllRoles();
+  const { data: units = [] } = useAllUnits();
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; id: string } | null>(null);
   const [roomEditId, setRoomEditId] = useState<string | null>(null);
   const [fnEditId, setFnEditId] = useState<string | null>(null);
@@ -909,6 +1060,8 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, f
           return mul * (roomMap[a] || '').localeCompare(roomMap[b] || '');
         case 'function':
           return mul * (functionMap[a] || '').localeCompare(functionMap[b] || '');
+        case 'type':
+          return mul * (objA?.type || '').localeCompare(objB?.type || '');
         case 'role':
           return mul * (objA?.common?.role || '').localeCompare(objB?.common?.role || '');
         case 'history': {
@@ -937,14 +1090,15 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, f
   }, [ids, states, objects, roomMap, sortKey, sortDir]);
 
   // metadata + icon filters applied in App.tsx before pagination
-  // only value is filtered here (page-local, requires state data)
+  // value and type are filtered here (page-local)
   const filteredIds = useMemo(() => {
+    let result = sortedIds;
     const valueFilter = colFilters.value?.trim().toLowerCase();
-    if (!valueFilter) return sortedIds;
-    return sortedIds.filter((id) =>
-      formatValue(states[id]?.val).toLowerCase().includes(valueFilter)
-    );
-  }, [sortedIds, colFilters.value, states]);
+    const typeFilter = (colFilters as Partial<Record<string, string>>)['type']?.trim().toLowerCase();
+    if (valueFilter) result = result.filter((id) => formatValue(states[id]?.val).toLowerCase().includes(valueFilter));
+    if (typeFilter) result = result.filter((id) => (objects[id]?.type || '').toLowerCase().includes(typeFilter));
+    return result;
+  }, [sortedIds, colFilters, states, objects]);
 
   const hasColFilters = Object.values(colFilters).some((v) => v.trim() !== '');
 
@@ -972,6 +1126,45 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, f
     });
   }
 
+  function handleExport(format: 'json' | 'csv') {
+    const allIds = exportIds ?? ids;
+    const rows = allIds.map((id) => {
+      const obj = objects[id];
+      return {
+        id,
+        name: obj?.common?.name ? (typeof obj.common.name === 'string' ? obj.common.name : (obj.common.name.de || obj.common.name.en || '')) : '',
+        type: obj?.type || '',
+        role: obj?.common?.role || '',
+        unit: obj?.common?.unit || '',
+        room: roomMap[id] || '',
+        function: functionMap[id] || '',
+        read: obj?.common?.read !== false ? 'true' : 'false',
+        write: obj?.common?.write === true ? 'true' : 'false',
+      };
+    });
+    let content: string;
+    let mime: string;
+    let ext: string;
+    if (format === 'json') {
+      content = JSON.stringify(rows, null, 2);
+      mime = 'application/json';
+      ext = 'json';
+    } else {
+      const headers = ['id', 'name', 'type', 'role', 'unit', 'room', 'function', 'read', 'write'];
+      const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
+      content = [headers.join(';'), ...rows.map((r) => headers.map((h) => escape(String(r[h as keyof typeof r]))).join(';'))].join('\r\n');
+      mime = 'text/csv;charset=utf-8';
+      ext = 'csv';
+    }
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `iobroker-export-${new Date().toISOString().slice(0, 10)}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const toolbar = (
     <div className="flex items-center justify-between pl-1 pr-3 py-1 shrink-0 border-b border-gray-200 dark:border-gray-800">
       <div className="flex items-center gap-2">
@@ -982,6 +1175,28 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, f
         >
           <Plus size={16} />
         </button>
+        <div className="relative group/export">
+          <button
+            title="Exportieren"
+            className="flex items-center justify-center w-7 h-7 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-colors"
+          >
+            <Download size={16} />
+          </button>
+          <div className="absolute left-0 top-full mt-1 z-50 hidden group-hover/export:flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg overflow-hidden min-w-[90px]">
+            <button
+              onMouseDown={() => handleExport('csv')}
+              className="px-3 py-1.5 text-xs text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              CSV
+            </button>
+            <button
+              onMouseDown={() => handleExport('json')}
+              className="px-3 py-1.5 text-xs text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              JSON
+            </button>
+          </div>
+        </div>
         {checkedIds.size > 0 && (
           <button
             onClick={() => setMultiDeleteOpen(true)}
@@ -992,10 +1207,20 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, f
           </button>
         )}
       </div>
-      <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums">
-        <span className="text-gray-600 dark:text-gray-300 font-medium">{totalCount}</span>
-        {' '}Datenpunkte
-      </span>
+      <div className="flex flex-col items-center gap-0.5">
+        {treeFilter && onClearTreeFilter && (
+          <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-blue-500/15 border border-blue-400/30 text-blue-600 dark:text-blue-400 text-xs font-mono max-w-[200px]">
+            <span className="truncate">{treeFilter.replace(/\.$/, '')}</span>
+            <button onClick={onClearTreeFilter} title="Filter entfernen" className="shrink-0 hover:text-blue-800 dark:hover:text-blue-200">
+              <X size={10} />
+            </button>
+          </span>
+        )}
+        <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums">
+          <span className="text-gray-600 dark:text-gray-300 font-medium">{totalCount}</span>
+          {' '}Datenpunkte
+        </span>
+      </div>
       <div className="flex items-center gap-1">
         <button
           onClick={fitToContainer}
@@ -1047,6 +1272,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, f
         <HistoryModal
           stateId={historyModalId}
           unit={objects[historyModalId]?.common?.unit}
+          objects={objects}
           onClose={() => setHistoryModalId(null)}
         />
       )}
@@ -1088,6 +1314,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, f
           id={editObjId}
           obj={objects[editObjId]}
           onClose={() => setEditObjId(null)}
+          onOpenHistory={hasHistory(objects[editObjId]) ? () => setHistoryModalId(editObjId) : undefined}
         />
       )}
 
@@ -1132,6 +1359,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, f
               {show('name')    && <SortHeader label="Name" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('name')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('room')     && <SortHeader label="Raum"     sortKey="room"     activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('room')}     onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('function') && <SortHeader label="Funktion" sortKey="function" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('function')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
+              {show('type')    && <SortHeader label="Typ" sortKey="type" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('type')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('role')    && <SortHeader label="Rolle" sortKey="role" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('role')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('value')   && <SortHeader label="Wert" sortKey="value" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('value')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} className="text-right" />}
               {show('unit')    && <SortHeader label="Einheit" sortKey="unit" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('unit')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
@@ -1150,8 +1378,8 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, f
                   />
                 </th>
               )}
-              {(['write','history','smart','alias','id','name','room','function','role','value','unit','ack','ts'] as SortKey[]).filter(show).map((key) => {
-                const filterable = ['id','name','room','function','role','value','unit'].includes(key);
+              {(['write','history','smart','alias','id','name','room','function','type','role','value','unit','ack','ts'] as SortKey[]).filter(show).map((key) => {
+                const filterable = ['id','name','room','function','type','role','value','unit'].includes(key);
                 const isIconToggle = ['write','history','smart','alias'].includes(key);
                 const isActive = colFilters[key] === '1';
 
@@ -1335,7 +1563,7 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, f
                   {show('id') && (
                     <td data-col="id" className="px-3 py-2 font-mono text-xs text-gray-500 dark:text-gray-400 overflow-hidden group/id">
                       <div className="flex items-center gap-1.5">
-                        <span className="truncate">{id}</span>
+                        <span className="truncate" title={id}>{id}</span>
                         <CopyIdButton id={id} />
                       </div>
                     </td>
@@ -1359,13 +1587,14 @@ export default function StateList({ ids, totalCount, states, objects, roomMap, f
                       onEditEnd={() => setFnEditId(null)}
                     />
                   )}
-                  {show('role') && <EditableRoleCell id={id} role={obj?.common?.role || ''} suggestions={roles} />}
-                  {show('value') && <EditableValueCell id={id} state={state} obj={obj} />}
-                  {show('unit') && (
-                    <td data-col="unit" className="px-3 py-2 text-gray-400 dark:text-gray-500 overflow-hidden">
-                      <span className="truncate block">{unit}</span>
+                  {show('type') && (
+                    <td data-col="type" className="px-3 py-2 overflow-hidden">
+                      <TypeBadge type={obj?.type} />
                     </td>
                   )}
+                  {show('role') && <EditableRoleCell id={id} role={obj?.common?.role || ''} suggestions={roles} />}
+                  {show('value') && <EditableValueCell id={id} state={state} obj={obj} />}
+                  {show('unit') && <EditableUnitCell id={id} unit={unit} suggestions={units} />}
                   {show('ack') && (
                     <td data-col="ack" className="px-3 py-2">
                       {state ? (

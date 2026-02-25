@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil, Eye, EyeOff } from 'lucide-react';
+import { ChevronRight, ChevronDown, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil } from 'lucide-react';
 import type { TreeNode, IoBrokerObject } from '../types/iobroker';
 import ObjectEditModal from './ObjectEditModal';
 import ContextMenu from './ContextMenu';
@@ -32,6 +32,8 @@ interface StateTreeProps {
   historyIds: Set<string>;
   smartIds: Set<string>;
   expandToDepth?: { depth: number; seq: number };
+  treeFilter?: string | null;
+  onClearTreeFilter?: () => void;
 }
 
 function buildTree(ids: string[]): TreeNode {
@@ -114,10 +116,39 @@ function TreeNodeComponent({
   }, [expandSignal]);
 
   if (node.isLeaf && !showStates) return null;
-  if (!node.isLeaf) {
-    if (objectType === 'device'  && !showDevices)  return null;
-    if (objectType === 'channel' && !showChannels) return null;
-    if (objectType !== 'device' && objectType !== 'channel' && !showFolders) return null;
+
+  const nodeFiltered = !node.isLeaf && (
+    (objectType === 'device'  && !showDevices) ||
+    (objectType === 'channel' && !showChannels) ||
+    (objectType !== 'device' && objectType !== 'channel' && !showFolders)
+  );
+
+  // Non-leaf filtered: skip the row but still render children so the full tree is searched
+  if (nodeFiltered) {
+    return (
+      <>
+        {sortedChildren.map((child) => (
+          <TreeNodeComponent
+            key={child.fullPath}
+            node={child}
+            depth={depth}
+            selectedId={selectedId}
+            onSelect={onSelect}
+            onSearch={onSearch}
+            onFolderSearch={onFolderSearch}
+            onTreeSelect={onTreeSelect}
+            historyIds={historyIds}
+            smartIds={smartIds}
+            expandSignal={expandSignal}
+            allObjects={allObjects}
+            showStates={showStates}
+            showFolders={showFolders}
+            showDevices={showDevices}
+            showChannels={showChannels}
+          />
+        ))}
+      </>
+    );
   }
 
   return (
@@ -173,16 +204,12 @@ function TreeNodeComponent({
         )}
         {!isFolder && <span className="w-5 shrink-0" />}
         {isFolder ? (
-          depth === 0 ? (
-            expanded
-              ? <FolderOpen size={15} className="text-yellow-500/80 shrink-0" />
-              : <Folder    size={15} className="text-yellow-600/70 shrink-0" />
-          ) : depth === 1 ? (
-            <HardDrive size={15} className="text-amber-500/80 shrink-0" />
-          ) : objectType === 'device' ? (
+          objectType === 'device' ? (
             <Cpu    size={15} className="text-sky-500/80    shrink-0" />
           ) : objectType === 'channel' ? (
             <Layers size={15} className="text-indigo-500/80 shrink-0" />
+          ) : depth === 1 ? (
+            <HardDrive size={15} className="text-amber-500/80 shrink-0" />
           ) : (
             expanded
               ? <FolderOpen size={15} className="text-yellow-500/80 shrink-0" />
@@ -196,7 +223,7 @@ function TreeNodeComponent({
         <span className={`truncate ${node.isLeaf ? (isHistoryEnabled ? 'text-blue-500 dark:text-blue-400' : 'text-green-600 dark:text-green-400') : 'text-gray-600 font-medium dark:text-gray-400'}`}>
           {node.name}
         </span>
-        {isFolder && depth >= 2 && objectType && (
+        {isFolder && objectType && (
           <span className="text-[10px] uppercase text-gray-400 dark:text-gray-500 tracking-wide shrink-0">
             {objectType}
           </span>
@@ -279,12 +306,13 @@ function TreeNodeComponent({
 }
 
 
-export default function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeSelect, historyOnly, smartOnly, historyIds, smartIds, expandToDepth }: StateTreeProps) {
+export default function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeSelect, historyOnly, smartOnly, historyIds, smartIds, expandToDepth, treeFilter, onClearTreeFilter }: StateTreeProps) {
   const [expandSignal, setExpandSignal] = useState<{ depth: number; seq: number }>({ depth: 0, seq: 0 });
   const [showStates,   setShowStates]   = useState(true);
   const [showFolders,  setShowFolders]  = useState(true);
   const [showDevices,  setShowDevices]  = useState(true);
   const [showChannels, setShowChannels] = useState(true);
+  const [typesOpen,    setTypesOpen]    = useState(false);
 
   function handleFolderSearch(pattern: string) {
     onSearch(pattern);
@@ -309,28 +337,52 @@ export default function StateTree({ stateIds, allObjects, selectedId, onSelect, 
     [tree.children]
   );
 
+  const typeItems = [
+    { key: 'folders',  label: 'Folder',  active: showFolders,  set: setShowFolders,  icon: <Folder   size={11} />, color: 'text-yellow-600 dark:text-yellow-500' },
+    { key: 'devices',  label: 'Device',  active: showDevices,  set: setShowDevices,  icon: <Cpu      size={11} />, color: 'text-sky-600 dark:text-sky-400'       },
+    { key: 'channels', label: 'Channel', active: showChannels, set: setShowChannels, icon: <Layers   size={11} />, color: 'text-indigo-600 dark:text-indigo-400' },
+    { key: 'states',   label: 'State',   active: showStates,   set: setShowStates,   icon: <FileText size={11} />, color: 'text-green-600 dark:text-green-400'   },
+  ] as const;
+  const hiddenCount = typeItems.filter((t) => !t.active).length;
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Toolbar */}
-      <div className="flex items-center justify-center gap-0.5 px-2 py-1 border-b border-gray-200 dark:border-gray-700 shrink-0 flex-wrap">
-        {([
-          { key: 'folders',  label: 'Folder',   active: showFolders,  set: setShowFolders,  icon: <Folder  size={12} />, color: 'text-yellow-600 dark:text-yellow-500' },
-          { key: 'devices',  label: 'Device',   active: showDevices,  set: setShowDevices,  icon: <Cpu     size={12} />, color: 'text-sky-600   dark:text-sky-400'    },
-          { key: 'channels', label: 'Channel',  active: showChannels, set: setShowChannels, icon: <Layers  size={12} />, color: 'text-indigo-600 dark:text-indigo-400' },
-          { key: 'states',   label: 'State',    active: showStates,   set: setShowStates,   icon: <FileText size={12} />, color: 'text-green-600 dark:text-green-400' },
-        ] as const).map(({ key, label, active, set, icon, color }) => (
-          <button
-            key={key}
-            onClick={() => set((v) => !v)}
-            title={active ? `${label}s ausblenden` : `${label}s einblenden`}
-            className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs transition-colors hover:bg-gray-200/60 dark:hover:bg-gray-700/60 ${
-              active ? color : 'text-gray-400 dark:text-gray-600'
-            }`}
-          >
-            {icon}
-            <span>{label}</span>
-          </button>
-        ))}
+      {/* Typ-Filter (collapsible) */}
+      <div className="border-b border-gray-200 dark:border-gray-700 shrink-0">
+        <button
+          onClick={() => setTypesOpen((v) => !v)}
+          className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
+        >
+          <span className="flex items-center gap-1.5 font-medium">
+            <Layers size={12} />
+            Typ
+            {hiddenCount > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-orange-500/15 text-orange-600 dark:text-orange-400 text-[10px]">
+                {4 - hiddenCount}/4
+              </span>
+            )}
+          </span>
+          {typesOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+        </button>
+        {typesOpen && (
+          <div className="px-3 pt-1.5 pb-3 flex flex-wrap gap-1.5">
+            {typeItems.map(({ key, label, active, set, icon, color }) => (
+              <button
+                key={key}
+                onClick={() => set((v) => !v)}
+                title={active ? `${label}s ausblenden` : `${label}s einblenden`}
+                className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs transition-colors ${
+                  active
+                    ? `bg-gray-200 dark:bg-gray-700 ${color} hover:bg-gray-300 dark:hover:bg-gray-600`
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-300 dark:hover:bg-gray-600'
+                }`}
+              >
+                {icon}
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="overflow-y-auto px-2 flex-1">

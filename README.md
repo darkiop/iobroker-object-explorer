@@ -1,6 +1,6 @@
 # ioBroker Object Explorer
 
-Ein React-Dashboard zum Durchsuchen, Verwalten und Überwachen von ioBroker-Datenpunkten über die REST-API. Dunkles Design, deutsche Benutzeroberfläche.
+Ein React-Dashboard zum Durchsuchen, Verwalten und Überwachen von ioBroker-Datenpunkten über die REST-API. Hell- und Dunkel-Modus, deutsche Benutzeroberfläche.
 
 **Stack:** React 18 · TypeScript · TanStack React Query · Recharts · Tailwind CSS · Vite
 
@@ -26,14 +26,33 @@ Der Vite-Dev-Server proxied `/api` → `http://10.4.0.20:8093` (konfigurierbar i
 
 ```bash
 docker build -t iobroker-object-explorer .
-docker run -p 8080:80 iobroker-object-explorer
+docker run -p 8080:80 \
+  -e IOBROKER_HOST=10.4.0.20 \
+  -e IOBROKER_PORT=8093 \
+  iobroker-object-explorer
 ```
 
-Der Nginx-Container proxied `/api` zur ioBroker REST API. Zieladresse kann in `nginx.conf` angepasst werden.
+Der Nginx-Container proxied `/api` zur ioBroker REST API. Zieladresse und Port werden über Umgebungsvariablen (`IOBROKER_HOST`, `IOBROKER_PORT`) konfiguriert – der Entrypoint generiert beim Start `/config.js` mit `window.__CONFIG__`, das im Browser zur Anzeige der REST-API-Adresse im Header genutzt wird.
+
+Alternativ über `docker-compose.yml`:
+
+```yaml
+environment:
+  IOBROKER_HOST: 10.4.0.20
+  IOBROKER_PORT: 8093
+```
 
 ---
 
 ## Funktionsübersicht
+
+### Layout & Navigation
+
+- **Einklappbare Seitenleiste**: Button im Header klappt die Seitenleiste vollständig ein/aus (CSS-Animation), um der Tabelle mehr Platz zu geben
+- **Drag-Resize**: Trennlinie zwischen Seitenleiste und Hauptbereich ist verschiebbar (180–600 px)
+- **Hell-/Dunkel-Modus**: Toggle-Button im Header, gespeichert in `localStorage`
+
+---
 
 ### Suche & Filter
 
@@ -55,6 +74,7 @@ Der Nginx-Container proxied `/api` zur ioBroker REST API. Zieladresse kann in `n
 - **Kopieren-Symbol**: Kopiert ID oder Muster (z.B. `ordner.*`) in die Zwischenablage mit visuellem Feedback
 - **Aufklappen / Zuklappen**: Buttons in der Seitenleiste expandieren oder kollabieren den gesamten Baum
 - Reagiert live auf History- und SmartName-Filter
+- **Rechtsklick-Kontextmenü**: ID kopieren, Als Filter setzen, Objekt bearbeiten, Datenpunkt löschen
 
 ---
 
@@ -64,14 +84,17 @@ Der Nginx-Container proxied `/api` zur ioBroker REST API. Zieladresse kann in `n
 
 | Spalte | Beschreibung |
 |--------|-------------|
+| **Checkbox** | Multi-Selektion für Sammelaktionen; ein-/ausblendbar (Standard: sichtbar) |
 | **+** | Schaltfläche zum Anlegen neuer Datenpunkte (erste Spalte, immer sichtbar) |
 | Schreibschutz | Schloss-Icon bei schreibgeschützten Datenpunkten |
 | History | Klickbares History-Icon – öffnet das History-Modal direkt |
 | SmartName | Mikrofon-Icon mit Tooltip des SmartName-Werts |
+| Alias | Bernsteinfarbenes Link-Icon wenn ein Alias auf diesen Datenpunkt zeigt; bei mehreren Aliassen wird die Anzahl als Badge angezeigt; klickbar (springt zum Alias) |
 | ID | Monospace; Kopieren-Button bei Hover |
 | Name | Inline bearbeitbar per Stift-Icon |
-| Raum | Aus `enum.rooms.*` ermittelt |
-| Rolle | Inline bearbeitbar mit Autovervollständigung |
+| Raum | Aus `enum.rooms.*` ermittelt; per Klick editierbar (Dropdown mit allen verfügbaren Räumen) |
+| Funktion | Aus `enum.functions.*` ermittelt; per Klick editierbar (Dropdown mit allen verfügbaren Funktionen) |
+| Rolle | Inline bearbeitbar mit Autovervollständigung (Portal-Dropdown) |
 | Wert | Rechtsbündig; auf 16 Zeichen gekürzt (Tooltip zeigt Vollwert) |
 | Einheit | Einheit des Werts |
 | Ack | Grüner (bestätigt) / gelber (unbestätigt) Punkt |
@@ -91,15 +114,33 @@ Alle Datenspalten (außer + und Löschen) können über das **Spalten-Picker-Dro
 #### Sortierung & Filterung
 
 - Klick auf eine Spaltenüberschrift sortiert auf- oder absteigend (Pfeil-Indikator)
-- **Spaltenfilter-Zeile** direkt unter den Überschriften: Freitext-Filter für ID, Name, Raum, Rolle, Wert und Einheit
+- **Spaltenfilter-Zeile** direkt unter den Überschriften: Freitext-Filter für ID, Name, Raum, Funktion, Rolle, Wert und Einheit
+- Icon-Spalten (Schreibschutz, History, SmartName, Alias) filtern per Klick ein/aus
 - Aktive Filter werden mit blauer Umrandung hervorgehoben; einzeln per X oder gesammelt über die Toolbar löschbar
-- Globale Filter (ID, Name, Raum, Rolle, Einheit) werden vor der Paginierung angewandt; der Wertfilter wirkt seitenlokal
 
 #### Zeilenaktionen
 
-- **Klick auf Zeile**: Öffnet das StateDetail-Modal mit Live-Wert und Objektmetadaten
+- **Klick auf Zeile**: Öffnet das StateDetail-Panel mit Live-Wert und Objektmetadaten
+- **Rechtsklick auf Zeile**: Öffnet Kontextmenü (siehe unten)
 - **History-Icon**: Öffnet das History-Modal direkt
 - **Löschen-Icon** (ganz rechts): Zeigt Bestätigungs-Dialog vor dem unwiderruflichen Löschen
+- **Checkbox**: Multi-Selektion für Sammel-Löschung
+
+#### Rechtsklick-Kontextmenü (Tabelle)
+
+| Eintrag | Aktion |
+|---------|--------|
+| ID kopieren | ID in Zwischenablage |
+| Name kopieren | Anzeigename in Zwischenablage |
+| Wert kopieren | Aktuellen Wert in Zwischenablage |
+| History anzeigen | Öffnet History-Modal |
+| Als Filter setzen | Setzt ID als Spaltenfilter |
+| Raum bearbeiten | Öffnet Raum-Dropdown direkt |
+| Funktion bearbeiten | Öffnet Funktions-Dropdown direkt |
+| Objekt bearbeiten | Öffnet ObjectEditModal (Details / JSON / Alias) |
+| Datenpunkt kopieren | Öffnet Kopier-Dialog |
+| Alias anlegen | Öffnet Alias-Dialog (nur für Nicht-`alias.0.*`-Datenpunkte) |
+| Datenpunkt löschen | Bestätigungs-Dialog zum Löschen |
 
 #### Toolbar
 
@@ -110,14 +151,13 @@ Alle Datenspalten (außer + und Löschen) können über das **Spalten-Picker-Dro
 #### Paginierung
 
 - Konfigurierbare Seitengröße: 25 / 50 / 100 / 200 / 500 Einträge (gespeichert in `localStorage`)
-- Navigation mit „Zurück" / „Weiter"; Anzeige von Seite, Bereich und Gesamtanzahl
-- Suchänderungen setzen die Paginierung zurück
+- Fußzeile: „Zurück" + Größenauswahl links · Seiteninformation zentriert · „Weiter" rechts
 
 ---
 
 ### Datenpunkt-Detail (StateDetail)
 
-Öffnet sich als modales Overlay beim Klick auf eine Tabellenzeile; schließt mit ESC oder Klick außerhalb.
+Öffnet sich als Panel beim Klick auf eine Tabellenzeile; schließt mit ESC oder ×-Button.
 
 **Tab „Details"**
 
@@ -129,12 +169,51 @@ Alle Datenspalten (außer + und Löschen) können über das **Spalten-Picker-Dro
   - Zahl: Eingabefeld mit Einheit-Anzeige
   - Text: Texteingabe mit Senden-Schaltfläche
   - Boolean: Dropdown (true / false)
-- **Expertenmodus**: Freies Eingabefeld mit automatischer Typkonvertierung (nur bei schreibbaren Datenpunkten)
+- **Expertenmodus** (Schraubenschlüssel-Icon): Freies Eingabefeld mit automatischer Typkonvertierung (nur bei schreibbaren Datenpunkten)
 - Integriertes Mini-History-Diagramm (wenn History für den Datenpunkt aktiviert ist)
 
 **Tab „Objekt"**
 
 - Vollständige JSON-Ansicht der Objektmetadaten; schreibgeschützt, scrollbar, Monospace
+
+**Tab „Alias"**
+
+- Ziel-Datenpunkt (`alias.id`): ID des Quell-Datenpunkts, auf den dieser Alias zeigt
+- Lese-Formel (`alias.read`): optionaler JavaScript-Ausdruck zur Konvertierung beim Lesen (`val`)
+- Schreib-Formel (`alias.write`): optionaler JavaScript-Ausdruck zur Konvertierung beim Schreiben (`val`)
+- Anzeige des aktuell gespeicherten Alias-Objekts
+- Alias wird entfernt, wenn `alias.id` leer gelassen wird
+
+---
+
+### Objekt bearbeiten (ObjectEditModal)
+
+Öffnet sich über **Rechtsklick → „Objekt bearbeiten"** in Tabelle und Baum.
+
+- **Tab „Details"**: Dieselben editierbaren Felder und Wert-Controls wie im StateDetail-Panel; inklusive Expertenmodus und Mini-History
+- **Tab „JSON"**: Roher JSON-Editor mit Syntaxfehler-Anzeige; direktes Speichern via `PUT`
+- **Tab „Alias"**: Alias-Ziel, Lese- und Schreib-Formel setzen oder entfernen
+- **Header-Buttons**: Expertenmodus-Toggle (Schraubenschlüssel), Datenpunkt löschen (Papierkorb)
+
+---
+
+### Alias anlegen
+
+Öffnet sich über **Rechtsklick → „Alias anlegen"** (nur für Nicht-`alias.0.*`-Datenpunkte).
+
+- Schlägt automatisch eine Alias-ID vor (`alias.0.<quell-id-ohne-adapter-prefix>`)
+- Übernimmt Typ, Rolle, Einheit, Lese-/Schreibrecht des Quell-Datenpunkts
+- Setzt `common.alias.id` auf die Quell-ID
+- Alias-ID muss mit `alias.0.` beginnen (Validierung)
+
+---
+
+### Datenpunkt kopieren
+
+Öffnet sich über **Rechtsklick → „Datenpunkt kopieren"**.
+
+- Neue ID vorbelegt mit `<quell-id>_copy`; Name mit `<name> (Kopie)`
+- Kopiert: Typ, Rolle, Einheit, Lesen/Schreiben, Min/Max, Beschreibung, States-Mapping
 
 ---
 
@@ -193,18 +272,10 @@ Alle Datenspalten (außer + und Löschen) können über das **Spalten-Picker-Dro
 
 ### Datenpunkt löschen
 
-- Papierkorb-Icon in der letzten Tabellenspalte
-- Bestätigungs-Dialog zeigt die ID des zu löschenden Datenpunkts
+- Papierkorb-Icon in der letzten Tabellenspalte (Einzellöschung)
+- **Mehrfachlöschung**: Datenpunkte per Checkbox auswählen → Sammel-Löschen mit Fortschrittsanzeige
+- Bestätigungs-Dialog zeigt die ID(s) des zu löschenden Datenpunkts
 - Löscht Objekt **und** Zustand unwiderruflich über `DELETE /v1/object/:id`
-- Zeile verschwindet sofort aus der Tabelle (optimistisches Cache-Update)
-
----
-
-### Theme-System
-
-- Hell- und Dunkel-Modus per Toggle-Button im Header
-- Standard: Dunkelmodus
-- Persistenz in `localStorage`
 
 ---
 
@@ -212,17 +283,23 @@ Alle Datenspalten (außer + und Löschen) können über das **Spalten-Picker-Dro
 
 ```
 SearchBar (Pattern-Eingabe)
-  → useFilteredObjects()   – Objekte einmalig geladen, client-seitig gefiltert
-  → useStateValues(ids)    – Batch-Fetch der aktuellen Seite (30 s Polling)
-  → StateList              – Paginiert, sortiert, gefiltert
-  → StateTree              – Hierarchische Navigation
+  → useAllObjects()         – Objekte einmalig geladen, client-seitig gefiltert
+  → useStateValues(ids)     – Batch-Fetch der aktuellen Seite (30 s Polling)
+  → StateList               – Paginiert, sortiert, gefiltert
+  → StateTree               – Hierarchische Navigation
 
 Klick auf Zeile
-  → StateDetail            – 5 s Polling Einzelwert + Objektmetadaten
-  → HistoryChart           – History via sendTo sql.0 (immutable cache)
+  → StateDetail             – 5 s Polling Einzelwert + Objektmetadaten
+  → HistoryChart            – History via sendTo sql.0 (immutable cache)
 
-Klick auf History-Icon
-  → HistoryModal           – Großes History-Diagramm
+Rechtsklick → Objekt bearbeiten
+  → ObjectEditModal         – Details / JSON / Alias Tabs
+
+Rechtsklick → Alias anlegen
+  → CreateAliasModal        – Erstellt alias.0.* Objekt
+
+Rechtsklick → Datenpunkt kopieren
+  → CopyDatapointModal      – Dupliziert Datenpunkt mit neuer ID
 ```
 
 ---
@@ -233,7 +310,8 @@ Klick auf History-Icon
 |---------|------|-------------|
 | GET | `/v1/objects` | Alle Objekte laden |
 | GET | `/v1/object/:id` | Einzelnes Objekt |
-| PUT | `/v1/object/:id` | Objekt anlegen / aktualisieren |
+| PUT | `/v1/object/:id` | Objekt anlegen / vollständig ersetzen |
+| PATCH | `/v1/object/:id` | Objekt partiell aktualisieren (extend) |
 | DELETE | `/v1/object/:id` | Objekt löschen |
 | GET | `/v1/state/:id` | Einzelnen Zustand laden |
 | PATCH | `/v1/state/:id` | Zustand setzen |
@@ -256,10 +334,24 @@ Klick auf History-Icon
 
 | Pfad | Inhalt |
 |------|--------|
-| `src/types/iobroker.ts` | TypeScript-Interfaces |
-| `src/api/iobroker.ts` | REST-API-Client mit Object-Cache |
-| `src/hooks/useStates.ts` | React Query Hooks |
-| `src/components/` | UI-Komponenten |
+| `src/types/iobroker.ts` | TypeScript-Interfaces (IoBrokerState, IoBrokerObject, …) |
+| `src/api/iobroker.ts` | REST-API-Client mit globalem Object-Cache, Alias-Reverse-Map, Enum-Helpers |
+| `src/hooks/useStates.ts` | React Query Hooks (Objekte, Zustände, History, Raum/Funktions-Enums, CRUD) |
+| `src/context/ThemeContext.tsx` | Hell-/Dunkel-Modus-Kontext mit localStorage-Persistenz |
+| `src/components/Layout.tsx` | App-Shell: Header, einklappbare Seitenleiste, Drag-Resize |
+| `src/components/StateTree.tsx` | Hierarchischer Objektbaum mit Kontextmenü |
+| `src/components/StateList.tsx` | Haupttabelle: Spalten, Sortierung, Filter, Kontextmenü, Paginierung |
+| `src/components/StateDetail.tsx` | Detail-Panel (Details / Objekt / Alias Tabs) |
+| `src/components/ObjectEditModal.tsx` | Bearbeitungs-Modal (Details / JSON / Alias Tabs) |
+| `src/components/HistoryChart.tsx` | Recharts-Diagramm mit Zeitraum, Aggregation, Löschfunktionen |
+| `src/components/HistoryModal.tsx` | Großes History-Modal |
+| `src/components/NewDatapointModal.tsx` | Formular zum Anlegen neuer Datenpunkte |
+| `src/components/CreateAliasModal.tsx` | Dialog zum Anlegen von Alias-Datenpunkten |
+| `src/components/CopyDatapointModal.tsx` | Dialog zum Kopieren von Datenpunkten |
+| `src/components/ContextMenu.tsx` | Portal-basiertes Rechtsklick-Menü |
+| `src/components/ConfirmDialog.tsx` | Generischer Bestätigungs-Dialog |
+| `src/components/MultiDeleteDialog.tsx` | Mehrfach-Lösch-Dialog mit Fortschritt |
 | `vite.config.ts` | Dev-Server + API-Proxy |
-| `nginx.conf` | Nginx-Konfiguration für Docker |
-| `Dockerfile` | Multi-Stage Build (Node → Nginx) |
+| `nginx.conf` | Nginx-Konfiguration für Docker (SPA-Fallback, API-Proxy) |
+| `Dockerfile` | Multi-Stage Build (Node 22 → Nginx Alpine) |
+| `docker/entrypoint.sh` | Generiert `/config.js` aus Umgebungsvariablen beim Container-Start |
