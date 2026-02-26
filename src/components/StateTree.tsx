@@ -26,7 +26,6 @@ interface StateTreeProps {
   selectedId: string | null;
   onSelect: (id: string) => void;
   onSearch: (pattern: string) => void;
-  onTreeSelect: (prefix: string) => void;
   historyOnly: boolean;
   smartOnly: boolean;
   historyIds: Set<string>;
@@ -94,6 +93,35 @@ function buildAdapterTree(ids: string[]): TreeNode {
   return root;
 }
 
+function shouldShowNodeType(
+  node: TreeNode,
+  allObjects: Record<string, IoBrokerObject>,
+  showFolders: boolean,
+  showDevices: boolean,
+  showChannels: boolean
+): boolean {
+  if (node.isLeaf) return false;
+  const objectType = allObjects[node.fullPath]?.type;
+  if (objectType === 'device') return showDevices;
+  if (objectType === 'channel') return showChannels;
+  return showFolders;
+}
+
+function hasExpandableBranch(
+  node: TreeNode,
+  allObjects: Record<string, IoBrokerObject>,
+  showFolders: boolean,
+  showDevices: boolean,
+  showChannels: boolean
+): boolean {
+  for (const child of node.children.values()) {
+    if (child.isLeaf) continue;
+    if (shouldShowNodeType(child, allObjects, showFolders, showDevices, showChannels)) return true;
+    if (hasExpandableBranch(child, allObjects, showFolders, showDevices, showChannels)) return true;
+  }
+  return false;
+}
+
 const TreeNodeComponent = memo(function TreeNodeComponent({
   node,
   depth,
@@ -101,12 +129,10 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   onSelect,
   onSearch,
   onFolderSearch,
-  onTreeSelect,
   historyIds,
   smartIds,
   expandSignal,
   allObjects,
-  showStates,
   showFolders,
   showDevices,
   showChannels,
@@ -117,12 +143,10 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   onSelect: (id: string) => void;
   onSearch: (pattern: string) => void;
   onFolderSearch: (pattern: string) => void;
-  onTreeSelect: (prefix: string) => void;
   historyIds: Set<string>;
   smartIds: Set<string>;
   expandSignal: { depth: number; seq: number };
   allObjects: Record<string, IoBrokerObject>;
-  showStates: boolean;
   showFolders: boolean;
   showDevices: boolean;
   showChannels: boolean;
@@ -133,6 +157,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const hasChildren = node.children.size > 0;
   const isFolder = hasChildren && !node.isLeaf;
+  const isExpandableFolder = isFolder && hasExpandableBranch(node, allObjects, showFolders, showDevices, showChannels);
   const isHistoryEnabled = node.isLeaf && historyIds.has(node.fullPath);
   const isSmartEnabled = node.isLeaf && smartIds.has(node.fullPath);
   const objectType = isFolder ? allObjects[node.fullPath]?.type : undefined;
@@ -146,7 +171,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
     setExpanded(depth < expandSignal.depth);
   }, [expandSignal]);
 
-  if (node.isLeaf && !showStates) return null;
+  if (node.isLeaf) return null;
 
   const nodeFiltered = !node.isLeaf && (
     (objectType === 'device'  && !showDevices) ||
@@ -167,12 +192,10 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
             onSelect={onSelect}
             onSearch={onSearch}
             onFolderSearch={onFolderSearch}
-            onTreeSelect={onTreeSelect}
             historyIds={historyIds}
             smartIds={smartIds}
             expandSignal={expandSignal}
             allObjects={allObjects}
-            showStates={showStates}
             showFolders={showFolders}
             showDevices={showDevices}
             showChannels={showChannels}
@@ -219,21 +242,23 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
         onClick={() => {
           if (node.isLeaf) {
             onSelect(node.fullPath);
-          } else if (hasChildren) {
+          } else if (isExpandableFolder) {
             setExpanded(!expanded);
-            onTreeSelect(`${node.fullPath}.`);
           }
         }}
       >
-        {isFolder && (
+        {isExpandableFolder ? (
           <button
             onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
             className="shrink-0 p-1 -ml-1 rounded hover:bg-gray-300/60 text-gray-400 hover:text-gray-600 dark:hover:bg-gray-600/60 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
           >
             {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </button>
+        ) : isFolder ? (
+          <span className="w-5 shrink-0" />
+        ) : (
+          <span className="w-5 shrink-0" />
         )}
-        {!isFolder && <span className="w-5 shrink-0" />}
         {isFolder ? (
           objectType === 'device' ? (
             <Cpu    size={15} className="text-sky-500/80    shrink-0" />
@@ -242,7 +267,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
           ) : depth === 1 ? (
             <HardDrive size={15} className="text-amber-500/80 shrink-0" />
           ) : (
-            expanded
+            isExpandableFolder && expanded
               ? <FolderOpen size={15} className="text-yellow-500/80 shrink-0" />
               : <Folder     size={15} className="text-yellow-600/70 shrink-0" />
           )
@@ -314,7 +339,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
           {copied ? <Check size={12} className="text-green-500 dark:text-green-400" /> : <Copy size={12} />}
         </button>
       </div>
-      {expanded &&
+      {isExpandableFolder && expanded &&
         sortedChildren.map((child) => (
           <TreeNodeComponent
             key={child.fullPath}
@@ -324,12 +349,10 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
             onSelect={onSelect}
             onSearch={onSearch}
             onFolderSearch={onFolderSearch}
-            onTreeSelect={onTreeSelect}
             historyIds={historyIds}
             smartIds={smartIds}
             expandSignal={expandSignal}
             allObjects={allObjects}
-            showStates={showStates}
             showFolders={showFolders}
             showDevices={showDevices}
             showChannels={showChannels}
@@ -340,9 +363,8 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
 });
 
 
-function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeSelect, historyOnly, smartOnly, historyIds, smartIds, expandToDepth }: StateTreeProps) {
+function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, historyOnly, smartOnly, historyIds, smartIds, expandToDepth }: StateTreeProps) {
   const [expandSignal, setExpandSignal] = useState<{ depth: number; seq: number }>({ depth: 0, seq: 0 });
-  const [showStates,   setShowStates]   = useState(true);
   const [showFolders,  setShowFolders]  = useState(true);
   const [showDevices,  setShowDevices]  = useState(true);
   const [showChannels, setShowChannels] = useState(true);
@@ -379,7 +401,6 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
     { key: 'folders',  label: 'Folder',  active: showFolders,  set: setShowFolders,  icon: <Folder   size={11} />, color: 'text-yellow-600 dark:text-yellow-500' },
     { key: 'devices',  label: 'Device',  active: showDevices,  set: setShowDevices,  icon: <Cpu      size={11} />, color: 'text-sky-600 dark:text-sky-400'       },
     { key: 'channels', label: 'Channel', active: showChannels, set: setShowChannels, icon: <Layers   size={11} />, color: 'text-indigo-600 dark:text-indigo-400' },
-    { key: 'states',   label: 'State',   active: showStates,   set: setShowStates,   icon: <FileText size={11} />, color: 'text-green-600 dark:text-green-400'   },
   ] as const;
   const hiddenCount = typeItems.filter((t) => !t.active).length;
 
@@ -396,7 +417,7 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
             Objekt-Baum Filter
             {hiddenCount > 0 && (
               <span className="px-1.5 py-0.5 rounded-full bg-orange-500/15 text-orange-600 dark:text-orange-400 text-[10px]">
-                {4 - hiddenCount}/4
+                {typeItems.length - hiddenCount}/{typeItems.length}
               </span>
             )}
           </span>
@@ -467,12 +488,10 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
               onSelect={onSelect}
               onSearch={onSearch}
               onFolderSearch={handleFolderSearch}
-              onTreeSelect={onTreeSelect}
               historyIds={historyIds}
               smartIds={smartIds}
               expandSignal={expandSignal}
               allObjects={allObjects}
-              showStates={showStates}
               showFolders={showFolders}
               showDevices={showDevices}
               showChannels={showChannels}

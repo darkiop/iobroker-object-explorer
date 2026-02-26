@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from './context/ThemeContext';
 import Layout from './components/Layout';
@@ -62,6 +62,7 @@ function AppContent() {
   const [quickOpen, setQuickOpen] = useState(false);
   const [fulltextEnabled, setFulltextEnabled] = useState(true);
   const [historyModalId, setHistoryModalId] = useState<string | null>(null);
+  const prevTreeFilterRef = useRef<string | null>(null);
 
   const { data: stateObjects, error: objectsError } = useFilteredObjects(pattern, fulltextEnabled);
   const { data: allObjects } = useAllObjects();
@@ -176,9 +177,19 @@ function AppContent() {
     setColFilters({});
   }, []);
 
-  const handleTreeSelect = useCallback((prefix: string) => { setTreeFilter(prefix); setPage(0); }, []);
-  const handleClearTreeFilter = useCallback(() => setTreeFilter(null), []);
+  const handleClearTreeFilter = useCallback(() => {
+    setTreeFilter(null);
+    setTreeExpandSignal((s) => ({ depth: 0, seq: (s?.seq ?? 0) + 1 }));
+  }, []);
   const handleSidebarToggle = useCallback(() => setSidebarToggleSeq((s) => s + 1), []);
+
+  useEffect(() => {
+    const prev = prevTreeFilterRef.current;
+    if (prev && !treeFilter) {
+      setTreeExpandSignal((s) => ({ depth: 0, seq: (s?.seq ?? 0) + 1 }));
+    }
+    prevTreeFilterRef.current = treeFilter;
+  }, [treeFilter]);
 
   return (
     <Layout
@@ -323,7 +334,6 @@ function AppContent() {
               selectedId={selectedId}
               onSelect={setSelectedId}
               onSearch={handleSearch}
-              onTreeSelect={handleTreeSelect}
               historyOnly={historyOnly}
               smartOnly={smartOnly}
               historyIds={historyIds}
