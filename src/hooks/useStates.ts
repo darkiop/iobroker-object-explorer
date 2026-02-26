@@ -18,6 +18,7 @@ export function useFilteredObjects(pattern: string, fulltext = true) {
     queryKey: ['objects', pattern, fulltext],
     queryFn: () => getObjectsByPattern(pattern, fulltext),
     enabled: pattern.length > 0,
+    staleTime: Infinity, // Objects only change via mutations (which invalidate the cache)
   });
 }
 
@@ -225,7 +226,6 @@ export function useUpdateFunctionMembership() {
     mutationFn: ({ objectId, oldFnEnumId, newFnEnumId }: { objectId: string; oldFnEnumId: string | null; newFnEnumId: string | null }) =>
       updateFunctionMembership(objectId, oldFnEnumId, newFnEnumId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['objects'] });
       queryClient.invalidateQueries({ queryKey: ['functionMap'] });
     },
   });
@@ -237,7 +237,6 @@ export function useUpdateFunctionMembershipBatch() {
     mutationFn: ({ objectIds, newFnEnumId }: { objectIds: string[]; newFnEnumId: string | null }) =>
       updateFunctionMembershipBatch(objectIds, newFnEnumId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['objects'] });
       queryClient.invalidateQueries({ queryKey: ['functionMap'] });
     },
   });
@@ -257,7 +256,6 @@ export function useUpdateRoomMembership() {
     mutationFn: ({ objectId, oldRoomEnumId, newRoomEnumId }: { objectId: string; oldRoomEnumId: string | null; newRoomEnumId: string | null }) =>
       updateRoomMembership(objectId, oldRoomEnumId, newRoomEnumId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['objects'] });
       queryClient.invalidateQueries({ queryKey: ['roomMap'] });
     },
   });
@@ -269,7 +267,6 @@ export function useUpdateRoomMembershipBatch() {
     mutationFn: ({ objectIds, newRoomEnumId }: { objectIds: string[]; newRoomEnumId: string | null }) =>
       updateRoomMembershipBatch(objectIds, newRoomEnumId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['objects'] });
       queryClient.invalidateQueries({ queryKey: ['roomMap'] });
     },
   });

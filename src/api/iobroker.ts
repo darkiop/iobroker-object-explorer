@@ -10,11 +10,8 @@ async function fetchApi<T>(path: string): Promise<T> {
   return res.json();
 }
 
-function matchPattern(id: string, pattern: string): boolean {
-  const regex = new RegExp(
-    '^' + pattern.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$'
-  );
-  return regex.test(id);
+function compilePattern(pattern: string): RegExp {
+  return new RegExp('^' + pattern.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$');
 }
 
 export function isGlobPattern(pattern: string): boolean {
@@ -69,8 +66,9 @@ export async function getObjectsByPattern(pattern: string, fulltext = true): Pro
 
   if (isGlobPattern(pattern)) {
     const result: Record<string, IoBrokerObject> = {};
+    const regex = compilePattern(pattern);
     for (const [id, obj] of Object.entries(all)) {
-      if (obj && obj.type === 'state' && matchPattern(id, pattern)) {
+      if (obj && obj.type === 'state' && regex.test(id)) {
         result[id] = obj;
       }
     }

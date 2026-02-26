@@ -45,7 +45,7 @@ export default function SearchBar({ onSearch, initialPattern, onReset, fulltextE
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onFocus={(e) => e.target.select()}
-            placeholder={fulltextEnabled ? 'Pattern (alias.0.*) oder Freitext (z.B. Temperatur)' : 'Pattern (alias.0.*) oder ID-Suche'}
+            placeholder={fulltextEnabled ? 'Freitext' : 'ID (mit * als Wildcard)'}
             className="w-full px-3 py-2 pr-8 bg-white border border-gray-300 rounded-l-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-500"
           />
           {value !== '' && (
@@ -73,7 +73,7 @@ export default function SearchBar({ onSearch, initialPattern, onReset, fulltextE
           onChange={(e) => onFulltextChange?.(e.target.checked)}
           className="w-3 h-3 accent-blue-500"
         />
-        Volltext-Suche (Name, Beschreibung, Alias)
+        Volltext-Suche
       </label>
     </form>
   );

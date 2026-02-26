@@ -94,7 +94,7 @@ function buildAdapterTree(ids: string[]): TreeNode {
   return root;
 }
 
-function TreeNodeComponent({
+const TreeNodeComponent = memo(function TreeNodeComponent({
   node,
   depth,
   selectedId,
@@ -337,7 +337,7 @@ function TreeNodeComponent({
         ))}
     </div>
   );
-}
+});
 
 
 function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeSelect, historyOnly, smartOnly, historyIds, smartIds, expandToDepth }: StateTreeProps) {

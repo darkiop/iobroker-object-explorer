@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from './context/ThemeContext';
 import Layout from './components/Layout';
@@ -135,7 +135,7 @@ function AppContent() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const handleSearch = (newPattern: string) => {
+  const handleSearch = useCallback((newPattern: string) => {
     setPattern(newPattern);
     setPage(0);
     setSelectedId(null);
@@ -144,16 +144,16 @@ function AppContent() {
     setRoomFilters(new Set());
     setFunctionFilters(new Set());
     setQuickPatterns(new Set());
-  };
+  }, []);
 
-  function handleColFilterChange(filters: Partial<Record<SortKey, string>>) {
+  const handleColFilterChange = useCallback((filters: Partial<Record<SortKey, string>>) => {
     setColFilters(filters);
     setPage(0);
-  }
+  }, []);
 
   const hasAnyFilter = pattern !== '*' || historyOnly || smartOnly || roomFilters.size > 0 || functionFilters.size > 0 || quickPatterns.size > 0 || !!treeFilter || Object.values(colFilters).some((v) => v.trim() !== '');
 
-  function resetAllFilters() {
+  const resetAllFilters = useCallback(() => {
     setPattern('*');
     setPage(0);
     setSelectedId(null);
@@ -164,22 +164,25 @@ function AppContent() {
     setQuickPatterns(new Set());
     setTreeFilter(null);
     setColFilters({});
-  }
+  }, []);
 
-  function handleNavigateTo(ids: string[]) {
-    // Navigate to show specific alias ID(s) or source data point
-    const pattern = ids.length === 1 ? ids[0] : 'alias.0.*';
-    setPattern(pattern);
+  const handleNavigateTo = useCallback((ids: string[]) => {
+    const pat = ids.length === 1 ? ids[0] : 'alias.0.*';
+    setPattern(pat);
     setPage(0);
     setSelectedId(null);
     setHistoryOnly(false);
     setSmartOnly(false);
     setColFilters({});
-  }
+  }, []);
+
+  const handleTreeSelect = useCallback((prefix: string) => { setTreeFilter(prefix); setPage(0); }, []);
+  const handleClearTreeFilter = useCallback(() => setTreeFilter(null), []);
+  const handleSidebarToggle = useCallback(() => setSidebarToggleSeq((s) => s + 1), []);
 
   return (
     <Layout
-      onSidebarToggle={() => setSidebarToggleSeq((s) => s + 1)}
+      onSidebarToggle={handleSidebarToggle}
       sidebar={
         <div className="flex flex-col h-full">
           <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex flex-col gap-2">
@@ -320,14 +323,14 @@ function AppContent() {
               selectedId={selectedId}
               onSelect={setSelectedId}
               onSearch={handleSearch}
-              onTreeSelect={(prefix) => { setTreeFilter(prefix); setPage(0); }}
+              onTreeSelect={handleTreeSelect}
               historyOnly={historyOnly}
               smartOnly={smartOnly}
               historyIds={historyIds}
               smartIds={smartIds}
               expandToDepth={treeExpandSignal}
               treeFilter={treeFilter}
-              onClearTreeFilter={() => setTreeFilter(null)}
+              onClearTreeFilter={handleClearTreeFilter}
             />
           </div>
         </div>
@@ -374,7 +377,7 @@ function AppContent() {
             onNavigateTo={handleNavigateTo}
             exportIds={tableIds}
             treeFilter={treeFilter}
-            onClearTreeFilter={() => setTreeFilter(null)}
+            onClearTreeFilter={handleClearTreeFilter}
             sidebarToggleSeq={sidebarToggleSeq}
             fulltextEnabled={fulltextEnabled}
           />
