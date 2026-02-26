@@ -8,10 +8,11 @@ import StateList from './components/StateList';
 import ObjectEditModal from './components/ObjectEditModal';
 import HistoryModal from './components/HistoryModal';
 import NewDatapointModal from './components/NewDatapointModal';
+import LanguageDropdown from './components/LanguageDropdown';
 import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunctionMap, useRoomEnums, useFunctionEnums, useAliasMap } from './hooks/useStates';
 import { hasHistory, hasSmartName } from './api/iobroker';
 import type { SortKey, DateFormatSetting } from './components/StateList';
-import { ALL_COLUMNS, DEFAULT_COLS } from './components/StateList';
+import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel } from './components/StateList';
 import type { IoBrokerObject, IoBrokerState } from './types/iobroker';
 import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RotateCcw, Layers, X } from 'lucide-react';
 
@@ -34,6 +35,7 @@ const EMPTY_STRING_MAP: Record<string, string> = {};
 const EMPTY_ALIAS_MAP = new Map<string, string[]>();
 
 interface AppSettings {
+  language: 'en' | 'de';
   dateFormat: DateFormatSetting;
   visibleCols: SortKey[];
   extraQuickFilters: string[];
@@ -41,6 +43,7 @@ interface AppSettings {
 
 function getDefaultAppSettings(): AppSettings {
   return {
+    language: 'en',
     dateFormat: 'de',
     visibleCols: DEFAULT_COLS,
     extraQuickFilters: [],
@@ -66,10 +69,12 @@ function loadAppSettings(): AppSettings {
     const raw = localStorage.getItem(LS_APP_SETTINGS);
     if (!raw) return fallback;
     const parsed = JSON.parse(raw) as Partial<AppSettings>;
+    const validLanguage = parsed.language === 'de' || parsed.language === 'en' ? parsed.language : 'en';
     const validCols = (parsed.visibleCols ?? []).filter((k): k is SortKey => ALL_COLUMNS.some((c) => c.key === k));
     const validDate = parsed.dateFormat === 'de' || parsed.dateFormat === 'us' || parsed.dateFormat === 'iso' ? parsed.dateFormat : 'de';
     const validExtra = (parsed.extraQuickFilters ?? []).map(normalizeQuickPattern).filter(Boolean);
     return {
+      language: validLanguage,
       dateFormat: validDate,
       visibleCols: validCols.length > 0 ? validCols : DEFAULT_COLS,
       extraQuickFilters: [...new Set(validExtra.filter((p) => !DEFAULT_QUICK_PATTERNS.includes(p as typeof DEFAULT_QUICK_PATTERNS[number])))],
@@ -119,7 +124,7 @@ function AppContent() {
   const [newQuickFilter, setNewQuickFilter] = useState('');
   const [appSettings, setAppSettings] = useState<AppSettings>(() => loadAppSettings());
   const [settingsDraft, setSettingsDraft] = useState<AppSettings>(() => loadAppSettings());
-  const [fulltextEnabled, setFulltextEnabled] = useState(true);
+  const [fulltextEnabled, setFulltextEnabled] = useState(false);
   const [historyModalId, setHistoryModalId] = useState<string | null>(null);
   const [newDatapointInitialId, setNewDatapointInitialId] = useState<string | null>(null);
   const prevTreeFilterRef = useRef<string | null>(null);
@@ -160,6 +165,7 @@ function AppContent() {
     () => [...new Set([...DEFAULT_QUICK_PATTERNS, ...appSettings.extraQuickFilters])],
     [appSettings.extraQuickFilters]
   );
+  const isEn = appSettings.language === 'en';
 
   const objectIds = useMemo(() => {
     let ids = Object.keys(stateObjects).sort();
@@ -247,6 +253,7 @@ function AppContent() {
     const normalizedExtra = [...new Set(settingsDraft.extraQuickFilters.map(normalizeQuickPattern).filter(Boolean))]
       .filter((p) => !DEFAULT_QUICK_PATTERNS.includes(p as typeof DEFAULT_QUICK_PATTERNS[number]));
     const next: AppSettings = {
+      language: settingsDraft.language,
       dateFormat: settingsDraft.dateFormat,
       visibleCols: nextCols.length > 0 ? nextCols : DEFAULT_COLS,
       extraQuickFilters: normalizedExtra,
@@ -258,6 +265,16 @@ function AppContent() {
     setQuickPatterns((prev) => new Set([...prev].filter((p) => allowed.has(p))));
     setSettingsOpen(false);
   }, [settingsDraft]);
+
+  const handleLanguageChange = useCallback((language: 'en' | 'de') => {
+    setAppSettings((prev) => {
+      if (prev.language === language) return prev;
+      const next = { ...prev, language };
+      localStorage.setItem(LS_APP_SETTINGS, JSON.stringify(next));
+      return next;
+    });
+    setSettingsDraft((prev) => ({ ...prev, language }));
+  }, []);
 
   const addExtraQuickFilter = useCallback(() => {
     const normalized = normalizeQuickPattern(newQuickFilter);
@@ -344,18 +361,20 @@ function AppContent() {
     <Layout
       onSidebarToggle={handleSidebarToggle}
       onOpenSettings={openSettings}
+      onLanguageChange={handleLanguageChange}
+      language={appSettings.language}
       sidebar={
         <div className="flex flex-col h-full">
           <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex flex-col gap-2">
-            <SearchBar onSearch={handleSearch} initialPattern={pattern} onReset={resetAllFilters} fulltextEnabled={fulltextEnabled} onFulltextChange={setFulltextEnabled} />
+            <SearchBar onSearch={handleSearch} initialPattern={pattern} onReset={resetAllFilters} fulltextEnabled={fulltextEnabled} onFulltextChange={setFulltextEnabled} language={appSettings.language} />
             {hasAnyFilter && (
               <button
                 onClick={resetAllFilters}
                 className="flex items-center justify-center gap-1.5 w-full px-2 py-1 text-xs rounded text-red-500 hover:text-red-700 hover:bg-red-500/10 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-500/10 transition-colors"
-                title="Alle Filter zurücksetzen"
+                title={isEn ? 'Reset all filters' : 'Alle Filter zurücksetzen'}
               >
                 <RotateCcw size={11} />
-                Filter zurücksetzen
+                {isEn ? 'Reset filters' : 'Filter zurücksetzen'}
               </button>
             )}
           </div>
@@ -366,7 +385,7 @@ function AppContent() {
             >
               <span className="flex items-center gap-1.5 font-medium">
                 <Layers size={12} />
-                Schnellfilter
+                {isEn ? 'Quick filters' : 'Schnellfilter'}
                 {quickPatterns.size > 0 && (
                   <span className="px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 text-[10px] truncate max-w-[80px]">{quickPatterns.size === 1 ? [...quickPatterns][0] : quickPatterns.size}</span>
                 )}
@@ -421,7 +440,7 @@ function AppContent() {
               >
                 <span className="flex items-center gap-1.5 font-medium">
                   <Home size={12} />
-                  Räume
+                  {isEn ? 'Rooms' : 'Räume'}
                   {roomFilters.size > 0 && <span className="px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 text-[10px]">{roomFilters.size === 1 ? [...roomFilters][0] : roomFilters.size}</span>}
                 </span>
                 {roomsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
@@ -453,7 +472,7 @@ function AppContent() {
               >
                 <span className="flex items-center gap-1.5 font-medium">
                   <Zap size={12} />
-                  Funktionen
+                  {isEn ? 'Functions' : 'Funktionen'}
                   {functionFilters.size > 0 && <span className="px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 text-[10px]">{functionFilters.size === 1 ? [...functionFilters][0] : functionFilters.size}</span>}
                 </span>
                 {functionsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
@@ -493,6 +512,7 @@ function AppContent() {
               expandToDepth={treeExpandSignal}
               treeFilter={treeFilter}
               onClearTreeFilter={handleClearTreeFilter}
+              language={appSettings.language}
             />
           </div>
         </div>
@@ -518,6 +538,7 @@ function AppContent() {
             stateId={historyModalId}
             unit={allObjects[historyModalId]?.common?.unit}
             objects={allObjects}
+            language={appSettings.language}
             onClose={() => setHistoryModalId(null)}
           />
         )}
@@ -526,6 +547,7 @@ function AppContent() {
             onClose={() => setNewDatapointInitialId(null)}
             existingIds={existingIds}
             initialId={newDatapointInitialId}
+            language={appSettings.language}
           />
         )}
         {settingsOpen && (
@@ -535,14 +557,18 @@ function AppContent() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Einstellungen</h3>
+                <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">{isEn ? 'Settings' : 'Einstellungen'}</h3>
                 <button onClick={() => setSettingsOpen(false)} className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
                   <X size={14} />
                 </button>
               </div>
               <div className="p-4 flex flex-col gap-4 max-h-[75vh] overflow-y-auto">
                 <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Datumsformat</span>
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Language' : 'Sprache'}</span>
+                  <LanguageDropdown value={settingsDraft.language} onChange={(language) => setSettingsDraft((prev) => ({ ...prev, language }))} />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Date format' : 'Datumsformat'}</span>
                   <select
                     value={settingsDraft.dateFormat}
                     onChange={(e) => setSettingsDraft((prev) => ({ ...prev, dateFormat: e.target.value as DateFormatSetting }))}
@@ -555,9 +581,9 @@ function AppContent() {
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Angezeigte Spalten</span>
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Visible columns' : 'Angezeigte Spalten'}</span>
                   <div className="grid grid-cols-2 gap-1.5">
-                    {ALL_COLUMNS.map(({ key, label }) => {
+                    {ALL_COLUMNS.map(({ key }) => {
                       const checked = settingsDraft.visibleCols.includes(key);
                       return (
                         <label key={key} className="flex items-center gap-2 px-2 py-1.5 rounded border border-gray-200 dark:border-gray-700 text-xs text-gray-700 dark:text-gray-300">
@@ -572,7 +598,7 @@ function AppContent() {
                             })}
                             className="w-3.5 h-3.5 accent-blue-500"
                           />
-                          <span>{label}</span>
+                          <span>{getColumnLabel(key, appSettings.language)}</span>
                         </label>
                       );
                     })}
@@ -580,25 +606,25 @@ function AppContent() {
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Zusätzliche Schnellfilter</span>
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Additional quick filters' : 'Zusätzliche Schnellfilter'}</span>
                   <div className="flex items-center gap-2">
                     <input
                       type="text"
                       value={newQuickFilter}
                       onChange={(e) => setNewQuickFilter(e.target.value)}
-                      placeholder="z.B. hm-rpc.0.*"
+                      placeholder={isEn ? 'e.g. hm-rpc.0.*' : 'z.B. hm-rpc.0.*'}
                       className="flex-1 px-2 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 font-mono"
                     />
                     <button
                       onClick={addExtraQuickFilter}
                       className="px-2.5 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
                     >
-                      Hinzufügen
+                      {isEn ? 'Add' : 'Hinzufügen'}
                     </button>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {settingsDraft.extraQuickFilters.length === 0 && (
-                      <span className="text-xs text-gray-400 dark:text-gray-500">Keine zusätzlichen Filter</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500">{isEn ? 'No additional filters' : 'Keine zusätzlichen Filter'}</span>
                     )}
                     {settingsDraft.extraQuickFilters.map((patternItem) => (
                       <span key={patternItem} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono bg-gray-200/60 dark:bg-gray-700/60 text-gray-700 dark:text-gray-300">
@@ -614,25 +640,27 @@ function AppContent() {
                   </div>
                 </div>
               </div>
-              <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end gap-2">
+              <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
                 <button
                   onClick={resetSettingsToDefault}
                   className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors"
                 >
-                  Einstellungen zurücksetzen
+                  {isEn ? 'Reset settings' : 'Einstellungen zurücksetzen'}
                 </button>
-                <button
-                  onClick={() => setSettingsOpen(false)}
-                  className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                >
-                  Abbrechen
-                </button>
-                <button
-                  onClick={saveSettings}
-                  className="px-3 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-                >
-                  Speichern
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setSettingsOpen(false)}
+                    className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    {isEn ? 'Cancel' : 'Abbrechen'}
+                  </button>
+                  <button
+                    onClick={saveSettings}
+                    className="px-3 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                  >
+                    {isEn ? 'Save' : 'Speichern'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -659,6 +687,7 @@ function AppContent() {
             fulltextEnabled={fulltextEnabled}
             dateFormat={appSettings.dateFormat}
             settingsVisibleCols={appSettings.visibleCols}
+            language={appSettings.language}
           />
         </div>
 
@@ -672,24 +701,24 @@ function AppContent() {
                     disabled={page === 0}
                     className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                   >
-                    Zurück
+                    {isEn ? 'Previous' : 'Zurück'}
                   </button>
                   <span className="text-xs text-gray-400 dark:text-gray-500">
-                    Seite {page + 1} von {totalPages} ({pageStart + 1}–{Math.min(pageStart + pageSize, totalCount)} von {totalCount})
+                    {isEn ? 'Page' : 'Seite'} {page + 1} {isEn ? 'of' : 'von'} {totalPages} ({pageStart + 1}–{Math.min(pageStart + pageSize, totalCount)} {isEn ? 'of' : 'von'} {totalCount})
                   </span>
                 </div>
               )}
             </div>
             <div className="text-center">
               <span className="text-xs text-gray-500 dark:text-gray-400">
-                Datenpunkte: <span className="text-gray-700 dark:text-gray-200">{pageIds.length}</span> von <span className="text-gray-700 dark:text-gray-200">{totalCount}</span>
+                {isEn ? 'Datapoints' : 'Datenpunkte'}: <span className="text-gray-700 dark:text-gray-200">{pageIds.length}</span> {isEn ? 'of' : 'von'} <span className="text-gray-700 dark:text-gray-200">{totalCount}</span>
               </span>
             </div>
             <div className="flex items-center justify-end gap-2">
               {totalPages > 1 && (
                 <>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-gray-400 dark:text-gray-500">Zeilen:</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">{isEn ? 'Rows:' : 'Zeilen:'}</span>
                     <select
                       value={pageSize}
                       onChange={(e) => {
@@ -709,7 +738,7 @@ function AppContent() {
                       disabled={page >= totalPages - 1}
                       className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                     >
-                      Weiter
+                      {isEn ? 'Next' : 'Weiter'}
                     </button>
                   </div>
                 </>

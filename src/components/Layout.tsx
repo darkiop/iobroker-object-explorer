@@ -1,18 +1,28 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Sun, Moon, PanelLeftClose, PanelLeftOpen, Settings } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import LanguageDropdown from './LanguageDropdown';
 
 interface LayoutProps {
   sidebar: React.ReactNode;
   children: React.ReactNode;
   onSidebarToggle?: () => void;
   onOpenSettings?: () => void;
+  onLanguageChange?: (language: 'en' | 'de') => void;
+  language?: 'en' | 'de';
 }
 
 const LS_SIDEBAR_WIDTH = 'iobroker-explorer-sidebar-width';
 const LS_SIDEBAR_COLLAPSED = 'iobroker-explorer-sidebar-collapsed';
 
-export default function Layout({ sidebar, children, onSidebarToggle, onOpenSettings }: LayoutProps) {
+export default function Layout({
+  sidebar,
+  children,
+  onSidebarToggle,
+  onOpenSettings,
+  onLanguageChange,
+  language = 'en',
+}: LayoutProps) {
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const stored = parseInt(localStorage.getItem(LS_SIDEBAR_WIDTH) ?? '', 10);
     return Number.isFinite(stored) ? Math.max(180, Math.min(600, stored)) : 360;
@@ -64,7 +74,7 @@ export default function Layout({ sidebar, children, onSidebarToggle, onOpenSetti
           <button
             onClick={() => { setCollapsed((c) => { const next = !c; localStorage.setItem(LS_SIDEBAR_COLLAPSED, String(next)); return next; }); if (onSidebarToggle) setTimeout(onSidebarToggle, 210); }}
             className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
-            title={collapsed ? 'Sidebar ausklappen' : 'Sidebar einklappen'}
+            title={collapsed ? (language === 'en' ? 'Expand sidebar' : 'Sidebar ausklappen') : (language === 'en' ? 'Collapse sidebar' : 'Sidebar einklappen')}
           >
             {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
           </button>
@@ -73,6 +83,7 @@ export default function Layout({ sidebar, children, onSidebarToggle, onOpenSetti
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs text-gray-400 dark:text-gray-500">REST-API: {window.__CONFIG__?.ioBrokerHost ?? '—'}</span>
+          <LanguageDropdown value={language} onChange={(next) => onLanguageChange?.(next)} compact />
           <button
             onClick={toggle}
             className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
@@ -83,7 +94,7 @@ export default function Layout({ sidebar, children, onSidebarToggle, onOpenSetti
           <button
             onClick={onOpenSettings}
             className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
-            title="Einstellungen"
+            title={language === 'en' ? 'Settings' : 'Einstellungen'}
           >
             <Settings size={16} />
           </button>

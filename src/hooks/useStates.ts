@@ -159,9 +159,9 @@ export function useSetState() {
 export function useCreateDatapoint() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, common, initialValue }: { id: string; common: Partial<IoBrokerObjectCommon>; initialValue?: string }) => {
-      await createObject(id, common);
-      if (initialValue !== undefined && initialValue !== '') {
+    mutationFn: async ({ id, common, initialValue, objectType = 'state' }: { id: string; common: Partial<IoBrokerObjectCommon>; initialValue?: string; objectType?: 'state' | 'folder' | 'device' | 'channel' }) => {
+      await createObject(id, common, objectType);
+      if (objectType === 'state' && initialValue !== undefined && initialValue !== '') {
         await setState(id, initialValue);
       }
     },

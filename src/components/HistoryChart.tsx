@@ -28,6 +28,7 @@ interface HistoryChartProps {
   fillHeight?: boolean;
   extraSeries?: ExtraSeries[];
   settingsCollapsible?: boolean;
+  language?: 'en' | 'de';
 }
 
 const SERIES_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
@@ -40,10 +41,10 @@ type ConfirmAction =
   | { type: 'range'; start: number; end: number }
   | { type: 'all' };
 
-const CHART_TYPES: { value: ChartType; label: string }[] = [
-  { value: 'line', label: 'Linie' },
-  { value: 'area', label: 'Fläche' },
-  { value: 'bar', label: 'Balken' },
+const CHART_TYPES: { value: ChartType; labelDe: string; labelEn: string }[] = [
+  { value: 'line', labelDe: 'Linie', labelEn: 'Line' },
+  { value: 'area', labelDe: 'Fläche', labelEn: 'Area' },
+  { value: 'bar', labelDe: 'Balken', labelEn: 'Bar' },
 ];
 
 const PRESETS = [
@@ -56,16 +57,16 @@ const PRESETS = [
 ] as const;
 
 const AGGREGATES = [
-  { value: 'none', label: 'Keine' },
-  { value: 'average', label: 'Durchschnitt' },
-  { value: 'minmax', label: 'Min/Max' },
-  { value: 'min', label: 'Min' },
-  { value: 'max', label: 'Max' },
+  { value: 'none', labelDe: 'Keine', labelEn: 'None' },
+  { value: 'average', labelDe: 'Durchschnitt', labelEn: 'Average' },
+  { value: 'minmax', labelDe: 'Min/Max', labelEn: 'Min/Max' },
+  { value: 'min', labelDe: 'Min', labelEn: 'Min' },
+  { value: 'max', labelDe: 'Max', labelEn: 'Max' },
 ] as const;
 
-const COMPARE_OFFSETS: { value: CompareOffset; label: string }[] = [
-  { value: '1w', label: 'Vorwoche' },
-  { value: '1m', label: 'Vormonat' },
+const COMPARE_OFFSETS: { value: CompareOffset; labelDe: string; labelEn: string }[] = [
+  { value: '1w', labelDe: 'Vorwoche', labelEn: 'Previous week' },
+  { value: '1m', labelDe: 'Vormonat', labelEn: 'Previous month' },
 ];
 
 function toLocalDatetime(ts: number): string {
@@ -90,7 +91,7 @@ function formatTooltipTime(ts: number): string {
   return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 }
 
-function makeAxes(dark: boolean) {
+function makeAxes(dark: boolean, isEn: boolean) {
   const axisStroke = dark ? '#6b7280' : '#9ca3af';
   const tickColor = dark ? '#6b7280' : '#4b5563';
   return {
@@ -118,7 +119,7 @@ function makeAxes(dark: boolean) {
       itemStyle: { color: '#60a5fa' },
       labelFormatter: (ts: unknown) => formatTooltipTime(ts as number),
       formatter: (value: number | undefined, name: string | undefined) => {
-        const label = hasCompare && name === 'valComp' ? 'Vergleich' : 'Wert';
+        const label = hasCompare && name === 'valComp' ? (isEn ? 'Compare' : 'Vergleich') : (isEn ? 'Value' : 'Wert');
         return [unit && value !== undefined ? `${value} ${unit}` : value ?? '', label] as [string | number, string];
       },
     }),
@@ -126,12 +127,14 @@ function makeAxes(dark: boolean) {
   };
 }
 
-function ConfirmDialog({ message, onConfirm, onCancel, isPending }: {
+function ConfirmDialog({ message, onConfirm, onCancel, isPending, language = 'en' }: {
   message: string;
   onConfirm: () => void;
   onCancel: () => void;
   isPending: boolean;
+  language?: 'en' | 'de';
 }) {
+  const isEn = language === 'en';
   return (
     <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50 rounded-lg">
       <div className="bg-white border border-gray-200 rounded-lg p-4 max-w-sm mx-4 shadow-xl dark:bg-gray-800 dark:border-gray-600">
@@ -142,14 +145,14 @@ function ConfirmDialog({ message, onConfirm, onCancel, isPending }: {
             disabled={isPending}
             className="px-3 py-1.5 text-xs rounded bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
           >
-            Abbrechen
+            {isEn ? 'Cancel' : 'Abbrechen'}
           </button>
           <button
             onClick={onConfirm}
             disabled={isPending}
             className="px-3 py-1.5 text-xs rounded bg-red-600 text-white hover:bg-red-500 disabled:opacity-50"
           >
-            {isPending ? 'Löschen...' : 'Löschen'}
+            {isPending ? (isEn ? 'Deleting...' : 'Löschen...') : (isEn ? 'Delete' : 'Löschen')}
           </button>
         </div>
       </div>
@@ -157,9 +160,10 @@ function ConfirmDialog({ message, onConfirm, onCancel, isPending }: {
   );
 }
 
-export default function HistoryChart({ stateId, unit, fillHeight = false, extraSeries, settingsCollapsible = false }: HistoryChartProps) {
+export default function HistoryChart({ stateId, unit, fillHeight = false, extraSeries, settingsCollapsible = false, language = 'en' }: HistoryChartProps) {
+  const isEn = language === 'en';
   const { dark } = useTheme();
-  const axes = makeAxes(dark);
+  const axes = makeAxes(dark, isEn);
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const [rangeMs, setRangeMs] = useState<number | null>(24 * 60 * 60 * 1000);
   const [customStart, setCustomStart] = useState(() => toLocalDatetime(Date.now() - 24 * 60 * 60 * 1000));
@@ -282,12 +286,18 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
   function getConfirmMessage(): string {
     if (!confirmAction) return '';
     if (confirmAction.type === 'entry') {
-      return `Wert ${confirmAction.val}${unit ? ' ' + unit : ''} vom ${formatTooltipTime(confirmAction.ts)} löschen?`;
+      return isEn
+        ? `Delete value ${confirmAction.val}${unit ? ' ' + unit : ''} from ${formatTooltipTime(confirmAction.ts)}?`
+        : `Wert ${confirmAction.val}${unit ? ' ' + unit : ''} vom ${formatTooltipTime(confirmAction.ts)} löschen?`;
     }
     if (confirmAction.type === 'range') {
-      return `Alle Daten von ${formatTooltipTime(confirmAction.start)} bis ${formatTooltipTime(confirmAction.end)} löschen?`;
+      return isEn
+        ? `Delete all data from ${formatTooltipTime(confirmAction.start)} to ${formatTooltipTime(confirmAction.end)}?`
+        : `Alle Daten von ${formatTooltipTime(confirmAction.start)} bis ${formatTooltipTime(confirmAction.end)} löschen?`;
     }
-    return `Alle History-Daten für diesen Datenpunkt unwiderruflich löschen?`;
+    return isEn
+      ? 'Delete all history data for this datapoint permanently?'
+      : 'Alle History-Daten für diesen Datenpunkt unwiderruflich löschen?';
   }
 
   function handleExportPng() {
@@ -451,7 +461,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
             className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors self-start"
           >
             {settingsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-            Einstellungen
+            {isEn ? 'Settings' : 'Einstellungen'}
           </button>
         )}
         {settingsOpen && <div className="flex items-center justify-between flex-wrap gap-2">
@@ -481,7 +491,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
                   : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
               }`}
             >
-              Manuell
+              {isEn ? 'Manual' : 'Manuell'}
             </button>
           </div>
           <div className="flex gap-2 items-center flex-wrap">
@@ -496,7 +506,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
                       : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                   }`}
                 >
-                  {ct.label}
+                  {isEn ? ct.labelEn : ct.labelDe}
                 </button>
               ))}
             </div>
@@ -507,7 +517,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
               }`}
-              title="Datenpunkte anzeigen"
+              title={isEn ? 'Show data points' : 'Datenpunkte anzeigen'}
             >
               <CircleDot size={14} />
             </button>
@@ -517,7 +527,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
               className="bg-gray-200 text-gray-700 text-xs rounded px-2 py-1 border border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600"
             >
               {AGGREGATES.map((a) => (
-                <option key={a.value} value={a.value}>{a.label}</option>
+                <option key={a.value} value={a.value}>{isEn ? a.labelEn : a.labelDe}</option>
               ))}
             </select>
             {/* Comparison buttons */}
@@ -532,9 +542,9 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
                       ? 'bg-orange-500 text-white'
                       : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                   }`}
-                  title={`Vergleich mit ${c.label}`}
+                  title={isEn ? `Compare with ${c.labelEn}` : `Vergleich mit ${c.labelDe}`}
                 >
-                  {c.label}
+                  {isEn ? c.labelEn : c.labelDe}
                 </button>
               ))}
             </div>
@@ -542,7 +552,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
             <button
               onClick={handleExportPng}
               className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-              title="Chart als PNG exportieren"
+              title={isEn ? 'Export chart as PNG' : 'Chart als PNG exportieren'}
             >
               <Download size={12} />
               PNG
@@ -554,39 +564,39 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
                   ? 'bg-red-600/30 text-red-300 border border-red-500/40'
                   : 'bg-gray-200 text-red-500 hover:bg-red-100 dark:bg-gray-700 dark:text-red-400 dark:hover:bg-red-900/30 dark:hover:text-red-300'
               }`}
-              title="Einzelwert löschen — Datenpunkt im Chart anklicken"
+              title={isEn ? 'Delete single value - click datapoint in chart' : 'Einzelwert löschen — Datenpunkt im Chart anklicken'}
             >
               <Trash2 size={12} />
-              Einzelwert
+              {isEn ? 'Single value' : 'Einzelwert'}
             </button>
             <button
               onClick={() => setConfirmAction({ type: 'range', start: options.start, end: options.end })}
               className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-gray-200 text-red-500 hover:bg-red-100 dark:bg-gray-700 dark:text-red-400 dark:hover:bg-red-900/30 dark:hover:text-red-300"
-              title="Zeitbereich löschen"
+              title={isEn ? 'Delete time range' : 'Zeitbereich löschen'}
             >
               <Trash2 size={12} />
-              Zeitbereich
+              {isEn ? 'Time range' : 'Zeitbereich'}
             </button>
             <button
               onClick={() => setConfirmAction({ type: 'all' })}
               className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-gray-200 text-red-500 hover:bg-red-100 dark:bg-gray-700 dark:text-red-400 dark:hover:bg-red-900/30 dark:hover:text-red-300"
-              title="Alle History-Daten löschen"
+              title={isEn ? 'Delete all history data' : 'Alle History-Daten löschen'}
             >
               <Trash2 size={12} />
-              Alle
+              {isEn ? 'All' : 'Alle'}
             </button>
           </div>
         </div>}
         {settingsOpen && rangeMs === null && (
           <div className="flex items-center gap-2">
-            <label className="text-xs text-gray-400 dark:text-gray-500">Von</label>
+            <label className="text-xs text-gray-400 dark:text-gray-500">{isEn ? 'From' : 'Von'}</label>
             <input
               type="datetime-local"
               value={customStart}
               onChange={(e) => setCustomStart(e.target.value)}
               className="bg-gray-200 text-gray-700 text-xs rounded px-2 py-1 border border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600"
             />
-            <label className="text-xs text-gray-400 dark:text-gray-500">Bis</label>
+            <label className="text-xs text-gray-400 dark:text-gray-500">{isEn ? 'To' : 'Bis'}</label>
             <input
               type="datetime-local"
               value={customEnd}
@@ -599,7 +609,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
           <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
             <span className="inline-block w-6 h-0.5 border-t-2 border-dashed border-orange-400" />
             <span>
-              Vergleich: {compareOffset === '1w' ? 'Vorwoche' : 'Vormonat'} (orange gestrichelt)
+              {isEn ? 'Compare' : 'Vergleich'}: {compareOffset === '1w' ? (isEn ? 'Previous week' : 'Vorwoche') : (isEn ? 'Previous month' : 'Vormonat')} {isEn ? '(orange dashed)' : '(orange gestrichelt)'}
             </span>
           </div>
         )}
@@ -625,7 +635,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
             { label: 'Min',   value: stats.min,   cls: 'text-blue-600 dark:text-blue-400 bg-blue-500/10' },
             { label: 'Max',   value: stats.max,   cls: 'text-red-600 dark:text-red-400 bg-red-500/10' },
             { label: 'Avg',   value: stats.avg,   cls: 'text-violet-600 dark:text-violet-400 bg-violet-500/10' },
-            { label: 'Letzt', value: stats.last,  cls: 'text-green-600 dark:text-green-400 bg-green-500/10' },
+            { label: isEn ? 'Last' : 'Letzt', value: stats.last,  cls: 'text-green-600 dark:text-green-400 bg-green-500/10' },
           ] as { label: string; value: number; cls: string }[]).map(({ label, value, cls }) => (
             <span key={label} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono ${cls}`}>
               <span className="opacity-60 font-sans text-[10px] uppercase tracking-wide">{label}</span>
@@ -633,7 +643,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
               {unit && <span className="opacity-60">{unit}</span>}
             </span>
           ))}
-          <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">{stats.count} Messpunkte</span>
+          <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">{stats.count} {isEn ? 'points' : 'Messpunkte'}</span>
         </div>
       )}
 
@@ -643,15 +653,15 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
-          Lade History-Daten...
+          {isEn ? 'Loading history data...' : 'Lade History-Daten...'}
         </div>
       ) : isError ? (
         <div className={`flex items-center justify-center text-red-400 text-sm ${fillHeight ? 'flex-1' : 'h-48'}`}>
-          Fehler beim Laden der History-Daten
+          {isEn ? 'Error loading history data' : 'Fehler beim Laden der History-Daten'}
         </div>
       ) : chartData.length === 0 ? (
         <div className={`flex items-center justify-center text-gray-400 dark:text-gray-500 text-sm ${fillHeight ? 'flex-1' : 'h-48'}`}>
-          Keine History-Daten im Zeitraum gefunden
+          {isEn ? 'No history data in selected range' : 'Keine History-Daten im Zeitraum gefunden'}
         </div>
       ) : (
         <div ref={chartContainerRef} className={fillHeight ? 'flex-1 min-h-0' : ''}>
@@ -667,6 +677,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
           onConfirm={handleConfirm}
           onCancel={() => setConfirmAction(null)}
           isPending={isPending}
+          language={language}
         />
       )}
     </div>

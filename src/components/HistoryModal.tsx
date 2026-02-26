@@ -10,6 +10,7 @@ interface Props {
   unit?: string;
   onClose: () => void;
   objects?: Record<string, IoBrokerObject>;
+  language?: 'en' | 'de';
 }
 
 function getObjectName(obj: IoBrokerObject | undefined): string {
@@ -18,7 +19,8 @@ function getObjectName(obj: IoBrokerObject | undefined): string {
   return obj.common.name.de || obj.common.name.en || Object.values(obj.common.name)[0] || '';
 }
 
-export default function HistoryModal({ stateId, unit, onClose, objects }: Props) {
+export default function HistoryModal({ stateId, unit, onClose, objects, language = 'en' }: Props) {
+  const isEn = language === 'en';
   const [extraSeries, setExtraSeries] = useState<ExtraSeries[]>([]);
   const [addInput, setAddInput] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -100,7 +102,7 @@ export default function HistoryModal({ stateId, unit, onClose, objects }: Props)
                   value={addInput}
                   onChange={(e) => setAddInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') addSeries(); }}
-                  placeholder="Datenpunkt-ID hinzufügen…"
+                  placeholder={isEn ? 'Add datapoint ID…' : 'Datenpunkt-ID hinzufügen…'}
                   className="text-xs rounded px-2 py-1 w-52 border bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 focus:outline-none focus:border-blue-400 placeholder-gray-400 dark:placeholder-gray-500"
                 />
                 {previewName && (
@@ -113,7 +115,7 @@ export default function HistoryModal({ stateId, unit, onClose, objects }: Props)
                 onClick={addSeries}
                 disabled={!addInput.trim()}
                 className="p-1.5 rounded text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 disabled:opacity-30 disabled:cursor-not-allowed"
-                title="Hinzufügen"
+                title={isEn ? 'Add' : 'Hinzufügen'}
               >
                 <Plus size={14} />
               </button>
@@ -130,7 +132,13 @@ export default function HistoryModal({ stateId, unit, onClose, objects }: Props)
 
         {/* Chart */}
         <div className="px-5 py-4 flex-1 min-h-0 flex flex-col">
-          <HistoryChart stateId={stateId} unit={unit} fillHeight extraSeries={extraSeries.length > 0 ? extraSeries : undefined} />
+          <HistoryChart
+            stateId={stateId}
+            unit={unit}
+            fillHeight
+            extraSeries={extraSeries.length > 0 ? extraSeries : undefined}
+            language={language}
+          />
         </div>
       </div>
     </div>,

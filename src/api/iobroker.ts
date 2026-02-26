@@ -238,11 +238,11 @@ export function hasSmartName(obj: IoBrokerObject): boolean {
   return false;
 }
 
-export async function createObject(id: string, common: Partial<IoBrokerObjectCommon>): Promise<void> {
+export async function createObject(id: string, common: Partial<IoBrokerObjectCommon>, objectType: 'state' | 'folder' | 'device' | 'channel' = 'state'): Promise<void> {
   const res = await fetch(`${BASE_URL}/object/${encodeURIComponent(id)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type: 'state', common, native: {} }),
+    body: JSON.stringify({ type: objectType, common, native: {} }),
   });
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
   objectsCache = null;

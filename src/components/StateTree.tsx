@@ -35,6 +35,7 @@ interface StateTreeProps {
   expandToDepth?: { depth: number; seq: number };
   treeFilter?: string | null;
   onClearTreeFilter?: () => void;
+  language?: 'en' | 'de';
 }
 
 function buildTree(ids: string[]): TreeNode {
@@ -378,7 +379,8 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
 });
 
 
-function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeScope, onCreateAtPath, historyOnly, smartOnly, historyIds, smartIds, expandToDepth }: StateTreeProps) {
+function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeScope, onCreateAtPath, historyOnly, smartOnly, historyIds, smartIds, expandToDepth, language = 'en' }: StateTreeProps) {
+  const isEn = language === 'en';
   const [expandSignal, setExpandSignal] = useState<{ depth: number; seq: number }>({ depth: 0, seq: 0 });
   const [showFolders,  setShowFolders]  = useState(true);
   const [showDevices,  setShowDevices]  = useState(true);
@@ -424,7 +426,7 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
         >
           <span className="flex items-center gap-1.5 font-medium">
             <Layers size={12} />
-            Objekt-Baum Filter
+            {isEn ? 'Object tree filter' : 'Objekt-Baum Filter'}
             {hiddenCount > 0 && (
               <span className="px-1.5 py-0.5 rounded-full bg-orange-500/15 text-orange-600 dark:text-orange-400 text-[10px]">
                 {typeItems.length - hiddenCount}/{typeItems.length}
@@ -439,7 +441,7 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
               <button
                 key={key}
                 onClick={() => set((v) => !v)}
-                title={active ? `${label}s ausblenden` : `${label}s einblenden`}
+                title={active ? (isEn ? `Hide ${label}s` : `${label}s ausblenden`) : (isEn ? `Show ${label}s` : `${label}s einblenden`)}
                 className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs transition-colors ${
                   active
                     ? `bg-gray-200 dark:bg-gray-700 ${color} hover:bg-gray-300 dark:hover:bg-gray-600`
@@ -458,18 +460,18 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
         <button
           onClick={() => setExpandSignal(s => ({ depth: 9999, seq: s.seq + 1 }))}
           className="flex items-center justify-center gap-1 flex-1 px-2 py-1 text-xs rounded bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700"
-          title="Alle aufklappen"
+          title={isEn ? 'Expand all' : 'Alle aufklappen'}
         >
           <ChevronsUpDown size={13} />
-          Aufklappen
+          {isEn ? 'Expand' : 'Aufklappen'}
         </button>
         <button
           onClick={() => setExpandSignal(s => ({ depth: 0, seq: s.seq + 1 }))}
           className="flex items-center justify-center gap-1 flex-1 px-2 py-1 text-xs rounded bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700"
-          title="Alle zuklappen"
+          title={isEn ? 'Collapse all' : 'Alle zuklappen'}
         >
           <ChevronsDownUp size={13} />
-          Zuklappen
+          {isEn ? 'Collapse' : 'Zuklappen'}
         </button>
         <button
           onClick={() => setTreeViewMode(m => m === 'path' ? 'adapter' : 'path')}

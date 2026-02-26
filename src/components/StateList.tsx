@@ -34,6 +34,7 @@ interface StateListProps {
   fulltextEnabled?: boolean;
   dateFormat?: DateFormatSetting;
   settingsVisibleCols?: SortKey[];
+  language?: 'en' | 'de';
 }
 
 function formatTimestamp(ts: number, dateFormat: DateFormatSetting): string {
@@ -838,6 +839,29 @@ export const ALL_COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'ts',      label: 'Letztes Update' },
 ];
 
+export function getColumnLabel(key: SortKey, language: 'en' | 'de' = 'de'): string {
+  const isEn = language === 'en';
+  switch (key) {
+    case 'checkbox': return isEn ? 'Selection' : 'Auswahl';
+    case 'write': return isEn ? 'Read only' : 'Schreibschutz';
+    case 'history': return 'History';
+    case 'smart': return 'SmartName';
+    case 'alias': return 'Alias';
+    case 'id': return 'ID';
+    case 'name': return 'Name';
+    case 'room': return isEn ? 'Room' : 'Raum';
+    case 'function': return isEn ? 'Function' : 'Funktion';
+    case 'role': return isEn ? 'Role' : 'Rolle';
+    case 'value': return isEn ? 'Value' : 'Wert';
+    case 'unit': return isEn ? 'Unit' : 'Einheit';
+    case 'ack': return 'ACK';
+    case 'ts': return isEn ? 'Last Update' : 'Letztes Update';
+    case 'type': return isEn ? 'Type' : 'Typ';
+    case 'relevanz': return isEn ? 'Relevance' : 'Relevanz';
+    default: return key;
+  }
+}
+
 export const DEFAULT_COLS: SortKey[] = ['checkbox', 'write', 'history', 'smart', 'alias', 'id', 'name', 'room', 'function', 'role', 'value', 'unit', 'ack', 'ts'];
 const LS_KEY = 'iobroker-visible-cols';
 
@@ -886,9 +910,10 @@ function hasSmartName(obj: IoBrokerObject | undefined): boolean {
   return false;
 }
 
-function ColPicker({ visible, onChange }: { visible: SortKey[]; onChange: (cols: SortKey[]) => void }) {
+function ColPicker({ visible, onChange, language = 'de' }: { visible: SortKey[]; onChange: (cols: SortKey[]) => void; language?: 'en' | 'de' }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const isEn = language === 'en';
 
   useEffect(() => {
     function onOutside(e: MouseEvent) {
@@ -910,21 +935,21 @@ function ColPicker({ visible, onChange }: { visible: SortKey[]; onChange: (cols:
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((v) => !v)}
-        title="Spalten konfigurieren"
+        title={isEn ? 'Configure columns' : 'Spalten konfigurieren'}
         className={`p-1.5 rounded-lg transition-colors ${open ? 'text-blue-500 bg-blue-500/10' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200 dark:text-gray-500 dark:hover:text-gray-300 dark:hover:bg-gray-700'}`}
       >
         <SlidersHorizontal size={15} />
       </button>
       {open && (
         <div className="absolute right-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-2 min-w-[140px]">
-          {ALL_COLUMNS.map(({ key, label }) => (
+          {ALL_COLUMNS.map(({ key }) => (
             <div
               key={key}
               onClick={() => toggle(key)}
               className="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 select-none"
             >
               <StyledCheckbox checked={visible.includes(key)} onChange={() => toggle(key)} />
-              {label}
+              {getColumnLabel(key, language)}
             </div>
           ))}
         </div>
@@ -1284,7 +1309,8 @@ const StateRow = React.memo(function StateRow({
   );
 });
 
-function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols }: StateListProps) {
+function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en' }: StateListProps) {
+  const isEn = language === 'en';
   const [sortKey, setSortKey] = useState<SortKey>('id');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [visibleCols, setVisibleCols] = useState<SortKey[]>(loadVisibleCols);
@@ -1672,7 +1698,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
       <div className="flex items-center gap-2">
         <button
           onClick={() => setNewDatapointOpen(true)}
-          title="Neuer Datenpunkt"
+          title={isEn ? 'New datapoint' : 'Neuer Datenpunkt'}
           className="flex items-center justify-center w-7 h-7 rounded-lg text-green-600 bg-green-500/10 hover:bg-green-500/20 dark:text-green-400 dark:hover:bg-green-500/20 transition-colors"
         >
           <Plus size={16} />
@@ -1754,7 +1780,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
         >
           <RotateCcw size={17} />
         </button>
-        <ColPicker visible={visibleCols} onChange={handleColChange} />
+        <ColPicker visible={visibleCols} onChange={handleColChange} language={language} />
       </div>
     </div>
   );
@@ -1852,6 +1878,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
           onClose={() => setNewDatapointOpen(false)}
           existingIds={existingIds}
           initialId={patternToInitialId(pattern)}
+          language={language}
         />
       )}
       {historyModalId && (
@@ -1859,6 +1886,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
           stateId={historyModalId}
           unit={objects[historyModalId]?.common?.unit}
           objects={objects}
+          language={language}
           onClose={() => setHistoryModalId(null)}
         />
       )}
@@ -1942,14 +1970,14 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
               {show('smart')   && <th style={{ width: colWidths['smart'],   minWidth: colWidths['smart']   }} />}
               {show('alias')   && <th style={{ width: w('alias'),           minWidth: w('alias')           }} />}
               {show('id')      && <SortHeader label="ID" sortKey="id" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('id')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
-              {show('name')    && <SortHeader label="Name" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('name')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
-              {show('room')     && <SortHeader label="Raum"     sortKey="room"     activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('room')}     onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
-              {show('function') && <SortHeader label="Funktion" sortKey="function" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('function')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
-              {show('role')    && <SortHeader label="Rolle" sortKey="role" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('role')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
-              {show('value')   && <SortHeader label="Wert" sortKey="value" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('value')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} className="text-right" />}
-              {show('unit')    && <SortHeader label="Einheit" sortKey="unit" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('unit')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
-              {show('ack')     && <SortHeader label="Ack" sortKey="ack" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('ack')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
-              {show('ts')      && <SortHeader label="Letztes Update" sortKey="ts" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('ts')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
+              {show('name')    && <SortHeader label={isEn ? 'Name' : 'Name'} sortKey="name" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('name')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
+              {show('room')     && <SortHeader label={isEn ? 'Room' : 'Raum'} sortKey="room" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('room')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
+              {show('function') && <SortHeader label={isEn ? 'Function' : 'Funktion'} sortKey="function" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('function')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
+              {show('role')    && <SortHeader label={isEn ? 'Role' : 'Rolle'} sortKey="role" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('role')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
+              {show('value')   && <SortHeader label={isEn ? 'Value' : 'Wert'} sortKey="value" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('value')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} className="text-right" />}
+              {show('unit')    && <SortHeader label={isEn ? 'Unit' : 'Einheit'} sortKey="unit" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('unit')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
+              {show('ack')     && <SortHeader label="ACK" sortKey="ack" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('ack')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
+              {show('ts')      && <SortHeader label={isEn ? 'Last Update' : 'Letztes Update'} sortKey="ts" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('ts')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               <th style={{ width: DEL_COL_WIDTH, minWidth: DEL_COL_WIDTH }} />
             </tr>
             <tr className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">

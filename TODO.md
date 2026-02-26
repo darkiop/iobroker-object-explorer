@@ -43,7 +43,7 @@ Optionen -> Sprache, Datumsformat, Standard Spalten, Schnellfilter
 | FE-031 | Fulltext-Suche statt nur Pattern-Matching: Suche in Namen, Beschreibung und Alias-Zielen mit Relevanz-Ranking. | Feature | niedrig | L | umgesetzt |
 | FE-032 | Progressive Web App (PWA): Service Worker + Offline-Unterstützung für gecachte Objekte. | Feature | niedrig | L | offen |
 | FE-033 | Undo/Redo für Edits (Name, Rolle, Einheit, Raum, Funktion), besonders nach Batch-Operationen nützlich. | Feature | niedrig | L | offen |
-| FE-034 | Lokalisierung (i18next): Deutsch ist hardcodiert; Englisch und weitere Sprachen ergänzen. | Feature | niedrig | L | offen |
+| FE-034 | Lokalisierung (i18next): Deutsch ist hardcodiert; Englisch und weitere Sprachen ergänzen. | Feature | niedrig | L | umgesetzt |
 | FE-035 | Multi-Datenpunkt-Vergleich im Chart: Mehrere History-fähige States gleichzeitig auf einer Zeitachse darstellen (z.B. Temperaturen verschiedener Räume). | Chart | hoch | L | umgesetzt |
 | FE-036 | Sparkline-Miniaturchart in der Tabellenspalte „Wert": Kleiner Trendgraph der letzten 24h direkt in der Zeile für History-aktivierte Datenpunkte. | Chart | hoch | M | offen |
 | FE-037 | Statistik-Panel im HistoryChart: Min/Max/Avg/Letzte-Wert-Zusammenfassung als Badges direkt über dem Chart anzeigen. | Chart | mittel | S | umgesetzt |
