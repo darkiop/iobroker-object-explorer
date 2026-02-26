@@ -24,9 +24,9 @@ Optionen -> Sprache, Datumsformat, Standard Spalten, Schnellfilter
 | FE-012 | Alias-Quelle/Ziel in Tabellenspalte ID anzeigen (zweite Zeile, kleinere Schrift); Quelle/Ziel anklickbar machen und im Baum anspringen. | Feature | mittel | M | umgesetzt |
 | FE-013 | Schnellfilter-Buttons für alle Räume (`enum.rooms.*`) in der Sidebar einfügen. | Feature | mittel | M | umgesetzt |
 | FE-014 | Einheit-Eingabe in Tabelle als durchsuchbares Dropdown (wie Raum/Funktion) statt freies Textfeld. | UX | mittel | S | umgesetzt |
-| FE-015 | Doppelte `copyText()`-Implementierung aus `StateList.tsx` und `StateTree.tsx` in `src/utils/clipboard.ts` auslagern. | Code Quality | mittel | S | offen |
-| FE-016 | QueryKey-Hierarchie nach TanStack React Query Best Practices strukturieren (z.B. `['objects', pattern]` statt loses String-Pattern). | Code Quality | mittel | S | offen |
-| FE-017 | Column-Filter-Logik in `App.tsx` (~75 Zeilen verschachtelte if/filter) in separate Utility-Funktion `filterObjectIds()` auslagern. | Code Quality | mittel | S | offen |
+| FE-015 | Doppelte `copyText()`-Implementierung aus `StateList.tsx` und `StateTree.tsx` in `src/utils/clipboard.ts` auslagern. | Code Quality | mittel | S | umgesetzt |
+| FE-016 | QueryKey-Hierarchie nach TanStack React Query Best Practices strukturieren (z.B. `['objects', pattern]` statt loses String-Pattern). | Code Quality | mittel | S | umgesetzt |
+| FE-017 | Column-Filter-Logik in `App.tsx` (~75 Zeilen verschachtelte if/filter) in separate Utility-Funktion `filterObjectIds()` auslagern. | Code Quality | mittel | S | umgesetzt |
 | FE-018 | API-Batch-Größe in `getStatesBatch()` von 20 auf 50+ erhöhen und konfigurierbar machen. | Performance | mittel | S | umgesetzt |
 | FE-019 | `useStateValues()`-Hook: Refetch pausieren wenn Tab/Window nicht sichtbar (Page Visibility API). | Performance | mittel | S | umgesetzt |
 | FE-020 | `buildAliasReverseMap()` in QueryClient cachen statt bei jedem Re-Render neu berechnen. | Performance | mittel | S | umgesetzt |

@@ -13,6 +13,7 @@ import ConfirmDialog from './ConfirmDialog';
 import MultiDeleteDialog from './MultiDeleteDialog';
 import { hasHistory, isGlobPattern } from '../api/iobroker';
 import type { IoBrokerState, IoBrokerObject } from '../types/iobroker';
+import { copyText } from '../utils/clipboard';
 
 interface StateListProps {
   ids: string[];
@@ -61,21 +62,6 @@ function getObjectName(obj: IoBrokerObject | undefined): string {
   if (!obj?.common?.name) return '';
   if (typeof obj.common.name === 'string') return obj.common.name;
   return obj.common.name.de || obj.common.name.en || Object.values(obj.common.name)[0] || '';
-}
-
-function copyText(text: string) {
-  if (navigator.clipboard?.writeText) {
-    navigator.clipboard.writeText(text).catch(() => copyTextFallback(text));
-  } else {
-    copyTextFallback(text);
-  }
-}
-function copyTextFallback(text: string) {
-  const ta = document.createElement('textarea');
-  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
-  document.body.appendChild(ta); ta.select();
-  document.execCommand('copy');
-  document.body.removeChild(ta);
 }
 
 const EditableNameCell = React.memo(function EditableNameCell({ id, name }: { id: string; name: string }) {

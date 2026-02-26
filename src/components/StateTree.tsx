@@ -4,21 +4,7 @@ import type { TreeNode, IoBrokerObject } from '../types/iobroker';
 import ObjectEditModal from './ObjectEditModal';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
-
-function copyText(text: string) {
-  if (navigator.clipboard?.writeText) {
-    navigator.clipboard.writeText(text).catch(() => copyTextFallback(text));
-  } else {
-    copyTextFallback(text);
-  }
-}
-function copyTextFallback(text: string) {
-  const ta = document.createElement('textarea');
-  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
-  document.body.appendChild(ta); ta.select();
-  document.execCommand('copy');
-  document.body.removeChild(ta);
-}
+import { copyText } from '../utils/clipboard';
 
 interface StateTreeProps {
   stateIds: string[];

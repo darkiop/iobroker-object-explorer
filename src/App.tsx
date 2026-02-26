@@ -14,6 +14,7 @@ import { hasHistory, hasSmartName } from './api/iobroker';
 import type { SortKey, DateFormatSetting } from './components/StateList';
 import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel } from './components/StateList';
 import type { IoBrokerObject, IoBrokerState } from './types/iobroker';
+import { filterObjectIds } from './utils/filterObjectIds';
 import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RotateCcw, Layers, X } from 'lucide-react';
 
 const queryClient = new QueryClient({
@@ -56,11 +57,6 @@ function normalizeQuickPattern(input: string): string {
   if (!v.endsWith('*')) v = `${v.replace(/\.+$/, '')}.*`;
   if (v.endsWith('*') && !v.endsWith('.*')) v = `${v.replace(/\*+$/, '')}.*`;
   return v;
-}
-
-function quickPatternToRegex(pattern: string): RegExp {
-  const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
-  return new RegExp(`^${escaped}$`);
 }
 
 function loadAppSettings(): AppSettings {
@@ -171,25 +167,19 @@ function AppContent() {
     let ids = Object.keys(stateObjects).sort();
     if (historyOnly) ids = ids.filter((id) => historyIds.has(id));
     if (smartOnly) ids = ids.filter((id) => smartIds.has(id));
-    const rm = roomMap;
-    const fm = functionMap;
-    if (colFilters.id?.trim())       { const f = colFilters.id.trim().toLowerCase();       ids = ids.filter((id) => id.toLowerCase().includes(f)); }
-    if (colFilters.name?.trim())     { const f = colFilters.name.trim().toLowerCase();      ids = ids.filter((id) => { const n = stateObjects![id]?.common?.name; const s = typeof n === 'string' ? n : (n && (n.de || n.en || Object.values(n)[0])) || ''; return s.toLowerCase().includes(f); }); }
-    if (colFilters.room?.trim())     { const f = colFilters.room.trim().toLowerCase();      ids = ids.filter((id) => (rm[id] || '').toLowerCase().includes(f)); }
-    if (colFilters.function?.trim()) { const f = colFilters.function.trim().toLowerCase();  ids = ids.filter((id) => (fm[id] || '').toLowerCase().includes(f)); }
-    if (colFilters.role?.trim())     { const f = colFilters.role.trim().toLowerCase();      ids = ids.filter((id) => (stateObjects![id]?.common?.role || '').toLowerCase().includes(f)); }
-    if (colFilters.unit?.trim())     { const f = colFilters.unit.trim().toLowerCase();      ids = ids.filter((id) => (stateObjects![id]?.common?.unit || '').toLowerCase().includes(f)); }
-    if (colFilters.write === '1')   ids = ids.filter((id) => stateObjects![id]?.common?.write === false);
-    if (colFilters.history === '1') ids = ids.filter((id) => historyIds.has(id));
-    if (colFilters.smart === '1')   ids = ids.filter((id) => smartIds.has(id));
-    if (colFilters.alias === '1')   ids = ids.filter((id) => aliasMap.has(id) || !!(stateObjects![id]?.common?.alias?.id));
-    if (roomFilters.size > 0) ids = ids.filter((id) => roomFilters.has(roomMap[id]));
-    if (functionFilters.size > 0) ids = ids.filter((id) => functionFilters.has(functionMap[id]));
-    if (quickPatterns.size > 0) {
-      const quickRegexes = [...quickPatterns].map(quickPatternToRegex);
-      ids = ids.filter((id) => quickRegexes.some((rx) => rx.test(id)));
-    }
-    return ids;
+    return filterObjectIds({
+      ids,
+      objects: stateObjects,
+      roomMap,
+      functionMap,
+      historyIds,
+      smartIds,
+      aliasMap,
+      colFilters,
+      roomFilters,
+      functionFilters,
+      quickPatterns,
+    });
   }, [stateObjects, historyOnly, historyIds, smartOnly, smartIds, colFilters, roomMap, functionMap, aliasMap, roomFilters, functionFilters, quickPatterns]);
 
   const tableIds = useMemo(
