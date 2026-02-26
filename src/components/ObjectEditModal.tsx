@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Save, AlertTriangle, Link2, Pencil, Check, Wrench, Trash2, Maximize2, Copy } from 'lucide-react';
-import { usePutObject, useExtendObject, useStateDetail, useSetState, useAllRoles, useAllUnits, useDeleteObject, useAllObjects } from '../hooks/useStates';
+import { X, Save, AlertTriangle, Link2, Pencil, Check, Wrench, Trash2, Maximize2, Copy, ChevronDown } from 'lucide-react';
+import { usePutObject, useExtendObject, useStateDetail, useSetState, useAllRoles, useAllUnits, useDeleteObject, useAllObjects, useRoomEnums, useFunctionEnums, useUpdateRoomMembership, useUpdateFunctionMembership } from '../hooks/useStates';
 import { hasHistory } from '../api/iobroker';
 import HistoryChart from './HistoryChart';
 import ConfirmDialog from './ConfirmDialog';
@@ -348,6 +348,14 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
   const [aliasId, setAliasId] = useState(obj.common.alias?.id ?? '');
   const [aliasRead, setAliasRead] = useState(obj.common.alias?.read ?? '');
   const [aliasWrite, setAliasWrite] = useState(obj.common.alias?.write ?? '');
+  const [roomEnumId, setRoomEnumId] = useState<string | null>(() => {
+    const hit = Object.keys(obj.enums ?? {}).find((enumId) => enumId.startsWith('enum.rooms.'));
+    return hit ?? null;
+  });
+  const [fnEnumId, setFnEnumId] = useState<string | null>(() => {
+    const hit = Object.keys(obj.enums ?? {}).find((enumId) => enumId.startsWith('enum.functions.'));
+    return hit ?? null;
+  });
 
   const putObject = usePutObject();
   const extend = useExtendObject();
@@ -355,7 +363,11 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
   const setStateMutation = useSetState();
   const { data: roles } = useAllRoles();
   const { data: units } = useAllUnits();
+  const { data: roomEnums = [] } = useRoomEnums();
+  const { data: fnEnums = [] } = useFunctionEnums();
   const deleteObject = useDeleteObject();
+  const updateRoom = useUpdateRoomMembership();
+  const updateFn = useUpdateFunctionMembership();
   const { data: allObjects } = useAllObjects();
   const existingIds = useMemo(() => new Set(Object.keys(allObjects ?? {})), [allObjects]);
 
@@ -365,6 +377,13 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
   const isSwitch = role === 'switch' || role.startsWith('switch.');
   const isButton = role === 'button' || role.startsWith('button.');
   const isNumberValue = !isSwitch && !isButton && type === 'number';
+
+  useEffect(() => {
+    const nextRoom = Object.keys(obj.enums ?? {}).find((enumId) => enumId.startsWith('enum.rooms.')) ?? null;
+    const nextFn = Object.keys(obj.enums ?? {}).find((enumId) => enumId.startsWith('enum.functions.')) ?? null;
+    setRoomEnumId(nextRoom);
+    setFnEnumId(nextFn);
+  }, [id, obj.enums]);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -407,6 +426,26 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
       delete newCommon.alias;
     }
     putObject.mutate({ id, obj: { ...obj, common: newCommon } }, { onSuccess: onClose });
+  }
+
+  function handleSetRoom(nextRoomEnumId: string | null) {
+    const oldRoomEnumId = roomEnumId;
+    if (oldRoomEnumId === nextRoomEnumId) return;
+    setRoomEnumId(nextRoomEnumId);
+    updateRoom.mutate(
+      { objectId: id, oldRoomEnumId, newRoomEnumId: nextRoomEnumId },
+      { onError: () => setRoomEnumId(oldRoomEnumId) }
+    );
+  }
+
+  function handleSetFunction(nextFnEnumId: string | null) {
+    const oldFnEnumId = fnEnumId;
+    if (oldFnEnumId === nextFnEnumId) return;
+    setFnEnumId(nextFnEnumId);
+    updateFn.mutate(
+      { objectId: id, oldFnEnumId, newFnEnumId: nextFnEnumId },
+      { onError: () => setFnEnumId(oldFnEnumId) }
+    );
   }
 
   const inputCls = 'px-2.5 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500';
@@ -503,6 +542,50 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                 <DetailRow label={isEn ? 'Type' : 'Typ'} value={obj.common?.type || '—'} />
                 <EditableRow label={isEn ? 'Role' : 'Rolle'} value={obj.common?.role || ''} onSave={(v) => saveField('role', v)} isPending={extend.isPending} suggestions={roles} language={language} />
                 <EditableRow label={isEn ? 'Unit' : 'Einheit'} value={obj.common?.unit || ''} onSave={(v) => saveField('unit', v)} isPending={extend.isPending} suggestions={units} language={language} />
+                <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800 items-center">
+                  <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{isEn ? 'Room' : 'Raum'}</span>
+                  <div className="flex-1 relative">
+                    <select
+                      value={roomEnumId ?? ''}
+                      onChange={(e) => handleSetRoom(e.target.value || null)}
+                      disabled={updateRoom.isPending}
+                      className="w-full appearance-none bg-gray-50 text-gray-800 text-sm rounded-md pl-2.5 pr-8 py-1.5 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:focus:ring-blue-500 transition-colors"
+                    >
+                      <option value="">{isEn ? 'No room' : 'Kein Raum'}</option>
+                      {roomEnums.map((roomEntry) => (
+                        <option key={roomEntry.id} value={roomEntry.id}>
+                          {roomEntry.name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown
+                      size={14}
+                      className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800 items-center">
+                  <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{isEn ? 'Function' : 'Funktion'}</span>
+                  <div className="flex-1 relative">
+                    <select
+                      value={fnEnumId ?? ''}
+                      onChange={(e) => handleSetFunction(e.target.value || null)}
+                      disabled={updateFn.isPending}
+                      className="w-full appearance-none bg-gray-50 text-gray-800 text-sm rounded-md pl-2.5 pr-8 py-1.5 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:focus:ring-blue-500 transition-colors"
+                    >
+                      <option value="">{isEn ? 'No function' : 'Keine Funktion'}</option>
+                      {fnEnums.map((fnEntry) => (
+                        <option key={fnEntry.id} value={fnEntry.id}>
+                          {fnEntry.name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown
+                      size={14}
+                      className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500"
+                    />
+                  </div>
+                </div>
                 <EditableRow
                   label={isEn ? 'Description' : 'Beschreibung'}
                   value={typeof obj.common?.desc === 'string' ? obj.common.desc : obj.common?.desc ? JSON.stringify(obj.common.desc) : ''}

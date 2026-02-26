@@ -26,6 +26,10 @@ function getObjectName(obj: IoBrokerObject | undefined): string {
   return obj.common.name.de || obj.common.name.en || Object.values(obj.common.name)[0] || '';
 }
 
+function fallbackEnumName(enumId: string): string {
+  return enumId.split('.').slice(2).join('.') || enumId;
+}
+
 export default function CreateAliasModal({ sourceId, sourceObj, existingIds, onClose, onCreated, language = 'en' }: Props) {
   const isEn = language === 'en';
   const [aliasId, setAliasId] = useState(() => suggestAliasId(sourceId));
@@ -44,6 +48,10 @@ export default function CreateAliasModal({ sourceId, sourceObj, existingIds, onC
   const srcUnit   = srcCommon?.unit   ?? '';
   const srcRead   = srcCommon?.read   !== false;
   const srcWrite  = srcCommon?.write  !== false;
+  const sourceRoomEnumId = Object.keys(sourceObj?.enums ?? {}).find((enumId) => enumId.startsWith('enum.rooms.')) ?? null;
+  const sourceFnEnumId = Object.keys(sourceObj?.enums ?? {}).find((enumId) => enumId.startsWith('enum.functions.')) ?? null;
+  const sourceRoomName = sourceRoomEnumId ? ((sourceObj?.enums?.[sourceRoomEnumId] as string | undefined) || fallbackEnumName(sourceRoomEnumId)) : '';
+  const sourceFnName = sourceFnEnumId ? ((sourceObj?.enums?.[sourceFnEnumId] as string | undefined) || fallbackEnumName(sourceFnEnumId)) : '';
   const aliasIdsSorted = useMemo(
     () => [...existingIds].filter((id) => id.startsWith('alias.0.')).sort(),
     [existingIds]
@@ -81,6 +89,8 @@ export default function CreateAliasModal({ sourceId, sourceObj, existingIds, onC
     create.mutate(
       {
         id: aliasId.trim(),
+        roomEnumId: sourceRoomEnumId,
+        functionEnumId: sourceFnEnumId,
         common: {
           name: name.trim(),
           type: srcType as 'number' | 'string' | 'boolean' | 'mixed',
@@ -147,11 +157,13 @@ export default function CreateAliasModal({ sourceId, sourceObj, existingIds, onC
 
           {/* Source properties */}
           {srcCommon && (
-            <div className="grid grid-cols-3 gap-1.5 bg-gray-50 dark:bg-gray-800/60 rounded-lg px-3 py-2">
+            <div className="grid grid-cols-4 gap-1.5 bg-gray-50 dark:bg-gray-800/60 rounded-lg px-3 py-2">
               {[
                 [isEn ? 'Type' : 'Typ', srcType],
                 [isEn ? 'Role' : 'Rolle', srcRole || '—'],
                 [isEn ? 'Unit' : 'Einheit', srcUnit || '—'],
+                [isEn ? 'Room' : 'Raum', sourceRoomName || '—'],
+                [isEn ? 'Function' : 'Funktion', sourceFnName || '—'],
                 [isEn ? 'Read' : 'Lesen', srcRead ? (isEn ? 'yes' : 'ja') : (isEn ? 'no' : 'nein')],
                 [isEn ? 'Write' : 'Schreiben', srcWrite ? (isEn ? 'yes' : 'ja') : (isEn ? 'no' : 'nein')],
               ].map(([label, val]) => (

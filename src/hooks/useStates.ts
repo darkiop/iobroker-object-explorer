@@ -188,14 +188,33 @@ export function useSetState() {
 export function useCreateDatapoint() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, common, initialValue, objectType = 'state' }: { id: string; common: Partial<IoBrokerObjectCommon>; initialValue?: string; objectType?: 'state' | 'folder' | 'device' | 'channel' }) => {
+    mutationFn: async ({ id, common, initialValue, objectType = 'state', roomEnumId, functionEnumId }: {
+      id: string;
+      common: Partial<IoBrokerObjectCommon>;
+      initialValue?: string;
+      objectType?: 'state' | 'folder' | 'device' | 'channel';
+      roomEnumId?: string | null;
+      functionEnumId?: string | null;
+    }) => {
       await createObject(id, common, objectType);
       if (objectType === 'state' && initialValue !== undefined && initialValue !== '') {
         await setState(id, initialValue);
       }
+      if (roomEnumId) {
+        await updateRoomMembership(id, null, roomEnumId);
+      }
+      if (functionEnumId) {
+        await updateFunctionMembership(id, null, functionEnumId);
+      }
     },
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.objects.root });
+      if (vars.roomEnumId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.metadata.roomMap });
+      }
+      if (vars.functionEnumId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.metadata.functionMap });
+      }
     },
   });
 }
@@ -254,7 +273,24 @@ export function useUpdateFunctionMembership() {
   return useMutation({
     mutationFn: ({ objectId, oldFnEnumId, newFnEnumId }: { objectId: string; oldFnEnumId: string | null; newFnEnumId: string | null }) =>
       updateFunctionMembership(objectId, oldFnEnumId, newFnEnumId),
-    onSuccess: () => {
+    onMutate: async ({ objectId, newFnEnumId }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.metadata.functionMap });
+      const prev = queryClient.getQueryData<Record<string, string>>(queryKeys.metadata.functionMap);
+      const enums = queryClient.getQueryData<Array<{ id: string; name: string }>>(queryKeys.metadata.functionEnums) ?? [];
+      const enumNameById = new Map(enums.map((entry) => [entry.id, entry.name]));
+      const next: Record<string, string> = { ...(prev ?? {}) };
+      if (newFnEnumId) {
+        next[objectId] = enumNameById.get(newFnEnumId) ?? next[objectId] ?? '';
+      } else {
+        delete next[objectId];
+      }
+      queryClient.setQueryData(queryKeys.metadata.functionMap, next);
+      return { prev };
+    },
+    onError: (_error, _vars, context) => {
+      queryClient.setQueryData(queryKeys.metadata.functionMap, context?.prev);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.metadata.functionMap });
     },
   });
@@ -265,7 +301,26 @@ export function useUpdateFunctionMembershipBatch() {
   return useMutation({
     mutationFn: ({ objectIds, newFnEnumId }: { objectIds: string[]; newFnEnumId: string | null }) =>
       updateFunctionMembershipBatch(objectIds, newFnEnumId),
-    onSuccess: () => {
+    onMutate: async ({ objectIds, newFnEnumId }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.metadata.functionMap });
+      const prev = queryClient.getQueryData<Record<string, string>>(queryKeys.metadata.functionMap);
+      const enums = queryClient.getQueryData<Array<{ id: string; name: string }>>(queryKeys.metadata.functionEnums) ?? [];
+      const enumNameById = new Map(enums.map((entry) => [entry.id, entry.name]));
+      const next: Record<string, string> = { ...(prev ?? {}) };
+      for (const objectId of objectIds) {
+        if (newFnEnumId) {
+          next[objectId] = enumNameById.get(newFnEnumId) ?? next[objectId] ?? '';
+        } else {
+          delete next[objectId];
+        }
+      }
+      queryClient.setQueryData(queryKeys.metadata.functionMap, next);
+      return { prev };
+    },
+    onError: (_error, _vars, context) => {
+      queryClient.setQueryData(queryKeys.metadata.functionMap, context?.prev);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.metadata.functionMap });
     },
   });
@@ -284,7 +339,24 @@ export function useUpdateRoomMembership() {
   return useMutation({
     mutationFn: ({ objectId, oldRoomEnumId, newRoomEnumId }: { objectId: string; oldRoomEnumId: string | null; newRoomEnumId: string | null }) =>
       updateRoomMembership(objectId, oldRoomEnumId, newRoomEnumId),
-    onSuccess: () => {
+    onMutate: async ({ objectId, newRoomEnumId }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.metadata.roomMap });
+      const prev = queryClient.getQueryData<Record<string, string>>(queryKeys.metadata.roomMap);
+      const enums = queryClient.getQueryData<Array<{ id: string; name: string }>>(queryKeys.metadata.roomEnums) ?? [];
+      const enumNameById = new Map(enums.map((entry) => [entry.id, entry.name]));
+      const next: Record<string, string> = { ...(prev ?? {}) };
+      if (newRoomEnumId) {
+        next[objectId] = enumNameById.get(newRoomEnumId) ?? next[objectId] ?? '';
+      } else {
+        delete next[objectId];
+      }
+      queryClient.setQueryData(queryKeys.metadata.roomMap, next);
+      return { prev };
+    },
+    onError: (_error, _vars, context) => {
+      queryClient.setQueryData(queryKeys.metadata.roomMap, context?.prev);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.metadata.roomMap });
     },
   });
@@ -295,7 +367,26 @@ export function useUpdateRoomMembershipBatch() {
   return useMutation({
     mutationFn: ({ objectIds, newRoomEnumId }: { objectIds: string[]; newRoomEnumId: string | null }) =>
       updateRoomMembershipBatch(objectIds, newRoomEnumId),
-    onSuccess: () => {
+    onMutate: async ({ objectIds, newRoomEnumId }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.metadata.roomMap });
+      const prev = queryClient.getQueryData<Record<string, string>>(queryKeys.metadata.roomMap);
+      const enums = queryClient.getQueryData<Array<{ id: string; name: string }>>(queryKeys.metadata.roomEnums) ?? [];
+      const enumNameById = new Map(enums.map((entry) => [entry.id, entry.name]));
+      const next: Record<string, string> = { ...(prev ?? {}) };
+      for (const objectId of objectIds) {
+        if (newRoomEnumId) {
+          next[objectId] = enumNameById.get(newRoomEnumId) ?? next[objectId] ?? '';
+        } else {
+          delete next[objectId];
+        }
+      }
+      queryClient.setQueryData(queryKeys.metadata.roomMap, next);
+      return { prev };
+    },
+    onError: (_error, _vars, context) => {
+      queryClient.setQueryData(queryKeys.metadata.roomMap, context?.prev);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.metadata.roomMap });
     },
   });
