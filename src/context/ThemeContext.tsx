@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 
 interface ThemeContextValue {
   dark: boolean;
@@ -22,8 +22,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('theme', dark ? 'dark' : 'light');
   }, [dark]);
 
+  const toggle = useCallback(() => setDark((d) => !d), []);
+  const value = useMemo(() => ({ dark, toggle }), [dark, toggle]);
+
   return (
-    <ThemeContext.Provider value={{ dark, toggle: () => setDark((d) => !d) }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );

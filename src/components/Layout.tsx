@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Sun, Moon, PanelLeftClose, PanelLeftOpen, Settings } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
@@ -23,12 +23,17 @@ export default function Layout({ sidebar, children, onSidebarToggle, onOpenSetti
   const dragging = useRef(false);
   const startX = useRef(0);
   const startWidth = useRef(0);
+  const sidebarWidthRef = useRef(sidebarWidth);
   const { dark, toggle } = useTheme();
+
+  useEffect(() => {
+    sidebarWidthRef.current = sidebarWidth;
+  }, [sidebarWidth]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     dragging.current = true;
     startX.current = e.clientX;
-    startWidth.current = sidebarWidth;
+    startWidth.current = sidebarWidthRef.current;
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
 
@@ -49,7 +54,7 @@ export default function Layout({ sidebar, children, onSidebarToggle, onOpenSetti
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-  }, [sidebarWidth]);
+  }, []);
 
   return (
     <div className="h-screen flex flex-col bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100">

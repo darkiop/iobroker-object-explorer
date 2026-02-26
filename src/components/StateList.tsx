@@ -77,7 +77,7 @@ function copyTextFallback(text: string) {
   document.body.removeChild(ta);
 }
 
-function EditableNameCell({ id, name }: { id: string; name: string }) {
+const EditableNameCell = React.memo(function EditableNameCell({ id, name }: { id: string; name: string }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(name);
   const extend = useExtendObject();
@@ -169,9 +169,9 @@ function EditableNameCell({ id, name }: { id: string; name: string }) {
       </div>
     </td>
   );
-}
+});
 
-function EditableRoleCell({ id, role, suggestions }: { id: string; role: string; suggestions: string[] }) {
+const EditableRoleCell = React.memo(function EditableRoleCell({ id, role, suggestions }: { id: string; role: string; suggestions: string[] }) {
   const [editing, setEditing] = useState(false);
   const [filter, setFilter] = useState('');
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -280,9 +280,9 @@ function EditableRoleCell({ id, role, suggestions }: { id: string; role: string;
       )}
     </td>
   );
-}
+});
 
-function EditableUnitCell({ id, unit, suggestions }: { id: string; unit: string; suggestions: string[] }) {
+const EditableUnitCell = React.memo(function EditableUnitCell({ id, unit, suggestions }: { id: string; unit: string; suggestions: string[] }) {
   const [editing, setEditing] = useState(false);
   const [filter, setFilter] = useState('');
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -395,9 +395,9 @@ function EditableUnitCell({ id, unit, suggestions }: { id: string; unit: string;
       )}
     </td>
   );
-}
+});
 
-function EditableValueCell({ id, state, obj }: { id: string; state: IoBrokerState | undefined; obj: IoBrokerObject | undefined }) {
+const EditableValueCell = React.memo(function EditableValueCell({ id, state, obj }: { id: string; state: IoBrokerState | undefined; obj: IoBrokerObject | undefined }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const setStateVal = useSetState();
@@ -489,7 +489,7 @@ function EditableValueCell({ id, state, obj }: { id: string; state: IoBrokerStat
       </div>
     </td>
   );
-}
+});
 
 function CopyIdButton({ id }: { id: string }) {
   const [copied, setCopied] = useState(false);
@@ -529,7 +529,7 @@ function CopyIdButton({ id }: { id: string }) {
   );
 }
 
-function EditableRoomCell({ id, currentRoomEnumId, roomName, roomEnums, onSelectRoom, forceEdit, onEditEnd }: {
+const EditableRoomCell = React.memo(function EditableRoomCell({ id, currentRoomEnumId, roomName, roomEnums, onSelectRoom, forceEdit, onEditEnd }: {
   id: string;
   currentRoomEnumId: string | null;
   roomName: string;
@@ -626,9 +626,9 @@ function EditableRoomCell({ id, currentRoomEnumId, roomName, roomEnums, onSelect
       )}
     </td>
   );
-}
+});
 
-function EditableFunctionCell({ id, currentFnEnumId, fnName, fnEnums, onSelectFunction, forceEdit, onEditEnd }: {
+const EditableFunctionCell = React.memo(function EditableFunctionCell({ id, currentFnEnumId, fnName, fnEnums, onSelectFunction, forceEdit, onEditEnd }: {
   id: string;
   currentFnEnumId: string | null;
   fnName: string;
@@ -725,7 +725,7 @@ function EditableFunctionCell({ id, currentFnEnumId, fnName, fnEnums, onSelectFu
       )}
     </td>
   );
-}
+});
 
 function BatchComboControl({
   value,
@@ -1285,6 +1285,16 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   const [aliasSourceId, setAliasSourceId] = useState<string | null>(null);
   const [copySourceId, setCopySourceId] = useState<string | null>(null);
   const [editObjId, setEditObjId] = useState<string | null>(null);
+  const updateRoomMutateRef = useRef(updateRoom.mutate);
+  const updateFnMutateRef = useRef(updateFn.mutate);
+
+  useEffect(() => {
+    updateRoomMutateRef.current = updateRoom.mutate;
+  }, [updateRoom.mutate]);
+
+  useEffect(() => {
+    updateFnMutateRef.current = updateFn.mutate;
+  }, [updateFn.mutate]);
 
   function handleColChange(cols: SortKey[]) {
     setVisibleCols(cols);
@@ -1550,12 +1560,12 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   }, []);
 
   const handleSelectRoom = React.useCallback((objectId: string, oldRoomEnumId: string | null, newRoomEnumId: string | null) => {
-    updateRoom.mutate({ objectId, oldRoomEnumId, newRoomEnumId });
-  }, [updateRoom]);
+    updateRoomMutateRef.current({ objectId, oldRoomEnumId, newRoomEnumId });
+  }, []);
 
   const handleSelectFunction = React.useCallback((objectId: string, oldFnEnumId: string | null, newFnEnumId: string | null) => {
-    updateFn.mutate({ objectId, oldFnEnumId, newFnEnumId });
-  }, [updateFn]);
+    updateFnMutateRef.current({ objectId, oldFnEnumId, newFnEnumId });
+  }, []);
 
   const handleRoomEditEnd = React.useCallback(() => setRoomEditId(null), []);
   const handleFnEditEnd = React.useCallback(() => setFnEditId(null), []);

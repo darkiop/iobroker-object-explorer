@@ -1,0 +1,29 @@
+# Features
+
+- Objekt-Suche per Pattern und optionaler Volltextsuche.
+- Hierarchischer Objektbaum mit Pfad- und Adapter-Ansicht.
+- Schnellfilter für wichtige Namespaces in der Sidebar.
+- Zusätzliche benutzerdefinierte Schnellfilter über Einstellungen.
+- Kombinierbare History- und SmartName-Filter.
+- Räume- und Funktionen-Filter als Multi-Select.
+- Ordner-Scoping: Datenpunkte unter einem Baum-Pfad in Tabelle anzeigen.
+- Hover-Aktionen im Baum: Bearbeiten, Scopen, Kopieren, Neuer Datenpunkt.
+- Kontextmenü im Baum und in der Tabelle.
+- Tabellenansicht mit Sortierung, Filterzeile und Spaltensteuerung.
+- Spaltenbreiten manuell veränderbar und auto-fit auf Inhalt.
+- Spalten-Konfiguration mit Persistenz im localStorage.
+- Datumsformat konfigurierbar (DE, US, ISO).
+- Zustandserhalt für Seite, Sidebar-Breite und weitere UI-Settings.
+- Inline-Bearbeitung für Name, Rolle, Einheit und Wert.
+- Inline-Bearbeitung für Raum und Funktion inkl. Enum-Zuordnung.
+- Batch-Bearbeitung für mehrere selektierte Datenpunkte.
+- Mehrfachauswahl mit Bulk-Delete-Dialog.
+- Einzel-Löschen mit Bestätigungsdialog.
+- Neues Datenpunkt-Modal mit Vorbelegung aus Baum-Pfaden.
+- Objekt-Bearbeitungsmodal inkl. Detail-/JSON-/Alias-Bereiche.
+- History-Modal mit Chart, Statistik und Vergleichsoptionen.
+- Export der gefilterten Daten als CSV oder JSON.
+- Alias-Erstellung und Kopierfunktionen direkt aus der Tabelle.
+- Dark/Light Mode mit Umschalter in der Kopfzeile.
+- Einstellungen-Modal für Datumsformat, Spalten und Schnellfilter.
+- Hohe Performance durch Memoisierung und virtuelle Tabellenzeilen.

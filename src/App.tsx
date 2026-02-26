@@ -12,6 +12,7 @@ import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunct
 import { hasHistory, hasSmartName } from './api/iobroker';
 import type { SortKey, DateFormatSetting } from './components/StateList';
 import { ALL_COLUMNS, DEFAULT_COLS } from './components/StateList';
+import type { IoBrokerObject, IoBrokerState } from './types/iobroker';
 import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RotateCcw, Layers, X } from 'lucide-react';
 
 const queryClient = new QueryClient({
@@ -27,6 +28,10 @@ const PAGE_SIZE_OPTIONS = [25, 50, 100, 200, 500];
 const LS_PAGE_SIZE = 'iobroker-page-size';
 const LS_APP_SETTINGS = 'iobroker-app-settings';
 const DEFAULT_QUICK_PATTERNS = ['alias.0.*', 'javascript.0.*', '0_userdata.0.*'] as const;
+const EMPTY_OBJECTS: Record<string, IoBrokerObject> = {};
+const EMPTY_STATES: Record<string, IoBrokerState> = {};
+const EMPTY_STRING_MAP: Record<string, string> = {};
+const EMPTY_ALIAS_MAP = new Map<string, string[]>();
 
 interface AppSettings {
   dateFormat: DateFormatSetting;
@@ -119,12 +124,16 @@ function AppContent() {
   const [newDatapointInitialId, setNewDatapointInitialId] = useState<string | null>(null);
   const prevTreeFilterRef = useRef<string | null>(null);
 
-  const { data: stateObjects, error: objectsError } = useFilteredObjects(pattern, fulltextEnabled);
-  const { data: allObjects } = useAllObjects();
-  const { data: roomMap } = useRoomMap();
-  const { data: functionMap } = useFunctionMap();
+  const { data: stateObjectsData, error: objectsError } = useFilteredObjects(pattern, fulltextEnabled);
+  const { data: allObjectsData } = useAllObjects();
+  const { data: roomMapData } = useRoomMap();
+  const { data: functionMapData } = useFunctionMap();
   const { data: roomEnums = [] } = useRoomEnums();
   const { data: functionEnums = [] } = useFunctionEnums();
+  const stateObjects = stateObjectsData ?? EMPTY_OBJECTS;
+  const allObjects = allObjectsData ?? EMPTY_OBJECTS;
+  const roomMap = roomMapData ?? EMPTY_STRING_MAP;
+  const functionMap = functionMapData ?? EMPTY_STRING_MAP;
 
   const historyIds = useMemo(() => {
     const set = new Set<string>();
@@ -144,19 +153,20 @@ function AppContent() {
 
   // Reverse alias map: non-alias data point ID → [alias.0.* IDs that point to it]
   // Cached in QueryClient via useAliasMap (select on ['objects','all'])
-  const { data: aliasMap = new Map() } = useAliasMap();
-  const existingIds = useMemo(() => new Set(Object.keys(allObjects || {})), [allObjects]);
+  const { data: aliasMapData } = useAliasMap();
+  const aliasMap = aliasMapData ?? EMPTY_ALIAS_MAP;
+  const existingIds = useMemo(() => new Set(Object.keys(allObjects)), [allObjects]);
   const quickPatternOptions = useMemo(
     () => [...new Set([...DEFAULT_QUICK_PATTERNS, ...appSettings.extraQuickFilters])],
     [appSettings.extraQuickFilters]
   );
 
   const objectIds = useMemo(() => {
-    let ids = stateObjects ? Object.keys(stateObjects).sort() : [];
+    let ids = Object.keys(stateObjects).sort();
     if (historyOnly) ids = ids.filter((id) => historyIds.has(id));
     if (smartOnly) ids = ids.filter((id) => smartIds.has(id));
-    const rm = roomMap || {};
-    const fm = functionMap || {};
+    const rm = roomMap;
+    const fm = functionMap;
     if (colFilters.id?.trim())       { const f = colFilters.id.trim().toLowerCase();       ids = ids.filter((id) => id.toLowerCase().includes(f)); }
     if (colFilters.name?.trim())     { const f = colFilters.name.trim().toLowerCase();      ids = ids.filter((id) => { const n = stateObjects![id]?.common?.name; const s = typeof n === 'string' ? n : (n && (n.de || n.en || Object.values(n)[0])) || ''; return s.toLowerCase().includes(f); }); }
     if (colFilters.room?.trim())     { const f = colFilters.room.trim().toLowerCase();      ids = ids.filter((id) => (rm[id] || '').toLowerCase().includes(f)); }
@@ -167,8 +177,8 @@ function AppContent() {
     if (colFilters.history === '1') ids = ids.filter((id) => historyIds.has(id));
     if (colFilters.smart === '1')   ids = ids.filter((id) => smartIds.has(id));
     if (colFilters.alias === '1')   ids = ids.filter((id) => aliasMap.has(id) || !!(stateObjects![id]?.common?.alias?.id));
-    if (roomFilters.size > 0) ids = ids.filter((id) => roomFilters.has((roomMap || {})[id]));
-    if (functionFilters.size > 0) ids = ids.filter((id) => functionFilters.has((functionMap || {})[id]));
+    if (roomFilters.size > 0) ids = ids.filter((id) => roomFilters.has(roomMap[id]));
+    if (functionFilters.size > 0) ids = ids.filter((id) => functionFilters.has(functionMap[id]));
     if (quickPatterns.size > 0) {
       const quickRegexes = [...quickPatterns].map(quickPatternToRegex);
       ids = ids.filter((id) => quickRegexes.some((rx) => rx.test(id)));
@@ -275,7 +285,18 @@ function AppContent() {
     setNewQuickFilter('');
   }, []);
 
-  const hasAnyFilter = pattern !== '*' || historyOnly || smartOnly || roomFilters.size > 0 || functionFilters.size > 0 || quickPatterns.size > 0 || !!treeFilter || Object.values(colFilters).some((v) => v.trim() !== '');
+  const hasAnyFilter = useMemo(
+    () =>
+      pattern !== '*' ||
+      historyOnly ||
+      smartOnly ||
+      roomFilters.size > 0 ||
+      functionFilters.size > 0 ||
+      quickPatterns.size > 0 ||
+      !!treeFilter ||
+      Object.values(colFilters).some((v) => v.trim() !== ''),
+    [pattern, historyOnly, smartOnly, roomFilters, functionFilters, quickPatterns, treeFilter, colFilters]
+  );
 
   const resetAllFilters = useCallback(() => {
     setPattern('*');
@@ -459,7 +480,7 @@ function AppContent() {
           <div className="flex-1 overflow-y-auto py-1">
             <StateTree
               stateIds={objectIds}
-              allObjects={allObjects || {}}
+              allObjects={allObjects}
               selectedId={selectedId}
               onSelect={setSelectedId}
               onSearch={handleSearch}
@@ -484,7 +505,7 @@ function AppContent() {
           </div>
         )}
 
-        {selectedId && allObjects?.[selectedId] && (
+        {selectedId && allObjects[selectedId] && (
           <ObjectEditModal
             id={selectedId}
             obj={allObjects[selectedId]}
@@ -495,8 +516,8 @@ function AppContent() {
         {historyModalId && (
           <HistoryModal
             stateId={historyModalId}
-            unit={allObjects?.[historyModalId]?.common?.unit}
-            objects={allObjects ?? undefined}
+            unit={allObjects[historyModalId]?.common?.unit}
+            objects={allObjects}
             onClose={() => setHistoryModalId(null)}
           />
         )}
@@ -620,10 +641,10 @@ function AppContent() {
         <div className="flex-1 min-h-0 flex flex-col">
           <StateList
             ids={pageIds}
-            states={stateValues || {}}
-            objects={stateObjects || {}}
-            roomMap={roomMap || {}}
-            functionMap={functionMap || {}}
+            states={stateValues ?? EMPTY_STATES}
+            objects={stateObjects}
+            roomMap={roomMap}
+            functionMap={functionMap}
             selectedId={selectedId}
             onSelect={setSelectedId}
             colFilters={colFilters}
