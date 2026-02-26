@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, memo } from 'react';
-import { ChevronRight, ChevronDown, ChevronsUpDown, ChevronsDownUp, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil, LayoutList, LayoutGrid } from 'lucide-react';
+import { ChevronRight, ChevronDown, ChevronsUpDown, ChevronsDownUp, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil, LayoutList, LayoutGrid, Plus } from 'lucide-react';
 import type { TreeNode, IoBrokerObject } from '../types/iobroker';
 import ObjectEditModal from './ObjectEditModal';
 import ContextMenu from './ContextMenu';
@@ -27,6 +27,7 @@ interface StateTreeProps {
   onSelect: (id: string) => void;
   onSearch: (pattern: string) => void;
   onTreeScope: (prefix: string) => void;
+  onCreateAtPath: (prefix: string) => void;
   historyOnly: boolean;
   smartOnly: boolean;
   historyIds: Set<string>;
@@ -130,6 +131,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   onSelect,
   onSearch,
   onTreeScope,
+  onCreateAtPath,
   historyIds,
   smartIds,
   expandSignal,
@@ -144,6 +146,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   onSelect: (id: string) => void;
   onSearch: (pattern: string) => void;
   onTreeScope: (prefix: string) => void;
+  onCreateAtPath: (prefix: string) => void;
   historyIds: Set<string>;
   smartIds: Set<string>;
   expandSignal: { depth: number; seq: number };
@@ -193,6 +196,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
             onSelect={onSelect}
             onSearch={onSearch}
             onTreeScope={onTreeScope}
+            onCreateAtPath={onCreateAtPath}
             historyIds={historyIds}
             smartIds={smartIds}
             expandSignal={expandSignal}
@@ -300,6 +304,15 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
             <Pencil size={12} />
           </button>
         )}
+        {isFolder && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onCreateAtPath(`${node.fullPath}.`); }}
+            className="shrink-0 opacity-0 group-hover/row:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 rounded p-1 transition-all"
+            title={`Neuer Datenpunkt unter: ${node.fullPath}`}
+          >
+            <Plus size={14} />
+          </button>
+        )}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -350,6 +363,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
             onSelect={onSelect}
             onSearch={onSearch}
             onTreeScope={onTreeScope}
+            onCreateAtPath={onCreateAtPath}
             historyIds={historyIds}
             smartIds={smartIds}
             expandSignal={expandSignal}
@@ -364,7 +378,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
 });
 
 
-function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeScope, historyOnly, smartOnly, historyIds, smartIds, expandToDepth }: StateTreeProps) {
+function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeScope, onCreateAtPath, historyOnly, smartOnly, historyIds, smartIds, expandToDepth }: StateTreeProps) {
   const [expandSignal, setExpandSignal] = useState<{ depth: number; seq: number }>({ depth: 0, seq: 0 });
   const [showFolders,  setShowFolders]  = useState(true);
   const [showDevices,  setShowDevices]  = useState(true);
@@ -484,6 +498,7 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
               onSelect={onSelect}
               onSearch={onSearch}
               onTreeScope={onTreeScope}
+              onCreateAtPath={onCreateAtPath}
               historyIds={historyIds}
               smartIds={smartIds}
               expandSignal={expandSignal}

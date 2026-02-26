@@ -7,6 +7,7 @@ import StateTree from './components/StateTree';
 import StateList from './components/StateList';
 import ObjectEditModal from './components/ObjectEditModal';
 import HistoryModal from './components/HistoryModal';
+import NewDatapointModal from './components/NewDatapointModal';
 import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunctionMap, useRoomEnums, useFunctionEnums, useAliasMap } from './hooks/useStates';
 import { hasHistory, hasSmartName } from './api/iobroker';
 import type { SortKey } from './components/StateList';
@@ -62,6 +63,7 @@ function AppContent() {
   const [quickOpen, setQuickOpen] = useState(false);
   const [fulltextEnabled, setFulltextEnabled] = useState(true);
   const [historyModalId, setHistoryModalId] = useState<string | null>(null);
+  const [newDatapointInitialId, setNewDatapointInitialId] = useState<string | null>(null);
   const prevTreeFilterRef = useRef<string | null>(null);
 
   const { data: stateObjects, error: objectsError } = useFilteredObjects(pattern, fulltextEnabled);
@@ -90,6 +92,7 @@ function AppContent() {
   // Reverse alias map: non-alias data point ID → [alias.0.* IDs that point to it]
   // Cached in QueryClient via useAliasMap (select on ['objects','all'])
   const { data: aliasMap = new Map() } = useAliasMap();
+  const existingIds = useMemo(() => new Set(Object.keys(allObjects || {})), [allObjects]);
 
   const objectIds = useMemo(() => {
     let ids = stateObjects ? Object.keys(stateObjects).sort() : [];
@@ -178,6 +181,9 @@ function AppContent() {
   }, []);
 
   const handleTreeScope = useCallback((prefix: string) => { setTreeFilter(prefix); setPage(0); }, []);
+  const handleCreateDatapointAtPath = useCallback((prefix: string) => {
+    setNewDatapointInitialId(prefix);
+  }, []);
   const handleClearTreeFilter = useCallback(() => {
     setTreeFilter(null);
     setTreeExpandSignal((s) => ({ depth: 0, seq: (s?.seq ?? 0) + 1 }));
@@ -336,6 +342,7 @@ function AppContent() {
               onSelect={setSelectedId}
               onSearch={handleSearch}
               onTreeScope={handleTreeScope}
+              onCreateAtPath={handleCreateDatapointAtPath}
               historyOnly={historyOnly}
               smartOnly={smartOnly}
               historyIds={historyIds}
@@ -369,6 +376,13 @@ function AppContent() {
             unit={allObjects?.[historyModalId]?.common?.unit}
             objects={allObjects ?? undefined}
             onClose={() => setHistoryModalId(null)}
+          />
+        )}
+        {newDatapointInitialId !== null && (
+          <NewDatapointModal
+            onClose={() => setNewDatapointInitialId(null)}
+            existingIds={existingIds}
+            initialId={newDatapointInitialId}
           />
         )}
 
