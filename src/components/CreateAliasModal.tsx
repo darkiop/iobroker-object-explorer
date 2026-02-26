@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Link2, ArrowRight } from 'lucide-react';
 import { useCreateDatapoint } from '../hooks/useStates';
@@ -30,6 +30,10 @@ export default function CreateAliasModal({ sourceId, sourceObj, existingIds, onC
   const isEn = language === 'en';
   const [aliasId, setAliasId] = useState(() => suggestAliasId(sourceId));
   const [name, setName] = useState(() => getObjectName(sourceObj));
+  const [aliasRead, setAliasRead] = useState('');
+  const [aliasWrite, setAliasWrite] = useState('');
+  const [aliasSuggestionsOpen, setAliasSuggestionsOpen] = useState(false);
+  const [aliasActiveIndex, setAliasActiveIndex] = useState(-1);
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const create = useCreateDatapoint();
@@ -40,6 +44,13 @@ export default function CreateAliasModal({ sourceId, sourceObj, existingIds, onC
   const srcUnit   = srcCommon?.unit   ?? '';
   const srcRead   = srcCommon?.read   !== false;
   const srcWrite  = srcCommon?.write  !== false;
+  const aliasIdsSorted = useMemo(
+    () => [...existingIds].filter((id) => id.startsWith('alias.0.')).sort(),
+    [existingIds]
+  );
+  const filteredAliasSuggestions = aliasId.trim()
+    ? aliasIdsSorted.filter((id) => id.toLowerCase().startsWith(aliasId.toLowerCase())).slice(0, 30)
+    : aliasIdsSorted.slice(0, 30);
 
   useEffect(() => {
     inputRef.current?.select();
@@ -77,7 +88,11 @@ export default function CreateAliasModal({ sourceId, sourceObj, existingIds, onC
           unit: srcUnit || undefined,
           read: srcRead,
           write: srcWrite,
-          alias: { id: sourceId },
+          alias: {
+            id: sourceId,
+            read: aliasRead.trim() || undefined,
+            write: aliasWrite.trim() || undefined,
+          },
         },
       },
       {
@@ -99,7 +114,7 @@ export default function CreateAliasModal({ sourceId, sourceObj, existingIds, onC
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700"
+        className="w-full max-w-2xl bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -149,17 +164,58 @@ export default function CreateAliasModal({ sourceId, sourceObj, existingIds, onC
           )}
 
           {/* Alias ID */}
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1 relative">
             <label className={labelCls}>{isEn ? 'Alias ID' : 'Alias-ID'} <span className="text-red-500">*</span></label>
             <input
               ref={inputRef}
               type="text"
               value={aliasId}
-              onChange={(e) => { setAliasId(e.target.value); setError(''); }}
+              onChange={(e) => { setAliasId(e.target.value); setError(''); setAliasActiveIndex(-1); setAliasSuggestionsOpen(true); }}
+              onFocus={() => setAliasSuggestionsOpen(true)}
+              onBlur={() => setTimeout(() => setAliasSuggestionsOpen(false), 150)}
+              onKeyDown={(e) => {
+                if (!aliasSuggestionsOpen || filteredAliasSuggestions.length === 0) return;
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  setAliasActiveIndex((i) => Math.min(i + 1, filteredAliasSuggestions.length - 1));
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  setAliasActiveIndex((i) => Math.max(i - 1, -1));
+                } else if (e.key === 'Enter' && aliasActiveIndex >= 0) {
+                  e.preventDefault();
+                  setAliasId(filteredAliasSuggestions[aliasActiveIndex]);
+                  setAliasSuggestionsOpen(false);
+                  setAliasActiveIndex(-1);
+                } else if (e.key === 'Escape') {
+                  setAliasSuggestionsOpen(false);
+                }
+              }}
               className={`${inputCls} font-mono`}
               placeholder={isEn ? 'alias.0.my.datapoint' : 'alias.0.mein.datenpunkt'}
               spellCheck={false}
             />
+            {aliasSuggestionsOpen && filteredAliasSuggestions.length > 0 && (
+              <ul className="absolute top-full left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg z-50 text-sm">
+                {filteredAliasSuggestions.map((suggestion, i) => (
+                  <li
+                    key={suggestion}
+                    onMouseDown={() => {
+                      setAliasId(suggestion);
+                      setAliasSuggestionsOpen(false);
+                      setAliasActiveIndex(-1);
+                    }}
+                    onMouseEnter={() => setAliasActiveIndex(i)}
+                    className={`px-2.5 py-1 cursor-pointer font-mono text-xs ${
+                      i === aliasActiveIndex
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    {suggestion}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           {/* Name */}
@@ -172,6 +228,44 @@ export default function CreateAliasModal({ sourceId, sourceObj, existingIds, onC
               className={inputCls}
               placeholder={isEn ? 'Display name' : 'Anzeigename'}
             />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className={labelCls}>
+              {isEn ? 'Read formula' : 'Lese-Formel'} (alias.read){' '}
+              <span className="text-gray-400 dark:text-gray-500 font-normal">- {isEn ? 'optional' : 'optional'}</span>
+            </label>
+            <input
+              type="text"
+              value={aliasRead}
+              onChange={(e) => { setAliasRead(e.target.value); setError(''); }}
+              className={`${inputCls} font-mono`}
+              placeholder="val / 10"
+              spellCheck={false}
+            />
+            <p className="text-[11px] text-gray-400 dark:text-gray-500">
+              {isEn ? 'JavaScript expression for read conversion. Variable:' : 'JavaScript-Ausdruck zur Konvertierung beim Lesen. Variable:'}{' '}
+              <code className="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">val</code>
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className={labelCls}>
+              {isEn ? 'Write formula' : 'Schreib-Formel'} (alias.write){' '}
+              <span className="text-gray-400 dark:text-gray-500 font-normal">- {isEn ? 'optional' : 'optional'}</span>
+            </label>
+            <input
+              type="text"
+              value={aliasWrite}
+              onChange={(e) => { setAliasWrite(e.target.value); setError(''); }}
+              className={`${inputCls} font-mono`}
+              placeholder="val * 10"
+              spellCheck={false}
+            />
+            <p className="text-[11px] text-gray-400 dark:text-gray-500">
+              {isEn ? 'JavaScript expression for write conversion. Variable:' : 'JavaScript-Ausdruck zur Konvertierung beim Schreiben. Variable:'}{' '}
+              <code className="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">val</code>
+            </p>
           </div>
 
           {/* Error */}
