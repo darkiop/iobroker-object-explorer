@@ -428,6 +428,19 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
     putObject.mutate({ id, obj: { ...obj, common: newCommon } }, { onSuccess: onClose });
   }
 
+  function handleSave() {
+    if (tab === 'json') {
+      handleSaveJson();
+      return;
+    }
+    if (tab === 'alias') {
+      handleSaveAlias();
+      return;
+    }
+    // Details tab saves inline; keep a consistent primary action in footer.
+    onClose();
+  }
+
   function handleSetRoom(nextRoomEnumId: string | null) {
     const oldRoomEnumId = roomEnumId;
     if (oldRoomEnumId === nextRoomEnumId) return;
@@ -793,26 +806,14 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
             >
               {isEn ? 'Cancel' : 'Abbrechen'}
             </button>
-            {tab === 'json' && (
-              <button
-                onClick={handleSaveJson}
-                disabled={putObject.isPending}
-                className="flex items-center gap-1.5 px-4 py-1.5 text-sm rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors disabled:opacity-50"
-              >
-                <Save size={14} />
-                {putObject.isPending ? (isEn ? 'Saving…' : 'Speichern…') : (isEn ? 'Save' : 'Speichern')}
-              </button>
-            )}
-            {tab === 'alias' && (
-              <button
-                onClick={handleSaveAlias}
-                disabled={putObject.isPending}
-                className="flex items-center gap-1.5 px-4 py-1.5 text-sm rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors disabled:opacity-50"
-              >
-                <Save size={14} />
-                {putObject.isPending ? (isEn ? 'Saving…' : 'Speichern…') : (isEn ? 'Save' : 'Speichern')}
-              </button>
-            )}
+            <button
+              onClick={handleSave}
+              disabled={putObject.isPending}
+              className="flex items-center gap-1.5 px-4 py-1.5 text-sm rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors disabled:opacity-50"
+            >
+              <Save size={14} />
+              {putObject.isPending ? (isEn ? 'Saving…' : 'Speichern…') : (isEn ? 'Save' : 'Speichern')}
+            </button>
           </div>
         </div>
       </div>
