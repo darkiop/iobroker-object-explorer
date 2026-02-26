@@ -37,7 +37,7 @@ Optionen -> Sprache, Datumsformat, Standard Spalten, Schnellfilter
 | FE-025 | Enum-Map-Parsing-Logik (`getRoomMap`, `getFunctionMap`) in gemeinsame Utility `parseEnumName()` zusammenführen. | Code Quality | niedrig | S | offen |
 | FE-026 | Skeleton-Screens / Loading-States in StateList während Datenpunkt-Werte nachgeladen werden. | UX | niedrig | M | offen |
 | FE-027 | State-Persistence im localStorage: Aktive Filterung, Spaltenbreiten und Seitennavigation über Sessions hinweg erhalten. | UX | niedrig | S | offen |
-| FE-028 | Sidebar-Breite und Collapsed-Status im localStorage persistieren. | UX | niedrig | S | offen |
+| FE-028 | Sidebar-Breite und Collapsed-Status im localStorage persistieren. | UX | niedrig | S | umgesetzt |
 | FE-029 | Color-Coding für State-Werte: Boolean grün/rot, Zahlen mit Trend-Pfeilen (↑↓), Null-Werte gesondert hervorheben. | UX | niedrig | S | umgesetzt |
 | FE-030 | Export-Funktion: Gefilterte Datenpunkt-Liste als JSON oder CSV exportieren. | Feature | niedrig | M | umgesetzt |
 | FE-031 | Fulltext-Suche statt nur Pattern-Matching: Suche in Namen, Beschreibung und Alias-Zielen mit Relevanz-Ranking. | Feature | niedrig | L | umgesetzt |

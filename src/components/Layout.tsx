@@ -8,9 +8,17 @@ interface LayoutProps {
   onSidebarToggle?: () => void;
 }
 
+const LS_SIDEBAR_WIDTH = 'iobroker-explorer-sidebar-width';
+const LS_SIDEBAR_COLLAPSED = 'iobroker-explorer-sidebar-collapsed';
+
 export default function Layout({ sidebar, children, onSidebarToggle }: LayoutProps) {
-  const [sidebarWidth, setSidebarWidth] = useState(360);
-  const [collapsed, setCollapsed] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    const stored = parseInt(localStorage.getItem(LS_SIDEBAR_WIDTH) ?? '', 10);
+    return Number.isFinite(stored) ? Math.max(180, Math.min(600, stored)) : 360;
+  });
+  const [collapsed, setCollapsed] = useState(() =>
+    localStorage.getItem(LS_SIDEBAR_COLLAPSED) === 'true'
+  );
   const dragging = useRef(false);
   const startX = useRef(0);
   const startWidth = useRef(0);
@@ -35,6 +43,7 @@ export default function Layout({ sidebar, children, onSidebarToggle }: LayoutPro
       document.body.style.userSelect = '';
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
+      setSidebarWidth((w) => { localStorage.setItem(LS_SIDEBAR_WIDTH, String(w)); return w; });
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -47,7 +56,7 @@ export default function Layout({ sidebar, children, onSidebarToggle }: LayoutPro
       <header className="flex items-center justify-between px-4 py-3 bg-gray-100 border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700 shrink-0">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => { setCollapsed((c) => !c); if (onSidebarToggle) setTimeout(onSidebarToggle, 210); }}
+            onClick={() => { setCollapsed((c) => { const next = !c; localStorage.setItem(LS_SIDEBAR_COLLAPSED, String(next)); return next; }); if (onSidebarToggle) setTimeout(onSidebarToggle, 210); }}
             className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
             title={collapsed ? 'Sidebar ausklappen' : 'Sidebar einklappen'}
           >
