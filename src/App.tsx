@@ -524,6 +524,7 @@ function AppContent() {
           <ObjectEditModal
             id={selectedId}
             obj={allObjects[selectedId]}
+            language={appSettings.language}
             onClose={() => setSelectedId(null)}
             onOpenHistory={hasHistory(allObjects[selectedId]) ? () => setHistoryModalId(selectedId) : undefined}
           />

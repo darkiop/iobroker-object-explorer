@@ -13,6 +13,7 @@ interface Props {
   obj: IoBrokerObject;
   onClose: () => void;
   onOpenHistory?: () => void;
+  language?: 'en' | 'de';
 }
 
 type Tab = 'details' | 'json' | 'alias';
@@ -48,13 +49,15 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
   );
 }
 
-function EditableRow({ label, value, onSave, isPending, suggestions }: {
+function EditableRow({ label, value, onSave, isPending, suggestions, language = 'en' }: {
   label: string;
   value: string;
   onSave: (val: string) => void;
   isPending: boolean;
   suggestions?: string[];
+  language?: 'en' | 'de';
 }) {
+  const isEn = language === 'en';
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -89,7 +92,7 @@ function EditableRow({ label, value, onSave, isPending, suggestions }: {
         <button
           onClick={() => { setDraft(value); setEditing(true); setShowSuggestions(!!suggestions); setActiveIndex(-1); }}
           className="opacity-0 group-hover/edit:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
-          title="Bearbeiten"
+          title={isEn ? 'Edit' : 'Bearbeiten'}
         >
           <Pencil size={12} />
         </button>
@@ -141,10 +144,10 @@ function EditableRow({ label, value, onSave, isPending, suggestions }: {
             </ul>
           )}
         </div>
-        <button onClick={() => commit(draft)} disabled={isPending} className="text-green-500 hover:text-green-600 dark:text-green-400 disabled:opacity-50 mt-0.5" title="Speichern">
+        <button onClick={() => commit(draft)} disabled={isPending} className="text-green-500 hover:text-green-600 dark:text-green-400 disabled:opacity-50 mt-0.5" title={isEn ? 'Save' : 'Speichern'}>
           <Check size={14} />
         </button>
-        <button onClick={() => setEditing(false)} disabled={isPending} className="text-gray-400 hover:text-gray-600 dark:text-gray-500 disabled:opacity-50 mt-0.5" title="Abbrechen">
+        <button onClick={() => setEditing(false)} disabled={isPending} className="text-gray-400 hover:text-gray-600 dark:text-gray-500 disabled:opacity-50 mt-0.5" title={isEn ? 'Cancel' : 'Abbrechen'}>
           <X size={14} />
         </button>
       </div>
@@ -165,10 +168,11 @@ function SwitchControl({ val, onSet, isPending, disabled }: { val: unknown; onSe
   );
 }
 
-function ButtonControl({ onSet, isPending, disabled }: { onSet: (v: unknown) => void; isPending: boolean; disabled?: boolean }) {
+function ButtonControl({ onSet, isPending, disabled, language = 'en' }: { onSet: (v: unknown) => void; isPending: boolean; disabled?: boolean; language?: 'en' | 'de' }) {
+  const isEn = language === 'en';
   return (
     <button onClick={() => onSet(true)} disabled={isPending || disabled} className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-500 text-white rounded disabled:opacity-50 transition-colors">
-      Auslösen
+      {isEn ? 'Trigger' : 'Auslösen'}
     </button>
   );
 }
@@ -185,19 +189,21 @@ function NumberControl({ val, onSet, isPending, unit }: { val: unknown; onSet: (
   );
 }
 
-function StringControl({ val, onSet, isPending, unit }: { val: unknown; onSet: (v: unknown) => void; isPending: boolean; unit?: string }) {
+function StringControl({ val, onSet, isPending, unit, language = 'en' }: { val: unknown; onSet: (v: unknown) => void; isPending: boolean; unit?: string; language?: 'en' | 'de' }) {
+  const isEn = language === 'en';
   const [draft, setDraft] = useState(String(val ?? ''));
   useEffect(() => { setDraft(String(val ?? '')); }, [val]);
   return (
     <div className="flex items-center gap-1.5 flex-1 min-w-0">
       <input type="text" value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') onSet(draft); }} disabled={isPending} className="flex-1 min-w-0 bg-white text-gray-800 text-sm rounded px-2 py-0.5 border border-gray-300 focus:border-blue-500 focus:outline-none disabled:opacity-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600" />
-      <button onClick={() => onSet(draft)} disabled={isPending} className="text-green-500 hover:text-green-600 dark:text-green-400 disabled:opacity-50 shrink-0" title="Senden"><Check size={14} /></button>
+      <button onClick={() => onSet(draft)} disabled={isPending} className="text-green-500 hover:text-green-600 dark:text-green-400 disabled:opacity-50 shrink-0" title={isEn ? 'Send' : 'Senden'}><Check size={14} /></button>
       {unit && <span className="text-gray-500 dark:text-gray-400 text-sm shrink-0">{unit}</span>}
     </div>
   );
 }
 
-function ExpertControl({ val, onSet, isPending, unit, type }: { val: unknown; onSet: (v: unknown) => void; isPending: boolean; unit?: string; type?: string }) {
+function ExpertControl({ val, onSet, isPending, unit, type, language = 'en' }: { val: unknown; onSet: (v: unknown) => void; isPending: boolean; unit?: string; type?: string; language?: 'en' | 'de' }) {
+  const isEn = language === 'en';
   const [draft, setDraft] = useState(String(val ?? ''));
   useEffect(() => { setDraft(String(val ?? '')); }, [val]);
   function commit(raw: string) {
@@ -218,7 +224,7 @@ function ExpertControl({ val, onSet, isPending, unit, type }: { val: unknown; on
   return (
     <div className="flex items-center gap-1.5">
       <input type={type === 'number' ? 'number' : 'text'} value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') commit(draft); }} disabled={isPending} className="w-32 bg-white text-gray-800 text-sm rounded px-2 py-0.5 border border-gray-300 focus:border-blue-500 focus:outline-none disabled:opacity-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600" />
-      <button onClick={() => commit(draft)} disabled={isPending} className="text-green-500 hover:text-green-600 dark:text-green-400 disabled:opacity-50" title="Senden"><Check size={14} /></button>
+      <button onClick={() => commit(draft)} disabled={isPending} className="text-green-500 hover:text-green-600 dark:text-green-400 disabled:opacity-50" title={isEn ? 'Send' : 'Senden'}><Check size={14} /></button>
       {unit && <span className="text-gray-500 dark:text-gray-400 text-sm">{unit}</span>}
     </div>
   );
@@ -329,7 +335,8 @@ function JsonEditor({ value, onChange }: { value: string; onChange: (v: string) 
 
 // ── main component ─────────────────────────────────────────────────────────
 
-export default function ObjectEditModal({ id, obj, onClose, onOpenHistory }: Props) {
+export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, language = 'en' }: Props) {
+  const isEn = language === 'en';
   const [tab, setTab] = useState<Tab>('details');
   const [draft, setDraft] = useState(() => JSON.stringify(obj, null, 2));
   const [jsonError, setJsonError] = useState<string | null>(null);
@@ -380,7 +387,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory }: Pro
     try {
       parsed = JSON.parse(draft);
     } catch (e) {
-      setJsonError('Ungültiges JSON: ' + (e instanceof Error ? e.message : String(e)));
+      setJsonError((isEn ? 'Invalid JSON: ' : 'Ungültiges JSON: ') + (e instanceof Error ? e.message : String(e)));
       return;
     }
     setJsonError(null);
@@ -416,7 +423,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory }: Pro
       )}
       {confirmDelete && (
         <ConfirmDialog
-          title="Datenpunkt löschen"
+          title={isEn ? 'Delete datapoint' : 'Datenpunkt löschen'}
           message={id}
           onConfirm={() => { deleteObject.mutate(id, { onSuccess: onClose }); setConfirmDelete(false); }}
           onCancel={() => setConfirmDelete(false)}
@@ -433,14 +440,14 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory }: Pro
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
             <span className="font-semibold text-sm text-gray-700 dark:text-gray-200 truncate pr-4">
-              Objekt bearbeiten:{' '}
+              {isEn ? 'Edit object:' : 'Objekt bearbeiten:'}{' '}
               <span className="font-mono text-xs text-gray-500 dark:text-gray-400">{id}</span>
             </span>
             <div className="flex items-center gap-1 shrink-0">
               {isWritable && (
                 <button
                   onClick={() => setExpertMode((e) => !e)}
-                  title={expertMode ? 'Expertenmodus deaktivieren' : 'Expertenmodus'}
+                  title={expertMode ? (isEn ? 'Disable expert mode' : 'Expertenmodus deaktivieren') : (isEn ? 'Expert mode' : 'Expertenmodus')}
                   className={`p-1.5 rounded-lg transition-colors ${
                     expertMode
                       ? 'text-orange-400 bg-orange-400/10 hover:bg-orange-400/20'
@@ -452,14 +459,14 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory }: Pro
               )}
               <button
                 onClick={() => setShowCopy(true)}
-                title="Datenpunkt kopieren"
+                title={isEn ? 'Copy datapoint' : 'Datenpunkt kopieren'}
                 className="p-1.5 rounded-lg text-gray-400 hover:text-blue-500 hover:bg-blue-500/10 dark:text-gray-500 dark:hover:text-blue-400 transition-colors"
               >
                 <Copy size={15} />
               </button>
               <button
                 onClick={() => setConfirmDelete(true)}
-                title="Datenpunkt löschen"
+                title={isEn ? 'Delete datapoint' : 'Datenpunkt löschen'}
                 className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-500/10 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
               >
                 <Trash2 size={15} />
@@ -482,7 +489,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory }: Pro
                     : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                 }`}
               >
-                {t === 'details' ? 'Details' : t === 'json' ? 'JSON' : 'Alias'}
+                {t === 'details' ? (isEn ? 'Details' : 'Details') : t === 'json' ? 'JSON' : 'Alias'}
               </button>
             ))}
           </div>
@@ -491,17 +498,18 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory }: Pro
           <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
             {tab === 'details' && (
               <div className="px-5 py-4 space-y-0 overflow-y-auto flex-1">
-                <EditableRow label="Name" value={getObjectName(obj.common)} onSave={(v) => saveField('name', v)} isPending={extend.isPending} />
-                <DetailRow label="Typ" value={obj.common?.type || '—'} />
-                <EditableRow label="Rolle" value={obj.common?.role || ''} onSave={(v) => saveField('role', v)} isPending={extend.isPending} suggestions={roles} />
-                <EditableRow label="Einheit" value={obj.common?.unit || ''} onSave={(v) => saveField('unit', v)} isPending={extend.isPending} suggestions={units} />
+                <EditableRow label="Name" value={getObjectName(obj.common)} onSave={(v) => saveField('name', v)} isPending={extend.isPending} language={language} />
+                <DetailRow label={isEn ? 'Type' : 'Typ'} value={obj.common?.type || '—'} />
+                <EditableRow label={isEn ? 'Role' : 'Rolle'} value={obj.common?.role || ''} onSave={(v) => saveField('role', v)} isPending={extend.isPending} suggestions={roles} language={language} />
+                <EditableRow label={isEn ? 'Unit' : 'Einheit'} value={obj.common?.unit || ''} onSave={(v) => saveField('unit', v)} isPending={extend.isPending} suggestions={units} language={language} />
                 <EditableRow
-                  label="Beschreibung"
+                  label={isEn ? 'Description' : 'Beschreibung'}
                   value={typeof obj.common?.desc === 'string' ? obj.common.desc : obj.common?.desc ? JSON.stringify(obj.common.desc) : ''}
                   onSave={(v) => saveField('desc', v)}
                   isPending={extend.isPending}
+                  language={language}
                 />
-                <DetailRow label="Lesen/Schreiben" value={`${obj.common?.read ? 'R' : '-'}${obj.common?.write ? 'W' : '-'}`} />
+                <DetailRow label={isEn ? 'Read/Write' : 'Lesen/Schreiben'} value={`${obj.common?.read ? 'R' : '-'}${obj.common?.write ? 'W' : '-'}`} />
                 {obj.common?.min !== undefined && (
                   <DetailRow label="Min/Max" value={`${obj.common.min} / ${obj.common.max}`} />
                 )}
@@ -509,20 +517,20 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory }: Pro
                 {state && (
                   <>
                     <div className="flex gap-4 py-1.5 border-b border-gray-200 dark:border-gray-800 items-center">
-                      <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">Wert</span>
+                      <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{isEn ? 'Value' : 'Wert'}</span>
                       <div className="flex-1 flex items-center gap-2 min-w-0">
                         {expertMode ? (
-                          <ExpertControl val={state.val} onSet={handleSet} isPending={setStateMutation.isPending} unit={obj.common?.unit} type={type} />
+                          <ExpertControl val={state.val} onSet={handleSet} isPending={setStateMutation.isPending} unit={obj.common?.unit} type={type} language={language} />
                         ) : isSwitch ? (
                           <SwitchControl val={state.val} onSet={handleSet} isPending={setStateMutation.isPending} disabled={!isWritable} />
                         ) : isButton ? (
-                          <ButtonControl onSet={handleSet} isPending={setStateMutation.isPending} disabled={!isWritable} />
+                          <ButtonControl onSet={handleSet} isPending={setStateMutation.isPending} disabled={!isWritable} language={language} />
                         ) : isWritable && isNumberValue ? (
                           <NumberControl val={state.val} onSet={handleSet} isPending={setStateMutation.isPending} unit={obj.common?.unit} />
                         ) : isWritable && type === 'boolean' ? (
                           <SwitchControl val={state.val} onSet={handleSet} isPending={setStateMutation.isPending} />
                         ) : isWritable && (type === 'string' || type === 'mixed') ? (
-                          <StringControl val={state.val} onSet={handleSet} isPending={setStateMutation.isPending} unit={obj.common?.unit} />
+                          <StringControl val={state.val} onSet={handleSet} isPending={setStateMutation.isPending} unit={obj.common?.unit} language={language} />
                         ) : (
                           <span className="font-mono font-bold text-gray-900 dark:text-white text-base">
                             {formatValue(state.val)}
@@ -533,13 +541,13 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory }: Pro
                     </div>
                     <DetailRow
                       label="Acknowledged"
-                      value={<span className={state.ack ? 'text-green-500 dark:text-green-400' : 'text-yellow-500 dark:text-yellow-400'}>{state.ack ? 'Ja' : 'Nein'}</span>}
+                      value={<span className={state.ack ? 'text-green-500 dark:text-green-400' : 'text-yellow-500 dark:text-yellow-400'}>{state.ack ? (isEn ? 'Yes' : 'Ja') : (isEn ? 'No' : 'Nein')}</span>}
                     />
-                    <DetailRow label="Qualität" value={state.q} />
-                    <DetailRow label="Zeitstempel" value={formatTimestamp(state.ts)} />
-                    <DetailRow label="Letzte Änderung" value={formatTimestamp(state.lc)} />
-                    <DetailRow label="Von" value={state.from || '—'} />
-                    {state.c && <DetailRow label="Kommentar" value={state.c} />}
+                    <DetailRow label={isEn ? 'Quality' : 'Qualität'} value={state.q} />
+                    <DetailRow label={isEn ? 'Timestamp' : 'Zeitstempel'} value={formatTimestamp(state.ts)} />
+                    <DetailRow label={isEn ? 'Last change' : 'Letzte Änderung'} value={formatTimestamp(state.lc)} />
+                    <DetailRow label={isEn ? 'From' : 'Von'} value={state.from || '—'} />
+                    {state.c && <DetailRow label={isEn ? 'Comment' : 'Kommentar'} value={state.c} />}
                   </>
                 )}
 
@@ -551,14 +559,14 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory }: Pro
                         <button
                           onClick={() => { onClose(); onOpenHistory(); }}
                           className="flex items-center gap-0.5 text-[11px] text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                          title="Im History-Modal öffnen"
+                          title={isEn ? 'Open in history modal' : 'Im History-Modal öffnen'}
                         >
                           <Maximize2 size={11} />
-                          Vollbild
+                          {isEn ? 'Fullscreen' : 'Vollbild'}
                         </button>
                       )}
                     </div>
-                    <HistoryChart stateId={id} unit={obj.common?.unit} settingsCollapsible />
+                    <HistoryChart stateId={id} unit={obj.common?.unit} settingsCollapsible language={language} />
                   </div>
                 )}
               </div>
@@ -581,25 +589,27 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory }: Pro
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
                     <Link2 size={11} className="text-amber-500" />
-                    Ziel-Datenpunkt (alias.id)
+                    {isEn ? 'Target datapoint (alias.id)' : 'Ziel-Datenpunkt (alias.id)'}
                   </label>
                   <input
                     type="text"
                     value={aliasId}
                     onChange={(e) => setAliasId(e.target.value)}
                     className={`${inputCls} font-mono`}
-                    placeholder="z.B. hm-rpc.0.ABC123.1.STATE"
+                    placeholder={isEn ? 'e.g. hm-rpc.0.ABC123.1.STATE' : 'z.B. hm-rpc.0.ABC123.1.STATE'}
                     spellCheck={false}
                   />
                   <p className="text-[11px] text-gray-400 dark:text-gray-500">
-                    ID des Quell-Datenpunkts, auf den dieser Alias zeigt. Leer lassen, um den Alias zu entfernen.
+                    {isEn
+                      ? 'ID of the source datapoint this alias points to. Leave empty to remove alias.'
+                      : 'ID des Quell-Datenpunkts, auf den dieser Alias zeigt. Leer lassen, um den Alias zu entfernen.'}
                   </p>
                 </div>
 
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                    Lese-Formel (alias.read){' '}
-                    <span className="text-gray-400 dark:text-gray-500 font-normal">– optional</span>
+                    {isEn ? 'Read formula' : 'Lese-Formel'} (alias.read){' '}
+                    <span className="text-gray-400 dark:text-gray-500 font-normal">- {isEn ? 'optional' : 'optional'}</span>
                   </label>
                   <input
                     type="text"
@@ -610,15 +620,15 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory }: Pro
                     spellCheck={false}
                   />
                   <p className="text-[11px] text-gray-400 dark:text-gray-500">
-                    JavaScript-Ausdruck zur Konvertierung beim Lesen. Variable:{' '}
+                    {isEn ? 'JavaScript expression for read conversion. Variable:' : 'JavaScript-Ausdruck zur Konvertierung beim Lesen. Variable:'}{' '}
                     <code className="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">val</code>
                   </p>
                 </div>
 
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                    Schreib-Formel (alias.write){' '}
-                    <span className="text-gray-400 dark:text-gray-500 font-normal">– optional</span>
+                    {isEn ? 'Write formula' : 'Schreib-Formel'} (alias.write){' '}
+                    <span className="text-gray-400 dark:text-gray-500 font-normal">- {isEn ? 'optional' : 'optional'}</span>
                   </label>
                   <input
                     type="text"
@@ -629,7 +639,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory }: Pro
                     spellCheck={false}
                   />
                   <p className="text-[11px] text-gray-400 dark:text-gray-500">
-                    JavaScript-Ausdruck zur Konvertierung beim Schreiben. Variable:{' '}
+                    {isEn ? 'JavaScript expression for write conversion. Variable:' : 'JavaScript-Ausdruck zur Konvertierung beim Schreiben. Variable:'}{' '}
                     <code className="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">val</code>
                   </p>
                 </div>
@@ -638,7 +648,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory }: Pro
                   <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2.5 text-xs border border-amber-200 dark:border-amber-800/40">
                     <div className="text-amber-600 dark:text-amber-400 font-medium mb-1.5 flex items-center gap-1.5">
                       <Link2 size={11} />
-                      Aktuell gespeicherter Alias
+                      {isEn ? 'Currently saved alias' : 'Aktuell gespeicherter Alias'}
                     </div>
                     <pre className="font-mono text-gray-600 dark:text-gray-300 whitespace-pre-wrap break-all">
                       {JSON.stringify(obj.common.alias, null, 2)}
@@ -655,7 +665,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory }: Pro
               onClick={onClose}
               className="px-4 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
-              Abbrechen
+              {isEn ? 'Cancel' : 'Abbrechen'}
             </button>
             {tab === 'json' && (
               <button
@@ -664,7 +674,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory }: Pro
                 className="flex items-center gap-1.5 px-4 py-1.5 text-sm rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors disabled:opacity-50"
               >
                 <Save size={14} />
-                {putObject.isPending ? 'Speichern…' : 'Speichern'}
+                {putObject.isPending ? (isEn ? 'Saving…' : 'Speichern…') : (isEn ? 'Save' : 'Speichern')}
               </button>
             )}
             {tab === 'alias' && (
@@ -674,7 +684,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory }: Pro
                 className="flex items-center gap-1.5 px-4 py-1.5 text-sm rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors disabled:opacity-50"
               >
                 <Save size={14} />
-                {putObject.isPending ? 'Speichern…' : 'Speichern'}
+                {putObject.isPending ? (isEn ? 'Saving…' : 'Speichern…') : (isEn ? 'Save' : 'Speichern')}
               </button>
             )}
           </div>

@@ -158,7 +158,8 @@ const EditableNameCell = React.memo(function EditableNameCell({ id, name }: { id
   );
 });
 
-const EditableRoleCell = React.memo(function EditableRoleCell({ id, role, suggestions }: { id: string; role: string; suggestions: string[] }) {
+const EditableRoleCell = React.memo(function EditableRoleCell({ id, role, suggestions, language = 'en' }: { id: string; role: string; suggestions: string[]; language?: 'en' | 'de' }) {
+  const isEn = language === 'en';
   const [editing, setEditing] = useState(false);
   const [filter, setFilter] = useState('');
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -206,7 +207,7 @@ const EditableRoleCell = React.memo(function EditableRoleCell({ id, role, sugges
             <Pencil size={12} className="opacity-0 group-hover/role:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity" />
           </>
         ) : (
-          <span className="text-gray-300 dark:text-gray-600 italic font-sans">Rolle wählen…</span>
+          <span className="text-gray-300 dark:text-gray-600 italic font-sans">{isEn ? 'Select role…' : 'Rolle wählen…'}</span>
         )}
       </div>
       {editing && cellRect && createPortal(
@@ -233,7 +234,7 @@ const EditableRoleCell = React.memo(function EditableRoleCell({ id, role, sugges
                   }
                   else if (e.key === 'Escape') close();
                 }}
-                placeholder="Filtern…"
+                placeholder={isEn ? 'Filter…' : 'Filtern…'}
                 className="w-full bg-gray-50 dark:bg-gray-700 text-xs rounded px-2 py-1 border border-gray-300 dark:border-gray-600 focus:outline-none focus:border-blue-400 dark:focus:border-blue-500 text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500"
               />
             </div>
@@ -243,7 +244,7 @@ const EditableRoleCell = React.memo(function EditableRoleCell({ id, role, sugges
                   onMouseDown={(e) => { e.preventDefault(); commit(filter.trim()); }}
                   className="px-3 py-1.5 text-xs cursor-pointer text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 italic"
                 >
-                  „{filter.trim()}" verwenden
+                  {isEn ? `Use "${filter.trim()}"` : `„${filter.trim()}" verwenden`}
                 </li>
               )}
               {filtered.map((s, i) => (
@@ -269,7 +270,8 @@ const EditableRoleCell = React.memo(function EditableRoleCell({ id, role, sugges
   );
 });
 
-const EditableUnitCell = React.memo(function EditableUnitCell({ id, unit, suggestions }: { id: string; unit: string; suggestions: string[] }) {
+const EditableUnitCell = React.memo(function EditableUnitCell({ id, unit, suggestions, language = 'en' }: { id: string; unit: string; suggestions: string[]; language?: 'en' | 'de' }) {
+  const isEn = language === 'en';
   const [editing, setEditing] = useState(false);
   const [filter, setFilter] = useState('');
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -314,7 +316,7 @@ const EditableUnitCell = React.memo(function EditableUnitCell({ id, unit, sugges
             <Pencil size={12} className="opacity-0 group-hover/unit:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity" />
           </>
         ) : (
-          <span className="text-gray-300 dark:text-gray-600 italic font-sans">Einheit…</span>
+          <span className="text-gray-300 dark:text-gray-600 italic font-sans">{isEn ? 'Select unit…' : 'Einheit wählen…'}</span>
         )}
       </div>
       {editing && cellRect && createPortal(
@@ -341,7 +343,7 @@ const EditableUnitCell = React.memo(function EditableUnitCell({ id, unit, sugges
                   }
                   else if (e.key === 'Escape') close();
                 }}
-                placeholder="Filtern…"
+                placeholder={isEn ? 'Filter…' : 'Filtern…'}
                 className="w-full bg-gray-50 dark:bg-gray-700 text-xs rounded px-2 py-1 border border-gray-300 dark:border-gray-600 focus:outline-none focus:border-blue-400 dark:focus:border-blue-500 text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500"
               />
             </div>
@@ -351,7 +353,7 @@ const EditableUnitCell = React.memo(function EditableUnitCell({ id, unit, sugges
                   onMouseDown={(e) => { e.preventDefault(); commit(filter.trim()); }}
                   className="px-3 py-1.5 text-xs cursor-pointer text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 italic"
                 >
-                  „{filter.trim()}" verwenden
+                  {isEn ? `Use "${filter.trim()}"` : `„${filter.trim()}" verwenden`}
                 </li>
               )}
               {unit && (
@@ -359,7 +361,7 @@ const EditableUnitCell = React.memo(function EditableUnitCell({ id, unit, sugges
                   onMouseDown={(e) => { e.preventDefault(); commit(''); }}
                   className="px-3 py-1.5 text-xs cursor-pointer text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 italic"
                 >
-                  — leer —
+                  {isEn ? '- empty -' : '— leer —'}
                 </li>
               )}
               {filtered.map((s, i) => (
@@ -516,7 +518,7 @@ function CopyIdButton({ id }: { id: string }) {
   );
 }
 
-const EditableRoomCell = React.memo(function EditableRoomCell({ id, currentRoomEnumId, roomName, roomEnums, onSelectRoom, forceEdit, onEditEnd }: {
+const EditableRoomCell = React.memo(function EditableRoomCell({ id, currentRoomEnumId, roomName, roomEnums, onSelectRoom, forceEdit, onEditEnd, language = 'en' }: {
   id: string;
   currentRoomEnumId: string | null;
   roomName: string;
@@ -524,7 +526,9 @@ const EditableRoomCell = React.memo(function EditableRoomCell({ id, currentRoomE
   onSelectRoom: (objectId: string, oldRoomEnumId: string | null, newRoomEnumId: string | null) => void;
   forceEdit?: boolean;
   onEditEnd?: () => void;
+  language?: 'en' | 'de';
 }) {
+  const isEn = language === 'en';
   const [editing, setEditing] = useState(false);
   const [cellRect, setCellRect] = useState<DOMRect | null>(null);
   const cellRef = useRef<HTMLTableCellElement>(null);
@@ -568,7 +572,7 @@ const EditableRoomCell = React.memo(function EditableRoomCell({ id, currentRoomE
             />
           </>
         ) : (
-          <span className="text-gray-300 dark:text-gray-600 italic">Raum wählen…</span>
+          <span className="text-gray-300 dark:text-gray-600 italic">{isEn ? 'Select room…' : 'Raum wählen…'}</span>
         )}
       </div>
       {editing && cellRect && createPortal(
@@ -588,7 +592,7 @@ const EditableRoomCell = React.memo(function EditableRoomCell({ id, currentRoomE
                     : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 italic'
                 }`}
               >
-                Kein Raum
+                {isEn ? 'No room' : 'Kein Raum'}
               </li>
               {roomEnums.map((room) => (
                 <li
@@ -604,7 +608,7 @@ const EditableRoomCell = React.memo(function EditableRoomCell({ id, currentRoomE
                 </li>
               ))}
               {roomEnums.length === 0 && (
-                <li className="px-3 py-1.5 text-xs text-gray-400 dark:text-gray-500 italic">Lädt…</li>
+                <li className="px-3 py-1.5 text-xs text-gray-400 dark:text-gray-500 italic">{isEn ? 'Loading…' : 'Lädt…'}</li>
               )}
             </ul>
           </div>
@@ -615,7 +619,7 @@ const EditableRoomCell = React.memo(function EditableRoomCell({ id, currentRoomE
   );
 });
 
-const EditableFunctionCell = React.memo(function EditableFunctionCell({ id, currentFnEnumId, fnName, fnEnums, onSelectFunction, forceEdit, onEditEnd }: {
+const EditableFunctionCell = React.memo(function EditableFunctionCell({ id, currentFnEnumId, fnName, fnEnums, onSelectFunction, forceEdit, onEditEnd, language = 'en' }: {
   id: string;
   currentFnEnumId: string | null;
   fnName: string;
@@ -623,7 +627,9 @@ const EditableFunctionCell = React.memo(function EditableFunctionCell({ id, curr
   onSelectFunction: (objectId: string, oldFnEnumId: string | null, newFnEnumId: string | null) => void;
   forceEdit?: boolean;
   onEditEnd?: () => void;
+  language?: 'en' | 'de';
 }) {
+  const isEn = language === 'en';
   const [editing, setEditing] = useState(false);
   const [cellRect, setCellRect] = useState<DOMRect | null>(null);
   const cellRef = useRef<HTMLTableCellElement>(null);
@@ -667,7 +673,7 @@ const EditableFunctionCell = React.memo(function EditableFunctionCell({ id, curr
             />
           </>
         ) : (
-          <span className="text-gray-300 dark:text-gray-600 italic">Funktion wählen…</span>
+          <span className="text-gray-300 dark:text-gray-600 italic">{isEn ? 'Select function…' : 'Funktion wählen…'}</span>
         )}
       </div>
       {editing && cellRect && createPortal(
@@ -687,7 +693,7 @@ const EditableFunctionCell = React.memo(function EditableFunctionCell({ id, curr
                     : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 italic'
                 }`}
               >
-                Keine Funktion
+                {isEn ? 'No function' : 'Keine Funktion'}
               </li>
               {fnEnums.map((fn) => (
                 <li
@@ -703,7 +709,7 @@ const EditableFunctionCell = React.memo(function EditableFunctionCell({ id, curr
                 </li>
               ))}
               {fnEnums.length === 0 && (
-                <li className="px-3 py-1.5 text-xs text-gray-400 dark:text-gray-500 italic">Lädt…</li>
+                <li className="px-3 py-1.5 text-xs text-gray-400 dark:text-gray-500 italic">{isEn ? 'Loading…' : 'Lädt…'}</li>
               )}
             </ul>
           </div>
@@ -1050,6 +1056,7 @@ interface StateRowProps {
   onRoomEditEnd: () => void;
   onFnEditEnd: () => void;
   dateFormat: DateFormatSetting;
+  language: 'en' | 'de';
 }
 
 function aliasIdsEqual(a?: string[], b?: string[]): boolean {
@@ -1067,8 +1074,9 @@ const StateRow = React.memo(function StateRow({
   onSelect, onCheck, onContextMenu, onHistoryClick, onNavigateTo, onDeleteClick,
   onSelectRoom, onSelectFunction,
   roomEditForced, fnEditForced, onRoomEditEnd, onFnEditEnd,
-  dateFormat,
+  dateFormat, language,
 }: StateRowProps) {
+  const isEn = language === 'en';
   const show = (key: SortKey) => visibleCols.includes(key);
   const w = (key: SortKey) => colWidths[key];
   const unit = obj?.common?.unit || '';
@@ -1079,7 +1087,7 @@ const StateRow = React.memo(function StateRow({
   const hasAlias = (aliasIds && aliasIds.length > 0) || !!ownTarget;
   const aliasTooltip = aliasIds?.length
     ? `Alias: ${aliasIds.join(', ')}`
-    : ownTarget ? `Quelle: ${ownTarget}` : undefined;
+    : ownTarget ? `${isEn ? 'Source' : 'Quelle'}: ${ownTarget}` : undefined;
 
   return (
     <tr
@@ -1180,7 +1188,7 @@ const StateRow = React.memo(function StateRow({
               <div className="text-[10px] leading-4 text-gray-400 dark:text-gray-500 truncate">
                 {ownTarget && (
                   <>
-                    <span className="mr-1">Quelle:</span>
+                    <span className="mr-1">{isEn ? 'Source:' : 'Quelle:'}</span>
                     <button
                       onClick={(e) => { e.stopPropagation(); onNavigateTo([ownTarget]); }}
                       className="font-mono underline decoration-dotted hover:text-blue-500 dark:hover:text-blue-400"
@@ -1193,7 +1201,7 @@ const StateRow = React.memo(function StateRow({
                 {ownTarget && aliasIds && aliasIds.length > 0 && <span className="mx-1">|</span>}
                 {aliasIds && aliasIds.length > 0 && (
                   <>
-                    <span className="mr-1">Ziel:</span>
+                    <span className="mr-1">{isEn ? 'Target:' : 'Ziel:'}</span>
                     {aliasIds.map((aid, idx) => (
                       <React.Fragment key={aid}>
                         {idx > 0 && <span>, </span>}
@@ -1223,6 +1231,7 @@ const StateRow = React.memo(function StateRow({
           onSelectRoom={onSelectRoom}
           forceEdit={roomEditForced}
           onEditEnd={onRoomEditEnd}
+          language={language}
         />
       )}
       {show('function') && (
@@ -1234,11 +1243,12 @@ const StateRow = React.memo(function StateRow({
           onSelectFunction={onSelectFunction}
           forceEdit={fnEditForced}
           onEditEnd={onFnEditEnd}
+          language={language}
         />
       )}
-      {show('role') && <EditableRoleCell id={id} role={obj?.common?.role || ''} suggestions={roles} />}
+      {show('role') && <EditableRoleCell id={id} role={obj?.common?.role || ''} suggestions={roles} language={language} />}
       {show('value') && <EditableValueCell id={id} state={state} obj={obj} />}
-      {show('unit') && <EditableUnitCell id={id} unit={unit} suggestions={units} />}
+      {show('unit') && <EditableUnitCell id={id} unit={unit} suggestions={units} language={language} />}
       {show('ack') && (
         <td data-col="ack" className="px-3 py-2">
           {state ? (
@@ -1289,6 +1299,7 @@ const StateRow = React.memo(function StateRow({
     prev.roomEditForced === next.roomEditForced &&
     prev.fnEditForced === next.fnEditForced &&
     prev.dateFormat === next.dateFormat &&
+    prev.language === next.language &&
     prev.onNavigateTo === next.onNavigateTo &&
     prev.onSelectRoom === next.onSelectRoom &&
     prev.onSelectFunction === next.onSelectFunction
@@ -1739,7 +1750,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
       <div className="flex items-center gap-1">
         <button
           onClick={fitToContainer}
-          title="Spalten auf 100% strecken"
+          title={isEn ? 'Stretch columns to 100%' : 'Spalten auf 100% strecken'}
           className="p-2 rounded-lg transition-colors text-gray-400 hover:text-gray-600 hover:bg-gray-200 dark:text-gray-500 dark:hover:text-gray-300 dark:hover:bg-gray-700"
         >
           <Maximize2 size={17} />
@@ -1761,7 +1772,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
             setColWidths({ ...DEFAULT_WIDTHS });
             onColFilterChange({});
           }}
-          title="Einstellungen zurücksetzen"
+          title={isEn ? 'Reset settings (local storage)' : 'Einstellungen zurücksetzen'}
           className="p-2 rounded-lg transition-colors text-gray-400 hover:text-red-500 hover:bg-red-500/10 dark:text-gray-500 dark:hover:text-red-400 dark:hover:bg-red-500/10"
         >
           <RotateCcw size={17} />
@@ -1913,6 +1924,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
         <ObjectEditModal
           id={editObjId}
           obj={objects[editObjId]}
+          language={language}
           onClose={() => setEditObjId(null)}
           onOpenHistory={hasHistory(objects[editObjId]) ? () => setHistoryModalId(editObjId) : undefined}
         />
@@ -1973,7 +1985,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                     checked={allOnPageChecked}
                     indeterminate={someChecked && !allOnPageChecked}
                     onChange={toggleCheckAll}
-                    title="Alle auswählen"
+                    title={isEn ? 'Select all' : 'Alle auswählen'}
                   />
                 </th>
               )}
@@ -1997,7 +2009,13 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                     : key === 'alias'
                     ? 'text-amber-500 bg-amber-500/20'
                     : 'text-violet-500 bg-violet-500/20';
-                  const title = key === 'write' ? 'Nur Schreibgeschützte' : key === 'history' ? 'Nur mit History' : key === 'alias' ? 'Nur mit Alias' : 'Nur mit SmartName';
+                  const title = key === 'write'
+                    ? (isEn ? 'Only read-only' : 'Nur Schreibgeschützte')
+                    : key === 'history'
+                    ? (isEn ? 'Only with history' : 'Nur mit History')
+                    : key === 'alias'
+                    ? (isEn ? 'Only with alias' : 'Nur mit Alias')
+                    : (isEn ? 'Only with SmartName' : 'Nur mit SmartName');
                   return (
                     <th key={key} style={{ width: w(key) }} className="py-1 text-center align-middle" onClick={(e) => e.stopPropagation()}>
                       <button
@@ -2088,6 +2106,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                 onRoomEditEnd={handleRoomEditEnd}
                 onFnEditEnd={handleFnEditEnd}
                 dateFormat={dateFormat}
+                language={language}
               />
             ))}
             {bottomSpacer > 0 && (

@@ -126,6 +126,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   showFolders,
   showDevices,
   showChannels,
+  language,
 }: {
   node: TreeNode;
   depth: number;
@@ -141,6 +142,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   showFolders: boolean;
   showDevices: boolean;
   showChannels: boolean;
+  language: 'en' | 'de';
 }) {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -191,6 +193,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
             showFolders={showFolders}
             showDevices={showDevices}
             showChannels={showChannels}
+            language={language}
           />
         ))}
       </>
@@ -203,6 +206,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
         <ObjectEditModal
           id={node.fullPath}
           obj={allObjects[node.fullPath] ?? { _id: node.fullPath, type: 'folder', common: { name: node.name }, native: {} } as IoBrokerObject}
+          language={language}
           onClose={() => setEditOpen(false)}
         />
       )}
@@ -358,6 +362,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
             showFolders={showFolders}
             showDevices={showDevices}
             showChannels={showChannels}
+            language={language}
           />
         ))}
     </div>
@@ -494,6 +499,7 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
               showFolders={showFolders}
               showDevices={showDevices}
               showChannels={showChannels}
+              language={language}
             />
           ))
         )}
