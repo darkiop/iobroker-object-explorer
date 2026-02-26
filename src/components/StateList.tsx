@@ -726,13 +726,16 @@ function BatchComboControl({
   placeholder,
   options,
   className = '',
+  language = 'en',
 }: {
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
   options: string[];
   className?: string;
+  language?: 'en' | 'de';
 }) {
+  const isEn = language === 'en';
   const [open, setOpen] = useState(false);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
@@ -771,7 +774,7 @@ function BatchComboControl({
           type="button"
           onClick={open ? closeMenu : openMenu}
           className="shrink-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-          aria-label={`${placeholder} öffnen`}
+          aria-label={isEn ? `Open ${placeholder}` : `${placeholder} öffnen`}
         >
           <ChevronDown size={14} />
         </button>
@@ -800,7 +803,7 @@ function BatchComboControl({
                   </li>
                 ))
               ) : (
-                <li className="px-3 py-1.5 text-xs text-gray-400 dark:text-gray-500 italic">Keine Treffer</li>
+                <li className="px-3 py-1.5 text-xs text-gray-400 dark:text-gray-500 italic">{isEn ? 'No matches' : 'Keine Treffer'}</li>
               )}
             </ul>
           </div>
@@ -1727,10 +1730,11 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
         {checkedIds.size > 0 && (
           <button
             onClick={() => setMultiDeleteOpen(true)}
+            title={isEn ? 'Delete selected datapoints' : 'Ausgewählte Datenpunkte löschen'}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-red-600 bg-red-500/10 hover:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/20 transition-colors"
           >
             <Trash2 size={13} />
-            {checkedIds.size} löschen
+            {isEn ? `Delete ${checkedIds.size}` : `${checkedIds.size} löschen`}
           </button>
         )}
       </div>
@@ -1785,10 +1789,12 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   );
 
   const existingIds = useMemo(() => new Set(Object.keys(objects)), [objects]);
+  const noRoomLabel = isEn ? '— No room —' : '— Kein Raum —';
+  const noFunctionLabel = isEn ? '— No function —' : '— Keine Funktion —';
   const roomById = useMemo(() => new Map(roomEnums.map((r) => [r.id, r.name])), [roomEnums]);
-  const roomNameOptions = useMemo(() => ['— Kein Raum —', ...roomEnums.map((r) => r.name)], [roomEnums]);
+  const roomNameOptions = useMemo(() => [noRoomLabel, ...roomEnums.map((r) => r.name)], [roomEnums, noRoomLabel]);
   const fnById = useMemo(() => new Map(fnEnums.map((f) => [f.id, f.name])), [fnEnums]);
-  const fnNameOptions = useMemo(() => ['— Keine Funktion —', ...fnEnums.map((f) => f.name)], [fnEnums]);
+  const fnNameOptions = useMemo(() => [noFunctionLabel, ...fnEnums.map((f) => f.name)], [fnEnums, noFunctionLabel]);
 
   const batchCanApply = batchRole.trim() !== '' || batchUnit.trim() !== '' || batchRoomEnumId !== '' || batchFnEnumId !== '';
   const bodyViewportHeight = Math.max(0, viewportHeight - headerHeight);
@@ -1823,52 +1829,56 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
       {checkedIds.size > 0 && (
         <div className="flex items-center gap-2 px-3 py-1.5 shrink-0 border-b border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20 flex-wrap">
           <span className="text-xs text-blue-600 dark:text-blue-400 font-medium shrink-0 whitespace-nowrap">
-            {checkedIds.size} ausgewählt:
+            {checkedIds.size} {isEn ? 'selected:' : 'ausgewählt:'}
           </span>
           <BatchComboControl
             value={batchRole}
             onChange={setBatchRole}
-            placeholder="Rolle…"
+            placeholder={isEn ? 'Role…' : 'Rolle…'}
             options={roles}
             className="w-28"
+            language={language}
           />
           <BatchComboControl
             value={batchUnit}
             onChange={setBatchUnit}
-            placeholder="Einheit…"
+            placeholder={isEn ? 'Unit…' : 'Einheit…'}
             options={units}
             className="w-20"
+            language={language}
           />
           <BatchComboControl
-            value={batchRoomEnumId === '' ? '' : (batchRoomEnumId === '__none__' ? '— Kein Raum —' : (roomById.get(batchRoomEnumId) ?? ''))}
+            value={batchRoomEnumId === '' ? '' : (batchRoomEnumId === '__none__' ? noRoomLabel : (roomById.get(batchRoomEnumId) ?? ''))}
             onChange={(name) => {
               if (name.trim() === '') { setBatchRoomEnumId(''); return; }
-              if (name === '— Kein Raum —') { setBatchRoomEnumId('__none__'); return; }
+              if (name === noRoomLabel) { setBatchRoomEnumId('__none__'); return; }
               const hit = roomEnums.find((r) => r.name === name);
               setBatchRoomEnumId(hit ? hit.id : '');
             }}
-            placeholder="Raum…"
+            placeholder={isEn ? 'Room…' : 'Raum…'}
             options={roomNameOptions}
             className="w-36"
+            language={language}
           />
           <BatchComboControl
-            value={batchFnEnumId === '' ? '' : (batchFnEnumId === '__none__' ? '— Keine Funktion —' : (fnById.get(batchFnEnumId) ?? ''))}
+            value={batchFnEnumId === '' ? '' : (batchFnEnumId === '__none__' ? noFunctionLabel : (fnById.get(batchFnEnumId) ?? ''))}
             onChange={(name) => {
               if (name.trim() === '') { setBatchFnEnumId(''); return; }
-              if (name === '— Keine Funktion —') { setBatchFnEnumId('__none__'); return; }
+              if (name === noFunctionLabel) { setBatchFnEnumId('__none__'); return; }
               const hit = fnEnums.find((f) => f.name === name);
               setBatchFnEnumId(hit ? hit.id : '');
             }}
-            placeholder="Funktion…"
+            placeholder={isEn ? 'Function…' : 'Funktion…'}
             options={fnNameOptions}
             className="w-36"
+            language={language}
           />
           <button
             onClick={handleBatchApply}
             disabled={!batchCanApply}
             className="px-2.5 py-0.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            Anwenden
+            {isEn ? 'Apply' : 'Anwenden'}
           </button>
         </div>
       )}
