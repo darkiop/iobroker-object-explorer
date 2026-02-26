@@ -7,9 +7,11 @@ interface Props {
   onDeleteOne: (id: string) => void;
   onDeleteAll: (ids: string[]) => void;
   onClose: () => void;
+  language?: 'en' | 'de';
 }
 
-export default function MultiDeleteDialog({ ids, onDeleteOne, onDeleteAll, onClose }: Props) {
+export default function MultiDeleteDialog({ ids, onDeleteOne, onDeleteAll, onClose, language = 'en' }: Props) {
+  const isEn = language === 'en';
   const [remaining, setRemaining] = useState<string[]>([...ids]);
 
   useEffect(() => {
@@ -46,7 +48,9 @@ export default function MultiDeleteDialog({ ids, onDeleteOne, onDeleteAll, onClo
           <div className="flex items-center gap-2 text-red-500">
             <AlertTriangle size={16} />
             <span className="font-semibold text-sm">
-              {remaining.length} Datenpunkt{remaining.length !== 1 ? 'e' : ''} löschen
+              {isEn
+                ? `Delete ${remaining.length} datapoint${remaining.length !== 1 ? 's' : ''}`
+                : `${remaining.length} Datenpunkt${remaining.length !== 1 ? 'e' : ''} löschen`}
             </span>
           </div>
           <button onClick={onClose} className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
@@ -66,11 +70,11 @@ export default function MultiDeleteDialog({ ids, onDeleteOne, onDeleteAll, onClo
               </span>
               <button
                 onClick={() => handleDeleteOne(id)}
-                title="Diesen Datenpunkt löschen"
+                title={isEn ? 'Delete this datapoint' : 'Diesen Datenpunkt löschen'}
                 className="shrink-0 flex items-center gap-1 px-2 py-1 rounded text-xs text-red-500 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
               >
                 <Trash2 size={11} />
-                Löschen
+                {isEn ? 'Delete' : 'Löschen'}
               </button>
             </div>
           ))}
@@ -79,20 +83,20 @@ export default function MultiDeleteDialog({ ids, onDeleteOne, onDeleteAll, onClo
         {/* Footer */}
         <div className="flex justify-between items-center gap-2 px-5 py-3 border-t border-gray-200 dark:border-gray-700 shrink-0">
           <p className="text-xs text-gray-400 dark:text-gray-500">
-            Unwiderruflich – einzeln oder alle auf einmal löschen
+            {isEn ? 'Permanent - delete individually or all at once' : 'Unwiderruflich - einzeln oder alle auf einmal löschen'}
           </p>
           <div className="flex gap-2 shrink-0">
             <button
               onClick={onClose}
               className="px-4 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
-              Abbrechen
+              {isEn ? 'Cancel' : 'Abbrechen'}
             </button>
             <button
               onClick={handleDeleteAll}
               className="px-4 py-1.5 text-sm rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition-colors"
             >
-              Alle löschen ({remaining.length})
+              {isEn ? `Delete all (${remaining.length})` : `Alle löschen (${remaining.length})`}
             </button>
           </div>
         </div>

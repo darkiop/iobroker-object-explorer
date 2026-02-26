@@ -1889,10 +1889,11 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
       )}
       {deletingId && (
         <ConfirmDialog
-          title="Datenpunkt löschen"
+          title={isEn ? 'Delete datapoint' : 'Datenpunkt löschen'}
           message={deletingId}
           onConfirm={() => { deleteObject.mutate(deletingId); setDeletingId(null); }}
           onCancel={() => setDeletingId(null)}
+          language={language}
         />
       )}
       {multiDeleteOpen && (
@@ -1901,6 +1902,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
           onDeleteOne={handleDeleteOne}
           onDeleteAll={handleDeleteAll}
           onClose={() => setMultiDeleteOpen(false)}
+          language={language}
         />
       )}
       {aliasSourceId && (

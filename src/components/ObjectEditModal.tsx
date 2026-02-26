@@ -467,6 +467,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
           message={id}
           onConfirm={() => { deleteObject.mutate(id, { onSuccess: onClose }); setConfirmDelete(false); }}
           onCancel={() => setConfirmDelete(false)}
+          language={language}
         />
       )}
       <div

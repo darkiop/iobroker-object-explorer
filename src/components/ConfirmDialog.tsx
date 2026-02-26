@@ -8,9 +8,12 @@ interface Props {
   confirmLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
+  language?: 'en' | 'de';
 }
 
-export default function ConfirmDialog({ title, message, confirmLabel = 'Löschen', onConfirm, onCancel }: Props) {
+export default function ConfirmDialog({ title, message, confirmLabel, onConfirm, onCancel, language = 'en' }: Props) {
+  const isEn = language === 'en';
+  const effectiveConfirmLabel = confirmLabel ?? (isEn ? 'Delete' : 'Löschen');
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') onCancel();
@@ -39,7 +42,9 @@ export default function ConfirmDialog({ title, message, confirmLabel = 'Löschen
           </button>
         </div>
         <div className="px-5 py-4">
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Folgender Datenpunkt wird unwiderruflich gelöscht:</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+            {isEn ? 'The following datapoint will be deleted permanently:' : 'Folgender Datenpunkt wird unwiderruflich gelöscht:'}
+          </p>
           <p className="text-sm font-mono text-gray-800 dark:text-gray-200 break-all">{message}</p>
         </div>
         <div className="flex justify-end gap-2 px-5 py-3 border-t border-gray-200 dark:border-gray-700">
@@ -47,13 +52,13 @@ export default function ConfirmDialog({ title, message, confirmLabel = 'Löschen
             onClick={onCancel}
             className="px-4 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
-            Abbrechen
+            {isEn ? 'Cancel' : 'Abbrechen'}
           </button>
           <button
             onClick={onConfirm}
             className="px-4 py-1.5 text-sm rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition-colors"
           >
-            {confirmLabel}
+            {effectiveConfirmLabel}
           </button>
         </div>
       </div>
