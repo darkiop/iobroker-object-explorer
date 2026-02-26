@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, RotateCcw, Plus, Lock, Trash2, Search, Link2, FileEdit, Download } from 'lucide-react';
+import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, RotateCcw, Plus, Lock, Trash2, Search, Link2, FileEdit, Download, ChevronDown } from 'lucide-react';
 import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
@@ -716,6 +716,97 @@ function EditableFunctionCell({ id, currentFnEnumId, fnName, fnEnums, onSelectFu
         document.body
       )}
     </td>
+  );
+}
+
+function BatchComboControl({
+  value,
+  onChange,
+  placeholder,
+  options,
+  className = '',
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  options: string[];
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [rect, setRect] = useState<DOMRect | null>(null);
+  const anchorRef = useRef<HTMLDivElement>(null);
+
+  const filtered = useMemo(() => {
+    const q = value.trim().toLowerCase();
+    const source = q ? options.filter((o) => o.toLowerCase().includes(q)) : options;
+    return source.slice(0, 80);
+  }, [options, value]);
+
+  function openMenu() {
+    if (!anchorRef.current) return;
+    setRect(anchorRef.current.getBoundingClientRect());
+    setOpen(true);
+  }
+
+  function closeMenu() {
+    setOpen(false);
+  }
+
+  return (
+    <>
+      <div
+        ref={anchorRef}
+        className={`h-7 px-2 text-xs font-normal rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus-within:outline-none focus-within:ring-1 focus-within:ring-blue-400 transition-colors flex items-center justify-between gap-2 ${className}`}
+      >
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onFocus={openMenu}
+          placeholder={placeholder}
+          className="flex-1 min-w-0 bg-transparent text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none"
+        />
+        <button
+          type="button"
+          onClick={open ? closeMenu : openMenu}
+          className="shrink-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+          aria-label={`${placeholder} öffnen`}
+        >
+          <ChevronDown size={14} />
+        </button>
+      </div>
+      {open && rect && createPortal(
+        <>
+          <div className="fixed inset-0 z-[9998]" onMouseDown={closeMenu} />
+          <div
+            style={{ position: 'fixed', top: rect.bottom + 2, left: rect.left, zIndex: 9999, minWidth: rect.width }}
+            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg overflow-hidden"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <ul className="max-h-56 overflow-y-auto py-1">
+              {filtered.length > 0 ? (
+                filtered.map((opt) => (
+                  <li
+                    key={opt}
+                    onMouseDown={(e) => { e.preventDefault(); onChange(opt); closeMenu(); }}
+                    className={`px-3 py-1.5 text-xs cursor-pointer ${
+                      value === opt
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    {opt}
+                  </li>
+                ))
+              ) : (
+                <li className="px-3 py-1.5 text-xs text-gray-400 dark:text-gray-500 italic">Keine Treffer</li>
+              )}
+            </ul>
+          </div>
+        </>,
+        document.body
+      )}
+    </>
   );
 }
 
@@ -1605,6 +1696,10 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   );
 
   const existingIds = useMemo(() => new Set(Object.keys(objects)), [objects]);
+  const roomById = useMemo(() => new Map(roomEnums.map((r) => [r.id, r.name])), [roomEnums]);
+  const roomNameOptions = useMemo(() => ['— Kein Raum —', ...roomEnums.map((r) => r.name)], [roomEnums]);
+  const fnById = useMemo(() => new Map(fnEnums.map((f) => [f.id, f.name])), [fnEnums]);
+  const fnNameOptions = useMemo(() => ['— Keine Funktion —', ...fnEnums.map((f) => f.name)], [fnEnums]);
 
   const batchCanApply = batchRole.trim() !== '' || batchUnit.trim() !== '' || batchRoomEnumId !== '' || batchFnEnumId !== '';
   const bodyViewportHeight = Math.max(0, viewportHeight - headerHeight);
@@ -1641,46 +1736,44 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
           <span className="text-xs text-blue-600 dark:text-blue-400 font-medium shrink-0 whitespace-nowrap">
             {checkedIds.size} ausgewählt:
           </span>
-          <input
-            type="text"
+          <BatchComboControl
             value={batchRole}
-            onChange={(e) => setBatchRole(e.target.value)}
-            list="batch-roles"
+            onChange={setBatchRole}
             placeholder="Rolle…"
-            className="px-2 py-0.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 w-28"
+            options={roles}
+            className="w-28"
           />
-          <datalist id="batch-roles">
-            {roles.map((r) => <option key={r} value={r} />)}
-          </datalist>
-          <input
-            type="text"
+          <BatchComboControl
             value={batchUnit}
-            onChange={(e) => setBatchUnit(e.target.value)}
-            list="batch-units"
+            onChange={setBatchUnit}
             placeholder="Einheit…"
-            className="px-2 py-0.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 w-20"
+            options={units}
+            className="w-20"
           />
-          <datalist id="batch-units">
-            {units.map((u) => <option key={u} value={u} />)}
-          </datalist>
-          <select
-            value={batchRoomEnumId}
-            onChange={(e) => setBatchRoomEnumId(e.target.value)}
-            className="px-2 py-0.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400"
-          >
-            <option value="">Raum…</option>
-            <option value="__none__">— Kein Raum —</option>
-            {roomEnums.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-          </select>
-          <select
-            value={batchFnEnumId}
-            onChange={(e) => setBatchFnEnumId(e.target.value)}
-            className="px-2 py-0.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400"
-          >
-            <option value="">Funktion…</option>
-            <option value="__none__">— Keine Funktion —</option>
-            {fnEnums.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-          </select>
+          <BatchComboControl
+            value={batchRoomEnumId === '' ? '' : (batchRoomEnumId === '__none__' ? '— Kein Raum —' : (roomById.get(batchRoomEnumId) ?? ''))}
+            onChange={(name) => {
+              if (name.trim() === '') { setBatchRoomEnumId(''); return; }
+              if (name === '— Kein Raum —') { setBatchRoomEnumId('__none__'); return; }
+              const hit = roomEnums.find((r) => r.name === name);
+              setBatchRoomEnumId(hit ? hit.id : '');
+            }}
+            placeholder="Raum…"
+            options={roomNameOptions}
+            className="w-36"
+          />
+          <BatchComboControl
+            value={batchFnEnumId === '' ? '' : (batchFnEnumId === '__none__' ? '— Keine Funktion —' : (fnById.get(batchFnEnumId) ?? ''))}
+            onChange={(name) => {
+              if (name.trim() === '') { setBatchFnEnumId(''); return; }
+              if (name === '— Keine Funktion —') { setBatchFnEnumId('__none__'); return; }
+              const hit = fnEnums.find((f) => f.name === name);
+              setBatchFnEnumId(hit ? hit.id : '');
+            }}
+            placeholder="Funktion…"
+            options={fnNameOptions}
+            className="w-36"
+          />
           <button
             onClick={handleBatchApply}
             disabled={!batchCanApply}
