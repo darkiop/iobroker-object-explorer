@@ -316,7 +316,7 @@ const EditableUnitCell = React.memo(function EditableUnitCell({ id, unit, sugges
             <Pencil size={12} className="opacity-0 group-hover/unit:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity" />
           </>
         ) : (
-          <span className="text-gray-300 dark:text-gray-600 italic font-sans">{isEn ? 'Select unit…' : 'Einheit wählen…'}</span>
+          <span className="truncate" />
         )}
       </div>
       {editing && cellRect && createPortal(
@@ -572,7 +572,7 @@ const EditableRoomCell = React.memo(function EditableRoomCell({ id, currentRoomE
             />
           </>
         ) : (
-          <span className="text-gray-300 dark:text-gray-600 italic">{isEn ? 'Select room…' : 'Raum wählen…'}</span>
+          <span className="truncate" />
         )}
       </div>
       {editing && cellRect && createPortal(
@@ -673,7 +673,7 @@ const EditableFunctionCell = React.memo(function EditableFunctionCell({ id, curr
             />
           </>
         ) : (
-          <span className="text-gray-300 dark:text-gray-600 italic">{isEn ? 'Select function…' : 'Funktion wählen…'}</span>
+          <span className="truncate" />
         )}
       </div>
       {editing && cellRect && createPortal(
