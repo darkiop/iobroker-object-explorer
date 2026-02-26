@@ -1096,6 +1096,8 @@ const StateRow = React.memo(function StateRow({
       className={`border-b border-gray-200 dark:border-gray-800 cursor-pointer transition-colors ${
         isSelected
           ? 'bg-blue-600/20 text-blue-700 dark:text-blue-200'
+          : isChecked
+            ? 'bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
           : 'hover:bg-gray-100/80 text-gray-700 dark:hover:bg-gray-800/50 dark:text-gray-300'
       }`}
     >
