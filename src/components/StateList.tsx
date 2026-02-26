@@ -861,7 +861,7 @@ const VIRTUALIZE_THRESHOLD = 120;
 const DEFAULT_WIDTHS: Record<SortKey, number> = {
   checkbox: CHK_COL_WIDTH,
   write: 22, history: 22, smart: 22, alias: 30,
-  id: 220, name: 160, room: 110, function: 110, type: 70, role: 130, value: 100,
+  id: 300, name: 220, room: 110, function: 110, type: 70, role: 130, value: 100,
   unit: 70, ack: 35, ts: 160, relevanz: 100,
 };
 const LS_WIDTHS_KEY = 'iobroker-col-widths';

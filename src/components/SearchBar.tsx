@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Check } from 'lucide-react';
 
 const SEARCH_ALL = '*';
 
@@ -66,13 +66,20 @@ export default function SearchBar({ onSearch, initialPattern, onReset, fulltextE
           Suchen
         </button>
       </div>
-      <label className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 cursor-pointer select-none px-0.5">
+      <label className="inline-flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 cursor-pointer select-none px-0.5 w-fit">
         <input
           type="checkbox"
           checked={fulltextEnabled}
           onChange={(e) => onFulltextChange?.(e.target.checked)}
-          className="w-3 h-3 accent-blue-500"
+          className="sr-only peer"
         />
+        <span className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+          fulltextEnabled
+            ? 'bg-blue-500 border-blue-500'
+            : 'bg-gray-100 dark:bg-gray-700 border-gray-400 dark:border-gray-500'
+        }`}>
+          {fulltextEnabled && <Check size={11} className="text-white" strokeWidth={3} />}
+        </span>
         Volltext-Suche
       </label>
     </form>
