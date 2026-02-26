@@ -1564,8 +1564,8 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
           </span>
         )}
         {fulltextEnabled && pattern && !isGlobPattern(pattern) && pattern !== '*' && (
-          <span className="px-2 py-0.5 rounded bg-violet-500/15 border border-violet-400/30 text-violet-600 dark:text-violet-400 text-xs">
-            Volltext
+          <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-violet-500/15 border border-violet-400/30 text-violet-600 dark:text-violet-400 text-sm font-mono max-w-[520px]">
+            <span className="truncate">Volltext: {pattern}</span>
           </span>
         )}
       </div>
