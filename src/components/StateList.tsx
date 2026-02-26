@@ -1160,9 +1160,45 @@ const StateRow = React.memo(function StateRow({
       )}
       {show('id') && (
         <td data-col="id" className="px-3 py-2 font-mono text-xs text-gray-500 dark:text-gray-400 overflow-hidden group/id">
-          <div className="flex items-center gap-1.5">
-            <span className="truncate" title={id}>{id}</span>
-            <CopyIdButton id={id} />
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="truncate" title={id}>{id}</span>
+              <CopyIdButton id={id} />
+            </div>
+            {!!onNavigateTo && (ownTarget || (aliasIds && aliasIds.length > 0)) && (
+              <div className="text-[10px] leading-4 text-gray-400 dark:text-gray-500 truncate">
+                {ownTarget && (
+                  <>
+                    <span className="mr-1">Quelle:</span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onNavigateTo([ownTarget]); }}
+                      className="font-mono underline decoration-dotted hover:text-blue-500 dark:hover:text-blue-400"
+                      title={ownTarget}
+                    >
+                      {ownTarget}
+                    </button>
+                  </>
+                )}
+                {ownTarget && aliasIds && aliasIds.length > 0 && <span className="mx-1">|</span>}
+                {aliasIds && aliasIds.length > 0 && (
+                  <>
+                    <span className="mr-1">Ziel:</span>
+                    {aliasIds.map((aid, idx) => (
+                      <React.Fragment key={aid}>
+                        {idx > 0 && <span>, </span>}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onNavigateTo([aid]); }}
+                          className="font-mono underline decoration-dotted hover:text-blue-500 dark:hover:text-blue-400"
+                          title={aid}
+                        >
+                          {aid}
+                        </button>
+                      </React.Fragment>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </td>
       )}

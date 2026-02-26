@@ -21,7 +21,7 @@ Optionen -> Sprache, Datumsformat, Standard Spalten, Schnellfilter
 | FE-009 | Hardcodierte IP `10.4.0.20:8093` aus `vite.config.ts` in `.env.local` auslagern; Dev-Setup-Dokumentation aktualisieren. | DX | mittel | S | umgesetzt |
 | FE-010 | Spaltenreihenfolge in Tabelle anpassen: ID, Name, Typ, Rolle, Funktion, Wert, Einheit, ACK, Letztes Update. | UX | mittel | S | offen |
 | FE-011 | Typ-Spalte in Tabelle hinzufügen (folder/device/channel/state) mit entsprechendem Icon. | Feature | mittel | S | umgesetzt |
-| FE-012 | Alias-Quelle/Ziel in Tabellenspalte ID anzeigen (zweite Zeile, kleinere Schrift); Quelle/Ziel anklickbar machen und im Baum anspringen. | Feature | mittel | M | offen |
+| FE-012 | Alias-Quelle/Ziel in Tabellenspalte ID anzeigen (zweite Zeile, kleinere Schrift); Quelle/Ziel anklickbar machen und im Baum anspringen. | Feature | mittel | M | umgesetzt |
 | FE-013 | Schnellfilter-Buttons für alle Räume (`enum.rooms.*`) in der Sidebar einfügen. | Feature | mittel | M | umgesetzt |
 | FE-014 | Einheit-Eingabe in Tabelle als durchsuchbares Dropdown (wie Raum/Funktion) statt freies Textfeld. | UX | mittel | S | umgesetzt |
 | FE-015 | Doppelte `copyText()`-Implementierung aus `StateList.tsx` und `StateTree.tsx` in `src/utils/clipboard.ts` auslagern. | Code Quality | mittel | S | offen |
