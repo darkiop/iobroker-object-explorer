@@ -15,7 +15,7 @@ import type { SortKey, DateFormatSetting } from './components/StateList';
 import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel } from './components/StateList';
 import type { IoBrokerObject, IoBrokerState } from './types/iobroker';
 import { filterObjectIds } from './utils/filterObjectIds';
-import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RotateCcw, Layers, X } from 'lucide-react';
+import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RotateCcw, Layers, X, Trash2 } from 'lucide-react';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -618,21 +618,27 @@ function AppContent() {
                       {isEn ? 'Add' : 'Hinzufügen'}
                     </button>
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {settingsDraft.extraQuickFilters.length === 0 && (
-                      <span className="text-xs text-gray-400 dark:text-gray-500">{isEn ? 'No additional filters' : 'Keine zusätzlichen Filter'}</span>
+                  <div className="rounded border border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/40">
+                    {settingsDraft.extraQuickFilters.length === 0 ? (
+                      <div className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">
+                        {isEn ? 'No additional filters' : 'Keine zusätzlichen Filter'}
+                      </div>
+                    ) : (
+                      <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                        {settingsDraft.extraQuickFilters.map((patternItem) => (
+                          <li key={patternItem} className="flex items-center justify-between gap-2 px-3 py-2">
+                            <span className="text-xs font-mono text-gray-700 dark:text-gray-300 truncate">{patternItem}</span>
+                            <button
+                              onClick={() => setSettingsDraft((prev) => ({ ...prev, extraQuickFilters: prev.extraQuickFilters.filter((p) => p !== patternItem) }))}
+                              title={isEn ? 'Remove filter' : 'Filter entfernen'}
+                              className="shrink-0 p-1 rounded text-gray-500 hover:text-red-500 hover:bg-red-500/10 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
                     )}
-                    {settingsDraft.extraQuickFilters.map((patternItem) => (
-                      <span key={patternItem} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono bg-gray-200/60 dark:bg-gray-700/60 text-gray-700 dark:text-gray-300">
-                        {patternItem}
-                        <button
-                          onClick={() => setSettingsDraft((prev) => ({ ...prev, extraQuickFilters: prev.extraQuickFilters.filter((p) => p !== patternItem) }))}
-                          className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
-                        >
-                          <X size={10} />
-                        </button>
-                      </span>
-                    ))}
                   </div>
                 </div>
               </div>
