@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Save, AlertTriangle, Link2, Pencil, Check, Wrench, Trash2, Maximize2 } from 'lucide-react';
-import { usePutObject, useExtendObject, useStateDetail, useSetState, useAllRoles, useAllUnits, useDeleteObject } from '../hooks/useStates';
+import { X, Save, AlertTriangle, Link2, Pencil, Check, Wrench, Trash2, Maximize2, Copy } from 'lucide-react';
+import { usePutObject, useExtendObject, useStateDetail, useSetState, useAllRoles, useAllUnits, useDeleteObject, useAllObjects } from '../hooks/useStates';
 import { hasHistory } from '../api/iobroker';
 import HistoryChart from './HistoryChart';
 import ConfirmDialog from './ConfirmDialog';
+import CopyDatapointModal from './CopyDatapointModal';
 import type { IoBrokerObject } from '../types/iobroker';
 
 interface Props {
@@ -334,6 +335,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory }: Pro
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [expertMode, setExpertMode] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showCopy, setShowCopy] = useState(false);
 
   // Alias tab state
   const [aliasId, setAliasId] = useState(obj.common.alias?.id ?? '');
@@ -347,6 +349,8 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory }: Pro
   const { data: roles } = useAllRoles();
   const { data: units } = useAllUnits();
   const deleteObject = useDeleteObject();
+  const { data: allObjects } = useAllObjects();
+  const existingIds = useMemo(() => new Set(Object.keys(allObjects ?? {})), [allObjects]);
 
   const role = obj.common?.role ?? '';
   const type = obj.common?.type ?? '';
@@ -402,6 +406,14 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory }: Pro
 
   return createPortal(
     <>
+      {showCopy && (
+        <CopyDatapointModal
+          sourceId={id}
+          sourceObj={obj}
+          existingIds={existingIds}
+          onClose={() => setShowCopy(false)}
+        />
+      )}
       {confirmDelete && (
         <ConfirmDialog
           title="Datenpunkt löschen"
@@ -438,6 +450,13 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory }: Pro
                   <Wrench size={15} />
                 </button>
               )}
+              <button
+                onClick={() => setShowCopy(true)}
+                title="Datenpunkt kopieren"
+                className="p-1.5 rounded-lg text-gray-400 hover:text-blue-500 hover:bg-blue-500/10 dark:text-gray-500 dark:hover:text-blue-400 transition-colors"
+              >
+                <Copy size={15} />
+              </button>
               <button
                 onClick={() => setConfirmDelete(true)}
                 title="Datenpunkt löschen"
