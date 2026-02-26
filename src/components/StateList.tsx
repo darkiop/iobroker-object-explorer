@@ -1112,7 +1112,7 @@ const StateRow = React.memo(function StateRow({
       {show('write') && (
         <td style={{ width: colWidths['write'], minWidth: colWidths['write'] }} className="py-2 align-middle" title={obj?.common?.write === false ? 'Schreibgeschützt' : undefined}>
           <div className="flex items-center justify-center">
-            {obj?.common?.write === false && <Lock size={11} className="text-gray-400 dark:text-gray-500" />}
+            {obj?.common?.write === false && <Lock size={13} className="text-red-500 dark:text-red-400" />}
           </div>
         </td>
       )}
@@ -1125,7 +1125,7 @@ const StateRow = React.memo(function StateRow({
                 title="History anzeigen"
                 className="p-0.5 rounded text-blue-500 dark:text-blue-400 hover:bg-blue-500/15 dark:hover:bg-blue-500/20 transition-colors"
               >
-                <History size={13} />
+                <History size={15} />
               </button>
             )}
           </div>
@@ -1146,7 +1146,7 @@ const StateRow = React.memo(function StateRow({
           <div className="flex items-center justify-center">
             {obj && hasSmartName(obj) && (
               <span className="p-0.5 rounded hover:bg-violet-500/15 dark:hover:bg-violet-500/20 transition-colors">
-                <Mic2 size={13} className="text-violet-500 dark:text-violet-400" />
+                <Mic2 size={15} className="text-violet-500 dark:text-violet-400" />
               </span>
             )}
           </div>
@@ -1166,7 +1166,7 @@ const StateRow = React.memo(function StateRow({
                 title={aliasTooltip}
                 className="relative p-0.5 rounded text-amber-500 dark:text-amber-400 hover:bg-amber-500/15 dark:hover:bg-amber-500/20 transition-colors"
               >
-                <Link2 size={13} />
+                <Link2 size={15} />
                 {aliasIds && aliasIds.length > 1 && (
                   <span className="absolute -top-1.5 -right-2 text-[8px] font-bold leading-none bg-amber-500 text-white rounded-full min-w-[13px] h-[13px] flex items-center justify-center px-0.5">
                     {aliasIds.length}

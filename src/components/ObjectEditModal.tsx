@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Save, AlertTriangle, Link2, Pencil, Check, Wrench, Trash2, Maximize2, Copy, ChevronDown } from 'lucide-react';
+import { X, Save, AlertTriangle, Link2, Pencil, Check, Wrench, Trash2, Maximize2, Copy, ChevronDown, Lock } from 'lucide-react';
 import { usePutObject, useExtendObject, useStateDetail, useSetState, useAllRoles, useAllUnits, useDeleteObject, useAllObjects, useRoomEnums, useFunctionEnums, useUpdateRoomMembership, useUpdateFunctionMembership } from '../hooks/useStates';
 import { hasHistory } from '../api/iobroker';
 import HistoryChart from './HistoryChart';
@@ -480,7 +480,10 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
         >
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
-            <span className="font-semibold text-sm text-gray-700 dark:text-gray-200 truncate pr-4">
+            <span className="font-semibold text-sm text-gray-700 dark:text-gray-200 truncate pr-4 flex items-center gap-1.5">
+              {obj.common?.write === false && (
+                <Lock size={13} className="text-red-500 dark:text-red-400 shrink-0" />
+              )}
               {isEn ? 'Edit object:' : 'Objekt bearbeiten:'}{' '}
               <span className="font-mono text-xs text-gray-500 dark:text-gray-400">{id}</span>
             </span>
@@ -594,7 +597,45 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                   isPending={extend.isPending}
                   language={language}
                 />
-                <DetailRow label={isEn ? 'Read/Write' : 'Lesen/Schreiben'} value={`${obj.common?.read ? 'R' : '-'}${obj.common?.write ? 'W' : '-'}`} />
+                <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800 items-center">
+                  <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{isEn ? 'Read/Write' : 'Lesen/Schreiben'}</span>
+                  <div className="flex items-center gap-4 text-sm text-gray-700 dark:text-gray-200">
+                    <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={obj.common?.read !== false}
+                        onChange={(e) => extend.mutate({ id, common: { read: e.target.checked } })}
+                        disabled={extend.isPending}
+                        className="sr-only peer"
+                      />
+                      <span className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                        obj.common?.read !== false
+                          ? 'bg-blue-600 border-blue-600'
+                          : 'bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600'
+                      } ${extend.isPending ? 'opacity-50' : 'peer-focus:ring-1 peer-focus:ring-blue-400 dark:peer-focus:ring-blue-500'}`}>
+                        {obj.common?.read !== false && <Check size={11} className="text-white" strokeWidth={3} />}
+                      </span>
+                      <span>{isEn ? 'Read' : 'Lesen'}</span>
+                    </label>
+                    <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={obj.common?.write === true}
+                        onChange={(e) => extend.mutate({ id, common: { write: e.target.checked } })}
+                        disabled={extend.isPending}
+                        className="sr-only peer"
+                      />
+                      <span className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                        obj.common?.write === true
+                          ? 'bg-blue-600 border-blue-600'
+                          : 'bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600'
+                      } ${extend.isPending ? 'opacity-50' : 'peer-focus:ring-1 peer-focus:ring-blue-400 dark:peer-focus:ring-blue-500'}`}>
+                        {obj.common?.write === true && <Check size={11} className="text-white" strokeWidth={3} />}
+                      </span>
+                      <span>{isEn ? 'Write' : 'Schreiben'}</span>
+                    </label>
+                  </div>
+                </div>
                 {obj.common?.min !== undefined && (
                   <DetailRow label="Min/Max" value={`${obj.common.min} / ${obj.common.max}`} />
                 )}
