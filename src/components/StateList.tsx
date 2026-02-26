@@ -1083,7 +1083,7 @@ const StateRow = React.memo(function StateRow({
   const name = getObjectName(obj);
   const roomEnumId = Object.keys(obj?.enums ?? {}).find(k => k.startsWith('enum.rooms.')) ?? null;
   const fnEnumId = Object.keys(obj?.enums ?? {}).find(k => k.startsWith('enum.functions.')) ?? null;
-  const ownTarget = obj?.common?.alias?.id ?? (obj?.common?.alias as { read?: string } | undefined)?.read;
+  const ownTarget = obj?.common?.alias?.id;
   const hasAlias = (aliasIds && aliasIds.length > 0) || !!ownTarget;
   const aliasTooltip = aliasIds?.length
     ? `Alias: ${aliasIds.join(', ')}`
