@@ -26,6 +26,7 @@ interface StateTreeProps {
   selectedId: string | null;
   onSelect: (id: string) => void;
   onSearch: (pattern: string) => void;
+  onTreeScope: (prefix: string) => void;
   historyOnly: boolean;
   smartOnly: boolean;
   historyIds: Set<string>;
@@ -128,7 +129,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   selectedId,
   onSelect,
   onSearch,
-  onFolderSearch,
+  onTreeScope,
   historyIds,
   smartIds,
   expandSignal,
@@ -142,7 +143,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   selectedId: string | null;
   onSelect: (id: string) => void;
   onSearch: (pattern: string) => void;
-  onFolderSearch: (pattern: string) => void;
+  onTreeScope: (prefix: string) => void;
   historyIds: Set<string>;
   smartIds: Set<string>;
   expandSignal: { depth: number; seq: number };
@@ -191,7 +192,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
             selectedId={selectedId}
             onSelect={onSelect}
             onSearch={onSearch}
-            onFolderSearch={onFolderSearch}
+            onTreeScope={onTreeScope}
             historyIds={historyIds}
             smartIds={smartIds}
             expandSignal={expandSignal}
@@ -223,7 +224,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
           items.push({ separator: true } as const);
           items.push({ icon: <Search size={13} />, label: 'Als Filter setzen', onClick: () => onSearch(node.fullPath) });
         } else {
-          items.push({ icon: <Search size={13} />, label: `Filter: ${node.fullPath}.*`, onClick: () => onFolderSearch(`${node.fullPath}.*`) });
+          items.push({ icon: <Search size={13} />, label: `In Tabelle anzeigen: ${node.fullPath}`, onClick: () => onTreeScope(`${node.fullPath}.`) });
           items.push({ separator: true } as const);
           items.push({ icon: <Copy size={13} />, label: 'ID kopieren', onClick: () => copyText(node.fullPath) });
           items.push({ icon: <Copy size={13} />, label: 'Muster kopieren', onClick: () => copyText(`${node.fullPath}.*`) });
@@ -293,19 +294,10 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
         {isFolder && (
           <button
             onClick={(e) => { e.stopPropagation(); setEditOpen(true); }}
-            className="ml-auto shrink-0 opacity-0 group-hover/row:opacity-100 text-gray-400 hover:text-yellow-500 dark:text-gray-500 dark:hover:text-yellow-400 transition-opacity"
+            className="shrink-0 opacity-0 group-hover/row:opacity-100 text-gray-400 hover:text-yellow-500 dark:text-gray-500 dark:hover:text-yellow-400 transition-opacity"
             title="Objekt bearbeiten"
           >
             <Pencil size={12} />
-          </button>
-        )}
-        {isFolder && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onFolderSearch(`${node.fullPath}.*`); }}
-            className="shrink-0 opacity-0 group-hover/row:opacity-100 text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 transition-opacity"
-            title={`Filter: ${node.fullPath}.*`}
-          >
-            <Search size={12} />
           </button>
         )}
         <button
@@ -338,6 +330,15 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
         >
           {copied ? <Check size={12} className="text-green-500 dark:text-green-400" /> : <Copy size={12} />}
         </button>
+        {isFolder && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onTreeScope(`${node.fullPath}.`); }}
+            className="ml-auto shrink-0 opacity-0 group-hover/row:opacity-100 text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 rounded p-1 transition-all"
+            title={`In Tabelle anzeigen: ${node.fullPath}`}
+          >
+            <Search size={14} />
+          </button>
+        )}
       </div>
       {isExpandableFolder && expanded &&
         sortedChildren.map((child) => (
@@ -348,7 +349,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
             selectedId={selectedId}
             onSelect={onSelect}
             onSearch={onSearch}
-            onFolderSearch={onFolderSearch}
+            onTreeScope={onTreeScope}
             historyIds={historyIds}
             smartIds={smartIds}
             expandSignal={expandSignal}
@@ -363,18 +364,13 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
 });
 
 
-function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, historyOnly, smartOnly, historyIds, smartIds, expandToDepth }: StateTreeProps) {
+function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeScope, historyOnly, smartOnly, historyIds, smartIds, expandToDepth }: StateTreeProps) {
   const [expandSignal, setExpandSignal] = useState<{ depth: number; seq: number }>({ depth: 0, seq: 0 });
   const [showFolders,  setShowFolders]  = useState(true);
   const [showDevices,  setShowDevices]  = useState(true);
   const [showChannels, setShowChannels] = useState(true);
   const [typesOpen,    setTypesOpen]    = useState(false);
   const [treeViewMode, setTreeViewMode] = useState<'path' | 'adapter'>('path');
-
-  function handleFolderSearch(pattern: string) {
-    onSearch(pattern);
-    setExpandSignal(s => ({ depth: 9999, seq: s.seq + 1 }));
-  }
 
   useEffect(() => {
     if (!expandToDepth) return;
@@ -487,7 +483,7 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, histo
               selectedId={selectedId}
               onSelect={onSelect}
               onSearch={onSearch}
-              onFolderSearch={handleFolderSearch}
+              onTreeScope={onTreeScope}
               historyIds={historyIds}
               smartIds={smartIds}
               expandSignal={expandSignal}

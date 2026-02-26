@@ -177,6 +177,7 @@ function AppContent() {
     setColFilters({});
   }, []);
 
+  const handleTreeScope = useCallback((prefix: string) => { setTreeFilter(prefix); setPage(0); }, []);
   const handleClearTreeFilter = useCallback(() => {
     setTreeFilter(null);
     setTreeExpandSignal((s) => ({ depth: 0, seq: (s?.seq ?? 0) + 1 }));
@@ -334,6 +335,7 @@ function AppContent() {
               selectedId={selectedId}
               onSelect={setSelectedId}
               onSearch={handleSearch}
+              onTreeScope={handleTreeScope}
               historyOnly={historyOnly}
               smartOnly={smartOnly}
               historyIds={historyIds}
