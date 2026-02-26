@@ -209,11 +209,16 @@ function AppContent() {
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') setSelectedId(null);
+      if (e.key !== 'Escape') return;
+      if (settingsOpen) {
+        setSettingsOpen(false);
+        return;
+      }
+      setSelectedId(null);
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [settingsOpen]);
 
   const handleSearch = useCallback((newPattern: string) => {
     setPattern(newPattern);
