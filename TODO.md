@@ -1,3 +1,13 @@
+Im menübaum links direkt ein mpusehover pro zeile anzeigen (mit den entsprechende buttons die es gibt)
+
+Optionen -> Sprache, Datumsformat, Standard Spalten, Schnellfilter
+
+Übersetzung in Englisch
+
+
+
+---
+
 | ID | Beschreibung | Kategorie | Priorität | Aufwand | Status |
 |---|---|---|---|---|---|
 | FE-001 | Type Safety verbessern: 19+ unsichere `as unknown`/`as any`-Casts entfernen, v.a. bei Enum-Name-Parsing und API-Responses. | Code Quality | hoch | M | offen |
@@ -30,7 +40,7 @@
 | FE-028 | Sidebar-Breite und Collapsed-Status im localStorage persistieren. | UX | niedrig | S | offen |
 | FE-029 | Color-Coding für State-Werte: Boolean grün/rot, Zahlen mit Trend-Pfeilen (↑↓), Null-Werte gesondert hervorheben. | UX | niedrig | S | umgesetzt |
 | FE-030 | Export-Funktion: Gefilterte Datenpunkt-Liste als JSON oder CSV exportieren. | Feature | niedrig | M | umgesetzt |
-| FE-031 | Fulltext-Suche statt nur Pattern-Matching: Suche in Namen, Beschreibung und Alias-Zielen mit Relevanz-Ranking. | Feature | niedrig | L | offen |
+| FE-031 | Fulltext-Suche statt nur Pattern-Matching: Suche in Namen, Beschreibung und Alias-Zielen mit Relevanz-Ranking. | Feature | niedrig | L | umgesetzt |
 | FE-032 | Progressive Web App (PWA): Service Worker + Offline-Unterstützung für gecachte Objekte. | Feature | niedrig | L | offen |
 | FE-033 | Undo/Redo für Edits (Name, Rolle, Einheit, Raum, Funktion), besonders nach Batch-Operationen nützlich. | Feature | niedrig | L | offen |
 | FE-034 | Lokalisierung (i18next): Deutsch ist hardcodiert; Englisch und weitere Sprachen ergänzen. | Feature | niedrig | L | offen |

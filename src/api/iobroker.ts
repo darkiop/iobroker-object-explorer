@@ -17,6 +17,31 @@ function matchPattern(id: string, pattern: string): boolean {
   return regex.test(id);
 }
 
+export function isGlobPattern(pattern: string): boolean {
+  return pattern.includes('*');
+}
+
+function getNameString(name: string | Record<string, string> | undefined): string {
+  if (!name) return '';
+  if (typeof name === 'string') return name;
+  return Object.values(name).join(' ');
+}
+
+function scoreObject(id: string, obj: IoBrokerObject, query: string): number {
+  const q = query.toLowerCase();
+  const idLow = id.toLowerCase();
+  if (idLow === q) return 100;
+  if (idLow.startsWith(q)) return 80;
+  if (idLow.includes(q)) return 60;
+  const name = getNameString(obj.common?.name).toLowerCase();
+  if (name && name.includes(q)) return 50;
+  const aliasId = (obj.common?.alias?.id ?? '').toLowerCase();
+  if (aliasId && aliasId.includes(q)) return 40;
+  const desc = (typeof obj.common?.desc === 'string' ? obj.common.desc : '').toLowerCase();
+  if (desc && desc.includes(q)) return 30;
+  return 0;
+}
+
 // Objects: einmalig laden und cachen (Baum-Struktur + Metadaten)
 let objectsCache: Record<string, IoBrokerObject> | null = null;
 let objectsCachePromise: Promise<Record<string, IoBrokerObject>> | null = null;
@@ -41,12 +66,28 @@ export async function getAllObjects(): Promise<Record<string, IoBrokerObject>> {
 
 export async function getObjectsByPattern(pattern: string): Promise<Record<string, IoBrokerObject>> {
   const all = await getAllObjects();
-  const result: Record<string, IoBrokerObject> = {};
-  for (const [id, obj] of Object.entries(all)) {
-    if (obj && obj.type === 'state' && matchPattern(id, pattern)) {
-      result[id] = obj;
+
+  if (isGlobPattern(pattern)) {
+    const result: Record<string, IoBrokerObject> = {};
+    for (const [id, obj] of Object.entries(all)) {
+      if (obj && obj.type === 'state' && matchPattern(id, pattern)) {
+        result[id] = obj;
+      }
     }
+    return result;
   }
+
+  // Volltext-Suche: ID, Name, Beschreibung, Alias-Ziel
+  const scored: Array<[string, IoBrokerObject, number]> = [];
+  for (const [id, obj] of Object.entries(all)) {
+    if (!obj || obj.type !== 'state') continue;
+    const score = scoreObject(id, obj, pattern);
+    if (score > 0) scored.push([id, obj, score]);
+  }
+  scored.sort((a, b) => b[2] - a[2] || a[0].localeCompare(b[0]));
+
+  const result: Record<string, IoBrokerObject> = {};
+  for (const [id, obj] of scored) result[id] = obj;
   return result;
 }
 

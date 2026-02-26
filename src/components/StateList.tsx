@@ -11,7 +11,7 @@ import CopyDatapointModal from './CopyDatapointModal';
 import HistoryModal from './HistoryModal';
 import ConfirmDialog from './ConfirmDialog';
 import MultiDeleteDialog from './MultiDeleteDialog';
-import { hasHistory } from '../api/iobroker';
+import { hasHistory, isGlobPattern } from '../api/iobroker';
 import type { IoBrokerState, IoBrokerObject } from '../types/iobroker';
 
 interface StateListProps {
@@ -719,7 +719,7 @@ function EditableFunctionCell({ id, currentFnEnumId, fnName, forceEdit, onEditEn
   );
 }
 
-export type SortKey = 'checkbox' | 'write' | 'alias' | 'id' | 'name' | 'room' | 'function' | 'type' | 'role' | 'value' | 'unit' | 'ack' | 'ts' | 'history' | 'smart';
+export type SortKey = 'checkbox' | 'write' | 'alias' | 'id' | 'name' | 'room' | 'function' | 'type' | 'role' | 'value' | 'unit' | 'ack' | 'ts' | 'history' | 'smart' | 'relevanz';
 
 const ALL_COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'checkbox', label: 'Auswahl' },
@@ -1038,6 +1038,16 @@ function StateList({ ids, totalCount, states, objects, roomMap, functionMap, sel
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sidebarToggleSeq]);
 
+  useEffect(() => {
+    if (pattern && !isGlobPattern(pattern) && pattern !== '*') {
+      setSortKey('relevanz');
+      setSortDir('asc');
+    } else {
+      setSortKey('id');
+      setSortDir('asc');
+    }
+  }, [pattern]);
+
   const show = (key: SortKey) => visibleCols.includes(key);
   const w = (key: SortKey) => colWidths[key];
 
@@ -1099,6 +1109,8 @@ function StateList({ ids, totalCount, states, objects, roomMap, functionMap, sel
         }
         case 'ts':
           return mul * ((stateA?.ts || 0) - (stateB?.ts || 0));
+        case 'relevanz':
+          return 0; // preserve relevance order from input
         default:
           return 0;
       }
@@ -1252,6 +1264,11 @@ function StateList({ ids, totalCount, states, objects, roomMap, functionMap, sel
             <button onClick={onClearTreeFilter} title="Filter entfernen" className="shrink-0 hover:text-blue-800 dark:hover:text-blue-200">
               <X size={10} />
             </button>
+          </span>
+        )}
+        {pattern && !isGlobPattern(pattern) && pattern !== '*' && (
+          <span className="px-2 py-0.5 rounded bg-violet-500/15 border border-violet-400/30 text-violet-600 dark:text-violet-400 text-xs">
+            Volltext
           </span>
         )}
         <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums">
