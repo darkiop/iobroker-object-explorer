@@ -16,7 +16,6 @@ import type { IoBrokerState, IoBrokerObject } from '../types/iobroker';
 
 interface StateListProps {
   ids: string[];
-  totalCount: number;
   states: Record<string, IoBrokerState>;
   objects: Record<string, IoBrokerObject>;
   roomMap: Record<string, string>;
@@ -522,18 +521,18 @@ function CopyIdButton({ id }: { id: string }) {
   );
 }
 
-function EditableRoomCell({ id, currentRoomEnumId, roomName, forceEdit, onEditEnd }: {
+function EditableRoomCell({ id, currentRoomEnumId, roomName, roomEnums, onSelectRoom, forceEdit, onEditEnd }: {
   id: string;
   currentRoomEnumId: string | null;
   roomName: string;
+  roomEnums: { id: string; name: string }[];
+  onSelectRoom: (objectId: string, oldRoomEnumId: string | null, newRoomEnumId: string | null) => void;
   forceEdit?: boolean;
   onEditEnd?: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [cellRect, setCellRect] = useState<DOMRect | null>(null);
   const cellRef = useRef<HTMLTableCellElement>(null);
-  const { data: roomEnums = [] } = useRoomEnums();
-  const update = useUpdateRoomMembership();
 
   useEffect(() => {
     if (forceEdit && !editing) {
@@ -553,7 +552,7 @@ function EditableRoomCell({ id, currentRoomEnumId, roomName, forceEdit, onEditEn
   }
 
   function select(newRoomEnumId: string | null) {
-    update.mutate({ objectId: id, oldRoomEnumId: currentRoomEnumId, newRoomEnumId });
+    onSelectRoom(id, currentRoomEnumId, newRoomEnumId);
     close();
   }
 
@@ -621,18 +620,18 @@ function EditableRoomCell({ id, currentRoomEnumId, roomName, forceEdit, onEditEn
   );
 }
 
-function EditableFunctionCell({ id, currentFnEnumId, fnName, forceEdit, onEditEnd }: {
+function EditableFunctionCell({ id, currentFnEnumId, fnName, fnEnums, onSelectFunction, forceEdit, onEditEnd }: {
   id: string;
   currentFnEnumId: string | null;
   fnName: string;
+  fnEnums: { id: string; name: string }[];
+  onSelectFunction: (objectId: string, oldFnEnumId: string | null, newFnEnumId: string | null) => void;
   forceEdit?: boolean;
   onEditEnd?: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [cellRect, setCellRect] = useState<DOMRect | null>(null);
   const cellRef = useRef<HTMLTableCellElement>(null);
-  const { data: fnEnums = [] } = useFunctionEnums();
-  const update = useUpdateFunctionMembership();
 
   useEffect(() => {
     if (forceEdit && !editing) {
@@ -652,7 +651,7 @@ function EditableFunctionCell({ id, currentFnEnumId, fnName, forceEdit, onEditEn
   }
 
   function select(newFnEnumId: string | null) {
-    update.mutate({ objectId: id, oldFnEnumId: currentFnEnumId, newFnEnumId });
+    onSelectFunction(id, currentFnEnumId, newFnEnumId);
     close();
   }
 
@@ -732,7 +731,6 @@ const ALL_COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'name',    label: 'Name' },
   { key: 'room',      label: 'Raum' },
   { key: 'function',  label: 'Funktion' },
-  { key: 'type',    label: 'Typ' },
   { key: 'role',    label: 'Rolle' },
   { key: 'value',   label: 'Wert' },
   { key: 'unit',    label: 'Einheit' },
@@ -740,7 +738,7 @@ const ALL_COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'ts',      label: 'Letztes Update' },
 ];
 
-const DEFAULT_COLS: SortKey[] = ['checkbox', 'write', 'history', 'smart', 'alias', 'id', 'name', 'room', 'function', 'type', 'role', 'value', 'unit', 'ack', 'ts'];
+const DEFAULT_COLS: SortKey[] = ['checkbox', 'write', 'history', 'smart', 'alias', 'id', 'name', 'room', 'function', 'role', 'value', 'unit', 'ack', 'ts'];
 const LS_KEY = 'iobroker-visible-cols';
 
 function loadVisibleCols(): SortKey[] {
@@ -757,11 +755,14 @@ function loadVisibleCols(): SortKey[] {
 
 const DEL_COL_WIDTH = 32;
 const CHK_COL_WIDTH = 28;
+const VIRTUAL_ROW_HEIGHT = 37;
+const VIRTUAL_OVERSCAN = 10;
+const VIRTUALIZE_THRESHOLD = 120;
 const DEFAULT_WIDTHS: Record<SortKey, number> = {
   checkbox: CHK_COL_WIDTH,
   write: 22, history: 22, smart: 22, alias: 30,
   id: 220, name: 160, room: 110, function: 110, type: 70, role: 130, value: 100,
-  unit: 70, ack: 35, ts: 160,
+  unit: 70, ack: 35, ts: 160, relevanz: 100,
 };
 const LS_WIDTHS_KEY = 'iobroker-col-widths';
 
@@ -903,17 +904,6 @@ function SortHeader({ label, sortKey, activeKey, dir, onSort, width, onResizeSta
   );
 }
 
-function TypeBadge({ type }: { type?: string }) {
-  const cfg: Record<string, { label: string; cls: string }> = {
-    folder:  { label: 'folder',  cls: 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400' },
-    device:  { label: 'device',  cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' },
-    channel: { label: 'channel', cls: 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-400' },
-    state:   { label: 'state',   cls: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' },
-  };
-  const { label, cls } = cfg[type ?? ''] ?? { label: type ?? '—', cls: 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500' };
-  return <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-mono leading-tight ${cls}`}>{label}</span>;
-}
-
 function patternToInitialId(pattern: string): string {
   if (!pattern || pattern === '*') return '';
   if (pattern.endsWith('.*')) return pattern.slice(0, -1); // e.g. "javascript.0.*" → "javascript.0."
@@ -921,13 +911,252 @@ function patternToInitialId(pattern: string): string {
   return pattern;
 }
 
-function StateList({ ids, totalCount, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, fulltextEnabled = true }: StateListProps) {
+interface StateRowProps {
+  id: string;
+  state: IoBrokerState | undefined;
+  obj: IoBrokerObject | undefined;
+  roomName: string;
+  fnName: string;
+  isSelected: boolean;
+  isChecked: boolean;
+  aliasIds: string[] | undefined;
+  visibleCols: SortKey[];
+  colWidths: Record<SortKey, number>;
+  roles: string[];
+  units: string[];
+  roomEnums: { id: string; name: string }[];
+  fnEnums: { id: string; name: string }[];
+  onSelect: (id: string) => void;
+  onCheck: (id: string, checked: boolean) => void;
+  onContextMenu: (x: number, y: number, id: string) => void;
+  onHistoryClick: (id: string) => void;
+  onNavigateTo?: (ids: string[]) => void;
+  onDeleteClick: (id: string) => void;
+  onSelectRoom: (objectId: string, oldRoomEnumId: string | null, newRoomEnumId: string | null) => void;
+  onSelectFunction: (objectId: string, oldFnEnumId: string | null, newFnEnumId: string | null) => void;
+  roomEditForced: boolean;
+  fnEditForced: boolean;
+  onRoomEditEnd: () => void;
+  onFnEditEnd: () => void;
+}
+
+function aliasIdsEqual(a?: string[], b?: string[]): boolean {
+  if (a === b) return true;
+  if (!a || !b) return !a && !b;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
+const StateRow = React.memo(function StateRow({
+  id, state, obj, roomName, fnName,
+  isSelected, isChecked, aliasIds,
+  visibleCols, colWidths, roles, units, roomEnums, fnEnums,
+  onSelect, onCheck, onContextMenu, onHistoryClick, onNavigateTo, onDeleteClick,
+  onSelectRoom, onSelectFunction,
+  roomEditForced, fnEditForced, onRoomEditEnd, onFnEditEnd,
+}: StateRowProps) {
+  const show = (key: SortKey) => visibleCols.includes(key);
+  const w = (key: SortKey) => colWidths[key];
+  const unit = obj?.common?.unit || '';
+  const name = getObjectName(obj);
+  const roomEnumId = Object.keys(obj?.enums ?? {}).find(k => k.startsWith('enum.rooms.')) ?? null;
+  const fnEnumId = Object.keys(obj?.enums ?? {}).find(k => k.startsWith('enum.functions.')) ?? null;
+  const ownTarget = obj?.common?.alias?.id ?? (obj?.common?.alias as { read?: string } | undefined)?.read;
+  const hasAlias = (aliasIds && aliasIds.length > 0) || !!ownTarget;
+  const aliasTooltip = aliasIds?.length
+    ? `Alias: ${aliasIds.join(', ')}`
+    : ownTarget ? `Quelle: ${ownTarget}` : undefined;
+
+  return (
+    <tr
+      onClick={() => onSelect(id)}
+      onContextMenu={(e) => { e.preventDefault(); onContextMenu(e.clientX, e.clientY, id); }}
+      className={`border-b border-gray-200 dark:border-gray-800 cursor-pointer transition-colors ${
+        isSelected
+          ? 'bg-blue-600/20 text-blue-700 dark:text-blue-200'
+          : 'hover:bg-gray-100/80 text-gray-700 dark:hover:bg-gray-800/50 dark:text-gray-300'
+      }`}
+    >
+      {show('checkbox') && (
+        <td style={{ width: w('checkbox'), minWidth: w('checkbox') }} className="py-2 align-middle" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-center">
+            <StyledCheckbox
+              checked={isChecked}
+              onChange={(e) => onCheck(id, e.target.checked)}
+            />
+          </div>
+        </td>
+      )}
+      {show('write') && (
+        <td style={{ width: colWidths['write'], minWidth: colWidths['write'] }} className="py-2 align-middle" title={obj?.common?.write === false ? 'Schreibgeschützt' : undefined}>
+          <div className="flex items-center justify-center">
+            {obj?.common?.write === false && <Lock size={11} className="text-gray-400 dark:text-gray-500" />}
+          </div>
+        </td>
+      )}
+      {show('history') && (
+        <td style={{ width: colWidths['history'], minWidth: colWidths['history'] }} className="py-2 align-middle">
+          <div className="flex items-center justify-center">
+            {obj && hasHistory(obj) && (
+              <button
+                onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onHistoryClick(id); }}
+                title="History anzeigen"
+                className="p-0.5 rounded text-blue-500 dark:text-blue-400 hover:bg-blue-500/15 dark:hover:bg-blue-500/20 transition-colors"
+              >
+                <History size={13} />
+              </button>
+            )}
+          </div>
+        </td>
+      )}
+      {show('smart') && (
+        <td
+          style={{ width: colWidths['smart'], minWidth: colWidths['smart'] }}
+          className="py-2 align-middle"
+          title={obj && hasSmartName(obj) ? (
+            typeof obj.common.smartName === 'string'
+              ? obj.common.smartName
+              : typeof obj.common.smartName === 'object' && obj.common.smartName
+                ? Object.values(obj.common.smartName).join(' / ')
+                : 'SmartName'
+          ) : undefined}
+        >
+          <div className="flex items-center justify-center">
+            {obj && hasSmartName(obj) && (
+              <span className="p-0.5 rounded hover:bg-violet-500/15 dark:hover:bg-violet-500/20 transition-colors">
+                <Mic2 size={13} className="text-violet-500 dark:text-violet-400" />
+              </span>
+            )}
+          </div>
+        </td>
+      )}
+      {show('alias') && (
+        <td style={{ width: w('alias'), minWidth: w('alias') }} className="py-2 align-middle">
+          <div className="flex items-center justify-center">
+            {hasAlias && (
+              <button
+                onClick={(e) => {
+                  e.currentTarget.blur();
+                  e.stopPropagation();
+                  const targets = aliasIds?.length ? aliasIds : ownTarget ? [ownTarget] : [];
+                  onNavigateTo?.(targets);
+                }}
+                title={aliasTooltip}
+                className="relative p-0.5 rounded text-amber-500 dark:text-amber-400 hover:bg-amber-500/15 dark:hover:bg-amber-500/20 transition-colors"
+              >
+                <Link2 size={13} />
+                {aliasIds && aliasIds.length > 1 && (
+                  <span className="absolute -top-1.5 -right-2 text-[8px] font-bold leading-none bg-amber-500 text-white rounded-full min-w-[13px] h-[13px] flex items-center justify-center px-0.5">
+                    {aliasIds.length}
+                  </span>
+                )}
+              </button>
+            )}
+          </div>
+        </td>
+      )}
+      {show('id') && (
+        <td data-col="id" className="px-3 py-2 font-mono text-xs text-gray-500 dark:text-gray-400 overflow-hidden group/id">
+          <div className="flex items-center gap-1.5">
+            <span className="truncate" title={id}>{id}</span>
+            <CopyIdButton id={id} />
+          </div>
+        </td>
+      )}
+      {show('name') && <EditableNameCell id={id} name={name} />}
+      {show('room') && (
+        <EditableRoomCell
+          id={id}
+          currentRoomEnumId={roomEnumId}
+          roomName={roomName}
+          roomEnums={roomEnums}
+          onSelectRoom={onSelectRoom}
+          forceEdit={roomEditForced}
+          onEditEnd={onRoomEditEnd}
+        />
+      )}
+      {show('function') && (
+        <EditableFunctionCell
+          id={id}
+          currentFnEnumId={fnEnumId}
+          fnName={fnName}
+          fnEnums={fnEnums}
+          onSelectFunction={onSelectFunction}
+          forceEdit={fnEditForced}
+          onEditEnd={onFnEditEnd}
+        />
+      )}
+      {show('role') && <EditableRoleCell id={id} role={obj?.common?.role || ''} suggestions={roles} />}
+      {show('value') && <EditableValueCell id={id} state={state} obj={obj} />}
+      {show('unit') && <EditableUnitCell id={id} unit={unit} suggestions={units} />}
+      {show('ack') && (
+        <td data-col="ack" className="px-3 py-2">
+          {state ? (
+            <span
+              className={`inline-block w-2 h-2 rounded-full ${state.ack ? 'bg-green-500' : 'bg-yellow-500'}`}
+              title={state.ack ? 'Acknowledged' : 'Not acknowledged'}
+            />
+          ) : null}
+        </td>
+      )}
+      {show('ts') && (
+        <td data-col="ts" className="px-3 py-2 text-gray-400 dark:text-gray-500 text-xs overflow-hidden">
+          <span className="truncate block">{state ? formatTimestamp(state.ts) : ''}</span>
+        </td>
+      )}
+      <td style={{ width: DEL_COL_WIDTH, minWidth: DEL_COL_WIDTH }} className="py-1 pr-2 text-center" onClick={(e) => e.stopPropagation()}>
+        <button
+          onClick={() => onDeleteClick(id)}
+          title="Datenpunkt löschen"
+          className="p-1 rounded text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-500/10 transition-colors"
+        ><Trash2 size={13} /></button>
+      </td>
+    </tr>
+  );
+}, (prev, next) => {
+  const prevState = prev.state;
+  const nextState = next.state;
+  const prevObj = prev.obj;
+  const nextObj = next.obj;
+
+  return (
+    prev.id === next.id &&
+    prevState?.val === nextState?.val &&
+    prevState?.ack === nextState?.ack &&
+    prevState?.ts === nextState?.ts &&
+    prevObj === nextObj &&
+    prev.roomName === next.roomName &&
+    prev.fnName === next.fnName &&
+    prev.isSelected === next.isSelected &&
+    prev.isChecked === next.isChecked &&
+    aliasIdsEqual(prev.aliasIds, next.aliasIds) &&
+    prev.visibleCols === next.visibleCols &&
+    prev.colWidths === next.colWidths &&
+    prev.roles === next.roles &&
+    prev.units === next.units &&
+    prev.roomEnums === next.roomEnums &&
+    prev.fnEnums === next.fnEnums &&
+    prev.roomEditForced === next.roomEditForced &&
+    prev.fnEditForced === next.fnEditForced &&
+    prev.onNavigateTo === next.onNavigateTo &&
+    prev.onSelectRoom === next.onSelectRoom &&
+    prev.onSelectFunction === next.onSelectFunction
+  );
+});
+
+function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, fulltextEnabled = true }: StateListProps) {
   const [sortKey, setSortKey] = useState<SortKey>('id');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [visibleCols, setVisibleCols] = useState<SortKey[]>(loadVisibleCols);
   const [colWidths, setColWidths] = useState<Record<SortKey, number>>(loadColWidths);
   const containerRef = useRef<HTMLDivElement>(null);
+  const theadRef = useRef<HTMLTableSectionElement>(null);
   const autoFitRef = useRef(!localStorage.getItem(LS_WIDTHS_KEY));
+  const scrollRafRef = useRef<number | null>(null);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const [headerHeight, setHeaderHeight] = useState(0);
   const [newDatapointOpen, setNewDatapointOpen] = useState(false);
   const [historyModalId, setHistoryModalId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -939,6 +1168,8 @@ function StateList({ ids, totalCount, states, objects, roomMap, functionMap, sel
   const { data: units = [] } = useAllUnits();
   const { data: roomEnums = [] } = useRoomEnums();
   const { data: fnEnums = [] } = useFunctionEnums();
+  const updateRoom = useUpdateRoomMembership();
+  const updateFn = useUpdateFunctionMembership();
   const updateRoomBatch = useUpdateRoomMembershipBatch();
   const updateFnBatch = useUpdateFunctionMembershipBatch();
   const [batchRole, setBatchRole] = useState('');
@@ -1034,6 +1265,30 @@ function StateList({ ids, totalCount, states, objects, roomMap, functionMap, sel
   }, [ids]);
 
   useEffect(() => {
+    const container = containerRef.current;
+    const thead = theadRef.current;
+    if (!container) return;
+
+    const measure = () => {
+      setViewportHeight(container.clientHeight);
+      setHeaderHeight(thead?.offsetHeight ?? 0);
+    };
+    measure();
+
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    if (ro) {
+      ro.observe(container);
+      if (thead) ro.observe(thead);
+    } else {
+      window.addEventListener('resize', measure);
+    }
+    return () => {
+      if (ro) ro.disconnect();
+      else window.removeEventListener('resize', measure);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!sidebarToggleSeq) return;
     fitToContainer();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1060,6 +1315,11 @@ function StateList({ ids, totalCount, states, objects, roomMap, functionMap, sel
       setSortDir('asc');
     }
   }
+
+  const sortNeedsState = sortKey === 'value' || sortKey === 'ack' || sortKey === 'ts';
+  const sortNeedsObject = sortKey === 'name' || sortKey === 'role' || sortKey === 'history' || sortKey === 'smart' || sortKey === 'unit' || sortKey === 'type';
+  const sortNeedsRoomMap = sortKey === 'room';
+  const sortNeedsFunctionMap = sortKey === 'function';
 
   const sortedIds = useMemo(() => {
     const mul = sortDir === 'asc' ? 1 : -1;
@@ -1116,18 +1376,23 @@ function StateList({ ids, totalCount, states, objects, roomMap, functionMap, sel
           return 0;
       }
     });
-  }, [ids, states, objects, roomMap, sortKey, sortDir]);
+  }, [
+    ids,
+    sortKey,
+    sortDir,
+    sortNeedsState ? states : null,
+    sortNeedsObject ? objects : null,
+    sortNeedsRoomMap ? roomMap : null,
+    sortNeedsFunctionMap ? functionMap : null,
+  ]);
 
   // metadata + icon filters applied in App.tsx before pagination
-  // value and type are filtered here (page-local)
+  // value is filtered here (page-local)
+  const valueFilter = colFilters.value?.trim().toLowerCase() || '';
   const filteredIds = useMemo(() => {
-    let result = sortedIds;
-    const valueFilter = colFilters.value?.trim().toLowerCase();
-    const typeFilter = (colFilters as Partial<Record<string, string>>)['type']?.trim().toLowerCase();
-    if (valueFilter) result = result.filter((id) => formatValue(states[id]?.val).toLowerCase().includes(valueFilter));
-    if (typeFilter) result = result.filter((id) => (objects[id]?.type || '').toLowerCase().includes(typeFilter));
-    return result;
-  }, [sortedIds, colFilters, states, objects]);
+    if (!valueFilter) return sortedIds;
+    return sortedIds.filter((id) => formatValue(states[id]?.val).toLowerCase().includes(valueFilter));
+  }, [sortedIds, valueFilter, valueFilter ? states : null]);
 
   const hasColFilters = Object.values(colFilters).some((v) => v.trim() !== '');
 
@@ -1154,6 +1419,37 @@ function StateList({ ids, totalCount, states, objects, roomMap, functionMap, sel
       setCheckedIds((prev) => { const next = new Set(prev); ids.forEach((id) => next.delete(id)); return next; });
     });
   }
+
+  const handleCheckRow = React.useCallback((id: string, checked: boolean) => {
+    setCheckedIds((prev) => {
+      const next = new Set(prev);
+      checked ? next.add(id) : next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const handleRowContextMenu = React.useCallback((x: number, y: number, id: string) => {
+    setCtxMenu({ x, y, id });
+  }, []);
+
+  const handleRowHistoryClick = React.useCallback((id: string) => {
+    setHistoryModalId(id);
+  }, []);
+
+  const handleRowDeleteClick = React.useCallback((id: string) => {
+    setDeletingId(id);
+  }, []);
+
+  const handleSelectRoom = React.useCallback((objectId: string, oldRoomEnumId: string | null, newRoomEnumId: string | null) => {
+    updateRoom.mutate({ objectId, oldRoomEnumId, newRoomEnumId });
+  }, [updateRoom]);
+
+  const handleSelectFunction = React.useCallback((objectId: string, oldFnEnumId: string | null, newFnEnumId: string | null) => {
+    updateFn.mutate({ objectId, oldFnEnumId, newFnEnumId });
+  }, [updateFn]);
+
+  const handleRoomEditEnd = React.useCallback(() => setRoomEditId(null), []);
+  const handleFnEditEnd = React.useCallback(() => setFnEditId(null), []);
 
   function handleBatchApply() {
     const ids = [...checkedIds];
@@ -1260,7 +1556,7 @@ function StateList({ ids, totalCount, states, objects, roomMap, functionMap, sel
       </div>
       <div className="flex flex-col items-center gap-0.5">
         {treeFilter && onClearTreeFilter && (
-          <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-blue-500/15 border border-blue-400/30 text-blue-600 dark:text-blue-400 text-xs font-mono max-w-[200px]">
+          <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-blue-500/15 border border-blue-400/30 text-blue-600 dark:text-blue-400 text-sm font-mono max-w-[520px]">
             <span className="truncate">{treeFilter.replace(/\.$/, '')}</span>
             <button onClick={onClearTreeFilter} title="Filter entfernen" className="shrink-0 hover:text-blue-800 dark:hover:text-blue-200">
               <X size={10} />
@@ -1272,10 +1568,6 @@ function StateList({ ids, totalCount, states, objects, roomMap, functionMap, sel
             Volltext
           </span>
         )}
-        <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums">
-          <span className="text-gray-600 dark:text-gray-300 font-medium">{totalCount}</span>
-          {' '}Datenpunkte
-        </span>
       </div>
       <div className="flex items-center gap-1">
         <button
@@ -1315,6 +1607,31 @@ function StateList({ ids, totalCount, states, objects, roomMap, functionMap, sel
   const existingIds = useMemo(() => new Set(Object.keys(objects)), [objects]);
 
   const batchCanApply = batchRole.trim() !== '' || batchUnit.trim() !== '' || batchRoomEnumId !== '' || batchFnEnumId !== '';
+  const bodyViewportHeight = Math.max(0, viewportHeight - headerHeight);
+  const virtualEnabled = filteredIds.length > VIRTUALIZE_THRESHOLD && bodyViewportHeight > 0;
+  const bodyScrollTop = Math.max(0, scrollTop - headerHeight);
+  const virtualStart = virtualEnabled
+    ? Math.max(0, Math.floor(bodyScrollTop / VIRTUAL_ROW_HEIGHT) - VIRTUAL_OVERSCAN)
+    : 0;
+  const virtualVisibleCount = virtualEnabled
+    ? Math.ceil(bodyViewportHeight / VIRTUAL_ROW_HEIGHT) + VIRTUAL_OVERSCAN * 2
+    : filteredIds.length;
+  const virtualEnd = virtualEnabled
+    ? Math.min(filteredIds.length, virtualStart + virtualVisibleCount)
+    : filteredIds.length;
+  const visibleRowIds = virtualEnabled ? filteredIds.slice(virtualStart, virtualEnd) : filteredIds;
+  const topSpacer = virtualEnabled ? virtualStart * VIRTUAL_ROW_HEIGHT : 0;
+  const bottomSpacer = virtualEnabled ? (filteredIds.length - virtualEnd) * VIRTUAL_ROW_HEIGHT : 0;
+  const rowColSpan = visibleCols.length + 1;
+
+  function handleBodyScroll(e: React.UIEvent<HTMLDivElement>) {
+    const next = e.currentTarget.scrollTop;
+    if (scrollRafRef.current != null) return;
+    scrollRafRef.current = requestAnimationFrame(() => {
+      setScrollTop(next);
+      scrollRafRef.current = null;
+    });
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -1458,9 +1775,9 @@ function StateList({ ids, totalCount, states, objects, roomMap, functionMap, sel
         return <ContextMenu x={x} y={y} items={items} onClose={() => setCtxMenu(null)} />;
       })()}
 
-      <div ref={containerRef} className="overflow-x-auto overflow-y-auto flex-1">
+      <div ref={containerRef} onScroll={handleBodyScroll} className="overflow-x-auto overflow-y-auto flex-1">
         <table className="text-sm text-left table-fixed" style={{ width: totalWidth }}>
-          <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-100 dark:bg-gray-800 sticky top-0 z-10">
+          <thead ref={theadRef} className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-100 dark:bg-gray-800 sticky top-0 z-10">
             <tr>
               {show('checkbox') && <th style={{ width: w('checkbox'), minWidth: w('checkbox') }} />}
               {show('write')   && <th style={{ width: colWidths['write'],   minWidth: colWidths['write']   }} />}
@@ -1471,7 +1788,6 @@ function StateList({ ids, totalCount, states, objects, roomMap, functionMap, sel
               {show('name')    && <SortHeader label="Name" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('name')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('room')     && <SortHeader label="Raum"     sortKey="room"     activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('room')}     onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('function') && <SortHeader label="Funktion" sortKey="function" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('function')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
-              {show('type')    && <SortHeader label="Typ" sortKey="type" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('type')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('role')    && <SortHeader label="Rolle" sortKey="role" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('role')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('value')   && <SortHeader label="Wert" sortKey="value" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('value')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} className="text-right" />}
               {show('unit')    && <SortHeader label="Einheit" sortKey="unit" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('unit')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
@@ -1490,8 +1806,8 @@ function StateList({ ids, totalCount, states, objects, roomMap, functionMap, sel
                   />
                 </th>
               )}
-              {(['write','history','smart','alias','id','name','room','function','type','role','value','unit','ack','ts'] as SortKey[]).filter(show).map((key) => {
-                const filterable = ['id','name','room','function','type','role','value','unit'].includes(key);
+              {(['write','history','smart','alias','id','name','room','function','role','value','unit','ack','ts'] as SortKey[]).filter(show).map((key) => {
+                const filterable = ['id','name','room','function','role','value','unit'].includes(key);
                 const isIconToggle = ['write','history','smart','alias'].includes(key);
                 const isActive = colFilters[key] === '1';
 
@@ -1566,177 +1882,47 @@ function StateList({ ids, totalCount, states, objects, roomMap, functionMap, sel
                 </td>
               </tr>
             )}
-            {filteredIds.map((id) => {
-              const state = states[id];
-              const obj = objects[id];
-              const unit = obj?.common?.unit || '';
-              const name = getObjectName(obj);
-
-              return (
-                <tr
-                  key={id}
-                  onClick={() => onSelect(id)}
-                  onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, id }); }}
-                  className={`border-b border-gray-200 dark:border-gray-800 cursor-pointer transition-colors ${
-                    selectedId === id
-                      ? 'bg-blue-600/20 text-blue-700 dark:text-blue-200'
-                      : 'hover:bg-gray-100/80 text-gray-700 dark:hover:bg-gray-800/50 dark:text-gray-300'
-                  }`}
-                >
-                  {show('checkbox') && (
-                    <td style={{ width: w('checkbox'), minWidth: w('checkbox') }} className="py-2 align-middle" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-center">
-                        <StyledCheckbox
-                          checked={checkedIds.has(id)}
-                          onChange={(e) => {
-                            setCheckedIds((prev) => {
-                              const next = new Set(prev);
-                              e.target.checked ? next.add(id) : next.delete(id);
-                              return next;
-                            });
-                          }}
-                        />
-                      </div>
-                    </td>
-                  )}
-                  {show('write') && (
-                    <td style={{ width: colWidths['write'], minWidth: colWidths['write'] }} className="py-2 align-middle" title={obj?.common?.write === false ? 'Schreibgeschützt' : undefined}>
-                      <div className="flex items-center justify-center">
-                        {obj?.common?.write === false && (
-                          <Lock size={11} className="text-gray-400 dark:text-gray-500" />
-                        )}
-                      </div>
-                    </td>
-                  )}
-                  {show('history') && (
-                    <td style={{ width: colWidths['history'], minWidth: colWidths['history'] }} className="py-2 align-middle">
-                      <div className="flex items-center justify-center">
-                        {obj && hasHistory(obj) && (
-                          <button
-                            onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); setHistoryModalId(id); }}
-                            title="History anzeigen"
-                            className="p-0.5 rounded text-blue-500 dark:text-blue-400 hover:bg-blue-500/15 dark:hover:bg-blue-500/20 transition-colors"
-                          >
-                            <History size={13} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  )}
-                  {show('smart') && (
-                    <td style={{ width: colWidths['smart'], minWidth: colWidths['smart'] }} className="py-2 align-middle" title={obj && hasSmartName(obj) ? (
-                      typeof obj.common.smartName === 'string'
-                        ? obj.common.smartName
-                        : typeof obj.common.smartName === 'object' && obj.common.smartName
-                          ? Object.values(obj.common.smartName).join(' / ')
-                          : 'SmartName'
-                    ) : undefined}>
-                      <div className="flex items-center justify-center">
-                        {obj && hasSmartName(obj) && (
-                          <span className="p-0.5 rounded hover:bg-violet-500/15 dark:hover:bg-violet-500/20 transition-colors">
-                            <Mic2 size={13} className="text-violet-500 dark:text-violet-400" />
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                  )}
-                  {show('alias') && (() => {
-                    const aliasIds = aliasMap?.get(id);
-                    const ownTarget = obj?.common?.alias?.id ?? obj?.common?.alias?.read;
-                    const hasAlias = (aliasIds && aliasIds.length > 0) || !!ownTarget;
-                    const tooltip = aliasIds?.length
-                      ? `Alias: ${aliasIds.join(', ')}`
-                      : ownTarget
-                      ? `Quelle: ${ownTarget}`
-                      : undefined;
-                    return (
-                      <td style={{ width: w('alias'), minWidth: w('alias') }} className="py-2 align-middle">
-                        <div className="flex items-center justify-center">
-                          {hasAlias && (
-                            <button
-                              onClick={(e) => {
-                                e.currentTarget.blur();
-                                e.stopPropagation();
-                                const targets = aliasIds?.length ? aliasIds : ownTarget ? [ownTarget] : [];
-                                onNavigateTo?.(targets);
-                              }}
-                              title={tooltip}
-                              className="relative p-0.5 rounded text-amber-500 dark:text-amber-400 hover:bg-amber-500/15 dark:hover:bg-amber-500/20 transition-colors"
-                            >
-                              <Link2 size={13} />
-                              {aliasIds && aliasIds.length > 1 && (
-                                <span className="absolute -top-1.5 -right-2 text-[8px] font-bold leading-none bg-amber-500 text-white rounded-full min-w-[13px] h-[13px] flex items-center justify-center px-0.5">
-                                  {aliasIds.length}
-                                </span>
-                              )}
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    );
-                  })()}
-                  {show('id') && (
-                    <td data-col="id" className="px-3 py-2 font-mono text-xs text-gray-500 dark:text-gray-400 overflow-hidden group/id">
-                      <div className="flex items-center gap-1.5">
-                        <span className="truncate" title={id}>{id}</span>
-                        <CopyIdButton id={id} />
-                      </div>
-                    </td>
-                  )}
-                  {show('name') && <EditableNameCell id={id} name={name} />}
-                  {show('room') && (
-                    <EditableRoomCell
-                      id={id}
-                      currentRoomEnumId={Object.keys(obj?.enums ?? {}).find(k => k.startsWith('enum.rooms.')) ?? null}
-                      roomName={roomMap[id] || ''}
-                      forceEdit={roomEditId === id}
-                      onEditEnd={() => setRoomEditId(null)}
-                    />
-                  )}
-                  {show('function') && (
-                    <EditableFunctionCell
-                      id={id}
-                      currentFnEnumId={Object.keys(obj?.enums ?? {}).find(k => k.startsWith('enum.functions.')) ?? null}
-                      fnName={functionMap[id] || ''}
-                      forceEdit={fnEditId === id}
-                      onEditEnd={() => setFnEditId(null)}
-                    />
-                  )}
-                  {show('type') && (
-                    <td data-col="type" className="px-3 py-2 overflow-hidden">
-                      <TypeBadge type={obj?.type} />
-                    </td>
-                  )}
-                  {show('role') && <EditableRoleCell id={id} role={obj?.common?.role || ''} suggestions={roles} />}
-                  {show('value') && <EditableValueCell id={id} state={state} obj={obj} />}
-                  {show('unit') && <EditableUnitCell id={id} unit={unit} suggestions={units} />}
-                  {show('ack') && (
-                    <td data-col="ack" className="px-3 py-2">
-                      {state ? (
-                        <span
-                          className={`inline-block w-2 h-2 rounded-full ${
-                            state.ack ? 'bg-green-500' : 'bg-yellow-500'
-                          }`}
-                          title={state.ack ? 'Acknowledged' : 'Not acknowledged'}
-                        />
-                      ) : null}
-                    </td>
-                  )}
-                  {show('ts') && (
-                    <td data-col="ts" className="px-3 py-2 text-gray-400 dark:text-gray-500 text-xs overflow-hidden">
-                      <span className="truncate block">{state ? formatTimestamp(state.ts) : ''}</span>
-                    </td>
-                  )}
-                  <td style={{ width: DEL_COL_WIDTH, minWidth: DEL_COL_WIDTH }} className="py-1 pr-2 text-center" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      onClick={() => setDeletingId(id)}
-                      title="Datenpunkt löschen"
-                      className="p-1 rounded text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                    ><Trash2 size={13} /></button>
-                  </td>
-                </tr>
-              );
-            })}
+            {topSpacer > 0 && (
+              <tr aria-hidden="true">
+                <td colSpan={rowColSpan} style={{ height: topSpacer, padding: 0, border: 0 }} />
+              </tr>
+            )}
+            {visibleRowIds.map((id) => (
+              <StateRow
+                key={id}
+                id={id}
+                state={states[id]}
+                obj={objects[id]}
+                roomName={roomMap[id] || ''}
+                fnName={functionMap[id] || ''}
+                isSelected={selectedId === id}
+                isChecked={checkedIds.has(id)}
+                aliasIds={aliasMap?.get(id)}
+                visibleCols={visibleCols}
+                colWidths={colWidths}
+                roles={roles}
+                units={units}
+                roomEnums={roomEnums}
+                fnEnums={fnEnums}
+                onSelect={onSelect}
+                onCheck={handleCheckRow}
+                onContextMenu={handleRowContextMenu}
+                onHistoryClick={handleRowHistoryClick}
+                onNavigateTo={onNavigateTo}
+                onDeleteClick={handleRowDeleteClick}
+                onSelectRoom={handleSelectRoom}
+                onSelectFunction={handleSelectFunction}
+                roomEditForced={roomEditId === id}
+                fnEditForced={fnEditId === id}
+                onRoomEditEnd={handleRoomEditEnd}
+                onFnEditEnd={handleFnEditEnd}
+              />
+            ))}
+            {bottomSpacer > 0 && (
+              <tr aria-hidden="true">
+                <td colSpan={rowColSpan} style={{ height: bottomSpacer, padding: 0, border: 0 }} />
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

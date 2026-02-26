@@ -375,7 +375,6 @@ function AppContent() {
         <div className="flex-1 min-h-0 flex flex-col">
           <StateList
             ids={pageIds}
-            totalCount={totalCount}
             states={stateValues || {}}
             objects={stateObjects || {}}
             roomMap={roomMap || {}}
@@ -395,49 +394,59 @@ function AppContent() {
           />
         </div>
 
-        <div className="grid grid-cols-3 items-center py-2 px-1 border-t border-gray-200 dark:border-gray-700 shrink-0">
-          {/* Left: Zurück + Zeilenauswahl */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              disabled={page === 0 || totalPages <= 1}
-              className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-            >
-              Zurück
-            </button>
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-gray-400 dark:text-gray-500">Zeilen:</span>
-              <select
-                value={pageSize}
-                onChange={(e) => {
-                  const v = parseInt(e.target.value, 10);
-                  setPageSize(v);
-                  setPage(0);
-                  localStorage.setItem(LS_PAGE_SIZE, String(v));
-                }}
-                className="text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
-              >
-                {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
-              </select>
+        <div className="py-2 px-1 border-t border-gray-200 dark:border-gray-700 shrink-0">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full gap-2">
+            <div className="flex items-center justify-start">
+              {totalPages > 1 && (
+                <div className="flex items-center justify-start gap-2">
+                  <button
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    disabled={page === 0}
+                    className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                  >
+                    Zurück
+                  </button>
+                  <span className="text-xs text-gray-400 dark:text-gray-500">
+                    Seite {page + 1} von {totalPages} ({pageStart + 1}–{Math.min(pageStart + pageSize, totalCount)} von {totalCount})
+                  </span>
+                </div>
+              )}
             </div>
-          </div>
-          {/* Center: Paginierungsinfo */}
-          <div className="text-center">
-            {totalPages > 1 && (
-              <span className="text-xs text-gray-400 dark:text-gray-500">
-                Seite {page + 1} von {totalPages} ({pageStart + 1}–{Math.min(pageStart + pageSize, totalCount)} von {totalCount})
+            <div className="text-center">
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                Datenpunkte: <span className="text-gray-700 dark:text-gray-200">{pageIds.length}</span> von <span className="text-gray-700 dark:text-gray-200">{totalCount}</span>
               </span>
-            )}
-          </div>
-          {/* Right: Weiter */}
-          <div className="flex justify-end">
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-              disabled={page >= totalPages - 1 || totalPages <= 1}
-              className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-            >
-              Weiter
-            </button>
+            </div>
+            <div className="flex items-center justify-end gap-2">
+              {totalPages > 1 && (
+                <>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-gray-400 dark:text-gray-500">Zeilen:</span>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value, 10);
+                        setPageSize(v);
+                        setPage(0);
+                        localStorage.setItem(LS_PAGE_SIZE, String(v));
+                      }}
+                      className="text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                    >
+                      {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex justify-end">
+                    <button
+                      onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                      disabled={page >= totalPages - 1}
+                      className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                    >
+                      Weiter
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
