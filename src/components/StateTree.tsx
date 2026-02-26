@@ -173,17 +173,16 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
     (objectType !== 'device' && objectType !== 'channel' && !showFolders)
   );
   const isHighlightedNamespace = !node.isLeaf && (
-    /^(javascript|alias)\.[^.]+$/.test(node.fullPath) ||
-    node.fullPath === '0_userdata.0'
+    /^(javascript|alias|0_userdata)(\.|$)/.test(node.fullPath)
   );
-  const isTopJavascript = !node.isLeaf && /^javascript\.[^.]+$/.test(node.fullPath);
-  const isTopAlias = !node.isLeaf && /^alias\.[^.]+$/.test(node.fullPath);
-  const isTopUserdata = !node.isLeaf && node.fullPath === '0_userdata.0';
+  const isTopJavascript = !node.isLeaf && /^javascript(\.[^.]+)?$/.test(node.fullPath);
+  const isTopAlias = !node.isLeaf && /^alias(\.[^.]+)?$/.test(node.fullPath);
+  const isTopUserdata = !node.isLeaf && /^0_userdata(\.[^.]+)?$/.test(node.fullPath);
   const namespaceRowClass = !isHighlightedNamespace
     ? ''
-    : node.fullPath.startsWith('javascript.')
+    : /^javascript(\.|$)/.test(node.fullPath)
       ? 'bg-amber-500/10 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300'
-      : node.fullPath.startsWith('alias.')
+      : /^alias(\.|$)/.test(node.fullPath)
         ? 'bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
         : 'bg-indigo-500/10 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300';
 
