@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, memo } from 'react';
-import { ChevronRight, ChevronDown, ChevronsUpDown, ChevronsDownUp, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil, LayoutList, LayoutGrid, Plus } from 'lucide-react';
+import { ChevronRight, ChevronDown, ChevronsUpDown, ChevronsDownUp, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil, LayoutList, LayoutGrid, Plus, FileCode2, Link2, UserRound } from 'lucide-react';
 import type { TreeNode, IoBrokerObject } from '../types/iobroker';
 import ObjectEditModal from './ObjectEditModal';
 import ContextMenu from './ContextMenu';
@@ -172,6 +172,20 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
     (objectType === 'channel' && !showChannels) ||
     (objectType !== 'device' && objectType !== 'channel' && !showFolders)
   );
+  const isHighlightedNamespace = !node.isLeaf && (
+    /^(javascript|alias)\.[^.]+$/.test(node.fullPath) ||
+    node.fullPath === '0_userdata.0'
+  );
+  const isTopJavascript = !node.isLeaf && /^javascript\.[^.]+$/.test(node.fullPath);
+  const isTopAlias = !node.isLeaf && /^alias\.[^.]+$/.test(node.fullPath);
+  const isTopUserdata = !node.isLeaf && node.fullPath === '0_userdata.0';
+  const namespaceRowClass = !isHighlightedNamespace
+    ? ''
+    : node.fullPath.startsWith('javascript.')
+      ? 'bg-amber-500/10 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300'
+      : node.fullPath.startsWith('alias.')
+        ? 'bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
+        : 'bg-indigo-500/10 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300';
 
   // Non-leaf filtered: skip the row but still render children so the full tree is searched
   if (nodeFiltered) {
@@ -233,7 +247,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
       <div
         className={`group/row flex items-center gap-1.5 px-2 py-1 cursor-pointer hover:bg-gray-200/50 dark:hover:bg-gray-700/50 rounded text-sm ${
           selectedId === node.fullPath ? 'bg-blue-600/30 text-blue-600 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300'
-        }`}
+        } ${selectedId === node.fullPath ? '' : namespaceRowClass}`}
         style={{ paddingLeft: `${depth * 14 + 4}px` }}
         onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY }); }}
         onClick={() => {
@@ -257,8 +271,14 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
           <span className="w-5 shrink-0" />
         )}
         {isFolder ? (
-          objectType === 'device' ? (
-            <Cpu    size={15} className="text-sky-500/80    shrink-0" />
+          isTopJavascript ? (
+            <FileCode2 size={15} className="text-amber-500/90 shrink-0" />
+          ) : isTopAlias ? (
+            <Link2 size={15} className="text-emerald-500/90 shrink-0" />
+          ) : isTopUserdata ? (
+            <UserRound size={15} className="text-indigo-500/90 shrink-0" />
+          ) : objectType === 'device' ? (
+            <Cpu size={15} className="text-sky-500/80 shrink-0" />
           ) : objectType === 'channel' ? (
             <Layers size={15} className="text-indigo-500/80 shrink-0" />
           ) : depth === 1 ? (
@@ -266,14 +286,14 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
           ) : (
             isExpandableFolder && expanded
               ? <FolderOpen size={15} className="text-yellow-500/80 shrink-0" />
-              : <Folder     size={15} className="text-yellow-600/70 shrink-0" />
+              : <Folder size={15} className="text-yellow-600/70 shrink-0" />
           )
         ) : isHistoryEnabled ? (
           <Database size={14} className="text-blue-400/80 shrink-0" />
         ) : (
           <FileText size={14} className="text-green-400/80 shrink-0" />
         )}
-        <span className={`truncate ${node.isLeaf ? (isHistoryEnabled ? 'text-blue-500 dark:text-blue-400' : 'text-green-600 dark:text-green-400') : 'text-gray-600 font-medium dark:text-gray-400'}`}>
+        <span className={`truncate ${node.isLeaf ? (isHistoryEnabled ? 'text-blue-500 dark:text-blue-400' : 'text-green-600 dark:text-green-400') : (isHighlightedNamespace ? 'font-semibold' : 'text-gray-600 font-medium dark:text-gray-400')}`}>
           {node.name}
         </span>
         {node.count !== undefined && node.count > 0 && (
