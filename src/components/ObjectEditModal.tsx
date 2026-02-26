@@ -418,6 +418,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
           sourceId={id}
           sourceObj={obj}
           existingIds={existingIds}
+          language={language}
           onClose={() => setShowCopy(false)}
         />
       )}

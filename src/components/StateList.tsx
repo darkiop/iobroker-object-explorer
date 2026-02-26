@@ -1917,6 +1917,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
           sourceId={copySourceId}
           sourceObj={objects[copySourceId]}
           existingIds={existingIds}
+          language={language}
           onClose={() => setCopySourceId(null)}
         />
       )}
@@ -1936,25 +1937,25 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
         const ctxObj = objects[ctxId];
         const ctxName = getObjectName(ctxObj);
         const items: ContextMenuEntry[] = [];
-        items.push({ icon: <Copy size={13} />, label: 'ID kopieren', onClick: () => copyText(ctxId) });
-        if (ctxName) items.push({ icon: <Copy size={13} />, label: 'Name kopieren', onClick: () => copyText(ctxName) });
-        if (ctxState) items.push({ icon: <Copy size={13} />, label: 'Wert kopieren', onClick: () => copyText(formatValue(ctxState.val)) });
+        items.push({ icon: <Copy size={13} />, label: isEn ? 'Copy ID' : 'ID kopieren', onClick: () => copyText(ctxId) });
+        if (ctxName) items.push({ icon: <Copy size={13} />, label: isEn ? 'Copy name' : 'Name kopieren', onClick: () => copyText(ctxName) });
+        if (ctxState) items.push({ icon: <Copy size={13} />, label: isEn ? 'Copy value' : 'Wert kopieren', onClick: () => copyText(formatValue(ctxState.val)) });
         items.push({ separator: true } as const);
         if (ctxObj && hasHistory(ctxObj)) {
-          items.push({ icon: <History size={13} />, label: 'History anzeigen', onClick: () => setHistoryModalId(ctxId) });
+          items.push({ icon: <History size={13} />, label: isEn ? 'Show history' : 'History anzeigen', onClick: () => setHistoryModalId(ctxId) });
           items.push({ separator: true } as const);
         }
-        items.push({ icon: <Search size={13} />, label: 'Als Filter setzen', onClick: () => onColFilterChange({ ...colFilters, id: ctxId }) });
-        items.push({ icon: <Pencil size={13} />, label: 'Raum bearbeiten', onClick: () => setRoomEditId(ctxId) });
-        items.push({ icon: <Pencil size={13} />, label: 'Funktion bearbeiten', onClick: () => setFnEditId(ctxId) });
-        items.push({ icon: <FileEdit size={13} />, label: 'Objekt bearbeiten', onClick: () => setEditObjId(ctxId) });
+        items.push({ icon: <Search size={13} />, label: isEn ? 'Set as filter' : 'Als Filter setzen', onClick: () => onColFilterChange({ ...colFilters, id: ctxId }) });
+        items.push({ icon: <Pencil size={13} />, label: isEn ? 'Edit room' : 'Raum bearbeiten', onClick: () => setRoomEditId(ctxId) });
+        items.push({ icon: <Pencil size={13} />, label: isEn ? 'Edit function' : 'Funktion bearbeiten', onClick: () => setFnEditId(ctxId) });
+        items.push({ icon: <FileEdit size={13} />, label: isEn ? 'Edit object' : 'Objekt bearbeiten', onClick: () => setEditObjId(ctxId) });
         items.push({ separator: true } as const);
-        items.push({ icon: <Copy size={13} />, label: 'Datenpunkt kopieren', onClick: () => setCopySourceId(ctxId) });
+        items.push({ icon: <Copy size={13} />, label: isEn ? 'Copy datapoint' : 'Datenpunkt kopieren', onClick: () => setCopySourceId(ctxId) });
         if (!ctxId.startsWith('alias.0.')) {
-          items.push({ icon: <Link2 size={13} />, label: 'Alias anlegen', onClick: () => setAliasSourceId(ctxId) });
+          items.push({ icon: <Link2 size={13} />, label: isEn ? 'Create alias' : 'Alias anlegen', onClick: () => setAliasSourceId(ctxId) });
         }
         items.push({ separator: true } as const);
-        items.push({ icon: <Trash2 size={13} />, label: 'Datenpunkt löschen', onClick: () => setDeletingId(ctxId), danger: true });
+        items.push({ icon: <Trash2 size={13} />, label: isEn ? 'Delete datapoint' : 'Datenpunkt löschen', onClick: () => setDeletingId(ctxId), danger: true });
         return <ContextMenu x={x} y={y} items={items} onClose={() => setCtxMenu(null)} />;
       })()}
 

@@ -10,6 +10,7 @@ interface Props {
   existingIds: Set<string>;
   onClose: () => void;
   onCreated?: (newId: string) => void;
+  language?: 'en' | 'de';
 }
 
 function getObjectName(obj: IoBrokerObject | undefined): string {
@@ -18,11 +19,12 @@ function getObjectName(obj: IoBrokerObject | undefined): string {
   return obj.common.name.de || obj.common.name.en || Object.values(obj.common.name)[0] || '';
 }
 
-export default function CopyDatapointModal({ sourceId, sourceObj, existingIds, onClose, onCreated }: Props) {
+export default function CopyDatapointModal({ sourceId, sourceObj, existingIds, onClose, onCreated, language = 'en' }: Props) {
+  const isEn = language === 'en';
   const [newId, setNewId] = useState(sourceId + '_copy');
   const [name, setName] = useState(() => {
     const n = getObjectName(sourceObj);
-    return n ? n + ' (Kopie)' : '';
+    return n ? `${n} (${isEn ? 'Copy' : 'Kopie'})` : '';
   });
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -44,9 +46,9 @@ export default function CopyDatapointModal({ sourceId, sourceObj, existingIds, o
 
   function validate(): string {
     const id = newId.trim();
-    if (!id) return 'ID ist erforderlich.';
-    if (existingIds.has(id)) return `„${id}" existiert bereits.`;
-    if (!name.trim()) return 'Name ist erforderlich.';
+    if (!id) return isEn ? 'ID is required.' : 'ID ist erforderlich.';
+    if (existingIds.has(id)) return isEn ? `"${id}" already exists.` : `„${id}" existiert bereits.`;
+    if (!name.trim()) return isEn ? 'Name is required.' : 'Name ist erforderlich.';
     return '';
   }
 
@@ -99,7 +101,7 @@ export default function CopyDatapointModal({ sourceId, sourceObj, existingIds, o
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2">
             <Copy size={15} className="text-blue-400" />
-            <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Datenpunkt kopieren</h2>
+            <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100">{isEn ? 'Copy datapoint' : 'Datenpunkt kopieren'}</h2>
           </div>
           <button
             onClick={onClose}
@@ -112,14 +114,14 @@ export default function CopyDatapointModal({ sourceId, sourceObj, existingIds, o
         <form onSubmit={handleCreate} className="px-5 py-4 flex flex-col gap-4">
           {/* Source info */}
           <div className="bg-gray-50 dark:bg-gray-800/60 rounded-lg px-3 py-2.5">
-            <div className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">Quelle</div>
+            <div className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">{isEn ? 'Source' : 'Quelle'}</div>
             <div className="font-mono text-xs text-gray-700 dark:text-gray-300 truncate" title={sourceId}>{sourceId}</div>
             {srcCommon && (
               <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5">
                 {[
-                  srcCommon.type && `Typ: ${srcCommon.type}`,
-                  srcCommon.role && `Rolle: ${srcCommon.role}`,
-                  srcCommon.unit && `Einheit: ${srcCommon.unit}`,
+                  srcCommon.type && `${isEn ? 'Type' : 'Typ'}: ${srcCommon.type}`,
+                  srcCommon.role && `${isEn ? 'Role' : 'Rolle'}: ${srcCommon.role}`,
+                  srcCommon.unit && `${isEn ? 'Unit' : 'Einheit'}: ${srcCommon.unit}`,
                 ].filter(Boolean).map((s) => (
                   <span key={s} className="text-[10px] text-gray-400 dark:text-gray-500 font-mono">{s}</span>
                 ))}
@@ -129,27 +131,27 @@ export default function CopyDatapointModal({ sourceId, sourceObj, existingIds, o
 
           {/* New ID */}
           <div className="flex flex-col gap-1">
-            <label className={labelCls}>Neue ID <span className="text-red-500">*</span></label>
+            <label className={labelCls}>{isEn ? 'New ID' : 'Neue ID'} <span className="text-red-500">*</span></label>
             <input
               ref={inputRef}
               type="text"
               value={newId}
               onChange={(e) => { setNewId(e.target.value); setError(''); }}
               className={`${inputCls} font-mono`}
-              placeholder="neue.datenpunkt.id"
+              placeholder={isEn ? 'new.datapoint.id' : 'neue.datenpunkt.id'}
               spellCheck={false}
             />
           </div>
 
           {/* Name */}
           <div className="flex flex-col gap-1">
-            <label className={labelCls}>Name <span className="text-red-500">*</span></label>
+            <label className={labelCls}>{isEn ? 'Name' : 'Name'} <span className="text-red-500">*</span></label>
             <input
               type="text"
               value={name}
               onChange={(e) => { setName(e.target.value); setError(''); }}
               className={inputCls}
-              placeholder="Anzeigename"
+              placeholder={isEn ? 'Display name' : 'Anzeigename'}
             />
           </div>
 
@@ -167,7 +169,7 @@ export default function CopyDatapointModal({ sourceId, sourceObj, existingIds, o
               onClick={onClose}
               className="px-3 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
-              Abbrechen
+              {isEn ? 'Cancel' : 'Abbrechen'}
             </button>
             <button
               type="submit"
@@ -175,7 +177,7 @@ export default function CopyDatapointModal({ sourceId, sourceObj, existingIds, o
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors disabled:opacity-50"
             >
               <Copy size={13} />
-              {create.isPending ? 'Kopiere…' : 'Kopieren'}
+              {create.isPending ? (isEn ? 'Copying...' : 'Kopiere...') : (isEn ? 'Copy' : 'Kopieren')}
             </button>
           </div>
         </form>

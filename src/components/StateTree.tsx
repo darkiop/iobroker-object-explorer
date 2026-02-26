@@ -144,6 +144,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   showChannels: boolean;
   language: 'en' | 'de';
 }) {
+  const isEn = language === 'en';
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -213,18 +214,18 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
       {ctxMenu && (() => {
         const items: ContextMenuEntry[] = [];
         if (node.isLeaf) {
-          items.push({ icon: <Check size={13} />, label: 'Auswählen', onClick: () => onSelect(node.fullPath) });
+          items.push({ icon: <Check size={13} />, label: isEn ? 'Select' : 'Auswählen', onClick: () => onSelect(node.fullPath) });
           items.push({ separator: true } as const);
-          items.push({ icon: <Copy size={13} />, label: 'ID kopieren', onClick: () => copyText(node.fullPath) });
+          items.push({ icon: <Copy size={13} />, label: isEn ? 'Copy ID' : 'ID kopieren', onClick: () => copyText(node.fullPath) });
           items.push({ separator: true } as const);
-          items.push({ icon: <Search size={13} />, label: 'Als Filter setzen', onClick: () => onSearch(node.fullPath) });
+          items.push({ icon: <Search size={13} />, label: isEn ? 'Set as filter' : 'Als Filter setzen', onClick: () => onSearch(node.fullPath) });
         } else {
-          items.push({ icon: <Search size={13} />, label: `In Tabelle anzeigen: ${node.fullPath}`, onClick: () => onTreeScope(`${node.fullPath}.`) });
+          items.push({ icon: <Search size={13} />, label: isEn ? `Show in table: ${node.fullPath}` : `In Tabelle anzeigen: ${node.fullPath}`, onClick: () => onTreeScope(`${node.fullPath}.`) });
           items.push({ separator: true } as const);
-          items.push({ icon: <Copy size={13} />, label: 'ID kopieren', onClick: () => copyText(node.fullPath) });
-          items.push({ icon: <Copy size={13} />, label: 'Muster kopieren', onClick: () => copyText(`${node.fullPath}.*`) });
+          items.push({ icon: <Copy size={13} />, label: isEn ? 'Copy ID' : 'ID kopieren', onClick: () => copyText(node.fullPath) });
+          items.push({ icon: <Copy size={13} />, label: isEn ? 'Copy pattern' : 'Muster kopieren', onClick: () => copyText(`${node.fullPath}.*`) });
           items.push({ separator: true } as const);
-          items.push({ icon: <Pencil size={13} />, label: 'Objekt bearbeiten', onClick: () => setEditOpen(true) });
+          items.push({ icon: <Pencil size={13} />, label: isEn ? 'Edit object' : 'Objekt bearbeiten', onClick: () => setEditOpen(true) });
         }
         return <ContextMenu x={ctxMenu.x} y={ctxMenu.y} items={items} onClose={() => setCtxMenu(null)} />;
       })()}
