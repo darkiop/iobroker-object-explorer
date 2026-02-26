@@ -32,6 +32,7 @@ interface StateListProps {
   treeFilter?: string | null;
   onClearTreeFilter?: () => void;
   sidebarToggleSeq?: number;
+  fulltextEnabled?: boolean;
 }
 
 function formatTimestamp(ts: number): string {
@@ -920,7 +921,7 @@ function patternToInitialId(pattern: string): string {
   return pattern;
 }
 
-function StateList({ ids, totalCount, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq }: StateListProps) {
+function StateList({ ids, totalCount, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, fulltextEnabled = true }: StateListProps) {
   const [sortKey, setSortKey] = useState<SortKey>('id');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [visibleCols, setVisibleCols] = useState<SortKey[]>(loadVisibleCols);
@@ -1039,7 +1040,7 @@ function StateList({ ids, totalCount, states, objects, roomMap, functionMap, sel
   }, [sidebarToggleSeq]);
 
   useEffect(() => {
-    if (pattern && !isGlobPattern(pattern) && pattern !== '*') {
+    if (fulltextEnabled && pattern && !isGlobPattern(pattern) && pattern !== '*') {
       setSortKey('relevanz');
       setSortDir('asc');
     } else {
@@ -1266,7 +1267,7 @@ function StateList({ ids, totalCount, states, objects, roomMap, functionMap, sel
             </button>
           </span>
         )}
-        {pattern && !isGlobPattern(pattern) && pattern !== '*' && (
+        {fulltextEnabled && pattern && !isGlobPattern(pattern) && pattern !== '*' && (
           <span className="px-2 py-0.5 rounded bg-violet-500/15 border border-violet-400/30 text-violet-600 dark:text-violet-400 text-xs">
             Volltext
           </span>
@@ -1612,9 +1613,9 @@ function StateList({ ids, totalCount, states, objects, roomMap, functionMap, sel
                       <div className="flex items-center justify-center">
                         {obj && hasHistory(obj) && (
                           <button
-                            onClick={(e) => { e.stopPropagation(); setHistoryModalId(id); }}
+                            onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); setHistoryModalId(id); }}
                             title="History anzeigen"
-                            className="text-blue-500 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                            className="p-0.5 rounded text-blue-500 dark:text-blue-400 hover:bg-blue-500/15 dark:hover:bg-blue-500/20 transition-colors"
                           >
                             <History size={13} />
                           </button>
@@ -1632,7 +1633,9 @@ function StateList({ ids, totalCount, states, objects, roomMap, functionMap, sel
                     ) : undefined}>
                       <div className="flex items-center justify-center">
                         {obj && hasSmartName(obj) && (
-                          <Mic2 size={13} className="text-violet-500 dark:text-violet-400" />
+                          <span className="p-0.5 rounded hover:bg-violet-500/15 dark:hover:bg-violet-500/20 transition-colors">
+                            <Mic2 size={13} className="text-violet-500 dark:text-violet-400" />
+                          </span>
                         )}
                       </div>
                     </td>
@@ -1652,12 +1655,13 @@ function StateList({ ids, totalCount, states, objects, roomMap, functionMap, sel
                           {hasAlias && (
                             <button
                               onClick={(e) => {
+                                e.currentTarget.blur();
                                 e.stopPropagation();
                                 const targets = aliasIds?.length ? aliasIds : ownTarget ? [ownTarget] : [];
                                 onNavigateTo?.(targets);
                               }}
                               title={tooltip}
-                              className="relative text-amber-500 hover:text-amber-600 dark:text-amber-400 dark:hover:text-amber-300 transition-colors"
+                              className="relative p-0.5 rounded text-amber-500 dark:text-amber-400 hover:bg-amber-500/15 dark:hover:bg-amber-500/20 transition-colors"
                             >
                               <Link2 size={13} />
                               {aliasIds && aliasIds.length > 1 && (

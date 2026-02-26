@@ -64,13 +64,25 @@ export async function getAllObjects(): Promise<Record<string, IoBrokerObject>> {
   return objectsCachePromise;
 }
 
-export async function getObjectsByPattern(pattern: string): Promise<Record<string, IoBrokerObject>> {
+export async function getObjectsByPattern(pattern: string, fulltext = true): Promise<Record<string, IoBrokerObject>> {
   const all = await getAllObjects();
 
   if (isGlobPattern(pattern)) {
     const result: Record<string, IoBrokerObject> = {};
     for (const [id, obj] of Object.entries(all)) {
       if (obj && obj.type === 'state' && matchPattern(id, pattern)) {
+        result[id] = obj;
+      }
+    }
+    return result;
+  }
+
+  if (!fulltext) {
+    // Nur ID-Substring-Suche ohne Relevanz-Ranking
+    const q = pattern.toLowerCase();
+    const result: Record<string, IoBrokerObject> = {};
+    for (const [id, obj] of Object.entries(all)) {
+      if (obj && obj.type === 'state' && id.toLowerCase().includes(q)) {
         result[id] = obj;
       }
     }

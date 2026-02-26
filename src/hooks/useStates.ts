@@ -13,10 +13,10 @@ function usePageVisible() {
   return visible;
 }
 
-export function useFilteredObjects(pattern: string) {
+export function useFilteredObjects(pattern: string, fulltext = true) {
   return useQuery({
-    queryKey: ['objects', pattern],
-    queryFn: () => getObjectsByPattern(pattern),
+    queryKey: ['objects', pattern, fulltext],
+    queryFn: () => getObjectsByPattern(pattern, fulltext),
     enabled: pattern.length > 0,
   });
 }

@@ -24,6 +24,22 @@ const queryClient = new QueryClient({
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200, 500];
 const LS_PAGE_SIZE = 'iobroker-page-size';
 
+const QUICK_COLORS: Record<string, string> = {
+  'alias.0.*':       'text-green-600 dark:text-green-400',
+  'javascript.0.*':  'text-yellow-600 dark:text-yellow-500',
+  '0_userdata.0.*':  'text-indigo-600 dark:text-indigo-400',
+};
+const ENUM_COLORS = [
+  'text-sky-600 dark:text-sky-400',
+  'text-violet-600 dark:text-violet-400',
+  'text-pink-600 dark:text-pink-400',
+  'text-teal-600 dark:text-teal-400',
+  'text-orange-600 dark:text-orange-400',
+  'text-rose-600 dark:text-rose-400',
+  'text-cyan-600 dark:text-cyan-400',
+  'text-lime-600 dark:text-lime-500',
+];
+
 function AppContent() {
   const [pattern, setPattern] = useState('*');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -38,14 +54,16 @@ function AppContent() {
   const [treeExpandSignal, setTreeExpandSignal] = useState<{ depth: number; seq: number } | undefined>(undefined);
   const [sidebarToggleSeq, setSidebarToggleSeq] = useState(0);
   const [treeFilter, setTreeFilter] = useState<string | null>(null);
-  const [roomFilter, setRoomFilter] = useState<string | null>(null);
+  const [roomFilters, setRoomFilters] = useState<Set<string>>(new Set());
   const [roomsOpen, setRoomsOpen] = useState(false);
-  const [functionFilter, setFunctionFilter] = useState<string | null>(null);
+  const [functionFilters, setFunctionFilters] = useState<Set<string>>(new Set());
   const [functionsOpen, setFunctionsOpen] = useState(false);
+  const [quickPatterns, setQuickPatterns] = useState<Set<string>>(new Set());
   const [quickOpen, setQuickOpen] = useState(false);
+  const [fulltextEnabled, setFulltextEnabled] = useState(true);
   const [historyModalId, setHistoryModalId] = useState<string | null>(null);
 
-  const { data: stateObjects, error: objectsError } = useFilteredObjects(pattern);
+  const { data: stateObjects, error: objectsError } = useFilteredObjects(pattern, fulltextEnabled);
   const { data: allObjects } = useAllObjects();
   const { data: roomMap } = useRoomMap();
   const { data: functionMap } = useFunctionMap();
@@ -88,10 +106,11 @@ function AppContent() {
     if (colFilters.history === '1') ids = ids.filter((id) => historyIds.has(id));
     if (colFilters.smart === '1')   ids = ids.filter((id) => smartIds.has(id));
     if (colFilters.alias === '1')   ids = ids.filter((id) => aliasMap.has(id) || !!(stateObjects![id]?.common?.alias?.id));
-    if (roomFilter) ids = ids.filter((id) => (roomMap || {})[id] === roomFilter);
-    if (functionFilter) ids = ids.filter((id) => (functionMap || {})[id] === functionFilter);
+    if (roomFilters.size > 0) ids = ids.filter((id) => roomFilters.has((roomMap || {})[id]));
+    if (functionFilters.size > 0) ids = ids.filter((id) => functionFilters.has((functionMap || {})[id]));
+    if (quickPatterns.size > 0) { const pfx = [...quickPatterns].map(q => q.slice(0, -1)); ids = ids.filter(id => pfx.some(p => id.startsWith(p))); }
     return ids;
-  }, [stateObjects, historyOnly, historyIds, smartOnly, smartIds, colFilters, roomMap, functionMap, aliasMap, roomFilter, functionFilter]);
+  }, [stateObjects, historyOnly, historyIds, smartOnly, smartIds, colFilters, roomMap, functionMap, aliasMap, roomFilters, functionFilters, quickPatterns]);
 
   const tableIds = useMemo(
     () => treeFilter ? objectIds.filter((id) => id.startsWith(treeFilter)) : objectIds,
@@ -122,8 +141,9 @@ function AppContent() {
     setSelectedId(null);
     setHistoryOnly(false);
     setSmartOnly(false);
-    setRoomFilter(null);
-    setFunctionFilter(null);
+    setRoomFilters(new Set());
+    setFunctionFilters(new Set());
+    setQuickPatterns(new Set());
   };
 
   function handleColFilterChange(filters: Partial<Record<SortKey, string>>) {
@@ -131,7 +151,7 @@ function AppContent() {
     setPage(0);
   }
 
-  const hasAnyFilter = pattern !== '*' || historyOnly || smartOnly || !!roomFilter || !!functionFilter || !!treeFilter || Object.values(colFilters).some((v) => v.trim() !== '');
+  const hasAnyFilter = pattern !== '*' || historyOnly || smartOnly || roomFilters.size > 0 || functionFilters.size > 0 || quickPatterns.size > 0 || !!treeFilter || Object.values(colFilters).some((v) => v.trim() !== '');
 
   function resetAllFilters() {
     setPattern('*');
@@ -139,8 +159,9 @@ function AppContent() {
     setSelectedId(null);
     setHistoryOnly(false);
     setSmartOnly(false);
-    setRoomFilter(null);
-    setFunctionFilter(null);
+    setRoomFilters(new Set());
+    setFunctionFilters(new Set());
+    setQuickPatterns(new Set());
     setTreeFilter(null);
     setColFilters({});
   }
@@ -162,7 +183,7 @@ function AppContent() {
       sidebar={
         <div className="flex flex-col h-full">
           <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex flex-col gap-2">
-            <SearchBar onSearch={handleSearch} initialPattern={pattern} onReset={resetAllFilters} />
+            <SearchBar onSearch={handleSearch} initialPattern={pattern} onReset={resetAllFilters} fulltextEnabled={fulltextEnabled} onFulltextChange={setFulltextEnabled} />
             {hasAnyFilter && (
               <button
                 onClick={resetAllFilters}
@@ -182,8 +203,8 @@ function AppContent() {
               <span className="flex items-center gap-1.5 font-medium">
                 <Layers size={12} />
                 Schnellfilter
-                {(['alias.0.*', 'javascript.0.*', '0_userdata.0.*'].includes(pattern)) && (
-                  <span className="px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 text-[10px] truncate max-w-[80px]">{pattern}</span>
+                {quickPatterns.size > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 text-[10px] truncate max-w-[80px]">{quickPatterns.size === 1 ? [...quickPatterns][0] : quickPatterns.size}</span>
                 )}
                 {historyOnly && <span className="px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 text-[10px]">History</span>}
                 {smartOnly && <span className="px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 text-[10px]">Smart</span>}
@@ -191,15 +212,15 @@ function AppContent() {
               {quickOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
             </button>
             {quickOpen && (
-              <div className="px-3 pt-1.5 pb-3 flex flex-wrap gap-1.5">
+              <div className="px-3 pt-1.5 pb-3 flex flex-wrap gap-1.5 justify-center">
                 {(['alias.0.*', 'javascript.0.*', '0_userdata.0.*'] as const).map((q) => (
                   <button
                     key={q}
-                    onClick={() => { handleSearch(pattern === q ? '*' : q); if (pattern !== q) setTreeExpandSignal(s => ({ depth: 2, seq: (s?.seq ?? 0) + 1 })); }}
+                    onClick={() => { const adding = !quickPatterns.has(q); setQuickPatterns(prev => { const n = new Set(prev); adding ? n.add(q) : n.delete(q); return n; }); setPage(0); if (adding) setTreeExpandSignal(s => ({ depth: 2, seq: (s?.seq ?? 0) + 1 })); }}
                     className={`px-2 py-0.5 rounded text-xs font-mono transition-colors ${
-                      pattern === q
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                      quickPatterns.has(q)
+                        ? `bg-gray-200 dark:bg-gray-700 ${QUICK_COLORS[q]} hover:bg-gray-300 dark:hover:bg-gray-600`
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-300 dark:hover:bg-gray-600'
                     }`}
                   >
                     {q}
@@ -209,8 +230,8 @@ function AppContent() {
                   onClick={() => { setHistoryOnly(!historyOnly); setPage(0); }}
                   className={`px-2 py-0.5 rounded text-xs transition-colors flex items-center gap-1 ${
                     historyOnly
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                      ? 'bg-gray-200 dark:bg-gray-700 text-purple-600 dark:text-purple-400 hover:bg-gray-300 dark:hover:bg-gray-600'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-300 dark:hover:bg-gray-600'
                   }`}
                 >
                   <Database size={11} /> History {historyIds.size}
@@ -219,8 +240,8 @@ function AppContent() {
                   onClick={() => { setSmartOnly(!smartOnly); setPage(0); }}
                   className={`px-2 py-0.5 rounded text-xs transition-colors flex items-center gap-1 ${
                     smartOnly
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                      ? 'bg-gray-200 dark:bg-gray-700 text-orange-600 dark:text-orange-400 hover:bg-gray-300 dark:hover:bg-gray-600'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-300 dark:hover:bg-gray-600'
                   }`}
                 >
                   <Mic2 size={11} /> SmartName {smartIds.size}
@@ -237,20 +258,20 @@ function AppContent() {
                 <span className="flex items-center gap-1.5 font-medium">
                   <Home size={12} />
                   Räume
-                  {roomFilter && <span className="px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 text-[10px]">{roomFilter}</span>}
+                  {roomFilters.size > 0 && <span className="px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 text-[10px]">{roomFilters.size === 1 ? [...roomFilters][0] : roomFilters.size}</span>}
                 </span>
                 {roomsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
               </button>
               {roomsOpen && (
-                <div className="px-3 pt-1.5 pb-3 flex flex-wrap gap-1.5">
-                  {roomEnums.map(({ name }) => (
+                <div className="px-3 pt-1.5 pb-3 flex flex-wrap gap-1.5 justify-center">
+                  {roomEnums.map(({ name }, i) => (
                     <button
                       key={name}
-                      onClick={() => { setRoomFilter(roomFilter === name ? null : name); setPage(0); }}
+                      onClick={() => { setRoomFilters(prev => { const n = new Set(prev); n.has(name) ? n.delete(name) : n.add(name); return n; }); setPage(0); }}
                       className={`px-2 py-0.5 rounded text-xs transition-colors ${
-                        roomFilter === name
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                        roomFilters.has(name)
+                          ? `bg-gray-200 dark:bg-gray-700 ${ENUM_COLORS[i % ENUM_COLORS.length]} hover:bg-gray-300 dark:hover:bg-gray-600`
+                          : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-300 dark:hover:bg-gray-600'
                       }`}
                     >
                       {name}
@@ -269,20 +290,20 @@ function AppContent() {
                 <span className="flex items-center gap-1.5 font-medium">
                   <Zap size={12} />
                   Funktionen
-                  {functionFilter && <span className="px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 text-[10px]">{functionFilter}</span>}
+                  {functionFilters.size > 0 && <span className="px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 text-[10px]">{functionFilters.size === 1 ? [...functionFilters][0] : functionFilters.size}</span>}
                 </span>
                 {functionsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
               </button>
               {functionsOpen && (
-                <div className="px-3 pt-1.5 pb-3 flex flex-wrap gap-1.5">
-                  {functionEnums.map(({ name }) => (
+                <div className="px-3 pt-1.5 pb-3 flex flex-wrap gap-1.5 justify-center">
+                  {functionEnums.map(({ name }, i) => (
                     <button
                       key={name}
-                      onClick={() => { setFunctionFilter(functionFilter === name ? null : name); setPage(0); }}
+                      onClick={() => { setFunctionFilters(prev => { const n = new Set(prev); n.has(name) ? n.delete(name) : n.add(name); return n; }); setPage(0); }}
                       className={`px-2 py-0.5 rounded text-xs transition-colors ${
-                        functionFilter === name
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                        functionFilters.has(name)
+                          ? `bg-gray-200 dark:bg-gray-700 ${ENUM_COLORS[i % ENUM_COLORS.length]} hover:bg-gray-300 dark:hover:bg-gray-600`
+                          : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-300 dark:hover:bg-gray-600'
                       }`}
                     >
                       {name}
@@ -355,6 +376,7 @@ function AppContent() {
             treeFilter={treeFilter}
             onClearTreeFilter={() => setTreeFilter(null)}
             sidebarToggleSeq={sidebarToggleSeq}
+            fulltextEnabled={fulltextEnabled}
           />
         </div>
 

@@ -403,7 +403,7 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
           {typesOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
         </button>
         {typesOpen && (
-          <div className="px-3 pt-1.5 pb-3 flex flex-wrap gap-1.5">
+          <div className="px-3 pt-1.5 pb-3 flex flex-wrap gap-1.5 justify-center">
             {typeItems.map(({ key, label, active, set, icon, color }) => (
               <button
                 key={key}
