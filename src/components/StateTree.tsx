@@ -378,7 +378,7 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
   const [showDevices,  setShowDevices]  = useState(true);
   const [showChannels, setShowChannels] = useState(true);
   const [typesOpen,    setTypesOpen]    = useState(false);
-  const [treeViewMode, setTreeViewMode] = useState<'path' | 'adapter'>('path');
+  const [treeViewMode, setTreeViewMode] = useState<'path' | 'adapter'>('adapter');
 
   useEffect(() => {
     if (!expandToDepth) return;
@@ -472,7 +472,9 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
               ? 'bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-400/40 hover:bg-blue-500/30'
               : 'bg-gray-200/50 text-gray-500 border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700'
           }`}
-          title={treeViewMode === 'adapter' ? 'Pfad-Ansicht' : 'Adapter-Ansicht'}
+          title={treeViewMode === 'adapter'
+            ? (isEn ? 'Path view' : 'Pfad-Ansicht')
+            : (isEn ? 'Adapter view' : 'Adapter-Ansicht')}
         >
           {treeViewMode === 'adapter' ? <LayoutList size={13} /> : <LayoutGrid size={13} />}
         </button>
