@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import {
   ComposedChart,
@@ -11,6 +11,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Brush,
 } from 'recharts';
 import { Trash2, CircleDot, Download, GitCompareArrows, ChevronDown, ChevronRight } from 'lucide-react';
 import { useHistory, useDeleteHistory } from '../hooks/useStates';
@@ -175,6 +176,8 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
   const [showDots, setShowDots] = useState(false);
   const [compareOffset, setCompareOffset] = useState<CompareOffset>(null);
   const [settingsOpen, setSettingsOpen] = useState(!settingsCollapsible);
+  const [viewWindow, setViewWindow] = useState<{ start: number; end: number } | null>(null);
+  const [panDrag, setPanDrag] = useState<{ anchorIdx: number; start: number; end: number } | null>(null);
 
   const { deleteEntry, deleteRange, deleteAll } = useDeleteHistory();
   const isPending = deleteEntry.isPending || deleteRange.isPending || deleteAll.isPending;
@@ -253,6 +256,84 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
       return row;
     });
   }, [hasMultiSeries, chartData, ed0, ed1, ed2, ed3, es.length]);
+
+  const activeChartData = useMemo(() => {
+    if (hasMultiSeries && multiChartData) return multiChartData as Array<{ ts: number }>;
+    return (compareOffset ? mergedChartData : chartData) as Array<{ ts: number }>;
+  }, [hasMultiSeries, multiChartData, compareOffset, mergedChartData, chartData]);
+
+  const maxIndex = activeChartData.length - 1;
+
+  useEffect(() => {
+    if (activeChartData.length <= 1) {
+      setViewWindow(null);
+      return;
+    }
+    setViewWindow((prev) => {
+      if (!prev) return { start: 0, end: maxIndex };
+      const start = Math.max(0, Math.min(prev.start, maxIndex));
+      const end = Math.max(start + 1, Math.min(prev.end, maxIndex));
+      if (start === prev.start && end === prev.end) return prev;
+      return { start, end };
+    });
+  }, [activeChartData.length, maxIndex]);
+
+  const xDomain = useMemo<[number, number] | undefined>(() => {
+    if (!viewWindow || activeChartData.length === 0) return undefined;
+    const startTs = activeChartData[viewWindow.start]?.ts;
+    const endTs = activeChartData[viewWindow.end]?.ts;
+    if (typeof startTs !== 'number' || typeof endTs !== 'number') return undefined;
+    return [startTs, endTs];
+  }, [activeChartData, viewWindow]);
+
+  function clampWindow(start: number, end: number) {
+    const total = activeChartData.length;
+    if (total <= 1) return { start: 0, end: 0 };
+    const size = Math.max(2, end - start + 1);
+    let nextStart = Math.max(0, Math.min(start, total - size));
+    let nextEnd = nextStart + size - 1;
+    if (nextEnd >= total) {
+      nextEnd = total - 1;
+      nextStart = Math.max(0, nextEnd - size + 1);
+    }
+    return { start: nextStart, end: nextEnd };
+  }
+
+  function zoomWithWheel(e: React.WheelEvent<HTMLDivElement>) {
+    if (deleteMode || activeChartData.length < 3) return;
+    e.preventDefault();
+    const current = viewWindow ?? { start: 0, end: maxIndex };
+    const currentSize = current.end - current.start + 1;
+    const zoomIn = e.deltaY < 0;
+    const targetSize = zoomIn
+      ? Math.max(10, Math.floor(currentSize * 0.8))
+      : Math.min(activeChartData.length, Math.ceil(currentSize * 1.25));
+    if (targetSize === currentSize) return;
+    const center = Math.floor((current.start + current.end) / 2);
+    const next = clampWindow(center - Math.floor(targetSize / 2), center + Math.ceil(targetSize / 2) - 1);
+    setViewWindow(next);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function handlePanStart(state: any) {
+    if (deleteMode || !viewWindow) return;
+    const idx = state?.activeTooltipIndex;
+    if (typeof idx !== 'number') return;
+    setPanDrag({ anchorIdx: idx, start: viewWindow.start, end: viewWindow.end });
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function handlePanMove(state: any) {
+    if (!panDrag || deleteMode) return;
+    const idx = state?.activeTooltipIndex;
+    if (typeof idx !== 'number') return;
+    const delta = panDrag.anchorIdx - idx;
+    setViewWindow(clampWindow(panDrag.start + delta, panDrag.end + delta));
+  }
+
+  function handlePanEnd() {
+    if (panDrag) setPanDrag(null);
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleChartClick = useCallback((state: any) => {
@@ -342,6 +423,25 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
     const yProps = axes.yAxis(unit);
     const tooltipProps = axes.tooltip(unit, !!compareOffset);
     const data = compareOffset ? mergedChartData : chartData;
+    const xPropsWithZoom = {
+      ...xProps,
+      domain: xDomain ?? xProps.domain,
+    };
+    const brush = activeChartData.length > 20 ? (
+      <Brush
+        dataKey="ts"
+        height={18}
+        stroke="#3b82f6"
+        travellerWidth={8}
+        startIndex={viewWindow?.start ?? 0}
+        endIndex={viewWindow?.end ?? maxIndex}
+        onChange={(range) => {
+          const startIndex = range?.startIndex ?? 0;
+          const endIndex = range?.endIndex ?? maxIndex;
+          setViewWindow(clampWindow(startIndex, endIndex));
+        }}
+      />
+    ) : null;
 
     // Multi-series mode: ComposedChart with one Line per series
     if (hasMultiSeries && multiChartData) {
@@ -350,9 +450,15 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
         ...es.map((s, i) => ({ key: `v${i + 1}`, label: s.label, unit: s.unit, color: SERIES_COLORS[i + 1] ?? '#6b7280' })),
       ];
       return (
-        <ComposedChart data={multiChartData}>
+        <ComposedChart
+          data={multiChartData}
+          onMouseDown={handlePanStart}
+          onMouseMove={handlePanMove}
+          onMouseUp={handlePanEnd}
+          onMouseLeave={handlePanEnd}
+        >
           <CartesianGrid strokeDasharray="3 3" stroke={axes.gridStroke} />
-          <XAxis {...xProps} />
+          <XAxis {...xPropsWithZoom} />
           <YAxis {...yProps} />
           <Tooltip
             contentStyle={{ backgroundColor: dark ? '#1f2937' : '#ffffff', border: `1px solid ${dark ? '#374151' : '#e5e7eb'}`, borderRadius: 6 }}
@@ -367,30 +473,46 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
           {seriesMeta.map(({ key, color }) => (
             <Line key={key} type="monotone" dataKey={key} stroke={color} strokeWidth={1.5} dot={false} activeDot={{ r: 4 }} connectNulls={false} />
           ))}
+          {brush}
         </ComposedChart>
       );
     }
 
     if (chartType === 'bar') {
       return (
-        <BarChart data={data} onClick={handleChartClick}>
+        <BarChart
+          data={data}
+          onClick={handleChartClick}
+          onMouseDown={handlePanStart}
+          onMouseMove={handlePanMove}
+          onMouseUp={handlePanEnd}
+          onMouseLeave={handlePanEnd}
+        >
           <CartesianGrid strokeDasharray="3 3" stroke={axes.gridStroke} />
-          <XAxis {...xProps} />
+          <XAxis {...xPropsWithZoom} />
           <YAxis {...yProps} />
           <Tooltip {...tooltipProps} />
           <Bar dataKey="val" fill={deleteMode ? '#ef4444' : '#3b82f6'} cursor={deleteMode ? 'pointer' : undefined} />
           {compareOffset && (
             <Bar dataKey="valComp" fill="#9ca3af" opacity={0.5} />
           )}
+          {brush}
         </BarChart>
       );
     }
 
     if (chartType === 'area') {
       return (
-        <ComposedChart data={data} onClick={handleChartClick}>
+        <ComposedChart
+          data={data}
+          onClick={handleChartClick}
+          onMouseDown={handlePanStart}
+          onMouseMove={handlePanMove}
+          onMouseUp={handlePanEnd}
+          onMouseLeave={handlePanEnd}
+        >
           <CartesianGrid strokeDasharray="3 3" stroke={axes.gridStroke} />
-          <XAxis {...xProps} />
+          <XAxis {...xPropsWithZoom} />
           <YAxis {...yProps} />
           <Tooltip {...tooltipProps} />
           <defs>
@@ -419,14 +541,22 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
               activeDot={{ r: 4 }}
             />
           )}
+          {brush}
         </ComposedChart>
       );
     }
 
     return (
-      <ComposedChart data={data} onClick={handleChartClick}>
+      <ComposedChart
+        data={data}
+        onClick={handleChartClick}
+        onMouseDown={handlePanStart}
+        onMouseMove={handlePanMove}
+        onMouseUp={handlePanEnd}
+        onMouseLeave={handlePanEnd}
+      >
         <CartesianGrid strokeDasharray="3 3" stroke={axes.gridStroke} />
-        <XAxis {...xProps} />
+        <XAxis {...xPropsWithZoom} />
         <YAxis {...yProps} />
         <Tooltip {...tooltipProps} />
         <Line
@@ -448,6 +578,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
             activeDot={{ r: 4 }}
           />
         )}
+        {brush}
       </ComposedChart>
     );
   }
@@ -664,7 +795,11 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
           {isEn ? 'No history data in selected range' : 'Keine History-Daten im Zeitraum gefunden'}
         </div>
       ) : (
-        <div ref={chartContainerRef} className={fillHeight ? 'flex-1 min-h-0' : ''}>
+        <div
+          ref={chartContainerRef}
+          onWheel={zoomWithWheel}
+          className={`${fillHeight ? 'flex-1 min-h-0' : ''} ${deleteMode ? '' : 'cursor-grab active:cursor-grabbing'}`.trim()}
+        >
           <ResponsiveContainer width="100%" height={fillHeight ? '100%' : 250}>
             {renderChart()}
           </ResponsiveContainer>

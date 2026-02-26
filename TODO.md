@@ -47,7 +47,7 @@ Optionen -> Sprache, Datumsformat, Standard Spalten, Schnellfilter
 | FE-035 | Multi-Datenpunkt-Vergleich im Chart: Mehrere History-fähige States gleichzeitig auf einer Zeitachse darstellen (z.B. Temperaturen verschiedener Räume). | Chart | hoch | L | umgesetzt |
 | FE-036 | Sparkline-Miniaturchart in der Tabellenspalte „Wert": Kleiner Trendgraph der letzten 24h direkt in der Zeile für History-aktivierte Datenpunkte. | Chart | hoch | M | offen |
 | FE-037 | Statistik-Panel im HistoryChart: Min/Max/Avg/Letzte-Wert-Zusammenfassung als Badges direkt über dem Chart anzeigen. | Chart | mittel | S | umgesetzt |
-| FE-038 | Zoom & Pan im Chart: Mausrad-Zoom auf Zeitachse + Drag-to-Pan; Recharts `ReferenceArea` Brush als Navigationshilfe unter dem Chart. | Chart | mittel | M | offen |
+| FE-038 | Zoom & Pan im Chart: Mausrad-Zoom auf Zeitachse + Drag-to-Pan; Recharts `ReferenceArea` Brush als Navigationshilfe unter dem Chart. | Chart | mittel | M | umgesetzt |
 | FE-039 | Boolean-States als Gantt-/Zeitbalken-Chart: Zeigt „An"-Perioden als farbige Balken statt als Linie — ideal für Schalter, Bewegungsmelder, Türen. | Chart | mittel | M | offen |
 | FE-040 | Chart-Export als PNG: Button im HistoryModal der den Chart als Bilddatei herunterlädt (via html2canvas oder Recharts SVG-Export). | Chart | mittel | S | umgesetzt |
 | FE-041 | History-Adapter auswählbar: Aktuell hardcodiert auf `sql.0`; Unterstützung für `influxdb.0` und `history.0` Adapter ergänzen. | Feature | mittel | M | offen |
