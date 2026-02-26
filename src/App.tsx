@@ -10,8 +10,9 @@ import HistoryModal from './components/HistoryModal';
 import NewDatapointModal from './components/NewDatapointModal';
 import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunctionMap, useRoomEnums, useFunctionEnums, useAliasMap } from './hooks/useStates';
 import { hasHistory, hasSmartName } from './api/iobroker';
-import type { SortKey } from './components/StateList';
-import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RotateCcw, Layers } from 'lucide-react';
+import type { SortKey, DateFormatSetting } from './components/StateList';
+import { ALL_COLUMNS, DEFAULT_COLS } from './components/StateList';
+import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RotateCcw, Layers, X } from 'lucide-react';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,6 +25,50 @@ const queryClient = new QueryClient({
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200, 500];
 const LS_PAGE_SIZE = 'iobroker-page-size';
+const LS_APP_SETTINGS = 'iobroker-app-settings';
+const DEFAULT_QUICK_PATTERNS = ['alias.0.*', 'javascript.0.*', '0_userdata.0.*'] as const;
+
+interface AppSettings {
+  dateFormat: DateFormatSetting;
+  visibleCols: SortKey[];
+  extraQuickFilters: string[];
+}
+
+function normalizeQuickPattern(input: string): string {
+  let v = input.trim();
+  if (!v) return '';
+  if (!v.endsWith('*')) v = `${v.replace(/\.+$/, '')}.*`;
+  if (v.endsWith('*') && !v.endsWith('.*')) v = `${v.replace(/\*+$/, '')}.*`;
+  return v;
+}
+
+function quickPatternToRegex(pattern: string): RegExp {
+  const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+  return new RegExp(`^${escaped}$`);
+}
+
+function loadAppSettings(): AppSettings {
+  const fallback: AppSettings = {
+    dateFormat: 'de',
+    visibleCols: DEFAULT_COLS,
+    extraQuickFilters: [],
+  };
+  try {
+    const raw = localStorage.getItem(LS_APP_SETTINGS);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw) as Partial<AppSettings>;
+    const validCols = (parsed.visibleCols ?? []).filter((k): k is SortKey => ALL_COLUMNS.some((c) => c.key === k));
+    const validDate = parsed.dateFormat === 'de' || parsed.dateFormat === 'us' || parsed.dateFormat === 'iso' ? parsed.dateFormat : 'de';
+    const validExtra = (parsed.extraQuickFilters ?? []).map(normalizeQuickPattern).filter(Boolean);
+    return {
+      dateFormat: validDate,
+      visibleCols: validCols.length > 0 ? validCols : DEFAULT_COLS,
+      extraQuickFilters: [...new Set(validExtra.filter((p) => !DEFAULT_QUICK_PATTERNS.includes(p as typeof DEFAULT_QUICK_PATTERNS[number])))],
+    };
+  } catch {
+    return fallback;
+  }
+}
 
 const QUICK_COLORS: Record<string, string> = {
   'alias.0.*':       'text-green-600 dark:text-green-400',
@@ -61,6 +106,10 @@ function AppContent() {
   const [functionsOpen, setFunctionsOpen] = useState(false);
   const [quickPatterns, setQuickPatterns] = useState<Set<string>>(new Set());
   const [quickOpen, setQuickOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [newQuickFilter, setNewQuickFilter] = useState('');
+  const [appSettings, setAppSettings] = useState<AppSettings>(() => loadAppSettings());
+  const [settingsDraft, setSettingsDraft] = useState<AppSettings>(() => loadAppSettings());
   const [fulltextEnabled, setFulltextEnabled] = useState(true);
   const [historyModalId, setHistoryModalId] = useState<string | null>(null);
   const [newDatapointInitialId, setNewDatapointInitialId] = useState<string | null>(null);
@@ -93,6 +142,10 @@ function AppContent() {
   // Cached in QueryClient via useAliasMap (select on ['objects','all'])
   const { data: aliasMap = new Map() } = useAliasMap();
   const existingIds = useMemo(() => new Set(Object.keys(allObjects || {})), [allObjects]);
+  const quickPatternOptions = useMemo(
+    () => [...new Set([...DEFAULT_QUICK_PATTERNS, ...appSettings.extraQuickFilters])],
+    [appSettings.extraQuickFilters]
+  );
 
   const objectIds = useMemo(() => {
     let ids = stateObjects ? Object.keys(stateObjects).sort() : [];
@@ -112,7 +165,10 @@ function AppContent() {
     if (colFilters.alias === '1')   ids = ids.filter((id) => aliasMap.has(id) || !!(stateObjects![id]?.common?.alias?.id));
     if (roomFilters.size > 0) ids = ids.filter((id) => roomFilters.has((roomMap || {})[id]));
     if (functionFilters.size > 0) ids = ids.filter((id) => functionFilters.has((functionMap || {})[id]));
-    if (quickPatterns.size > 0) { const pfx = [...quickPatterns].map(q => q.slice(0, -1)); ids = ids.filter(id => pfx.some(p => id.startsWith(p))); }
+    if (quickPatterns.size > 0) {
+      const quickRegexes = [...quickPatterns].map(quickPatternToRegex);
+      ids = ids.filter((id) => quickRegexes.some((rx) => rx.test(id)));
+    }
     return ids;
   }, [stateObjects, historyOnly, historyIds, smartOnly, smartIds, colFilters, roomMap, functionMap, aliasMap, roomFilters, functionFilters, quickPatterns]);
 
@@ -154,6 +210,56 @@ function AppContent() {
     setColFilters(filters);
     setPage(0);
   }, []);
+
+  const openSettings = useCallback(() => {
+    const latest = loadAppSettings();
+    try {
+      const rawCols = localStorage.getItem('iobroker-visible-cols');
+      if (rawCols) {
+        const parsed = JSON.parse(rawCols) as SortKey[];
+        const valid = parsed.filter((k) => ALL_COLUMNS.some((c) => c.key === k));
+        if (valid.length > 0) latest.visibleCols = valid;
+      }
+    } catch {
+      // ignore
+    }
+    setSettingsDraft(latest);
+    setNewQuickFilter('');
+    setSettingsOpen(true);
+  }, []);
+
+  const saveSettings = useCallback(() => {
+    const nextCols = settingsDraft.visibleCols.filter((k) => ALL_COLUMNS.some((c) => c.key === k));
+    const normalizedExtra = [...new Set(settingsDraft.extraQuickFilters.map(normalizeQuickPattern).filter(Boolean))]
+      .filter((p) => !DEFAULT_QUICK_PATTERNS.includes(p as typeof DEFAULT_QUICK_PATTERNS[number]));
+    const next: AppSettings = {
+      dateFormat: settingsDraft.dateFormat,
+      visibleCols: nextCols.length > 0 ? nextCols : DEFAULT_COLS,
+      extraQuickFilters: normalizedExtra,
+    };
+    setAppSettings(next);
+    localStorage.setItem(LS_APP_SETTINGS, JSON.stringify(next));
+    localStorage.setItem('iobroker-visible-cols', JSON.stringify(next.visibleCols));
+    const allowed = new Set([...DEFAULT_QUICK_PATTERNS, ...next.extraQuickFilters]);
+    setQuickPatterns((prev) => new Set([...prev].filter((p) => allowed.has(p))));
+    setSettingsOpen(false);
+  }, [settingsDraft]);
+
+  const addExtraQuickFilter = useCallback(() => {
+    const normalized = normalizeQuickPattern(newQuickFilter);
+    if (!normalized) return;
+    if (DEFAULT_QUICK_PATTERNS.includes(normalized as typeof DEFAULT_QUICK_PATTERNS[number])) {
+      setNewQuickFilter('');
+      return;
+    }
+    setSettingsDraft((prev) => ({
+      ...prev,
+      extraQuickFilters: prev.extraQuickFilters.includes(normalized)
+        ? prev.extraQuickFilters
+        : [...prev.extraQuickFilters, normalized],
+    }));
+    setNewQuickFilter('');
+  }, [newQuickFilter]);
 
   const hasAnyFilter = pattern !== '*' || historyOnly || smartOnly || roomFilters.size > 0 || functionFilters.size > 0 || quickPatterns.size > 0 || !!treeFilter || Object.values(colFilters).some((v) => v.trim() !== '');
 
@@ -201,6 +307,7 @@ function AppContent() {
   return (
     <Layout
       onSidebarToggle={handleSidebarToggle}
+      onOpenSettings={openSettings}
       sidebar={
         <div className="flex flex-col h-full">
           <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex flex-col gap-2">
@@ -234,13 +341,13 @@ function AppContent() {
             </button>
             {quickOpen && (
               <div className="px-3 pt-1.5 pb-3 flex flex-wrap gap-1.5 justify-center">
-                {(['alias.0.*', 'javascript.0.*', '0_userdata.0.*'] as const).map((q) => (
+                {quickPatternOptions.map((q) => (
                   <button
                     key={q}
                     onClick={() => { const adding = !quickPatterns.has(q); setQuickPatterns(prev => { const n = new Set(prev); adding ? n.add(q) : n.delete(q); return n; }); setPage(0); if (adding) setTreeExpandSignal(s => ({ depth: 2, seq: (s?.seq ?? 0) + 1 })); }}
                     className={`px-2 py-0.5 rounded text-xs font-mono transition-colors ${
                       quickPatterns.has(q)
-                        ? `bg-gray-200 dark:bg-gray-700 ${QUICK_COLORS[q]} hover:bg-gray-300 dark:hover:bg-gray-600`
+                        ? `bg-gray-200 dark:bg-gray-700 ${(QUICK_COLORS[q] ?? 'text-blue-600 dark:text-blue-400')} hover:bg-gray-300 dark:hover:bg-gray-600`
                         : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-300 dark:hover:bg-gray-600'
                     }`}
                   >
@@ -385,6 +492,109 @@ function AppContent() {
             initialId={newDatapointInitialId}
           />
         )}
+        {settingsOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setSettingsOpen(false)}>
+            <div
+              className="w-full max-w-2xl rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Einstellungen</h3>
+                <button onClick={() => setSettingsOpen(false)} className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
+                  <X size={14} />
+                </button>
+              </div>
+              <div className="p-4 flex flex-col gap-4 max-h-[75vh] overflow-y-auto">
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Datumsformat</span>
+                  <select
+                    value={settingsDraft.dateFormat}
+                    onChange={(e) => setSettingsDraft((prev) => ({ ...prev, dateFormat: e.target.value as DateFormatSetting }))}
+                    className="w-56 px-2 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                  >
+                    <option value="de">DD.MM.YYYY HH:mm:ss</option>
+                    <option value="us">MM/DD/YYYY HH:mm:ss</option>
+                    <option value="iso">YYYY-MM-DD HH:mm:ss</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Angezeigte Spalten</span>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {ALL_COLUMNS.map(({ key, label }) => {
+                      const checked = settingsDraft.visibleCols.includes(key);
+                      return (
+                        <label key={key} className="flex items-center gap-2 px-2 py-1.5 rounded border border-gray-200 dark:border-gray-700 text-xs text-gray-700 dark:text-gray-300">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => setSettingsDraft((prev) => {
+                              const next = checked
+                                ? prev.visibleCols.filter((k) => k !== key)
+                                : [...prev.visibleCols, key];
+                              return { ...prev, visibleCols: next.length > 0 ? next : prev.visibleCols };
+                            })}
+                            className="w-3.5 h-3.5 accent-blue-500"
+                          />
+                          <span>{label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Zusätzliche Schnellfilter</span>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={newQuickFilter}
+                      onChange={(e) => setNewQuickFilter(e.target.value)}
+                      placeholder="z.B. hm-rpc.0.*"
+                      className="flex-1 px-2 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 font-mono"
+                    />
+                    <button
+                      onClick={addExtraQuickFilter}
+                      className="px-2.5 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                    >
+                      Hinzufügen
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {settingsDraft.extraQuickFilters.length === 0 && (
+                      <span className="text-xs text-gray-400 dark:text-gray-500">Keine zusätzlichen Filter</span>
+                    )}
+                    {settingsDraft.extraQuickFilters.map((patternItem) => (
+                      <span key={patternItem} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono bg-gray-200/60 dark:bg-gray-700/60 text-gray-700 dark:text-gray-300">
+                        {patternItem}
+                        <button
+                          onClick={() => setSettingsDraft((prev) => ({ ...prev, extraQuickFilters: prev.extraQuickFilters.filter((p) => p !== patternItem) }))}
+                          className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
+                        >
+                          <X size={10} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end gap-2">
+                <button
+                  onClick={() => setSettingsOpen(false)}
+                  className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Abbrechen
+                </button>
+                <button
+                  onClick={saveSettings}
+                  className="px-3 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                >
+                  Speichern
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="flex-1 min-h-0 flex flex-col">
           <StateList
@@ -405,6 +615,8 @@ function AppContent() {
             onClearTreeFilter={handleClearTreeFilter}
             sidebarToggleSeq={sidebarToggleSeq}
             fulltextEnabled={fulltextEnabled}
+            dateFormat={appSettings.dateFormat}
+            settingsVisibleCols={appSettings.visibleCols}
           />
         </div>
 

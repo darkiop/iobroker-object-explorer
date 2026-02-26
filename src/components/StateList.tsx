@@ -32,12 +32,20 @@ interface StateListProps {
   onClearTreeFilter?: () => void;
   sidebarToggleSeq?: number;
   fulltextEnabled?: boolean;
+  dateFormat?: DateFormatSetting;
+  settingsVisibleCols?: SortKey[];
 }
 
-function formatTimestamp(ts: number): string {
+function formatTimestamp(ts: number, dateFormat: DateFormatSetting): string {
   const d = new Date(ts);
   const p = (n: number) => String(n).padStart(2, '0');
-  return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  const day = p(d.getDate());
+  const month = p(d.getMonth() + 1);
+  const year = d.getFullYear();
+  const time = `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  if (dateFormat === 'iso') return `${year}-${month}-${day} ${time}`;
+  if (dateFormat === 'us') return `${month}/${day}/${year} ${time}`;
+  return `${day}.${month}.${year} ${time}`;
 }
 
 function formatValue(val: unknown): string {
@@ -811,8 +819,9 @@ function BatchComboControl({
 }
 
 export type SortKey = 'checkbox' | 'write' | 'alias' | 'id' | 'name' | 'room' | 'function' | 'type' | 'role' | 'value' | 'unit' | 'ack' | 'ts' | 'history' | 'smart' | 'relevanz';
+export type DateFormatSetting = 'de' | 'us' | 'iso';
 
-const ALL_COLUMNS: { key: SortKey; label: string }[] = [
+export const ALL_COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'checkbox', label: 'Auswahl' },
   { key: 'write',   label: 'Schreibschutz' },
   { key: 'history', label: 'History' },
@@ -829,7 +838,7 @@ const ALL_COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'ts',      label: 'Letztes Update' },
 ];
 
-const DEFAULT_COLS: SortKey[] = ['checkbox', 'write', 'history', 'smart', 'alias', 'id', 'name', 'room', 'function', 'role', 'value', 'unit', 'ack', 'ts'];
+export const DEFAULT_COLS: SortKey[] = ['checkbox', 'write', 'history', 'smart', 'alias', 'id', 'name', 'room', 'function', 'role', 'value', 'unit', 'ack', 'ts'];
 const LS_KEY = 'iobroker-visible-cols';
 
 function loadVisibleCols(): SortKey[] {
@@ -1029,6 +1038,7 @@ interface StateRowProps {
   fnEditForced: boolean;
   onRoomEditEnd: () => void;
   onFnEditEnd: () => void;
+  dateFormat: DateFormatSetting;
 }
 
 function aliasIdsEqual(a?: string[], b?: string[]): boolean {
@@ -1046,6 +1056,7 @@ const StateRow = React.memo(function StateRow({
   onSelect, onCheck, onContextMenu, onHistoryClick, onNavigateTo, onDeleteClick,
   onSelectRoom, onSelectFunction,
   roomEditForced, fnEditForced, onRoomEditEnd, onFnEditEnd,
+  dateFormat,
 }: StateRowProps) {
   const show = (key: SortKey) => visibleCols.includes(key);
   const w = (key: SortKey) => colWidths[key];
@@ -1193,7 +1204,7 @@ const StateRow = React.memo(function StateRow({
       )}
       {show('ts') && (
         <td data-col="ts" className="px-3 py-2 text-gray-400 dark:text-gray-500 text-xs overflow-hidden">
-          <span className="truncate block">{state ? formatTimestamp(state.ts) : ''}</span>
+          <span className="truncate block">{state ? formatTimestamp(state.ts, dateFormat) : ''}</span>
         </td>
       )}
       <td style={{ width: DEL_COL_WIDTH, minWidth: DEL_COL_WIDTH }} className="py-1 pr-2 text-center" onClick={(e) => e.stopPropagation()}>
@@ -1230,13 +1241,14 @@ const StateRow = React.memo(function StateRow({
     prev.fnEnums === next.fnEnums &&
     prev.roomEditForced === next.roomEditForced &&
     prev.fnEditForced === next.fnEditForced &&
+    prev.dateFormat === next.dateFormat &&
     prev.onNavigateTo === next.onNavigateTo &&
     prev.onSelectRoom === next.onSelectRoom &&
     prev.onSelectFunction === next.onSelectFunction
   );
 });
 
-function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, fulltextEnabled = true }: StateListProps) {
+function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols }: StateListProps) {
   const [sortKey, setSortKey] = useState<SortKey>('id');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [visibleCols, setVisibleCols] = useState<SortKey[]>(loadVisibleCols);
@@ -1384,6 +1396,12 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
     fitToContainer();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sidebarToggleSeq]);
+
+  useEffect(() => {
+    if (!settingsVisibleCols || settingsVisibleCols.length === 0) return;
+    setVisibleCols(settingsVisibleCols);
+    localStorage.setItem(LS_KEY, JSON.stringify(settingsVisibleCols));
+  }, [settingsVisibleCols]);
 
   useEffect(() => {
     if (fulltextEnabled && pattern && !isGlobPattern(pattern) && pattern !== '*') {
@@ -2009,6 +2027,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                 fnEditForced={fnEditId === id}
                 onRoomEditEnd={handleRoomEditEnd}
                 onFnEditEnd={handleFnEditEnd}
+                dateFormat={dateFormat}
               />
             ))}
             {bottomSpacer > 0 && (

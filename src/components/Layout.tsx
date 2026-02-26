@@ -1,17 +1,18 @@
 import { useState, useCallback, useRef } from 'react';
-import { Sun, Moon, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Sun, Moon, PanelLeftClose, PanelLeftOpen, Settings } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 interface LayoutProps {
   sidebar: React.ReactNode;
   children: React.ReactNode;
   onSidebarToggle?: () => void;
+  onOpenSettings?: () => void;
 }
 
 const LS_SIDEBAR_WIDTH = 'iobroker-explorer-sidebar-width';
 const LS_SIDEBAR_COLLAPSED = 'iobroker-explorer-sidebar-collapsed';
 
-export default function Layout({ sidebar, children, onSidebarToggle }: LayoutProps) {
+export default function Layout({ sidebar, children, onSidebarToggle, onOpenSettings }: LayoutProps) {
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const stored = parseInt(localStorage.getItem(LS_SIDEBAR_WIDTH) ?? '', 10);
     return Number.isFinite(stored) ? Math.max(180, Math.min(600, stored)) : 360;
@@ -73,6 +74,13 @@ export default function Layout({ sidebar, children, onSidebarToggle }: LayoutPro
             title={dark ? 'Light Mode' : 'Dark Mode'}
           >
             {dark ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
+          <button
+            onClick={onOpenSettings}
+            className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
+            title="Einstellungen"
+          >
+            <Settings size={16} />
           </button>
         </div>
       </header>
