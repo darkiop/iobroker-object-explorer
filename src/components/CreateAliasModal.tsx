@@ -10,6 +10,7 @@ interface Props {
   existingIds: Set<string>;
   onClose: () => void;
   onCreated?: (aliasId: string) => void;
+  language?: 'en' | 'de';
 }
 
 function suggestAliasId(sourceId: string): string {
@@ -25,7 +26,8 @@ function getObjectName(obj: IoBrokerObject | undefined): string {
   return obj.common.name.de || obj.common.name.en || Object.values(obj.common.name)[0] || '';
 }
 
-export default function CreateAliasModal({ sourceId, sourceObj, existingIds, onClose, onCreated }: Props) {
+export default function CreateAliasModal({ sourceId, sourceObj, existingIds, onClose, onCreated, language = 'en' }: Props) {
+  const isEn = language === 'en';
   const [aliasId, setAliasId] = useState(() => suggestAliasId(sourceId));
   const [name, setName] = useState(() => getObjectName(sourceObj));
   const [error, setError] = useState('');
@@ -53,10 +55,10 @@ export default function CreateAliasModal({ sourceId, sourceObj, existingIds, onC
 
   function validate(): string {
     const id = aliasId.trim();
-    if (!id) return 'Alias-ID ist erforderlich.';
-    if (!id.startsWith('alias.0.')) return 'Alias-ID muss mit „alias.0." beginnen.';
-    if (existingIds.has(id)) return `„${id}" existiert bereits.`;
-    if (!name.trim()) return 'Name ist erforderlich.';
+    if (!id) return isEn ? 'Alias ID is required.' : 'Alias-ID ist erforderlich.';
+    if (!id.startsWith('alias.0.')) return isEn ? 'Alias ID must start with "alias.0.".' : 'Alias-ID muss mit „alias.0." beginnen.';
+    if (existingIds.has(id)) return isEn ? `"${id}" already exists.` : `„${id}" existiert bereits.`;
+    if (!name.trim()) return isEn ? 'Name is required.' : 'Name ist erforderlich.';
     return '';
   }
 
@@ -104,7 +106,7 @@ export default function CreateAliasModal({ sourceId, sourceObj, existingIds, onC
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2">
             <Link2 size={15} className="text-amber-500" />
-            <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Alias anlegen</h2>
+            <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100">{isEn ? 'Create alias' : 'Alias anlegen'}</h2>
           </div>
           <button
             onClick={onClose}
@@ -118,12 +120,12 @@ export default function CreateAliasModal({ sourceId, sourceObj, existingIds, onC
           {/* Source → Alias visualization */}
           <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800/60 rounded-lg px-3 py-2.5 text-xs">
             <div className="flex-1 min-w-0">
-              <div className="text-gray-400 dark:text-gray-500 mb-0.5">Quelle</div>
+              <div className="text-gray-400 dark:text-gray-500 mb-0.5">{isEn ? 'Source' : 'Quelle'}</div>
               <div className="font-mono text-gray-700 dark:text-gray-300 truncate" title={sourceId}>{sourceId}</div>
             </div>
             <ArrowRight size={14} className="text-amber-400 shrink-0" />
             <div className="flex-1 min-w-0">
-              <div className="text-gray-400 dark:text-gray-500 mb-0.5">Alias</div>
+              <div className="text-gray-400 dark:text-gray-500 mb-0.5">{isEn ? 'Alias' : 'Alias'}</div>
               <div className="font-mono text-amber-600 dark:text-amber-400 truncate" title={aliasId}>{aliasId || '—'}</div>
             </div>
           </div>
@@ -132,11 +134,11 @@ export default function CreateAliasModal({ sourceId, sourceObj, existingIds, onC
           {srcCommon && (
             <div className="grid grid-cols-3 gap-1.5 bg-gray-50 dark:bg-gray-800/60 rounded-lg px-3 py-2">
               {[
-                ['Typ', srcType],
-                ['Rolle', srcRole || '—'],
-                ['Einheit', srcUnit || '—'],
-                ['Lesen', srcRead ? 'ja' : 'nein'],
-                ['Schreiben', srcWrite ? 'ja' : 'nein'],
+                [isEn ? 'Type' : 'Typ', srcType],
+                [isEn ? 'Role' : 'Rolle', srcRole || '—'],
+                [isEn ? 'Unit' : 'Einheit', srcUnit || '—'],
+                [isEn ? 'Read' : 'Lesen', srcRead ? (isEn ? 'yes' : 'ja') : (isEn ? 'no' : 'nein')],
+                [isEn ? 'Write' : 'Schreiben', srcWrite ? (isEn ? 'yes' : 'ja') : (isEn ? 'no' : 'nein')],
               ].map(([label, val]) => (
                 <div key={label}>
                   <div className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">{label}</div>
@@ -148,14 +150,14 @@ export default function CreateAliasModal({ sourceId, sourceObj, existingIds, onC
 
           {/* Alias ID */}
           <div className="flex flex-col gap-1">
-            <label className={labelCls}>Alias-ID <span className="text-red-500">*</span></label>
+            <label className={labelCls}>{isEn ? 'Alias ID' : 'Alias-ID'} <span className="text-red-500">*</span></label>
             <input
               ref={inputRef}
               type="text"
               value={aliasId}
               onChange={(e) => { setAliasId(e.target.value); setError(''); }}
               className={`${inputCls} font-mono`}
-              placeholder="alias.0.mein.datenpunkt"
+              placeholder={isEn ? 'alias.0.my.datapoint' : 'alias.0.mein.datenpunkt'}
               spellCheck={false}
             />
           </div>
@@ -168,7 +170,7 @@ export default function CreateAliasModal({ sourceId, sourceObj, existingIds, onC
               value={name}
               onChange={(e) => { setName(e.target.value); setError(''); }}
               className={inputCls}
-              placeholder="Anzeigename"
+              placeholder={isEn ? 'Display name' : 'Anzeigename'}
             />
           </div>
 
@@ -186,7 +188,7 @@ export default function CreateAliasModal({ sourceId, sourceObj, existingIds, onC
               onClick={onClose}
               className="px-3 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
-              Abbrechen
+              {isEn ? 'Cancel' : 'Abbrechen'}
             </button>
             <button
               type="submit"
@@ -194,7 +196,7 @@ export default function CreateAliasModal({ sourceId, sourceObj, existingIds, onC
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded bg-amber-500 hover:bg-amber-600 text-white font-medium transition-colors disabled:opacity-50"
             >
               <Link2 size={13} />
-              {create.isPending ? 'Erstelle…' : 'Alias anlegen'}
+              {create.isPending ? (isEn ? 'Creating...' : 'Erstelle...') : (isEn ? 'Create alias' : 'Alias anlegen')}
             </button>
           </div>
         </form>

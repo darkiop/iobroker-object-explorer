@@ -1908,6 +1908,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
           sourceId={aliasSourceId}
           sourceObj={objects[aliasSourceId]}
           existingIds={existingIds}
+          language={language}
           onClose={() => setAliasSourceId(null)}
           onCreated={(newId) => onNavigateTo?.([newId])}
         />
