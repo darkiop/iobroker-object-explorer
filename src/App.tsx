@@ -34,6 +34,14 @@ interface AppSettings {
   extraQuickFilters: string[];
 }
 
+function getDefaultAppSettings(): AppSettings {
+  return {
+    dateFormat: 'de',
+    visibleCols: DEFAULT_COLS,
+    extraQuickFilters: [],
+  };
+}
+
 function normalizeQuickPattern(input: string): string {
   let v = input.trim();
   if (!v) return '';
@@ -48,11 +56,7 @@ function quickPatternToRegex(pattern: string): RegExp {
 }
 
 function loadAppSettings(): AppSettings {
-  const fallback: AppSettings = {
-    dateFormat: 'de',
-    visibleCols: DEFAULT_COLS,
-    extraQuickFilters: [],
-  };
+  const fallback: AppSettings = getDefaultAppSettings();
   try {
     const raw = localStorage.getItem(LS_APP_SETTINGS);
     if (!raw) return fallback;
@@ -261,6 +265,16 @@ function AppContent() {
     setNewQuickFilter('');
   }, [newQuickFilter]);
 
+  const resetSettingsToDefault = useCallback(() => {
+    const defaults = getDefaultAppSettings();
+    setSettingsDraft(defaults);
+    setAppSettings(defaults);
+    localStorage.setItem(LS_APP_SETTINGS, JSON.stringify(defaults));
+    localStorage.setItem('iobroker-visible-cols', JSON.stringify(defaults.visibleCols));
+    setQuickPatterns(new Set());
+    setNewQuickFilter('');
+  }, []);
+
   const hasAnyFilter = pattern !== '*' || historyOnly || smartOnly || roomFilters.size > 0 || functionFilters.size > 0 || quickPatterns.size > 0 || !!treeFilter || Object.values(colFilters).some((v) => v.trim() !== '');
 
   const resetAllFilters = useCallback(() => {
@@ -274,6 +288,7 @@ function AppContent() {
     setQuickPatterns(new Set());
     setTreeFilter(null);
     setColFilters({});
+    setTreeExpandSignal((s) => ({ depth: 0, seq: (s?.seq ?? 0) + 1 }));
   }, []);
 
   const handleNavigateTo = useCallback((ids: string[]) => {
@@ -579,6 +594,12 @@ function AppContent() {
                 </div>
               </div>
               <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end gap-2">
+                <button
+                  onClick={resetSettingsToDefault}
+                  className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors"
+                >
+                  Einstellungen zurücksetzen
+                </button>
                 <button
                   onClick={() => setSettingsOpen(false)}
                   className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
