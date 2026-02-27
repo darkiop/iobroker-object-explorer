@@ -53,7 +53,7 @@
 | FE-051 | Editierbare Zellen in StateList mit React.memo wrappen: bis zu 400 Zellen ohne Memoisation. | Performance | hoch | M | umgesetzt |
 | FE-052 | Layout.tsx Sidebar-Resize: handleMouseDown via useCallback + useRef für startWidth stabilisiert. | Performance | mittel | S | umgesetzt |
 | FE-053 | hasAnyFilter in App.tsx mit useMemo stabilisieren als stabiles Prop für memoisisierte Kindkomponenten. | Performance | niedrig | S | umgesetzt |
-| FE-054 | Datenpunkt umbenennen im Kontextmenü: Dialog für neue ID; POST zu neuer ID + DELETE alter ID. | Feature | mittel | M | offen |
+| FE-054 | Datenpunkt umbenennen im Kontextmenü: Dialog für neue ID; POST zu neuer ID + DELETE alter ID. | Feature | mittel | M | umgesetzt |
 | FE-055 | Datenpunkt verschieben im Kontextmenü: Pfad-Änderung mit Pfad-Validierung. | Feature | mittel | M | offen |
 | FE-056 | JSON-Editor im Objekt-bearbeiten-Modal: prüfen ob vollständiges Objekt-JSON bearbeitbar und speicherbar. | Feature | mittel | S | offen |
 | FE-057 | CLAUDE.md aktualisieren: Architektur-Beschreibung, neue Komponenten und aktuelle Stack-Entscheidungen. | DX | niedrig | S | offen |
