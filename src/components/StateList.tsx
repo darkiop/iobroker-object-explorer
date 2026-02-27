@@ -1177,10 +1177,16 @@ const StateRow = React.memo(function StateRow({
   const roomEnumId = Object.keys(obj?.enums ?? {}).find(k => k.startsWith('enum.rooms.')) ?? null;
   const fnEnumId = Object.keys(obj?.enums ?? {}).find(k => k.startsWith('enum.functions.')) ?? null;
   const ownTarget = obj?.common?.alias?.id;
-  const hasAlias = (aliasIds && aliasIds.length > 0) || !!ownTarget;
+  const isAliasObject = id.startsWith('alias.0.');
+  const danglingAlias = isAliasObject && !ownTarget;
+  const hasAlias = (aliasIds && aliasIds.length > 0) || !!ownTarget || danglingAlias;
   const aliasTooltip = aliasIds?.length
     ? `Alias: ${aliasIds.join(', ')}`
-    : ownTarget ? `${isEn ? 'Source' : 'Quelle'}: ${ownTarget}` : undefined;
+    : ownTarget
+      ? `${isEn ? 'Source' : 'Quelle'}: ${ownTarget}`
+      : danglingAlias
+        ? (isEn ? 'Alias without source' : 'Alias ohne Quelle')
+        : undefined;
 
   return (
     <tr
@@ -1250,7 +1256,15 @@ const StateRow = React.memo(function StateRow({
       {show('alias') && (
         <td style={{ width: w('alias'), minWidth: w('alias') }} className="py-2 align-middle">
           <div className="flex items-center justify-center">
-            {hasAlias && (
+            {danglingAlias && (
+              <span
+                title={aliasTooltip}
+                className="relative p-0.5 rounded text-red-500 dark:text-red-400"
+              >
+                <Link2 size={15} />
+              </span>
+            )}
+            {hasAlias && !danglingAlias && (
               <button
                 onClick={(e) => {
                   e.currentTarget.blur();
