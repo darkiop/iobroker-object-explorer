@@ -1,12 +1,32 @@
-Im menübaum links direkt ein mpusehover pro zeile anzeigen (mit den entsprechende buttons die es gibt)
+Rename DP Kontextmenü
 
-Optionen -> Sprache, Datumsformat, Standard Spalten, Schnellfilter
+Move DP Kontextmenü
 
-Übersetzung in Englisch
+Edit Value mit ACK im Datenpunkt bearbeiten Modal
+
+New Datapointt -> boolean -> keine Unit benötigt
+
+in der tabelle bei switch, button entsprechende elemente anzeigen. experten modus zum umschalten
+
+Klick auf den Wert soll ein Wert ändern Modal öffnen. mit einer option ACK. Wenn HTML Wert, dann HTML rendern, wenn json/object dann mit syntax highlighting darstellen
+
+farben/icons für pfad und adapter sicht darstellen
+
+testen ob json im Objekt bearbeiten beschrieben werden kann (test iobroker instanz)
+
+CLAUDE.md / AGENTS.md aktualiseren
+
+README.md aktualisieren
+
+Alias: Different IDs for read and write
 
 
 
----
+Lizense Datei erstellen, MIT
+
+wenn 0_userdata.0.test-1 markiert -> weißer screen?
+
+-------
 
 | ID | Beschreibung | Kategorie | Priorität | Aufwand | Status |
 |---|---|---|---|---|---|

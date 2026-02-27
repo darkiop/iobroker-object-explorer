@@ -187,12 +187,12 @@ function AppContent() {
   const [newDatapointInitialId, setNewDatapointInitialId] = useState<string | null>(null);
   const prevTreeFilterRef = useRef<string | null>(null);
 
-  const { data: stateObjectsData, error: objectsError } = useFilteredObjects(pattern, fulltextEnabled);
-  const { data: allObjectsData } = useAllObjects();
-  const { data: roomMapData } = useRoomMap();
-  const { data: functionMapData } = useFunctionMap();
-  const { data: roomEnums = [] } = useRoomEnums();
-  const { data: functionEnums = [] } = useFunctionEnums();
+  const { data: stateObjectsData, error: objectsError, refetch: refetchFilteredObjects } = useFilteredObjects(pattern, fulltextEnabled);
+  const { data: allObjectsData, refetch: refetchAllObjects } = useAllObjects();
+  const { data: roomMapData, refetch: refetchRoomMap } = useRoomMap();
+  const { data: functionMapData, refetch: refetchFunctionMap } = useFunctionMap();
+  const { data: roomEnums = [], refetch: refetchRoomEnums } = useRoomEnums();
+  const { data: functionEnums = [], refetch: refetchFunctionEnums } = useFunctionEnums();
   const stateObjects = stateObjectsData ?? EMPTY_OBJECTS;
   const allObjects = allObjectsData ?? EMPTY_OBJECTS;
   const roomMap = roomMapData ?? EMPTY_STRING_MAP;
@@ -257,7 +257,7 @@ function AppContent() {
   );
   const totalPages = Math.ceil(totalCount / pageSize);
 
-  const { data: stateValues } = useStateValues(pageIds);
+  const { data: stateValues, refetch: refetchStateValues } = useStateValues(pageIds);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -405,6 +405,17 @@ function AppContent() {
     setTreeExpandSignal((s) => ({ depth: 0, seq: (s?.seq ?? 0) + 1 }));
   }, []);
   const handleSidebarToggle = useCallback(() => setSidebarToggleSeq((s) => s + 1), []);
+  const handleManualRefresh = useCallback(() => {
+    void Promise.all([
+      refetchFilteredObjects(),
+      refetchAllObjects(),
+      refetchRoomMap(),
+      refetchFunctionMap(),
+      refetchStateValues(),
+      refetchRoomEnums(),
+      refetchFunctionEnums(),
+    ]);
+  }, [refetchFilteredObjects, refetchAllObjects, refetchRoomMap, refetchFunctionMap, refetchStateValues, refetchRoomEnums, refetchFunctionEnums]);
 
   useEffect(() => {
     const prev = prevTreeFilterRef.current;
@@ -743,6 +754,7 @@ function AppContent() {
             treeFilter={treeFilter}
             onClearTreeFilter={handleClearTreeFilter}
             sidebarToggleSeq={sidebarToggleSeq}
+            onManualRefresh={handleManualRefresh}
             fulltextEnabled={fulltextEnabled}
             dateFormat={appSettings.dateFormat}
             settingsVisibleCols={appSettings.visibleCols}

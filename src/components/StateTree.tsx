@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, memo } from 'react';
-import { ChevronRight, ChevronDown, ChevronsUpDown, ChevronsDownUp, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil, LayoutList, LayoutGrid, Plus, FileCode2, Link2, UserRound } from 'lucide-react';
+import { ChevronRight, ChevronDown, ChevronsUpDown, ChevronsDownUp, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil, LayoutList, LayoutGrid, Plus, FileCode2, Link2, UserRound, ShieldAlert } from 'lucide-react';
 import type { TreeNode, IoBrokerObject } from '../types/iobroker';
 import ObjectEditModal from './ObjectEditModal';
 import ContextMenu from './ContextMenu';
@@ -176,18 +176,21 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
     (objectType !== 'device' && objectType !== 'channel' && !showFolders)
   );
   const isHighlightedNamespace = !node.isLeaf && (
-    /^(javascript|alias|0_userdata)(\.|$)/.test(node.fullPath)
+    /^(javascript|alias|0_userdata|system)(\.|$)/.test(node.fullPath)
   );
   const isTopJavascript = !node.isLeaf && /^javascript(\.[^.]+)?$/.test(node.fullPath);
   const isTopAlias = !node.isLeaf && /^alias(\.[^.]+)?$/.test(node.fullPath);
   const isTopUserdata = !node.isLeaf && /^0_userdata(\.[^.]+)?$/.test(node.fullPath);
+  const isTopSystem = !node.isLeaf && /^system(\.[^.]+)?$/.test(node.fullPath);
   const namespaceRowClass = !isHighlightedNamespace
     ? ''
     : /^javascript(\.|$)/.test(node.fullPath)
       ? 'bg-amber-500/10 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300'
       : /^alias(\.|$)/.test(node.fullPath)
         ? 'bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
-        : 'bg-indigo-500/10 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300';
+        : /^0_userdata(\.|$)/.test(node.fullPath)
+          ? 'bg-indigo-500/10 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300'
+          : 'bg-red-500/10 text-red-700 dark:bg-red-500/15 dark:text-red-300';
 
   // Non-leaf filtered: skip the row but still render children so the full tree is searched
   if (nodeFiltered) {
@@ -279,6 +282,8 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
             <Link2 size={15} className="text-emerald-500/90 shrink-0" />
           ) : isTopUserdata ? (
             <UserRound size={15} className="text-indigo-500/90 shrink-0" />
+          ) : isTopSystem ? (
+            <ShieldAlert size={15} className="text-red-500/90 shrink-0" />
           ) : objectType === 'device' ? (
             <Cpu size={15} className="text-sky-500/80 shrink-0" />
           ) : objectType === 'channel' ? (
