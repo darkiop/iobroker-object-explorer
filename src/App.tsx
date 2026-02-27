@@ -15,7 +15,7 @@ import type { SortKey, DateFormatSetting } from './components/StateList';
 import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel } from './components/StateList';
 import type { IoBrokerObject, IoBrokerState } from './types/iobroker';
 import { filterObjectIds } from './utils/filterObjectIds';
-import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RotateCcw, Layers, X, Trash2 } from 'lucide-react';
+import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RotateCcw, Layers, X, Trash2, Check } from 'lucide-react';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -95,6 +95,68 @@ const ENUM_COLORS = [
   'text-cyan-600 dark:text-cyan-400',
   'text-lime-600 dark:text-lime-500',
 ];
+
+const DATE_FORMAT_OPTIONS: { value: DateFormatSetting; label: string }[] = [
+  { value: 'de', label: 'DD.MM.YYYY HH:mm:ss' },
+  { value: 'us', label: 'MM/DD/YYYY HH:mm:ss' },
+  { value: 'iso', label: 'YYYY-MM-DD HH:mm:ss' },
+];
+
+function DateFormatDropdown({ value, onChange }: { value: DateFormatSetting; onChange: (next: DateFormatSetting) => void }) {
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const selected = DATE_FORMAT_OPTIONS.find((opt) => opt.value === value) ?? DATE_FORMAT_OPTIONS[0];
+
+  useEffect(() => {
+    const onDocMouseDown = (e: MouseEvent) => {
+      if (!wrapperRef.current?.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocMouseDown);
+    return () => document.removeEventListener('mousedown', onDocMouseDown);
+  }, []);
+
+  return (
+    <div ref={wrapperRef} className="relative w-56">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full h-8 px-2.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/80 transition-colors inline-flex items-center justify-between"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        <span className="font-mono">{selected.label}</span>
+        <ChevronDown size={14} className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute left-0 mt-1 z-50 w-full rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg overflow-hidden">
+          {DATE_FORMAT_OPTIONS.map((opt) => {
+            const active = opt.value === value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => {
+                  onChange(opt.value);
+                  setOpen(false);
+                }}
+                className={`w-full px-2.5 py-1.5 text-left text-xs flex items-center justify-between transition-colors ${
+                  active
+                    ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                <span className="font-mono">{opt.label}</span>
+                {active && <Check size={12} />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function AppContent() {
   const [pattern, setPattern] = useState('*');
@@ -565,15 +627,10 @@ function AppContent() {
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Date format' : 'Datumsformat'}</span>
-                  <select
+                  <DateFormatDropdown
                     value={settingsDraft.dateFormat}
-                    onChange={(e) => setSettingsDraft((prev) => ({ ...prev, dateFormat: e.target.value as DateFormatSetting }))}
-                    className="w-56 px-2 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                  >
-                    <option value="de">DD.MM.YYYY HH:mm:ss</option>
-                    <option value="us">MM/DD/YYYY HH:mm:ss</option>
-                    <option value="iso">YYYY-MM-DD HH:mm:ss</option>
-                  </select>
+                    onChange={(dateFormat) => setSettingsDraft((prev) => ({ ...prev, dateFormat }))}
+                  />
                 </div>
 
                 <div className="flex flex-col gap-2">
