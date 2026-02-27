@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, RotateCcw, Plus, Lock, Trash2, Search, Link2, FileEdit, Download, ChevronDown } from 'lucide-react';
+import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Lock, Search, Link2, FileEdit, Download, ChevronDown, RefreshCw } from 'lucide-react';
 import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
@@ -32,6 +32,7 @@ interface StateListProps {
   treeFilter?: string | null;
   onClearTreeFilter?: () => void;
   sidebarToggleSeq?: number;
+  onManualRefresh?: () => void;
   fulltextEnabled?: boolean;
   dateFormat?: DateFormatSetting;
   settingsVisibleCols?: SortKey[];
@@ -1313,7 +1314,7 @@ const StateRow = React.memo(function StateRow({
   );
 });
 
-function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en' }: StateListProps) {
+function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en' }: StateListProps) {
   const isEn = language === 'en';
   const [sortKey, setSortKey] = useState<SortKey>('id');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
@@ -1329,6 +1330,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   const [newDatapointOpen, setNewDatapointOpen] = useState(false);
   const [historyModalId, setHistoryModalId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmResetLs, setConfirmResetLs] = useState(false);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [multiDeleteOpen, setMultiDeleteOpen] = useState(false);
   const deleteObject = useDeleteObject();
@@ -1729,6 +1731,13 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
             </button>
           </div>
         </div>
+        <button
+          onClick={() => onManualRefresh?.()}
+          title={isEn ? 'Refresh data' : 'Daten aktualisieren'}
+          className="flex items-center justify-center w-7 h-7 rounded-lg text-gray-500 hover:text-emerald-600 hover:bg-emerald-500/10 dark:text-gray-400 dark:hover:text-emerald-400 dark:hover:bg-emerald-500/10 transition-colors"
+        >
+          <RefreshCw size={15} />
+        </button>
         {checkedIds.size > 0 && (
           <button
             onClick={() => setMultiDeleteOpen(true)}
@@ -1773,17 +1782,11 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
           </button>
         )}
         <button
-          onClick={() => {
-            localStorage.removeItem(LS_KEY);
-            localStorage.removeItem(LS_WIDTHS_KEY);
-            setVisibleCols(DEFAULT_COLS);
-            setColWidths({ ...DEFAULT_WIDTHS });
-            onColFilterChange({});
-          }}
+          onClick={() => setConfirmResetLs(true)}
           title={isEn ? 'Reset settings (local storage)' : 'Einstellungen zurücksetzen'}
           className="p-2 rounded-lg transition-colors text-gray-400 hover:text-red-500 hover:bg-red-500/10 dark:text-gray-500 dark:hover:text-red-400 dark:hover:bg-red-500/10"
         >
-          <RotateCcw size={17} />
+          <Trash2 size={17} />
         </button>
         <ColPicker visible={visibleCols} onChange={handleColChange} language={language} />
       </div>
@@ -1907,6 +1910,24 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
           message={deletingId}
           onConfirm={() => { deleteObject.mutate(deletingId); setDeletingId(null); }}
           onCancel={() => setDeletingId(null)}
+          language={language}
+        />
+      )}
+      {confirmResetLs && (
+        <ConfirmDialog
+          title={isEn ? 'Reset local settings' : 'Lokale Einstellungen zurücksetzen'}
+          description={isEn ? 'The following local storage entries will be deleted:' : 'Folgende Local-Storage-Einträge werden gelöscht:'}
+          message={`${LS_KEY}\n${LS_WIDTHS_KEY}`}
+          confirmLabel={isEn ? 'Reset' : 'Zurücksetzen'}
+          onConfirm={() => {
+            localStorage.removeItem(LS_KEY);
+            localStorage.removeItem(LS_WIDTHS_KEY);
+            setVisibleCols(DEFAULT_COLS);
+            setColWidths({ ...DEFAULT_WIDTHS });
+            onColFilterChange({});
+            setConfirmResetLs(false);
+          }}
+          onCancel={() => setConfirmResetLs(false)}
           language={language}
         />
       )}

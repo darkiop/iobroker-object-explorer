@@ -5,15 +5,17 @@ import { AlertTriangle, X } from 'lucide-react';
 interface Props {
   title: string;
   message: string;
+  description?: string;
   confirmLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
   language?: 'en' | 'de';
 }
 
-export default function ConfirmDialog({ title, message, confirmLabel, onConfirm, onCancel, language = 'en' }: Props) {
+export default function ConfirmDialog({ title, message, description, confirmLabel, onConfirm, onCancel, language = 'en' }: Props) {
   const isEn = language === 'en';
   const effectiveConfirmLabel = confirmLabel ?? (isEn ? 'Delete' : 'Löschen');
+  const effectiveDescription = description ?? (isEn ? 'The following datapoint will be deleted permanently:' : 'Folgender Datenpunkt wird unwiderruflich gelöscht:');
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') onCancel();
@@ -42,10 +44,8 @@ export default function ConfirmDialog({ title, message, confirmLabel, onConfirm,
           </button>
         </div>
         <div className="px-5 py-4">
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-            {isEn ? 'The following datapoint will be deleted permanently:' : 'Folgender Datenpunkt wird unwiderruflich gelöscht:'}
-          </p>
-          <p className="text-sm font-mono text-gray-800 dark:text-gray-200 break-all">{message}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{effectiveDescription}</p>
+          <p className="text-sm font-mono text-gray-800 dark:text-gray-200 break-all whitespace-pre-line">{message}</p>
         </div>
         <div className="flex justify-end gap-2 px-5 py-3 border-t border-gray-200 dark:border-gray-700">
           <button
