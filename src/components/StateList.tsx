@@ -1923,6 +1923,10 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   const fnFilterOptions = useMemo(() => [...new Set(fnEnums.map((f) => f.name))], [fnEnums]);
   const roleFilterOptions = useMemo(() => [...new Set(roles)], [roles]);
   const unitFilterOptions = useMemo(() => [...new Set(units)], [units]);
+  const typeFilterOptions = useMemo(
+    () => [...new Set(Object.values(objects).map((obj) => obj?.common?.type || obj?.type || '').filter((v) => v.trim() !== ''))],
+    [objects]
+  );
 
   const batchCanApply = batchRole.trim() !== '' || batchUnit.trim() !== '' || batchRoomEnumId !== '' || batchFnEnumId !== '';
   const bodyViewportHeight = Math.max(0, viewportHeight - headerHeight);
@@ -2205,7 +2209,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                   <th key={key} style={{ width: w(key) }} className="px-2 py-1 normal-case font-normal align-middle">
                     {filterable ? (
                       <div className="relative flex items-center" onClick={(e) => e.stopPropagation()}>
-                        {(key === 'role' || key === 'room' || key === 'function' || key === 'unit') ? (
+                        {(key === 'role' || key === 'room' || key === 'function' || key === 'unit' || key === 'type') ? (
                           <BatchComboControl
                             value={colFilters[key] || ''}
                             onChange={(value) => onColFilterChange({ ...colFilters, [key]: value })}
@@ -2217,7 +2221,9 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                                   ? roomFilterOptions
                                   : key === 'function'
                                     ? fnFilterOptions
-                                    : unitFilterOptions
+                                    : key === 'unit'
+                                      ? unitFilterOptions
+                                      : typeFilterOptions
                             }
                             className="w-full"
                             language={language}
