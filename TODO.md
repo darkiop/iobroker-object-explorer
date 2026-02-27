@@ -6,7 +6,7 @@ Edit Value mit ACK im Datenpunkt bearbeiten Modal
 
 New Datapoint -> boolean -> keine Unit benötigt
 
-in der tabelle bei switch, button entsprechende elemente anzeigen. experten modus zum umschalten
+in der tabelle bei switch, button entsprechende steuer elemente anzeigen. experten modus zum umschalten (symbol oben bei dark mode und so)
 
 
 
@@ -18,7 +18,7 @@ README.md aktualisieren
 
 Alias: Different IDs for read and write
 
-bringe den text "REST-API: 10.4.0.20:8093" oben in die mitte und mache ihn sichtbarer
+
 
 Lizense Datei erstellen, MIT
 

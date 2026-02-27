@@ -431,6 +431,7 @@ function AppContent() {
       onOpenSettings={openSettings}
       onLanguageChange={handleLanguageChange}
       language={appSettings.language}
+      apiConnected={!objectsError}
       sidebar={
         <div className="flex flex-col h-full">
           <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex flex-col gap-2">

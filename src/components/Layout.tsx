@@ -10,6 +10,7 @@ interface LayoutProps {
   onOpenSettings?: () => void;
   onLanguageChange?: (language: 'en' | 'de') => void;
   language?: 'en' | 'de';
+  apiConnected?: boolean;
 }
 
 const LS_SIDEBAR_WIDTH = 'iobroker-explorer-sidebar-width';
@@ -22,6 +23,7 @@ export default function Layout({
   onOpenSettings,
   onLanguageChange,
   language = 'en',
+  apiConnected = true,
 }: LayoutProps) {
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const stored = parseInt(localStorage.getItem(LS_SIDEBAR_WIDTH) ?? '', 10);
@@ -69,7 +71,7 @@ export default function Layout({
   return (
     <div className="h-screen flex flex-col bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100">
       {/* Header */}
-      <header className="flex items-center justify-between px-4 py-3 bg-gray-100 border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700 shrink-0">
+      <header className="relative flex items-center justify-between px-4 py-3 bg-gray-100 border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700 shrink-0">
         <div className="flex items-center gap-3">
           <button
             onClick={() => { setCollapsed((c) => { const next = !c; localStorage.setItem(LS_SIDEBAR_COLLAPSED, String(next)); return next; }); if (onSidebarToggle) setTimeout(onSidebarToggle, 210); }}
@@ -81,8 +83,19 @@ export default function Layout({
           <img src="/favicon.svg" alt="" className="w-6 h-6 shrink-0" />
           <h1 className="text-lg font-semibold text-gray-900 dark:text-white">ioBroker Object Explorer</h1>
         </div>
+        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2">
+          <span className={`inline-flex items-center px-3 py-1 rounded-md text-sm font-semibold font-mono shadow-sm border ${
+            apiConnected
+              ? 'border-emerald-300/80 dark:border-emerald-700/70 bg-emerald-100/80 dark:bg-emerald-900/35 text-emerald-700 dark:text-emerald-300'
+              : 'border-red-300/80 dark:border-red-700/70 bg-red-100/80 dark:bg-red-900/35 text-red-700 dark:text-red-300'
+          }`}>
+            {apiConnected
+              ? (language === 'en' ? 'Connected to' : 'Verbunden mit')
+              : (language === 'en' ? 'Not connected to' : 'Nicht verbunden mit')
+            }: {window.__CONFIG__?.ioBrokerHost ?? '—'}
+          </span>
+        </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-400 dark:text-gray-500">REST-API: {window.__CONFIG__?.ioBrokerHost ?? '—'}</span>
           <LanguageDropdown value={language} onChange={(next) => onLanguageChange?.(next)} compact />
           <button
             onClick={toggle}
