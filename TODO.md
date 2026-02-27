@@ -2,11 +2,6 @@ Rename DP Kontextmenü
 
 Move DP Kontextmenü
 
-Edit Value mit ACK im Datenpunkt bearbeiten Modal
-
-
-
-
 testen ob json im Objekt bearbeiten beschrieben werden kann (test iobroker instanz)
 
 CLAUDE.md / AGENTS.md aktualiseren
@@ -15,11 +10,7 @@ README.md aktualisieren
 
 Alias: Different IDs for read and write
 
-
-
 Lizense Datei erstellen, MIT
-
-wenn 0_userdata.0.test-1 markiert -> weißer screen?
 
 -------
 

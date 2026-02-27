@@ -60,8 +60,13 @@ function formatValue(val: unknown): string {
   if (val === null || val === undefined) return '—';
   if (typeof val === 'boolean') return val ? 'true' : 'false';
   if (typeof val === 'number') return val.toString();
+  if (typeof val === 'bigint') return val.toString();
   if (typeof val === 'string') return val;
-  return JSON.stringify(val);
+  try {
+    return JSON.stringify(val);
+  } catch {
+    return String(val);
+  }
 }
 
 function getObjectName(obj: IoBrokerObject | undefined): string {
