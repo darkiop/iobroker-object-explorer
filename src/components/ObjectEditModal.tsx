@@ -158,16 +158,18 @@ function EditableRow({ label, value, onSave, isPending, suggestions, language = 
   );
 }
 
-function SwitchControl({ val, onSet, isPending, disabled }: { val: unknown; onSet: (v: unknown) => void; isPending: boolean; disabled?: boolean }) {
-  const checked = Boolean(val);
+function BooleanSelectControl({ val, onSet, isPending, disabled }: { val: unknown; onSet: (v: unknown) => void; isPending: boolean; disabled?: boolean }) {
+  const draft = String(Boolean(val));
   return (
-    <button
-      onClick={() => !disabled && onSet(!checked)}
+    <select
+      value={draft}
+      onChange={(e) => onSet(e.target.value === 'true')}
       disabled={isPending || disabled}
-      className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${disabled ? 'cursor-default opacity-60' : 'cursor-pointer'} ${checked ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'}`}
+      className="bg-white text-gray-800 text-sm rounded px-2 py-0.5 border border-gray-300 focus:border-blue-500 focus:outline-none disabled:opacity-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600"
     >
-      <span className={`inline-block h-4 w-4 mt-1 transform rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
-    </button>
+      <option value="true">true</option>
+      <option value="false">false</option>
+    </select>
   );
 }
 
@@ -382,9 +384,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
   const role = obj.common?.role ?? '';
   const type = obj.common?.type ?? '';
   const isWritable = obj.common?.write === true;
-  const isSwitch = role === 'switch' || role.startsWith('switch.');
   const isButton = role === 'button' || role.startsWith('button.');
-  const isNumberValue = !isSwitch && !isButton && type === 'number';
 
   useEffect(() => {
     const nextRoom = Object.keys(obj.enums ?? {}).find((enumId) => enumId.startsWith('enum.rooms.')) ?? null;
@@ -729,14 +729,12 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                       <div className="flex-1 flex items-center gap-2 min-w-0">
                         {expertMode ? (
                           <ExpertControl val={state.val} onSet={handleSet} isPending={setStateMutation.isPending} unit={obj.common?.unit} type={type} language={language} />
-                        ) : isSwitch ? (
-                          <SwitchControl val={state.val} onSet={handleSet} isPending={setStateMutation.isPending} disabled={!isWritable} />
                         ) : isButton ? (
                           <ButtonControl onSet={handleSet} isPending={setStateMutation.isPending} disabled={!isWritable} language={language} />
-                        ) : isWritable && isNumberValue ? (
+                        ) : isWritable && type === 'number' ? (
                           <NumberControl val={state.val} onSet={handleSet} isPending={setStateMutation.isPending} unit={obj.common?.unit} />
                         ) : isWritable && type === 'boolean' ? (
-                          <SwitchControl val={state.val} onSet={handleSet} isPending={setStateMutation.isPending} />
+                          <BooleanSelectControl val={state.val} onSet={handleSet} isPending={setStateMutation.isPending} disabled={!isWritable} />
                         ) : isWritable && (type === 'string' || type === 'mixed') ? (
                           <StringControl val={state.val} onSet={handleSet} isPending={setStateMutation.isPending} unit={obj.common?.unit} language={language} />
                         ) : (

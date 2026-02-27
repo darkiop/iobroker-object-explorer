@@ -167,6 +167,13 @@ export default function ValueEditModal({ id, state, obj, onClose, language = 'en
   const jsonText = useMemo(() => getJsonText(state?.val), [state?.val]);
   const jsonTokens = useMemo(() => (jsonText ? tokenizeJson(jsonText) : []), [jsonText]);
   const htmlValue = isHtmlValue(state?.val) ? state.val : null;
+  const valueInputKind: 'number' | 'text' | 'boolean' | 'json' = useMemo(() => {
+    if (valType === 'boolean') return 'boolean';
+    if (valType === 'number') return 'number';
+    if (valType === 'string' || valType === 'mixed') return 'text';
+    if (valType === 'object' || (typeof state?.val === 'object' && state?.val !== null)) return 'json';
+    return 'text';
+  }, [valType, state?.val]);
 
   function handleSave() {
     const parsed = parseValue(draft, valType, state?.val);
@@ -194,6 +201,9 @@ export default function ValueEditModal({ id, state, obj, onClose, language = 'en
           <div className="min-w-0">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{isEn ? 'Edit value' : 'Wert ändern'}</h3>
             <p className="text-xs font-mono text-gray-500 dark:text-gray-400 truncate">{id}</p>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">
+              {isEn ? 'Type' : 'Typ'}: <span className="font-mono text-gray-700 dark:text-gray-200">{valType || '—'}</span>
+            </p>
           </div>
           <button
             onClick={onClose}
@@ -247,13 +257,35 @@ export default function ValueEditModal({ id, state, obj, onClose, language = 'en
                 </button>
               </label>
             </div>
-            <textarea
-              value={draft}
-              onChange={(e) => { setDraft(e.target.value); setError(''); }}
-              disabled={isReadonly || setStateMutation.isPending}
-              spellCheck={false}
-              className="w-full min-h-40 max-h-72 resize-y rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-mono text-gray-800 dark:text-gray-100 p-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:opacity-60"
-            />
+            {valueInputKind === 'boolean' ? (
+              <select
+                value={draft.trim().toLowerCase() === 'true' ? 'true' : 'false'}
+                onChange={(e) => { setDraft(e.target.value); setError(''); }}
+                disabled={isReadonly || setStateMutation.isPending}
+                className="w-full h-10 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-mono text-gray-800 dark:text-gray-100 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:opacity-60"
+              >
+                <option value="true">true</option>
+                <option value="false">false</option>
+              </select>
+            ) : valueInputKind === 'json' ? (
+              <textarea
+                value={draft}
+                onChange={(e) => { setDraft(e.target.value); setError(''); }}
+                disabled={isReadonly || setStateMutation.isPending}
+                spellCheck={false}
+                className="w-full min-h-40 max-h-72 resize-y rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-mono text-gray-800 dark:text-gray-100 p-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:opacity-60"
+              />
+            ) : (
+              <input
+                type={valueInputKind === 'number' ? 'number' : 'text'}
+                value={draft}
+                onChange={(e) => { setDraft(e.target.value); setError(''); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
+                disabled={isReadonly || setStateMutation.isPending}
+                spellCheck={false}
+                className="w-full h-10 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-mono text-gray-800 dark:text-gray-100 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:opacity-60"
+              />
+            )}
             {error && <p className="text-xs text-red-500">{error}</p>}
             {isReadonly && (
               <p className="text-xs text-red-500">{isEn ? 'Datapoint is read-only' : 'Datenpunkt ist schreibgeschützt'}</p>
