@@ -847,7 +847,7 @@ function BatchComboControl({
     <>
       <div
         ref={anchorRef}
-        className={`h-7 px-2 text-xs font-normal rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus-within:outline-none focus-within:ring-1 focus-within:ring-blue-400 transition-colors flex items-center justify-between gap-2 ${className}`}
+        className={`h-7 px-2 text-xs font-normal rounded border border-gray-300 dark:border-gray-600 bg-gray-50/70 dark:bg-gray-800/70 focus-within:outline-none focus-within:ring-1 focus-within:ring-blue-400 transition-colors flex items-center justify-between gap-2 ${className}`}
       >
         <input
           type="text"
@@ -857,6 +857,18 @@ function BatchComboControl({
           placeholder={placeholder}
           className="flex-1 min-w-0 bg-transparent text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none"
         />
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onChange('');
+          }}
+          className={`shrink-0 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 ${value.trim() ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+          aria-label={isEn ? `Clear ${placeholder}` : `${placeholder} leeren`}
+        >
+          <X size={12} />
+        </button>
         <button
           type="button"
           onClick={open ? closeMenu : openMenu}
@@ -1907,6 +1919,10 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   const roomNameOptions = useMemo(() => [noRoomLabel, ...roomEnums.map((r) => r.name)], [roomEnums, noRoomLabel]);
   const fnById = useMemo(() => new Map(fnEnums.map((f) => [f.id, f.name])), [fnEnums]);
   const fnNameOptions = useMemo(() => [noFunctionLabel, ...fnEnums.map((f) => f.name)], [fnEnums, noFunctionLabel]);
+  const roomFilterOptions = useMemo(() => [...new Set(roomEnums.map((r) => r.name))], [roomEnums]);
+  const fnFilterOptions = useMemo(() => [...new Set(fnEnums.map((f) => f.name))], [fnEnums]);
+  const roleFilterOptions = useMemo(() => [...new Set(roles)], [roles]);
+  const unitFilterOptions = useMemo(() => [...new Set(units)], [units]);
 
   const batchCanApply = batchRole.trim() !== '' || batchUnit.trim() !== '' || batchRoomEnumId !== '' || batchFnEnumId !== '';
   const bodyViewportHeight = Math.max(0, viewportHeight - headerHeight);
@@ -2189,25 +2205,46 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                   <th key={key} style={{ width: w(key) }} className="px-2 py-1 normal-case font-normal align-middle">
                     {filterable ? (
                       <div className="relative flex items-center" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="text"
-                          value={colFilters[key] || ''}
-                          onChange={(e) => onColFilterChange({ ...colFilters, [key]: e.target.value })}
-                          onKeyDown={(e) => { if (e.key === 'Escape' && colFilters[key]?.trim()) { e.stopPropagation(); onColFilterChange({ ...colFilters, [key]: '' }); } }}
-                          placeholder="Filter..."
-                          className={`w-full py-0.5 text-xs rounded border bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500 ${
-                            colFilters[key]?.trim()
-                              ? 'pl-1.5 pr-5 border-blue-400 dark:border-blue-500'
-                              : 'px-1.5 border-gray-300 dark:border-gray-600'
-                          }`}
-                        />
-                        {colFilters[key]?.trim() && (
-                          <button
-                            onMouseDown={(e) => { e.preventDefault(); onColFilterChange({ ...colFilters, [key]: '' }); }}
-                            className="absolute right-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                          >
-                            <X size={12} />
-                          </button>
+                        {(key === 'role' || key === 'room' || key === 'function' || key === 'unit') ? (
+                          <BatchComboControl
+                            value={colFilters[key] || ''}
+                            onChange={(value) => onColFilterChange({ ...colFilters, [key]: value })}
+                            placeholder="Filter..."
+                            options={
+                              key === 'role'
+                                ? roleFilterOptions
+                                : key === 'room'
+                                  ? roomFilterOptions
+                                  : key === 'function'
+                                    ? fnFilterOptions
+                                    : unitFilterOptions
+                            }
+                            className="w-full"
+                            language={language}
+                          />
+                        ) : (
+                          <>
+                            <input
+                              type="text"
+                              value={colFilters[key] || ''}
+                              onChange={(e) => onColFilterChange({ ...colFilters, [key]: e.target.value })}
+                              onKeyDown={(e) => { if (e.key === 'Escape' && colFilters[key]?.trim()) { e.stopPropagation(); onColFilterChange({ ...colFilters, [key]: '' }); } }}
+                              placeholder="Filter..."
+                              className={`w-full py-0.5 text-xs rounded border bg-gray-50/70 dark:bg-gray-800/70 text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500 ${
+                                colFilters[key]?.trim()
+                                  ? 'pl-1.5 pr-5 border-blue-400 dark:border-blue-500'
+                                  : 'px-1.5 border-gray-300 dark:border-gray-600'
+                              }`}
+                            />
+                            {colFilters[key]?.trim() && (
+                              <button
+                                onMouseDown={(e) => { e.preventDefault(); onColFilterChange({ ...colFilters, [key]: '' }); }}
+                                className="absolute right-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                              >
+                                <X size={12} />
+                              </button>
+                            )}
+                          </>
                         )}
                       </div>
                     ) : null}

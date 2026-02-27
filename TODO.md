@@ -4,11 +4,11 @@ Move DP Kontextmenü
 
 Edit Value mit ACK im Datenpunkt bearbeiten Modal
 
-New Datapointt -> boolean -> keine Unit benötigt
+New Datapoint -> boolean -> keine Unit benötigt
 
 in der tabelle bei switch, button entsprechende elemente anzeigen. experten modus zum umschalten
 
-in der  tabelle, innerhalb der filterboxen für Role, Room und Funktion automatisch Vorschläge für die Filter machen.
+
 
 testen ob json im Objekt bearbeiten beschrieben werden kann (test iobroker instanz)
 
