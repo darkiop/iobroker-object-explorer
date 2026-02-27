@@ -17,6 +17,7 @@ interface Props {
 }
 
 type Tab = 'details' | 'json' | 'alias';
+const STATE_TYPES = ['number', 'string', 'boolean', 'array', 'object', 'mixed'] as const;
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -558,9 +559,70 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
             {tab === 'details' && (
               <div className="px-5 py-4 space-y-0 overflow-y-auto flex-1">
                 <EditableRow label="Name" value={getObjectName(obj.common)} onSave={(v) => saveField('name', v)} isPending={extend.isPending} language={language} />
-                <DetailRow label={isEn ? 'Type' : 'Typ'} value={obj.common?.type || '—'} />
-                <EditableRow label={isEn ? 'Role' : 'Rolle'} value={obj.common?.role || ''} onSave={(v) => saveField('role', v)} isPending={extend.isPending} suggestions={roles} language={language} />
-                <EditableRow label={isEn ? 'Unit' : 'Einheit'} value={obj.common?.unit || ''} onSave={(v) => saveField('unit', v)} isPending={extend.isPending} suggestions={units} language={language} />
+                <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800 items-center">
+                  <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{isEn ? 'Type' : 'Typ'}</span>
+                  <div className="flex-1 relative">
+                    <select
+                      value={obj.common?.type || ''}
+                      onChange={(e) => saveField('type', e.target.value)}
+                      disabled={extend.isPending}
+                      className="w-full appearance-none [color-scheme:light] dark:[color-scheme:dark] [&>option]:bg-white [&>option]:text-gray-900 dark:[&>option]:bg-gray-800 dark:[&>option]:text-gray-200 bg-gray-50/70 text-gray-700 text-sm rounded-md pl-2.5 pr-8 py-1.5 border border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300/70 disabled:opacity-50 dark:bg-gray-800/70 dark:text-gray-200 dark:border-gray-700 dark:focus:border-gray-600 dark:focus:ring-gray-600/60 transition-colors"
+                    >
+                      <option value="">{isEn ? 'No type' : 'Kein Typ'}</option>
+                      {STATE_TYPES.map((stateType) => (
+                        <option key={stateType} value={stateType}>{stateType}</option>
+                      ))}
+                    </select>
+                    <ChevronDown
+                      size={13}
+                      className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-500"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800 items-center">
+                  <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{isEn ? 'Role' : 'Rolle'}</span>
+                  <div className="flex-1 relative">
+                    <select
+                      value={obj.common?.role || ''}
+                      onChange={(e) => saveField('role', e.target.value)}
+                      disabled={extend.isPending}
+                      className="w-full appearance-none [color-scheme:light] dark:[color-scheme:dark] [&>option]:bg-white [&>option]:text-gray-900 dark:[&>option]:bg-gray-800 dark:[&>option]:text-gray-200 bg-gray-50/70 text-gray-700 text-sm rounded-md pl-2.5 pr-8 py-1.5 border border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300/70 disabled:opacity-50 dark:bg-gray-800/70 dark:text-gray-200 dark:border-gray-700 dark:focus:border-gray-600 dark:focus:ring-gray-600/60 transition-colors"
+                    >
+                      <option value="">{isEn ? 'No role' : 'Keine Rolle'}</option>
+                      {(roles ?? []).map((roleEntry) => (
+                        <option key={roleEntry} value={roleEntry}>
+                          {roleEntry}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown
+                      size={13}
+                      className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-500"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800 items-center">
+                  <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{isEn ? 'Unit' : 'Einheit'}</span>
+                  <div className="flex-1 relative">
+                    <select
+                      value={obj.common?.unit || ''}
+                      onChange={(e) => saveField('unit', e.target.value)}
+                      disabled={extend.isPending}
+                      className="w-full appearance-none [color-scheme:light] dark:[color-scheme:dark] [&>option]:bg-white [&>option]:text-gray-900 dark:[&>option]:bg-gray-800 dark:[&>option]:text-gray-200 bg-gray-50/70 text-gray-700 text-sm rounded-md pl-2.5 pr-8 py-1.5 border border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300/70 disabled:opacity-50 dark:bg-gray-800/70 dark:text-gray-200 dark:border-gray-700 dark:focus:border-gray-600 dark:focus:ring-gray-600/60 transition-colors"
+                    >
+                      <option value="">{isEn ? 'No unit' : 'Keine Einheit'}</option>
+                      {(units ?? []).map((unitEntry) => (
+                        <option key={unitEntry} value={unitEntry}>
+                          {unitEntry}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown
+                      size={13}
+                      className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-500"
+                    />
+                  </div>
+                </div>
                 <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800 items-center">
                   <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{isEn ? 'Room' : 'Raum'}</span>
                   <div className="flex-1 relative">
@@ -568,7 +630,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                       value={roomEnumId ?? ''}
                       onChange={(e) => handleSetRoom(e.target.value || null)}
                       disabled={updateRoom.isPending}
-                      className="w-full appearance-none bg-gray-50 text-gray-800 text-sm rounded-md pl-2.5 pr-8 py-1.5 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:focus:ring-blue-500 transition-colors"
+                      className="w-full appearance-none [color-scheme:light] dark:[color-scheme:dark] [&>option]:bg-white [&>option]:text-gray-900 dark:[&>option]:bg-gray-800 dark:[&>option]:text-gray-200 bg-gray-50/70 text-gray-700 text-sm rounded-md pl-2.5 pr-8 py-1.5 border border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300/70 disabled:opacity-50 dark:bg-gray-800/70 dark:text-gray-200 dark:border-gray-700 dark:focus:border-gray-600 dark:focus:ring-gray-600/60 transition-colors"
                     >
                       <option value="">{isEn ? 'No room' : 'Kein Raum'}</option>
                       {roomEnums.map((roomEntry) => (
@@ -578,8 +640,8 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                       ))}
                     </select>
                     <ChevronDown
-                      size={14}
-                      className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500"
+                      size={13}
+                      className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-500"
                     />
                   </div>
                 </div>
@@ -590,7 +652,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                       value={fnEnumId ?? ''}
                       onChange={(e) => handleSetFunction(e.target.value || null)}
                       disabled={updateFn.isPending}
-                      className="w-full appearance-none bg-gray-50 text-gray-800 text-sm rounded-md pl-2.5 pr-8 py-1.5 border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:focus:ring-blue-500 transition-colors"
+                      className="w-full appearance-none [color-scheme:light] dark:[color-scheme:dark] [&>option]:bg-white [&>option]:text-gray-900 dark:[&>option]:bg-gray-800 dark:[&>option]:text-gray-200 bg-gray-50/70 text-gray-700 text-sm rounded-md pl-2.5 pr-8 py-1.5 border border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300/70 disabled:opacity-50 dark:bg-gray-800/70 dark:text-gray-200 dark:border-gray-700 dark:focus:border-gray-600 dark:focus:ring-gray-600/60 transition-colors"
                     >
                       <option value="">{isEn ? 'No function' : 'Keine Funktion'}</option>
                       {fnEnums.map((fnEntry) => (
@@ -600,8 +662,8 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                       ))}
                     </select>
                     <ChevronDown
-                      size={14}
-                      className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500"
+                      size={13}
+                      className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-500"
                     />
                   </div>
                 </div>

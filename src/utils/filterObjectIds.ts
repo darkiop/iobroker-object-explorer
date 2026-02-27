@@ -1,6 +1,6 @@
 import type { IoBrokerObject } from '../types/iobroker';
 
-type ColumnFilterKey = 'id' | 'name' | 'room' | 'function' | 'role' | 'unit' | 'write' | 'history' | 'smart' | 'alias';
+type ColumnFilterKey = 'id' | 'name' | 'room' | 'function' | 'type' | 'role' | 'unit' | 'write' | 'history' | 'smart' | 'alias';
 type ColumnFilters = Partial<Record<ColumnFilterKey, string>>;
 
 interface FilterObjectIdsParams {
@@ -62,6 +62,11 @@ export function filterObjectIds({
   if (colFilters.function?.trim()) {
     const f = colFilters.function.trim().toLowerCase();
     next = next.filter((id) => (functionMap[id] || '').toLowerCase().includes(f));
+  }
+
+  if (colFilters.type?.trim()) {
+    const f = colFilters.type.trim().toLowerCase();
+    next = next.filter((id) => (objects[id]?.common?.type || objects[id]?.type || '').toLowerCase().includes(f));
   }
 
   if (colFilters.role?.trim()) {
