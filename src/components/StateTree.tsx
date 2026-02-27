@@ -25,9 +25,10 @@ interface StateTreeProps {
 }
 
 function buildTree(ids: string[]): TreeNode {
-  const root: TreeNode = { name: 'root', fullPath: '', children: new Map(), isLeaf: false };
+  const root: TreeNode = { name: 'root', fullPath: '', children: new Map(), isLeaf: false, count: 0 };
 
   for (const id of ids) {
+    root.count = (root.count ?? 0) + 1;
     const parts = id.split('.');
     let current = root;
     for (let i = 0; i < parts.length; i++) {
@@ -39,9 +40,11 @@ function buildTree(ids: string[]): TreeNode {
           fullPath,
           children: new Map(),
           isLeaf: i === parts.length - 1,
+          count: 0,
         });
       }
       current = current.children.get(part)!;
+      current.count = (current.count ?? 0) + 1;
       if (i === parts.length - 1) {
         current.isLeaf = true;
       }
