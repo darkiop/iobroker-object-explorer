@@ -29,6 +29,7 @@ const queryClient = new QueryClient({
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200, 500];
 const LS_PAGE_SIZE = 'iobroker-page-size';
 const LS_APP_SETTINGS = 'iobroker-app-settings';
+const LS_EXPERT_MODE = 'iobroker-expert-mode';
 const DEFAULT_QUICK_PATTERNS = ['alias.0.*', 'javascript.0.*', '0_userdata.0.*'] as const;
 const EMPTY_OBJECTS: Record<string, IoBrokerObject> = {};
 const EMPTY_STATES: Record<string, IoBrokerState> = {};
@@ -185,6 +186,7 @@ function AppContent() {
   const [fulltextEnabled, setFulltextEnabled] = useState(false);
   const [historyModalId, setHistoryModalId] = useState<string | null>(null);
   const [newDatapointInitialId, setNewDatapointInitialId] = useState<string | null>(null);
+  const [expertMode, setExpertMode] = useState<boolean>(() => localStorage.getItem(LS_EXPERT_MODE) === 'true');
   const prevTreeFilterRef = useRef<string | null>(null);
 
   const { data: stateObjectsData, error: objectsError, refetch: refetchFilteredObjects } = useFilteredObjects(pattern, fulltextEnabled);
@@ -416,6 +418,14 @@ function AppContent() {
       refetchFunctionEnums(),
     ]);
   }, [refetchFilteredObjects, refetchAllObjects, refetchRoomMap, refetchFunctionMap, refetchStateValues, refetchRoomEnums, refetchFunctionEnums]);
+
+  const handleToggleExpertMode = useCallback(() => {
+    setExpertMode((prev) => {
+      const next = !prev;
+      localStorage.setItem(LS_EXPERT_MODE, String(next));
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     const prev = prevTreeFilterRef.current;
@@ -760,6 +770,8 @@ function AppContent() {
             dateFormat={appSettings.dateFormat}
             settingsVisibleCols={appSettings.visibleCols}
             language={appSettings.language}
+            expertMode={expertMode}
+            onToggleExpertMode={handleToggleExpertMode}
           />
         </div>
 

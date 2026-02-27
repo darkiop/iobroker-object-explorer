@@ -77,7 +77,7 @@ export default function NewDatapointModal({ onClose, existingIds, initialId = ''
               name: name.trim(),
               type: stateType,
               role: role.trim() || undefined,
-              unit: unit.trim() || undefined,
+              unit: stateType === 'boolean' ? undefined : (unit.trim() || undefined),
               min: stateType === 'number' && min.trim() !== '' ? Number(min) : undefined,
               max: stateType === 'number' && max.trim() !== '' ? Number(max) : undefined,
               read,
@@ -186,18 +186,20 @@ export default function NewDatapointModal({ onClose, existingIds, initialId = ''
 
           {objectType === 'state' && (
             <>
-              <div className="flex gap-3">
-                <label className="flex flex-col gap-1 flex-1">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Unit' : 'Einheit'}</span>
-                  <input
-                    type="text"
-                    value={unit}
-                    onChange={(e) => setUnit(e.target.value)}
-                    placeholder="°C, %, …"
-                    className="px-2.5 py-1.5 h-[34px] text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500"
-                  />
-                </label>
-              </div>
+              {stateType !== 'boolean' && (
+                <div className="flex gap-3">
+                  <label className="flex flex-col gap-1 flex-1">
+                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Unit' : 'Einheit'}</span>
+                    <input
+                      type="text"
+                      value={unit}
+                      onChange={(e) => setUnit(e.target.value)}
+                      placeholder="°C, %, …"
+                      className="px-2.5 py-1.5 h-[34px] text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500"
+                    />
+                  </label>
+                </div>
+              )}
 
               {/* Rolle */}
               <label className="flex flex-col gap-1 relative">

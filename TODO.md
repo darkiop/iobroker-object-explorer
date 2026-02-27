@@ -4,9 +4,6 @@ Move DP Kontextmenü
 
 Edit Value mit ACK im Datenpunkt bearbeiten Modal
 
-New Datapoint -> boolean -> keine Unit benötigt
-
-in der tabelle bei switch, button entsprechende steuer elemente anzeigen. experten modus zum umschalten (symbol oben bei dark mode und so)
 
 
 

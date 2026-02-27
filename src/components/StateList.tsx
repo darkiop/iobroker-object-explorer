@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Lock, Search, Link2, FileEdit, Download, ChevronDown, RefreshCw, CalendarDays } from 'lucide-react';
-import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch } from '../hooks/useStates';
+import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Lock, Search, Link2, FileEdit, Download, ChevronDown, RefreshCw, CalendarDays, Wrench, Zap } from 'lucide-react';
+import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
 import NewDatapointModal from './NewDatapointModal';
@@ -38,6 +38,8 @@ interface StateListProps {
   dateFormat?: DateFormatSetting;
   settingsVisibleCols?: SortKey[];
   language?: 'en' | 'de';
+  expertMode?: boolean;
+  onToggleExpertMode?: () => void;
 }
 
 function formatTimestamp(ts: number, dateFormat: DateFormatSetting): string {
@@ -514,20 +516,29 @@ const EditableTypeCell = React.memo(function EditableTypeCell({ id, typeValue, l
 const EditableValueCell = React.memo(function EditableValueCell({
   id,
   state,
+  obj,
+  expertMode = false,
   onOpen,
   language = 'en',
 }: {
   id: string;
   state: IoBrokerState | undefined;
+  obj: IoBrokerObject | undefined;
+  expertMode?: boolean;
   onOpen: (id: string) => void;
   language?: 'en' | 'de';
 }) {
   const isEn = language === 'en';
+  const setStateVal = useSetState();
   const prevValRef = useRef<unknown>(undefined);
   const val = state?.val;
   const isNull = val === null || val === undefined;
   const isBoolean = typeof val === 'boolean';
   const isNumber = typeof val === 'number';
+  const role = obj?.common?.role ?? '';
+  const isWritable = obj?.common?.write === true;
+  const isSwitch = role === 'switch' || role.startsWith('switch.');
+  const isButton = role === 'button' || role.startsWith('button.');
 
   let valueColor = 'text-gray-900 dark:text-white';
   if (isNull) valueColor = 'text-gray-300 dark:text-gray-600';
@@ -541,6 +552,51 @@ const EditableValueCell = React.memo(function EditableValueCell({
       : <ArrowDown size={10} className="text-red-400 dark:text-red-400 shrink-0" />;
   }
   prevValRef.current = val;
+
+  if (!expertMode && state && (isSwitch || isButton)) {
+    return (
+      <td data-col="value" className="px-3 py-1.5 text-right overflow-hidden whitespace-nowrap group/value" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-end gap-1.5">
+          {isSwitch ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!isWritable) return;
+                setStateVal.mutate({ id, val: !Boolean(state.val) });
+              }}
+              disabled={setStateVal.isPending || !isWritable}
+              title={isWritable ? (isEn ? 'Toggle value' : 'Wert umschalten') : (isEn ? 'Read only' : 'Schreibgeschützt')}
+              className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${
+                Boolean(state.val) ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'
+              } ${(setStateVal.isPending || !isWritable) ? 'opacity-60 cursor-default' : 'cursor-pointer'}`}
+            >
+              <span className={`inline-block h-3.5 w-3.5 mt-[3px] rounded-full bg-white shadow transition-transform ${Boolean(state.val) ? 'translate-x-5' : 'translate-x-0.5'}`} />
+            </button>
+          ) : (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!isWritable) return;
+                setStateVal.mutate({ id, val: true });
+              }}
+              disabled={setStateVal.isPending || !isWritable}
+              title={isEn ? 'Trigger' : 'Auslösen'}
+              className="px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded disabled:opacity-50 transition-colors"
+            >
+              <Zap size={12} />
+            </button>
+          )}
+          <button
+            onClick={(e) => { e.stopPropagation(); onOpen(id); }}
+            className="opacity-0 group-hover/value:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
+            title={isEn ? 'Edit value' : 'Wert bearbeiten'}
+          >
+            <Pencil size={12} />
+          </button>
+        </div>
+      </td>
+    );
+  }
 
   return (
     <td
@@ -1281,6 +1337,7 @@ interface StateRowProps {
   onFnEditEnd: () => void;
   dateFormat: DateFormatSetting;
   language: 'en' | 'de';
+  expertMode: boolean;
 }
 
 function aliasIdsEqual(a?: string[], b?: string[]): boolean {
@@ -1298,7 +1355,7 @@ const StateRow = React.memo(function StateRow({
   onSelect, onCheck, onContextMenu, onHistoryClick, onNavigateTo, onDeleteClick,
   onSelectRoom, onSelectFunction, onOpenValueModal,
   roomEditForced, fnEditForced, onRoomEditEnd, onFnEditEnd,
-  dateFormat, language,
+  dateFormat, language, expertMode,
 }: StateRowProps) {
   const isEn = language === 'en';
   const show = (key: SortKey) => visibleCols.includes(key);
@@ -1488,7 +1545,7 @@ const StateRow = React.memo(function StateRow({
       )}
       {show('type') && <EditableTypeCell id={id} typeValue={obj?.common?.type || ''} language={language} />}
       {show('role') && <EditableRoleCell id={id} role={obj?.common?.role || ''} suggestions={roles} language={language} />}
-      {show('value') && <EditableValueCell id={id} state={state} onOpen={onOpenValueModal} language={language} />}
+      {show('value') && <EditableValueCell id={id} state={state} obj={obj} expertMode={expertMode} onOpen={onOpenValueModal} language={language} />}
       {show('unit') && <EditableUnitCell id={id} unit={unit} suggestions={units} language={language} />}
       {show('ack') && (
         <td data-col="ack" className="px-3 py-2">
@@ -1541,6 +1598,7 @@ const StateRow = React.memo(function StateRow({
     prev.fnEditForced === next.fnEditForced &&
     prev.dateFormat === next.dateFormat &&
     prev.language === next.language &&
+    prev.expertMode === next.expertMode &&
     prev.onNavigateTo === next.onNavigateTo &&
     prev.onSelectRoom === next.onSelectRoom &&
     prev.onSelectFunction === next.onSelectFunction &&
@@ -1548,7 +1606,7 @@ const StateRow = React.memo(function StateRow({
   );
 });
 
-function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en' }: StateListProps) {
+function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en', expertMode = false, onToggleExpertMode }: StateListProps) {
   const isEn = language === 'en';
   const [sortKey, setSortKey] = useState<SortKey>('id');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
@@ -2017,6 +2075,17 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
       </div>
       <div className="flex items-center gap-1">
         <button
+          onClick={() => onToggleExpertMode?.()}
+          title={expertMode ? (isEn ? 'Disable expert mode' : 'Expertenmodus deaktivieren') : (isEn ? 'Enable expert mode' : 'Expertenmodus aktivieren')}
+          className={`p-2 rounded-lg transition-colors ${
+            expertMode
+              ? 'text-amber-600 bg-amber-500/15 hover:bg-amber-500/25 dark:text-amber-400 dark:hover:bg-amber-500/20'
+              : 'text-gray-400 hover:text-amber-600 hover:bg-amber-500/10 dark:text-gray-500 dark:hover:text-amber-400 dark:hover:bg-amber-500/10'
+          }`}
+        >
+          <Wrench size={17} />
+        </button>
+        <button
           onClick={fitToContainer}
           title={isEn ? 'Stretch columns to 100%' : 'Spalten auf 100% strecken'}
           className="p-2 rounded-lg transition-colors text-gray-400 hover:text-gray-600 hover:bg-gray-200 dark:text-gray-500 dark:hover:text-gray-300 dark:hover:bg-gray-700"
@@ -2445,6 +2514,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                 onFnEditEnd={handleFnEditEnd}
                 dateFormat={dateFormat}
                 language={language}
+                expertMode={expertMode}
               />
             ))}
             {bottomSpacer > 0 && (

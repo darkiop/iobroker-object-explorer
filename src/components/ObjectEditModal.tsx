@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Save, AlertTriangle, Link2, Pencil, Check, Wrench, Trash2, Maximize2, Copy, ChevronDown, Lock } from 'lucide-react';
+import { X, Save, AlertTriangle, Link2, Pencil, Check, Wrench, Trash2, Maximize2, Copy, ChevronDown, Lock, Zap } from 'lucide-react';
 import { usePutObject, useExtendObject, useStateDetail, useSetState, useAllRoles, useAllUnits, useDeleteObject, useAllObjects, useRoomEnums, useFunctionEnums, useUpdateRoomMembership, useUpdateFunctionMembership } from '../hooks/useStates';
 import { hasHistory } from '../api/iobroker';
 import HistoryChart from './HistoryChart';
@@ -174,8 +174,13 @@ function SwitchControl({ val, onSet, isPending, disabled }: { val: unknown; onSe
 function ButtonControl({ onSet, isPending, disabled, language = 'en' }: { onSet: (v: unknown) => void; isPending: boolean; disabled?: boolean; language?: 'en' | 'de' }) {
   const isEn = language === 'en';
   return (
-    <button onClick={() => onSet(true)} disabled={isPending || disabled} className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-500 text-white rounded disabled:opacity-50 transition-colors">
-      {isEn ? 'Trigger' : 'Auslösen'}
+    <button
+      onClick={() => onSet(true)}
+      disabled={isPending || disabled}
+      title={isEn ? 'Trigger' : 'Auslösen'}
+      className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded disabled:opacity-50 transition-colors"
+    >
+      <Zap size={13} />
     </button>
   );
 }
