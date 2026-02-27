@@ -509,7 +509,9 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
       <div className="overflow-y-auto px-2 flex-1">
         {filteredIds.length === 0 ? (
           <div className="text-gray-400 dark:text-gray-500 text-sm p-4">
-            {stateIds.length === 0 ? 'Keine Datenpunkte geladen' : 'Keine Datenpunkte gefunden'}
+            {stateIds.length === 0
+              ? (isEn ? 'No datapoints loaded' : 'Keine Datenpunkte geladen')
+              : (isEn ? 'No datapoints found' : 'Keine Datenpunkte gefunden')}
           </div>
         ) : (
           sortedChildren.map((child) => (

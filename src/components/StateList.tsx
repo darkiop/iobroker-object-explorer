@@ -2403,8 +2403,8 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
               <tr>
                 <td colSpan={visibleCols.length + 3} className="px-4 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
                   {ids.length === 0
-                    ? 'Keine Datenpunkte gefunden. Verwende die Suche um Datenpunkte zu laden.'
-                    : 'Keine Einträge entsprechen den gesetzten Filtern.'}
+                    ? (isEn ? 'No datapoints found. Use search to load datapoints.' : 'Keine Datenpunkte gefunden. Verwende die Suche um Datenpunkte zu laden.')
+                    : (isEn ? 'No entries match the active filters.' : 'Keine Einträge entsprechen den gesetzten Filtern.')}
                 </td>
               </tr>
             )}
