@@ -422,11 +422,11 @@ export async function updateRoomMembershipBatch(objectIds: string[], newRoomEnum
   objectsCache = null;
 }
 
-export async function setState(id: string, val: unknown): Promise<void> {
+export async function setState(id: string, val: unknown, ack?: boolean): Promise<void> {
   const res = await fetch(`${BASE_URL}/state/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ val }),
+    body: JSON.stringify(ack === undefined ? { val } : { val, ack }),
   });
   if (!res.ok) {
     throw new Error(`API error: ${res.status} ${res.statusText}`);

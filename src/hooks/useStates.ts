@@ -171,14 +171,14 @@ export function useRoomMap() {
 export function useSetState() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, val }: { id: string; val: unknown }) => setState(id, val),
-    onSuccess: (_data, { id, val }) => {
+    mutationFn: ({ id, val, ack }: { id: string; val: unknown; ack?: boolean }) => setState(id, val, ack),
+    onSuccess: (_data, { id, val, ack }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.states.detail(id) });
       queryClient.setQueriesData(
         { queryKey: queryKeys.states.valuesRoot },
         (old: Record<string, IoBrokerState> | undefined) => {
           if (!old || !(id in old)) return old;
-          return { ...old, [id]: { ...old[id], val, ts: Date.now(), ack: false } };
+          return { ...old, [id]: { ...old[id], val, ts: Date.now(), ack: ack ?? false } };
         }
       );
     },

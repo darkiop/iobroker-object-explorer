@@ -8,9 +8,7 @@ New Datapointt -> boolean -> keine Unit benötigt
 
 in der tabelle bei switch, button entsprechende elemente anzeigen. experten modus zum umschalten
 
-Klick auf den Wert soll ein Wert ändern Modal öffnen. mit einer option ACK. Wenn HTML Wert, dann HTML rendern, wenn json/object dann mit syntax highlighting darstellen
-
-farben/icons für pfad und adapter sicht darstellen
+in der  tabelle, innerhalb der filterboxen für Role, Room und Funktion automatisch Vorschläge für die Filter machen.
 
 testen ob json im Objekt bearbeiten beschrieben werden kann (test iobroker instanz)
 

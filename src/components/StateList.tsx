@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Lock, Search, Link2, FileEdit, Download, ChevronDown, RefreshCw } from 'lucide-react';
-import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch } from '../hooks/useStates';
+import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
 import NewDatapointModal from './NewDatapointModal';
@@ -11,6 +11,7 @@ import CopyDatapointModal from './CopyDatapointModal';
 import HistoryModal from './HistoryModal';
 import ConfirmDialog from './ConfirmDialog';
 import MultiDeleteDialog from './MultiDeleteDialog';
+import ValueEditModal from './ValueEditModal';
 import { hasHistory, isGlobPattern } from '../api/iobroker';
 import type { IoBrokerState, IoBrokerObject } from '../types/iobroker';
 import { copyText } from '../utils/clipboard';
@@ -389,95 +390,57 @@ const EditableUnitCell = React.memo(function EditableUnitCell({ id, unit, sugges
   );
 });
 
-const EditableValueCell = React.memo(function EditableValueCell({ id, state, obj }: { id: string; state: IoBrokerState | undefined; obj: IoBrokerObject | undefined }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState('');
-  const setStateVal = useSetState();
+const EditableValueCell = React.memo(function EditableValueCell({
+  id,
+  state,
+  onOpen,
+  language = 'en',
+}: {
+  id: string;
+  state: IoBrokerState | undefined;
+  onOpen: (id: string) => void;
+  language?: 'en' | 'de';
+}) {
+  const isEn = language === 'en';
   const prevValRef = useRef<unknown>(undefined);
+  const val = state?.val;
+  const isNull = val === null || val === undefined;
+  const isBoolean = typeof val === 'boolean';
+  const isNumber = typeof val === 'number';
 
-  const isReadonly = obj?.common?.write === false;
-  const valType = obj?.common?.type;
+  let valueColor = 'text-gray-900 dark:text-white';
+  if (isNull) valueColor = 'text-gray-300 dark:text-gray-600';
+  else if (isBoolean) valueColor = val ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400';
 
-  function startEdit() {
-    setDraft(state ? formatValue(state.val) : '');
-    setEditing(true);
+  let trendIcon: React.ReactNode = null;
+  const prev = prevValRef.current;
+  if (isNumber && prev !== undefined && prev !== val) {
+    trendIcon = (val as number) > (prev as number)
+      ? <ArrowUp size={10} className="text-green-500 dark:text-green-400 shrink-0" />
+      : <ArrowDown size={10} className="text-red-400 dark:text-red-400 shrink-0" />;
   }
-
-  function commit() {
-    let parsed: unknown = draft;
-    if (valType === 'number') {
-      const n = parseFloat(draft);
-      if (!isNaN(n)) parsed = n;
-    } else if (valType === 'boolean') {
-      parsed = draft === 'true' || draft === '1';
-    }
-    setStateVal.mutate({ id, val: parsed });
-    setEditing(false);
-  }
-
-  if (!editing) {
-    const val = state?.val;
-    const isNull = val === null || val === undefined;
-    const isBoolean = typeof val === 'boolean';
-    const isNumber = typeof val === 'number';
-
-    let valueColor = 'text-gray-900 dark:text-white';
-    if (isNull) valueColor = 'text-gray-300 dark:text-gray-600';
-    else if (isBoolean) valueColor = val ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400';
-
-    let trendIcon: React.ReactNode = null;
-    const prev = prevValRef.current;
-    if (isNumber && prev !== undefined && prev !== val) {
-      trendIcon = (val as number) > (prev as number)
-        ? <ArrowUp  size={10} className="text-green-500 dark:text-green-400 shrink-0" />
-        : <ArrowDown size={10} className="text-red-400 dark:text-red-400 shrink-0" />;
-    }
-    prevValRef.current = val;
-
-    return (
-      <td data-col="value" className="px-3 py-2 text-right font-mono font-medium overflow-hidden whitespace-nowrap group/value">
-        <div className={`flex items-center justify-end gap-1 ${valueColor}`}>
-          {!isReadonly && (
-            <button
-              onClick={(e) => { e.stopPropagation(); startEdit(); }}
-              className="opacity-0 group-hover/value:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
-              title="Wert bearbeiten"
-            >
-              <Pencil size={12} />
-            </button>
-          )}
-          {trendIcon}
-          {state ? (() => {
-            const v = formatValue(val);
-            const truncated = v.length > 16 ? v.slice(0, 16) + '…' : v;
-            return <span title={v}>{truncated}</span>;
-          })() : <span className="text-gray-300 dark:text-gray-600">…</span>}
-        </div>
-      </td>
-    );
-  }
+  prevValRef.current = val;
 
   return (
-    <td data-col="value" className="px-3 py-1 overflow-hidden" onClick={(e) => e.stopPropagation()}>
-      <div className="flex items-center gap-1 justify-end">
-        <input
-          type="text"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') commit();
-            if (e.key === 'Escape') setEditing(false);
-          }}
-          autoFocus
-          disabled={setStateVal.isPending}
-          className="flex-1 min-w-0 bg-white text-gray-800 text-sm rounded px-2 py-0.5 border border-gray-300 focus:border-blue-500 focus:outline-none disabled:opacity-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 text-right font-mono"
-        />
-        <button onClick={commit} disabled={setStateVal.isPending} className="text-green-500 hover:text-green-600 dark:text-green-400 dark:hover:text-green-300 shrink-0 disabled:opacity-50">
-          <Check size={14} />
+    <td
+      data-col="value"
+      className="px-3 py-2 text-right font-mono font-medium overflow-hidden whitespace-nowrap group/value"
+      onClick={(e) => { e.stopPropagation(); onOpen(id); }}
+    >
+      <div className={`flex items-center justify-end gap-1 ${valueColor}`}>
+        <button
+          onClick={(e) => { e.stopPropagation(); onOpen(id); }}
+          className="opacity-0 group-hover/value:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
+          title={isEn ? 'Edit value' : 'Wert bearbeiten'}
+        >
+          <Pencil size={12} />
         </button>
-        <button onClick={() => setEditing(false)} disabled={setStateVal.isPending} className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 disabled:opacity-50">
-          <X size={14} />
-        </button>
+        {trendIcon}
+        {state ? (() => {
+          const v = formatValue(val);
+          const truncated = v.length > 16 ? v.slice(0, 16) + '…' : v;
+          return <span title={v}>{truncated}</span>;
+        })() : <span className="text-gray-300 dark:text-gray-600">…</span>}
       </div>
     </td>
   );
@@ -830,6 +793,7 @@ export const ALL_COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'name',    label: 'Name' },
   { key: 'room',      label: 'Raum' },
   { key: 'function',  label: 'Funktion' },
+  { key: 'type',    label: 'Typ' },
   { key: 'role',    label: 'Rolle' },
   { key: 'value',   label: 'Wert' },
   { key: 'unit',    label: 'Einheit' },
@@ -860,7 +824,7 @@ export function getColumnLabel(key: SortKey, language: 'en' | 'de' = 'de'): stri
   }
 }
 
-export const DEFAULT_COLS: SortKey[] = ['checkbox', 'write', 'history', 'smart', 'alias', 'id', 'name', 'room', 'function', 'role', 'value', 'unit', 'ack', 'ts'];
+export const DEFAULT_COLS: SortKey[] = ['checkbox', 'write', 'history', 'smart', 'alias', 'id', 'name', 'room', 'function', 'type', 'role', 'value', 'unit', 'ack', 'ts'];
 const LS_KEY = 'iobroker-visible-cols';
 
 function loadVisibleCols(): SortKey[] {
@@ -1057,6 +1021,7 @@ interface StateRowProps {
   onDeleteClick: (id: string) => void;
   onSelectRoom: (objectId: string, oldRoomEnumId: string | null, newRoomEnumId: string | null) => void;
   onSelectFunction: (objectId: string, oldFnEnumId: string | null, newFnEnumId: string | null) => void;
+  onOpenValueModal: (id: string) => void;
   roomEditForced: boolean;
   fnEditForced: boolean;
   onRoomEditEnd: () => void;
@@ -1078,7 +1043,7 @@ const StateRow = React.memo(function StateRow({
   isSelected, isChecked, aliasIds,
   visibleCols, colWidths, roles, units, roomEnums, fnEnums,
   onSelect, onCheck, onContextMenu, onHistoryClick, onNavigateTo, onDeleteClick,
-  onSelectRoom, onSelectFunction,
+  onSelectRoom, onSelectFunction, onOpenValueModal,
   roomEditForced, fnEditForced, onRoomEditEnd, onFnEditEnd,
   dateFormat, language,
 }: StateRowProps) {
@@ -1254,8 +1219,13 @@ const StateRow = React.memo(function StateRow({
           language={language}
         />
       )}
+      {show('type') && (
+        <td data-col="type" className="px-3 py-2 text-gray-500 dark:text-gray-400 text-xs font-mono overflow-hidden">
+          <span className="truncate block">{obj?.common?.type || obj?.type || ''}</span>
+        </td>
+      )}
       {show('role') && <EditableRoleCell id={id} role={obj?.common?.role || ''} suggestions={roles} language={language} />}
-      {show('value') && <EditableValueCell id={id} state={state} obj={obj} />}
+      {show('value') && <EditableValueCell id={id} state={state} onOpen={onOpenValueModal} language={language} />}
       {show('unit') && <EditableUnitCell id={id} unit={unit} suggestions={units} language={language} />}
       {show('ack') && (
         <td data-col="ack" className="px-3 py-2">
@@ -1310,7 +1280,8 @@ const StateRow = React.memo(function StateRow({
     prev.language === next.language &&
     prev.onNavigateTo === next.onNavigateTo &&
     prev.onSelectRoom === next.onSelectRoom &&
-    prev.onSelectFunction === next.onSelectFunction
+    prev.onSelectFunction === next.onSelectFunction &&
+    prev.onOpenValueModal === next.onOpenValueModal
   );
 });
 
@@ -1330,6 +1301,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   const [newDatapointOpen, setNewDatapointOpen] = useState(false);
   const [historyModalId, setHistoryModalId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [valueEditId, setValueEditId] = useState<string | null>(null);
   const [confirmResetLs, setConfirmResetLs] = useState(false);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [multiDeleteOpen, setMultiDeleteOpen] = useState(false);
@@ -1626,6 +1598,9 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   const handleRowDeleteClick = React.useCallback((id: string) => {
     setDeletingId(id);
   }, []);
+  const handleOpenValueModal = React.useCallback((id: string) => {
+    setValueEditId(id);
+  }, []);
 
   const handleSelectRoom = React.useCallback((objectId: string, oldRoomEnumId: string | null, newRoomEnumId: string | null) => {
     updateRoomMutateRef.current({ objectId, oldRoomEnumId, newRoomEnumId });
@@ -1904,6 +1879,15 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
           onClose={() => setHistoryModalId(null)}
         />
       )}
+      {valueEditId && (
+        <ValueEditModal
+          id={valueEditId}
+          state={states[valueEditId]}
+          obj={objects[valueEditId]}
+          language={language}
+          onClose={() => setValueEditId(null)}
+        />
+      )}
       {deletingId && (
         <ConfirmDialog
           title={isEn ? 'Delete datapoint' : 'Datenpunkt löschen'}
@@ -2010,6 +1994,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
               {show('name')    && <SortHeader label={isEn ? 'Name' : 'Name'} sortKey="name" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('name')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('room')     && <SortHeader label={isEn ? 'Room' : 'Raum'} sortKey="room" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('room')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('function') && <SortHeader label={isEn ? 'Function' : 'Funktion'} sortKey="function" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('function')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
+              {show('type')    && <SortHeader label={isEn ? 'Type' : 'Typ'} sortKey="type" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('type')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('role')    && <SortHeader label={isEn ? 'Role' : 'Rolle'} sortKey="role" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('role')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('value')   && <SortHeader label={isEn ? 'Value' : 'Wert'} sortKey="value" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('value')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} className="text-right" />}
               {show('unit')    && <SortHeader label={isEn ? 'Unit' : 'Einheit'} sortKey="unit" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('unit')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
@@ -2028,8 +2013,8 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                   />
                 </th>
               )}
-              {(['write','history','smart','alias','id','name','room','function','role','value','unit','ack','ts'] as SortKey[]).filter(show).map((key) => {
-                const filterable = ['id','name','room','function','role','value','unit'].includes(key);
+              {(['write','history','smart','alias','id','name','room','function','type','role','value','unit','ack','ts'] as SortKey[]).filter(show).map((key) => {
+                const filterable = ['id','name','room','function','type','role','value','unit'].includes(key);
                 const isIconToggle = ['write','history','smart','alias'].includes(key);
                 const isActive = colFilters[key] === '1';
 
@@ -2140,6 +2125,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                 onDeleteClick={handleRowDeleteClick}
                 onSelectRoom={handleSelectRoom}
                 onSelectFunction={handleSelectFunction}
+                onOpenValueModal={handleOpenValueModal}
                 roomEditForced={roomEditId === id}
                 fnEditForced={fnEditId === id}
                 onRoomEditEnd={handleRoomEditEnd}
