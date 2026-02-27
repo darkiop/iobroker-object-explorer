@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Save, AlertTriangle, Link2, Pencil, Check, Wrench, Trash2, Maximize2, Copy, ChevronDown, Lock, Zap } from 'lucide-react';
+import { X, Save, AlertTriangle, Link2, Pencil, Check, Wrench, Trash2, Maximize2, Copy, ChevronDown, Lock, Zap, PenLine, FolderInput } from 'lucide-react';
 import { usePutObject, useExtendObject, useStateDetail, useSetState, useAllRoles, useAllUnits, useDeleteObject, useAllObjects, useRoomEnums, useFunctionEnums, useUpdateRoomMembership, useUpdateFunctionMembership } from '../hooks/useStates';
 import { hasHistory } from '../api/iobroker';
 import HistoryChart from './HistoryChart';
 import ConfirmDialog from './ConfirmDialog';
 import CopyDatapointModal from './CopyDatapointModal';
+import RenameDatapointModal from './RenameDatapointModal';
+import MoveDatapointModal from './MoveDatapointModal';
 import type { IoBrokerObject } from '../types/iobroker';
 
 interface Props {
@@ -358,6 +360,8 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
   const [expertMode, setExpertMode] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showCopy, setShowCopy] = useState(false);
+  const [showRename, setShowRename] = useState(false);
+  const [showMove, setShowMove] = useState(false);
 
   // Alias tab state
   const [aliasId, setAliasId] = useState(obj.common.alias?.id ?? '');
@@ -485,6 +489,28 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
           existingIds={existingIds}
           language={language}
           onClose={() => setShowCopy(false)}
+        />
+      )}
+      {showRename && (
+        <RenameDatapointModal
+          sourceId={id}
+          sourceObj={obj}
+          sourceState={state}
+          existingIds={existingIds}
+          language={language}
+          onClose={() => setShowRename(false)}
+          onRenamed={() => { setShowRename(false); onClose(); }}
+        />
+      )}
+      {showMove && (
+        <MoveDatapointModal
+          sourceId={id}
+          sourceObj={obj}
+          sourceState={state}
+          existingIds={existingIds}
+          language={language}
+          onClose={() => setShowMove(false)}
+          onMoved={() => { setShowMove(false); onClose(); }}
         />
       )}
       {confirmDelete && (
@@ -871,21 +897,52 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
           </div>
 
           {/* Footer */}
-          <div className="flex justify-end gap-2 px-5 py-3 border-t border-gray-200 dark:border-gray-700 shrink-0">
-            <button
-              onClick={onClose}
-              className="px-4 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            >
-              {isEn ? 'Cancel' : 'Abbrechen'}
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={putObject.isPending}
-              className="flex items-center gap-1.5 px-4 py-1.5 text-sm rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors disabled:opacity-50"
-            >
-              <Save size={14} />
-              {putObject.isPending ? (isEn ? 'Saving…' : 'Speichern…') : (isEn ? 'Save' : 'Speichern')}
-            </button>
+          <div className="flex items-center justify-between gap-2 px-5 py-3 border-t border-gray-200 dark:border-gray-700 shrink-0">
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setShowCopy(true)}
+                className="flex items-center gap-1 px-2.5 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                title={isEn ? 'Copy datapoint' : 'Datenpunkt kopieren'}
+              >
+                <Copy size={12} />
+                {isEn ? 'Copy' : 'Kopieren'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowRename(true)}
+                className="flex items-center gap-1 px-2.5 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                title={isEn ? 'Rename datapoint' : 'Datenpunkt umbenennen'}
+              >
+                <PenLine size={12} />
+                {isEn ? 'Rename' : 'Umbenennen'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowMove(true)}
+                className="flex items-center gap-1 px-2.5 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                title={isEn ? 'Move datapoint' : 'Datenpunkt verschieben'}
+              >
+                <FolderInput size={12} />
+                {isEn ? 'Move' : 'Verschieben'}
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onClose}
+                className="px-4 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                {isEn ? 'Cancel' : 'Abbrechen'}
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={putObject.isPending}
+                className="flex items-center gap-1.5 px-4 py-1.5 text-sm rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors disabled:opacity-50"
+              >
+                <Save size={14} />
+                {putObject.isPending ? (isEn ? 'Saving…' : 'Speichern…') : (isEn ? 'Save' : 'Speichern')}
+              </button>
+            </div>
           </div>
         </div>
       </div>

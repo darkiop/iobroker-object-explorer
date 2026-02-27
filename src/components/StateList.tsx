@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Lock, Search, Link2, FileEdit, Download, ChevronDown, RefreshCw, CalendarDays, Wrench, Zap, PenLine } from 'lucide-react';
+import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Lock, Search, Link2, FileEdit, Download, ChevronDown, RefreshCw, CalendarDays, Wrench, Zap, PenLine, FolderInput } from 'lucide-react';
 import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
@@ -9,6 +9,7 @@ import ObjectEditModal from './ObjectEditModal';
 import CreateAliasModal from './CreateAliasModal';
 import CopyDatapointModal from './CopyDatapointModal';
 import RenameDatapointModal from './RenameDatapointModal';
+import MoveDatapointModal from './MoveDatapointModal';
 import HistoryModal from './HistoryModal';
 import ConfirmDialog from './ConfirmDialog';
 import MultiDeleteDialog from './MultiDeleteDialog';
@@ -76,7 +77,7 @@ function getObjectName(obj: IoBrokerObject | undefined): string {
   return obj.common.name.de || obj.common.name.en || Object.values(obj.common.name)[0] || '';
 }
 
-const EditableNameCell = React.memo(function EditableNameCell({ id, name }: { id: string; name: string }) {
+const EditableNameCell = React.memo(function EditableNameCell({ id, name, desc }: { id: string; name: string; desc?: string }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(name);
   const extend = useExtendObject();
@@ -86,8 +87,11 @@ const EditableNameCell = React.memo(function EditableNameCell({ id, name }: { id
   if (!editing) {
     return (
       <td data-col="name" className="px-3 py-2 overflow-hidden group/name">
-        <div className="flex items-center gap-1.5">
-          <span className="truncate" title={name}>{name}</span>
+        <div className="flex items-start gap-1.5">
+          <div className="min-w-0 flex-1 overflow-hidden">
+            <div className="truncate" title={name}>{name}</div>
+            {desc && <div className="truncate text-[10px] italic text-gray-400 dark:text-gray-500 leading-tight" title={desc}>{desc}</div>}
+          </div>
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -1524,7 +1528,7 @@ const StateRow = React.memo(function StateRow({
           </div>
         </td>
       )}
-      {show('name') && <EditableNameCell id={id} name={name} />}
+      {show('name') && <EditableNameCell id={id} name={name} desc={obj?.common?.desc} />}
       {show('room') && (
         <EditableRoomCell
           id={id}
@@ -1652,6 +1656,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   const [aliasSourceId, setAliasSourceId] = useState<string | null>(null);
   const [copySourceId, setCopySourceId] = useState<string | null>(null);
   const [renameId, setRenameId] = useState<string | null>(null);
+  const [moveId, setMoveId] = useState<string | null>(null);
   const [editObjId, setEditObjId] = useState<string | null>(null);
   const updateRoomMutateRef = useRef(updateRoom.mutate);
   const updateFnMutateRef = useRef(updateFn.mutate);
@@ -2314,6 +2319,17 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
           onRenamed={(newId) => { setRenameId(null); onNavigateTo?.([newId]); }}
         />
       )}
+      {moveId && objects[moveId] && (
+        <MoveDatapointModal
+          sourceId={moveId}
+          sourceObj={objects[moveId]}
+          sourceState={states[moveId]}
+          existingIds={existingIds}
+          language={language}
+          onClose={() => setMoveId(null)}
+          onMoved={(newId) => { setMoveId(null); onNavigateTo?.([newId]); }}
+        />
+      )}
       {editObjId && objects[editObjId] && (
         <ObjectEditModal
           id={editObjId}
@@ -2345,6 +2361,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
         items.push({ separator: true } as const);
         items.push({ icon: <Copy size={13} />, label: isEn ? 'Copy datapoint' : 'Datenpunkt kopieren', onClick: () => setCopySourceId(ctxId) });
         items.push({ icon: <PenLine size={13} />, label: isEn ? 'Rename datapoint' : 'Datenpunkt umbenennen', onClick: () => setRenameId(ctxId) });
+        items.push({ icon: <FolderInput size={13} />, label: isEn ? 'Move datapoint' : 'Datenpunkt verschieben', onClick: () => setMoveId(ctxId) });
         if (!ctxId.startsWith('alias.0.')) {
           items.push({ icon: <Link2 size={13} />, label: isEn ? 'Create alias' : 'Alias anlegen', onClick: () => setAliasSourceId(ctxId) });
         }
