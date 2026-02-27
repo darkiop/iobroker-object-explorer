@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Lock, Search, Link2, FileEdit, Download, ChevronDown, RefreshCw, CalendarDays, Wrench, Zap } from 'lucide-react';
+import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Lock, Search, Link2, FileEdit, Download, ChevronDown, RefreshCw, CalendarDays, Wrench, Zap, PenLine } from 'lucide-react';
 import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
@@ -8,6 +8,7 @@ import NewDatapointModal from './NewDatapointModal';
 import ObjectEditModal from './ObjectEditModal';
 import CreateAliasModal from './CreateAliasModal';
 import CopyDatapointModal from './CopyDatapointModal';
+import RenameDatapointModal from './RenameDatapointModal';
 import HistoryModal from './HistoryModal';
 import ConfirmDialog from './ConfirmDialog';
 import MultiDeleteDialog from './MultiDeleteDialog';
@@ -1650,6 +1651,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   const [fnEditId, setFnEditId] = useState<string | null>(null);
   const [aliasSourceId, setAliasSourceId] = useState<string | null>(null);
   const [copySourceId, setCopySourceId] = useState<string | null>(null);
+  const [renameId, setRenameId] = useState<string | null>(null);
   const [editObjId, setEditObjId] = useState<string | null>(null);
   const updateRoomMutateRef = useRef(updateRoom.mutate);
   const updateFnMutateRef = useRef(updateFn.mutate);
@@ -2301,6 +2303,17 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
           onClose={() => setCopySourceId(null)}
         />
       )}
+      {renameId && objects[renameId] && (
+        <RenameDatapointModal
+          sourceId={renameId}
+          sourceObj={objects[renameId]}
+          sourceState={states[renameId]}
+          existingIds={existingIds}
+          language={language}
+          onClose={() => setRenameId(null)}
+          onRenamed={(newId) => { setRenameId(null); onNavigateTo?.([newId]); }}
+        />
+      )}
       {editObjId && objects[editObjId] && (
         <ObjectEditModal
           id={editObjId}
@@ -2331,6 +2344,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
         items.push({ icon: <FileEdit size={13} />, label: isEn ? 'Edit object' : 'Objekt bearbeiten', onClick: () => setEditObjId(ctxId) });
         items.push({ separator: true } as const);
         items.push({ icon: <Copy size={13} />, label: isEn ? 'Copy datapoint' : 'Datenpunkt kopieren', onClick: () => setCopySourceId(ctxId) });
+        items.push({ icon: <PenLine size={13} />, label: isEn ? 'Rename datapoint' : 'Datenpunkt umbenennen', onClick: () => setRenameId(ctxId) });
         if (!ctxId.startsWith('alias.0.')) {
           items.push({ icon: <Link2 size={13} />, label: isEn ? 'Create alias' : 'Alias anlegen', onClick: () => setAliasSourceId(ctxId) });
         }

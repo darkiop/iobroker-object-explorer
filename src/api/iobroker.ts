@@ -61,7 +61,7 @@ export async function getAllObjects(): Promise<Record<string, IoBrokerObject>> {
   return objectsCachePromise;
 }
 
-export async function getObjectsByPattern(pattern: string, fulltext = true): Promise<Record<string, IoBrokerObject>> {
+export async function getObjectsByPattern(pattern: string, fulltext = true, exact = false): Promise<Record<string, IoBrokerObject>> {
   const all = await getAllObjects();
 
   if (isGlobPattern(pattern)) {
@@ -76,12 +76,36 @@ export async function getObjectsByPattern(pattern: string, fulltext = true): Pro
   }
 
   if (!fulltext) {
+    if (exact) {
+      const q = pattern.toLowerCase();
+      const result: Record<string, IoBrokerObject> = {};
+      for (const [id, obj] of Object.entries(all)) {
+        if (obj && obj.type === 'state' && id.toLowerCase() === q) {
+          result[id] = obj;
+          break;
+        }
+      }
+      return result;
+    }
     // Nur ID-Substring-Suche ohne Relevanz-Ranking
     const q = pattern.toLowerCase();
     const result: Record<string, IoBrokerObject> = {};
     for (const [id, obj] of Object.entries(all)) {
       if (obj && obj.type === 'state' && id.toLowerCase().includes(q)) {
         result[id] = obj;
+      }
+    }
+    return result;
+  }
+
+  if (exact) {
+    const q = pattern.toLowerCase();
+    const result: Record<string, IoBrokerObject> = {};
+    for (const [id, obj] of Object.entries(all)) {
+      if (!obj || obj.type !== 'state') continue;
+      if (id.toLowerCase() === q) {
+        result[id] = obj;
+        break;
       }
     }
     return result;
@@ -252,6 +276,14 @@ export async function deleteObject(id: string): Promise<void> {
   const res = await fetch(`${BASE_URL}/object/${encodeURIComponent(id)}`, { method: 'DELETE' });
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
   objectsCache = null;
+}
+
+export async function renameDatapoint(oldId: string, newId: string, obj: IoBrokerObject, currentVal?: { val: unknown; ack?: boolean }): Promise<void> {
+  await putFullObject(newId, { ...obj, _id: newId });
+  if (currentVal !== undefined && currentVal.val !== null) {
+    try { await setState(newId, currentVal.val, currentVal.ack); } catch { /* best effort */ }
+  }
+  await deleteObject(oldId);
 }
 
 export async function putFullObject(id: string, obj: IoBrokerObject): Promise<void> {

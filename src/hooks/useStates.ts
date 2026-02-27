@@ -1,13 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
-import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, putFullObject, createObject, deleteObject, getAllRoles, getAllUnits, setState, getRoomMap, getAllObjects, getRoomEnums, updateRoomMembership, updateRoomMembershipBatch, getFunctionMap, getFunctionEnums, updateFunctionMembership, updateFunctionMembershipBatch, buildAliasReverseMap } from '../api/iobroker';
+import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, putFullObject, createObject, deleteObject, renameDatapoint, getAllRoles, getAllUnits, setState, getRoomMap, getAllObjects, getRoomEnums, updateRoomMembership, updateRoomMembershipBatch, getFunctionMap, getFunctionEnums, updateFunctionMembership, updateFunctionMembershipBatch, buildAliasReverseMap } from '../api/iobroker';
 import type { IoBrokerObject, IoBrokerObjectCommon, IoBrokerState, HistoryOptions } from '../types/iobroker';
 
 const queryKeys = {
   objects: {
     root: ['objects'] as const,
     all: ['objects', 'all'] as const,
-    filtered: (pattern: string, fulltext: boolean) => ['objects', 'filtered', pattern, fulltext] as const,
+    filtered: (pattern: string, fulltext: boolean, exact: boolean) => ['objects', 'filtered', pattern, fulltext, exact] as const,
     detail: (id: string) => ['objects', 'detail', id] as const,
   },
   states: {
@@ -40,10 +40,10 @@ function usePageVisible() {
   return visible;
 }
 
-export function useFilteredObjects(pattern: string, fulltext = true) {
+export function useFilteredObjects(pattern: string, fulltext = true, exact = false) {
   return useQuery({
-    queryKey: queryKeys.objects.filtered(pattern, fulltext),
-    queryFn: () => getObjectsByPattern(pattern, fulltext),
+    queryKey: queryKeys.objects.filtered(pattern, fulltext, exact),
+    queryFn: () => getObjectsByPattern(pattern, fulltext, exact),
     enabled: pattern.length > 0,
     staleTime: Infinity, // Objects only change via mutations (which invalidate the cache)
   });
@@ -230,6 +230,30 @@ export function useDeleteObject() {
           if (!old || !(id in old)) return old;
           const next = { ...old };
           delete next[id];
+          return next;
+        }
+      );
+    },
+  });
+}
+
+export function useRenameDatapoint() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ oldId, newId, obj, currentVal }: {
+      oldId: string;
+      newId: string;
+      obj: IoBrokerObject;
+      currentVal?: { val: unknown; ack?: boolean };
+    }) => renameDatapoint(oldId, newId, obj, currentVal),
+    onSuccess: (_data, { oldId, newId, obj }) => {
+      queryClient.setQueriesData(
+        { queryKey: queryKeys.objects.root },
+        (old: Record<string, IoBrokerObject> | undefined) => {
+          if (!old) return old;
+          const next = { ...old };
+          delete next[oldId];
+          next[newId] = { ...obj, _id: newId };
           return next;
         }
       );
