@@ -9,6 +9,8 @@ interface SearchBarProps {
   onReset?: () => void;
   fulltextEnabled?: boolean;
   onFulltextChange?: (enabled: boolean) => void;
+  exactEnabled?: boolean;
+  onExactChange?: (enabled: boolean) => void;
   language?: 'en' | 'de';
 }
 
@@ -18,6 +20,8 @@ export default function SearchBar({
   onReset,
   fulltextEnabled = false,
   onFulltextChange,
+  exactEnabled = false,
+  onExactChange,
   language = 'en',
 }: SearchBarProps) {
   const [value, setValue] = useState('');
@@ -75,22 +79,40 @@ export default function SearchBar({
           {isEn ? 'Search' : 'Suchen'}
         </button>
       </div>
-      <label className="inline-flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 cursor-pointer select-none px-0.5 w-fit">
-        <input
-          type="checkbox"
-          checked={fulltextEnabled}
-          onChange={(e) => onFulltextChange?.(e.target.checked)}
-          className="sr-only peer"
-        />
-        <span className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-          fulltextEnabled
-            ? 'bg-blue-500 border-blue-500'
-            : 'bg-gray-100 dark:bg-gray-700 border-gray-400 dark:border-gray-500'
-        }`}>
-          {fulltextEnabled && <Check size={11} className="text-white" strokeWidth={3} />}
-        </span>
-        {isEn ? 'Full text search' : 'Volltext-Suche'}
-      </label>
+      <div className="flex items-center gap-3">
+        <label className="inline-flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 cursor-pointer select-none px-0.5 w-fit">
+          <input
+            type="checkbox"
+            checked={fulltextEnabled}
+            onChange={(e) => onFulltextChange?.(e.target.checked)}
+            className="sr-only peer"
+          />
+          <span className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+            fulltextEnabled
+              ? 'bg-blue-500 border-blue-500'
+              : 'bg-gray-100 dark:bg-gray-700 border-gray-400 dark:border-gray-500'
+          }`}>
+            {fulltextEnabled && <Check size={11} className="text-white" strokeWidth={3} />}
+          </span>
+          {isEn ? 'Full text search' : 'Volltext-Suche'}
+        </label>
+        <label className="inline-flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 cursor-pointer select-none px-0.5 w-fit">
+          <input
+            type="checkbox"
+            checked={exactEnabled}
+            onChange={(e) => onExactChange?.(e.target.checked)}
+            className="sr-only peer"
+          />
+          <span className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+            exactEnabled
+              ? 'bg-blue-500 border-blue-500'
+              : 'bg-gray-100 dark:bg-gray-700 border-gray-400 dark:border-gray-500'
+          }`}>
+            {exactEnabled && <Check size={11} className="text-white" strokeWidth={3} />}
+          </span>
+          {isEn ? 'Exact search' : 'Exakte Suche'}
+        </label>
+      </div>
     </form>
   );
 }

@@ -184,12 +184,13 @@ function AppContent() {
   const [appSettings, setAppSettings] = useState<AppSettings>(() => loadAppSettings());
   const [settingsDraft, setSettingsDraft] = useState<AppSettings>(() => loadAppSettings());
   const [fulltextEnabled, setFulltextEnabled] = useState(false);
+  const [exactEnabled, setExactEnabled] = useState(false);
   const [historyModalId, setHistoryModalId] = useState<string | null>(null);
   const [newDatapointInitialId, setNewDatapointInitialId] = useState<string | null>(null);
   const [expertMode, setExpertMode] = useState<boolean>(() => localStorage.getItem(LS_EXPERT_MODE) === 'true');
   const prevTreeFilterRef = useRef<string | null>(null);
 
-  const { data: stateObjectsData, error: objectsError, refetch: refetchFilteredObjects } = useFilteredObjects(pattern, fulltextEnabled);
+  const { data: stateObjectsData, error: objectsError, refetch: refetchFilteredObjects } = useFilteredObjects(pattern, fulltextEnabled, exactEnabled);
   const { data: allObjectsData, refetch: refetchAllObjects } = useAllObjects();
   const { data: roomMapData, refetch: refetchRoomMap } = useRoomMap();
   const { data: functionMapData, refetch: refetchFunctionMap } = useFunctionMap();
@@ -370,8 +371,9 @@ function AppContent() {
       functionFilters.size > 0 ||
       quickPatterns.size > 0 ||
       !!treeFilter ||
+      exactEnabled ||
       Object.values(colFilters).some((v) => v.trim() !== ''),
-    [pattern, historyOnly, smartOnly, roomFilters, functionFilters, quickPatterns, treeFilter, colFilters]
+    [pattern, historyOnly, smartOnly, roomFilters, functionFilters, quickPatterns, treeFilter, exactEnabled, colFilters]
   );
 
   const resetAllFilters = useCallback(() => {
@@ -384,6 +386,7 @@ function AppContent() {
     setFunctionFilters(new Set());
     setQuickPatterns(new Set());
     setTreeFilter(null);
+    setExactEnabled(false);
     setColFilters({});
     setTreeExpandSignal((s) => ({ depth: 0, seq: (s?.seq ?? 0) + 1 }));
   }, []);
@@ -445,7 +448,16 @@ function AppContent() {
       sidebar={
         <div className="flex flex-col h-full">
           <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex flex-col gap-2">
-            <SearchBar onSearch={handleSearch} initialPattern={pattern} onReset={resetAllFilters} fulltextEnabled={fulltextEnabled} onFulltextChange={setFulltextEnabled} language={appSettings.language} />
+            <SearchBar
+              onSearch={handleSearch}
+              initialPattern={pattern}
+              onReset={resetAllFilters}
+              fulltextEnabled={fulltextEnabled}
+              onFulltextChange={setFulltextEnabled}
+              exactEnabled={exactEnabled}
+              onExactChange={setExactEnabled}
+              language={appSettings.language}
+            />
             {hasAnyFilter && (
               <button
                 onClick={resetAllFilters}

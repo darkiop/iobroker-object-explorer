@@ -61,3 +61,8 @@
 | FE-059 | Alias: Verschiedene IDs für Lesen und Schreiben (common.alias.read und common.alias.write als separate IDs). | Feature | mittel | M | offen |
 | FE-060 | MIT-Lizenzdatei erstellen: LICENSE-Datei mit aktuellem Jahr und Copyright-Inhaber anlegen. | DX | niedrig | S | offen |
 | FE-061 | Bug: Ordner-Symbol fehlt im Objekt-Baum — Folder-Knoten zeigen kein Icon mehr. | Bug | hoch | S | offen |
+| FE-062 | Kontextmenü: Export (Single / Multi) als JSON/CSV. | Feature | mittel | M | offen |
+| FE-063 | Kontextmenü: Edit Room / Funktion mit eigenen Icons statt generischem Bleistift. | UX | niedrig | S | offen |
+| FE-064 | Objekt bearbeiten: Name- und Description-Felder im Design wie Role-Dropdown (inline editierbar). | UX | mittel | S | offen |
+| FE-065 | Bug: ALL_COLUMNS-Export aus StateList.tsx verhindert Vite HMR Fast Refresh. | Bug | mittel | S | offen |
+| FE-066 | Exakte Suche: Checkbox in SearchBar für genaue ID-Übereinstimmung (useFilteredObjects exact-Parameter). | Feature | mittel | S | offen |
