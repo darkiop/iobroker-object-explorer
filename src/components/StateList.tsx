@@ -2068,7 +2068,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
     const result: Record<string, object> = {};
     for (const id of idsToExport) {
       const obj = objects[id] ?? { _id: id };
-      const { enums: _enums, ...rest } = obj as Record<string, unknown>;
+      const { enums: _enums, ...rest } = obj as unknown as Record<string, unknown>;
       result[id] = rest;
     }
     const content = JSON.stringify(result, null, 2);
