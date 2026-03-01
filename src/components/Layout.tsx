@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Sun, Moon, PanelLeftClose, PanelLeftOpen, Settings } from 'lucide-react';
+import { Sun, Moon, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import LanguageDropdown from './LanguageDropdown';
 
@@ -11,6 +11,7 @@ interface LayoutProps {
   onLanguageChange?: (language: 'en' | 'de') => void;
   language?: 'en' | 'de';
   apiConnected?: boolean;
+  onShowShortcuts?: () => void;
 }
 
 const LS_SIDEBAR_WIDTH = 'iobroker-explorer-sidebar-width';
@@ -24,6 +25,7 @@ export default function Layout({
   onLanguageChange,
   language = 'en',
   apiConnected = true,
+  onShowShortcuts,
 }: LayoutProps) {
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const stored = parseInt(localStorage.getItem(LS_SIDEBAR_WIDTH) ?? '', 10);
@@ -41,6 +43,36 @@ export default function Layout({
   useEffect(() => {
     sidebarWidthRef.current = sidebarWidth;
   }, [sidebarWidth]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+        e.preventDefault();
+        setCollapsed((c) => {
+          const next = !c;
+          localStorage.setItem(LS_SIDEBAR_COLLAPSED, String(next));
+          if (onSidebarToggle) setTimeout(onSidebarToggle, 210);
+          return next;
+        });
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onSidebarToggle]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      const editable = (e.target as HTMLElement).isContentEditable;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || editable) return;
+      if (e.key === '?') {
+        e.preventDefault();
+        onShowShortcuts?.();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onShowShortcuts]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     dragging.current = true;
@@ -110,6 +142,13 @@ export default function Layout({
             title={language === 'en' ? 'Settings' : 'Einstellungen'}
           >
             <Settings size={16} />
+          </button>
+          <button
+            onClick={onShowShortcuts}
+            className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
+            title={language === 'en' ? 'Keyboard shortcuts' : 'Tastenkürzel'}
+          >
+            <CircleHelp size={16} />
           </button>
         </div>
       </header>

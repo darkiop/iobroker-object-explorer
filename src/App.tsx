@@ -8,6 +8,7 @@ import StateList from './components/StateList';
 import ObjectEditModal from './components/ObjectEditModal';
 import HistoryModal from './components/HistoryModal';
 import NewDatapointModal from './components/NewDatapointModal';
+import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
 import LanguageDropdown from './components/LanguageDropdown';
 import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunctionMap, useRoomEnums, useFunctionEnums, useAliasMap } from './hooks/useStates';
 import { hasHistory, hasSmartName } from './api/iobroker';
@@ -180,6 +181,7 @@ function AppContent() {
   const [quickPatterns, setQuickPatterns] = useState<Set<string>>(new Set());
   const [quickOpen, setQuickOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [newQuickFilter, setNewQuickFilter] = useState('');
   const [appSettings, setAppSettings] = useState<AppSettings>(() => loadAppSettings());
   const [settingsDraft, setSettingsDraft] = useState<AppSettings>(() => loadAppSettings());
@@ -442,6 +444,7 @@ function AppContent() {
     <Layout
       onSidebarToggle={handleSidebarToggle}
       onOpenSettings={openSettings}
+      onShowShortcuts={() => setShortcutsOpen(true)}
       onLanguageChange={handleLanguageChange}
       language={appSettings.language}
       apiConnected={!objectsError}
@@ -632,6 +635,12 @@ function AppContent() {
             objects={allObjects}
             language={appSettings.language}
             onClose={() => setHistoryModalId(null)}
+          />
+        )}
+        {shortcutsOpen && (
+          <KeyboardShortcutsModal
+            language={appSettings.language}
+            onClose={() => setShortcutsOpen(false)}
           />
         )}
         {newDatapointInitialId !== null && (
