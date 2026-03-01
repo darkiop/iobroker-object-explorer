@@ -1,5 +1,6 @@
 services:
   iobroker-object-explorer:
+    container_name: iobroker-object-explorer
     build: .
     ports:
       - "8080:80"
