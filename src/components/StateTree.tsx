@@ -464,7 +464,7 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
                 className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs transition-colors ${
                   active
                     ? `bg-gray-200 dark:bg-gray-700 ${color} hover:bg-gray-300 dark:hover:bg-gray-600`
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-300 dark:hover:bg-gray-600'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                 }`}
               >
                 {icon}
@@ -478,7 +478,7 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
       <div className="flex gap-1.5 px-3 py-2 border-b border-gray-200 dark:border-gray-700 shrink-0">
         <button
           onClick={() => setExpandSignal(s => ({ depth: 9999, seq: s.seq + 1 }))}
-          className="flex items-center justify-center gap-1 flex-1 px-2 py-1 text-xs rounded bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700"
+          className="flex items-center justify-center gap-1 flex-1 px-2 py-1 text-xs rounded bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-300 dark:border-gray-600/50 dark:hover:bg-gray-700"
           title={isEn ? 'Expand all' : 'Alle aufklappen'}
         >
           <ChevronsUpDown size={13} />
@@ -486,7 +486,7 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
         </button>
         <button
           onClick={() => setExpandSignal(s => ({ depth: 0, seq: s.seq + 1 }))}
-          className="flex items-center justify-center gap-1 flex-1 px-2 py-1 text-xs rounded bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700"
+          className="flex items-center justify-center gap-1 flex-1 px-2 py-1 text-xs rounded bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-300 dark:border-gray-600/50 dark:hover:bg-gray-700"
           title={isEn ? 'Collapse all' : 'Alle zuklappen'}
         >
           <ChevronsDownUp size={13} />
@@ -497,7 +497,7 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
           className={`flex items-center justify-center gap-1 px-2 py-1 text-xs rounded border transition-colors ${
             treeViewMode === 'adapter'
               ? 'bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-400/40 hover:bg-blue-500/30'
-              : 'bg-gray-200/50 text-gray-500 border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700'
+              : 'bg-gray-200/50 text-gray-500 border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-300 dark:border-gray-600/50 dark:hover:bg-gray-700'
           }`}
           title={treeViewMode === 'adapter'
             ? (isEn ? 'Path view' : 'Pfad-Ansicht')

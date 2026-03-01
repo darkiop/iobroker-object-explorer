@@ -497,7 +497,7 @@ function AppContent() {
                     className={`px-2 py-0.5 rounded text-xs font-mono transition-colors ${
                       quickPatterns.has(q)
                         ? `bg-gray-200 dark:bg-gray-700 ${(QUICK_COLORS[q] ?? 'text-blue-600 dark:text-blue-400')} hover:bg-gray-300 dark:hover:bg-gray-600`
-                        : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-300 dark:hover:bg-gray-600'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                     }`}
                   >
                     {q}
@@ -508,7 +508,7 @@ function AppContent() {
                   className={`px-2 py-0.5 rounded text-xs transition-colors flex items-center gap-1 ${
                     historyOnly
                       ? 'bg-gray-200 dark:bg-gray-700 text-purple-600 dark:text-purple-400 hover:bg-gray-300 dark:hover:bg-gray-600'
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-300 dark:hover:bg-gray-600'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                   }`}
                 >
                   <Database size={11} /> History {historyIds.size}
@@ -518,7 +518,7 @@ function AppContent() {
                   className={`px-2 py-0.5 rounded text-xs transition-colors flex items-center gap-1 ${
                     smartOnly
                       ? 'bg-gray-200 dark:bg-gray-700 text-orange-600 dark:text-orange-400 hover:bg-gray-300 dark:hover:bg-gray-600'
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-300 dark:hover:bg-gray-600'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                   }`}
                 >
                   <Mic2 size={11} /> SmartName {smartIds.size}
@@ -548,7 +548,7 @@ function AppContent() {
                       className={`px-2 py-0.5 rounded text-xs transition-colors ${
                         roomFilters.has(name)
                           ? `bg-gray-200 dark:bg-gray-700 ${ENUM_COLORS[i % ENUM_COLORS.length]} hover:bg-gray-300 dark:hover:bg-gray-600`
-                          : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-300 dark:hover:bg-gray-600'
+                          : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                       }`}
                     >
                       {name}
@@ -580,7 +580,7 @@ function AppContent() {
                       className={`px-2 py-0.5 rounded text-xs transition-colors ${
                         functionFilters.has(name)
                           ? `bg-gray-200 dark:bg-gray-700 ${ENUM_COLORS[i % ENUM_COLORS.length]} hover:bg-gray-300 dark:hover:bg-gray-600`
-                          : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-300 dark:hover:bg-gray-600'
+                          : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                       }`}
                     >
                       {name}
