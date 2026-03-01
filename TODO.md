@@ -1,9 +1,15 @@
-Kontext Menü: Export (Single / Multi)
-
-Kontextmenüp: Edit Room / Functiomn eigene Symbole
-
+Testen des Exports JSON
 
 16:10:53 [vite] hmr invalidate /src/components/StateList.tsx Could not Fast Refresh ("ALL_COLUMNS" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+
+
+bei type = boolean und role = state auch ein switch anzeigen
+
+
+import funktion für json (mit copy paste fenster)
+
+-----
+
 
 | ID | Beschreibung | Kategorie | Priorität | Aufwand | Status |
 |---|---|---|---|---|---|

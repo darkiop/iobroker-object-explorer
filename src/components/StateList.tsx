@@ -2062,6 +2062,23 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
     URL.revokeObjectURL(url);
   }
 
+  function exportDatapointsToJson(idsToExport: string[]) {
+    const result: Record<string, object> = {};
+    for (const id of idsToExport) {
+      const obj = objects[id] ?? { _id: id };
+      const { enums: _enums, ...rest } = obj as Record<string, unknown>;
+      result[id] = rest;
+    }
+    const content = JSON.stringify(result, null, 2);
+    const blob = new Blob([content], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `iobroker-datenpunkt-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const toolbar = (
     <div className="flex items-center justify-between pl-1 pr-3 py-1 shrink-0 border-b border-gray-200 dark:border-gray-800">
       <div className="flex items-center gap-2">
@@ -2407,6 +2424,12 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
         if (!ctxId.startsWith('alias.0.')) {
           items.push({ icon: <Link2 size={13} />, label: isEn ? 'Create alias' : 'Alias anlegen', onClick: () => setAliasSourceId(ctxId) });
         }
+        items.push({ separator: true } as const);
+        const exportIds = checkedIds.has(ctxId) && checkedIds.size > 1 ? [...checkedIds] : [ctxId];
+        const exportLabel = exportIds.length > 1
+          ? (isEn ? `Export ${exportIds.length} datapoints (JSON)` : `${exportIds.length} Datenpunkte exportieren (JSON)`)
+          : (isEn ? 'Export datapoint (JSON)' : 'Datenpunkt exportieren (JSON)');
+        items.push({ icon: <Download size={13} />, label: exportLabel, onClick: () => exportDatapointsToJson(exportIds) });
         items.push({ separator: true } as const);
         items.push({ icon: <Trash2 size={13} />, label: isEn ? 'Delete datapoint' : 'Datenpunkt löschen', onClick: () => setDeletingId(ctxId), danger: true });
         return <ContextMenu x={x} y={y} items={items} onClose={() => setCtxMenu(null)} />;
