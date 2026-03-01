@@ -1,10 +1,7 @@
-
-
 Kontext Menü: Export (Single / Multi)
 
 Kontextmenüp: Edit Room / Functiomn eigene Symbole
 
-Edit object: Name, Desription -> Inpput im Design wie Dropdown bei Role
 
 16:10:53 [vite] hmr invalidate /src/components/StateList.tsx Could not Fast Refresh ("ALL_COLUMNS" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
 
