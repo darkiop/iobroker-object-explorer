@@ -1590,7 +1590,7 @@ const StateRow = React.memo(function StateRow({
         <button
           onClick={() => onDeleteClick(id)}
           title="Datenpunkt löschen"
-          className="p-1 rounded text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-500/10 transition-colors"
+          className={`p-1 rounded transition-colors hover:bg-red-500/10 ${isChecked ? 'text-red-500 dark:text-red-400' : 'text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400'}`}
         ><Trash2 size={13} /></button>
       </td>
     </tr>
@@ -1736,19 +1736,47 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
     const scalable = visibleCols.filter((k) => !ICON_COLS.includes(k));
     const iconWidth = ICON_COLS.filter((k) => show(k)).reduce((s, k) => s + colWidths[k], 0);
     const available = containerWidth - iconWidth - DEL_COL_WIDTH;
-    const currentTotal = scalable.reduce((sum, k) => sum + colWidths[k], 0);
-    const scale = available / currentTotal;
     const next = { ...colWidths };
-    let allocated = 0;
-    for (let i = 0; i < scalable.length; i++) {
-      const k = scalable[i];
-      if (i === scalable.length - 1) {
-        next[k] = Math.min(maxColWidth(k), Math.max(minColWidth(k), available - allocated));
-      } else {
-        next[k] = Math.min(maxColWidth(k), Math.max(minColWidth(k), Math.floor(colWidths[k] * scale)));
-        allocated += next[k];
+
+    // Iteratively lock columns that hit their maxColWidth, redistribute remaining
+    // space to uncapped columns. Columns with no defined max expand freely.
+    const capped = new Set<SortKey>();
+    let remaining = available;
+    let prevSize = -1;
+    while (capped.size !== prevSize) {
+      prevSize = capped.size;
+      const free = scalable.filter((k) => !capped.has(k));
+      const freeTotal = free.reduce((sum, k) => sum + colWidths[k], 0);
+      if (freeTotal === 0) break;
+      const scale = remaining / freeTotal;
+      for (const k of free) {
+        const max = maxColWidth(k);
+        if (max !== Infinity && colWidths[k] * scale >= max) {
+          next[k] = max;
+          capped.add(k);
+        }
+      }
+      remaining = available - scalable.filter((k) => capped.has(k)).reduce((sum, k) => sum + next[k], 0);
+    }
+
+    // Distribute remaining space proportionally among uncapped columns
+    const free = scalable.filter((k) => !capped.has(k));
+    if (free.length > 0) {
+      const freeTotal = free.reduce((sum, k) => sum + colWidths[k], 0);
+      const scale = freeTotal > 0 ? remaining / freeTotal : 0;
+      let allocated = 0;
+      for (let i = 0; i < free.length; i++) {
+        const k = free[i];
+        if (i === free.length - 1) {
+          next[k] = Math.max(minColWidth(k), remaining - allocated);
+        } else {
+          const w = Math.max(minColWidth(k), Math.floor(colWidths[k] * scale));
+          next[k] = w;
+          allocated += w;
+        }
       }
     }
+
     // Icon cols stay at their fixed default width — never modified by fitToContainer
     for (const k of ICON_COLS) {
       next[k] = DEFAULT_WIDTHS[k];
