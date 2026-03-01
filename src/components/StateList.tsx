@@ -1,10 +1,11 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Lock, Search, Link2, FileEdit, Download, ChevronDown, RefreshCw, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home } from 'lucide-react';
+import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Lock, Search, Link2, FileEdit, Download, ChevronDown, RefreshCw, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload } from 'lucide-react';
 import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
 import NewDatapointModal from './NewDatapointModal';
+import ImportDatapointsModal from './ImportDatapointsModal';
 import ObjectEditModal from './ObjectEditModal';
 import CreateAliasModal from './CreateAliasModal';
 import CopyDatapointModal from './CopyDatapointModal';
@@ -1644,6 +1645,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   const [viewportHeight, setViewportHeight] = useState(0);
   const [headerHeight, setHeaderHeight] = useState(0);
   const [newDatapointOpen, setNewDatapointOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [historyModalId, setHistoryModalId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [valueEditId, setValueEditId] = useState<string | null>(null);
@@ -2112,6 +2114,13 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
           </div>
         </div>
         <button
+          onClick={() => setImportOpen(true)}
+          title={isEn ? 'Import datapoints (JSON)' : 'Datenpunkte importieren (JSON)'}
+          className="flex items-center justify-center w-7 h-7 rounded-lg text-gray-500 hover:text-violet-600 hover:bg-violet-500/10 dark:text-gray-400 dark:hover:text-violet-400 dark:hover:bg-violet-500/10 transition-colors"
+        >
+          <Upload size={16} />
+        </button>
+        <button
           onClick={() => onManualRefresh?.()}
           title={isEn ? 'Refresh data' : 'Daten aktualisieren'}
           className="flex items-center justify-center w-7 h-7 rounded-lg text-gray-500 hover:text-emerald-600 hover:bg-emerald-500/10 dark:text-gray-400 dark:hover:text-emerald-400 dark:hover:bg-emerald-500/10 transition-colors"
@@ -2291,6 +2300,12 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
           onClose={() => setNewDatapointOpen(false)}
           existingIds={existingIds}
           initialId={patternToInitialId(pattern)}
+          language={language}
+        />
+      )}
+      {importOpen && (
+        <ImportDatapointsModal
+          onClose={() => setImportOpen(false)}
           language={language}
         />
       )}

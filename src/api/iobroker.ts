@@ -296,6 +296,25 @@ export async function putFullObject(id: string, obj: IoBrokerObject): Promise<vo
   objectsCache = null;
 }
 
+export async function importDatapoints(data: Record<string, IoBrokerObject>): Promise<{ imported: number; errors: string[] }> {
+  const errors: string[] = [];
+  let imported = 0;
+  for (const [id, obj] of Object.entries(data)) {
+    try {
+      await fetch(`${BASE_URL}/object/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...obj, _id: id }),
+      }).then((res) => { if (!res.ok) throw new Error(`${res.status} ${res.statusText}`); });
+      imported++;
+    } catch (e) {
+      errors.push(`${id}: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+  objectsCache = null;
+  return { imported, errors };
+}
+
 export async function extendObject(id: string, obj: { common: Partial<IoBrokerObject['common']> }): Promise<void> {
   const res = await fetch(`${BASE_URL}/object/${encodeURIComponent(id)}`, {
     method: 'PUT',

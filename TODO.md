@@ -6,7 +6,11 @@ Testen des Exports JSON
 bei type = boolean und role = state auch ein switch anzeigen
 
 
-import funktion für json (mit copy paste fenster)
+Testen import funkti1on für json (mit copy paste fenster)
+
+Absichern der Import Funktion - Zeil schon vorhanden?
+
+Create Empty JSON Button beim Import (vor Import Pflichtfelder berücksichtigen)
 
 -----
 
