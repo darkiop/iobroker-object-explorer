@@ -1166,22 +1166,34 @@ const TS_RANGE_SEP = '|~|';
 const DEFAULT_WIDTHS: Record<SortKey, number> = {
   checkbox: CHK_COL_WIDTH,
   write: 22, history: 22, smart: 22, alias: 30,
-  id: 300, name: 220, room: 110, function: 110, type: 70, role: 130, value: 100,
-  unit: 70, ack: 35, ts: 160, relevanz: 100,
+  id: 350, name: 220, room: 110, function: 110, type: 70, role: 130, value: 100,
+  unit: 70, ack: 50, ts: 155, relevanz: 100,
 };
 const MIN_COL_WIDTHS: Partial<Record<SortKey, number>> = { id: 150, name: 120 };
+const MAX_COL_WIDTHS: Partial<Record<SortKey, number>> = {
+  id: 600, name: 400, room: 200, function: 200, type: 100, role: 220,
+  value: 180, unit: 120, ack: 50, ts: 180, relevanz: 200,
+};
 function minColWidth(key: SortKey) { return MIN_COL_WIDTHS[key] ?? 40; }
+function maxColWidth(key: SortKey) { return MAX_COL_WIDTHS[key] ?? Infinity; }
 const LS_WIDTHS_KEY = 'iobroker-col-widths';
 
+function clampColWidths(widths: Record<SortKey, number>): Record<SortKey, number> {
+  const result = { ...widths };
+  for (const k of Object.keys(result) as SortKey[]) {
+    result[k] = Math.min(maxColWidth(k), Math.max(minColWidth(k), result[k]));
+  }
+  return result;
+}
 function loadColWidths(): Record<SortKey, number> {
   try {
     const raw = localStorage.getItem(LS_WIDTHS_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<Record<SortKey, number>>;
-      return { ...DEFAULT_WIDTHS, ...parsed };
+      return clampColWidths({ ...DEFAULT_WIDTHS, ...parsed });
     }
   } catch { /* ignore */ }
-  return { ...DEFAULT_WIDTHS };
+  return clampColWidths({ ...DEFAULT_WIDTHS });
 }
 
 function hasSmartName(obj: IoBrokerObject | undefined): boolean {
@@ -1731,9 +1743,9 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
     for (let i = 0; i < scalable.length; i++) {
       const k = scalable[i];
       if (i === scalable.length - 1) {
-        next[k] = Math.max(minColWidth(k), available - allocated);
+        next[k] = Math.min(maxColWidth(k), Math.max(minColWidth(k), available - allocated));
       } else {
-        next[k] = Math.max(minColWidth(k), Math.floor(colWidths[k] * scale));
+        next[k] = Math.min(maxColWidth(k), Math.max(minColWidth(k), Math.floor(colWidths[k] * scale)));
         allocated += next[k];
       }
     }
