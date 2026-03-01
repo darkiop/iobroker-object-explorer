@@ -1169,6 +1169,8 @@ const DEFAULT_WIDTHS: Record<SortKey, number> = {
   id: 300, name: 220, room: 110, function: 110, type: 70, role: 130, value: 100,
   unit: 70, ack: 35, ts: 160, relevanz: 100,
 };
+const MIN_COL_WIDTHS: Partial<Record<SortKey, number>> = { id: 150, name: 120 };
+function minColWidth(key: SortKey) { return MIN_COL_WIDTHS[key] ?? 40; }
 const LS_WIDTHS_KEY = 'iobroker-col-widths';
 
 function loadColWidths(): Record<SortKey, number> {
@@ -1679,12 +1681,12 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
     const startWidth = colWidths[key];
 
     function onMouseMove(ev: MouseEvent) {
-      const newWidth = Math.max(40, startWidth + ev.clientX - startX);
+      const newWidth = Math.max(minColWidth(key), startWidth + ev.clientX - startX);
       setColWidths((prev) => ({ ...prev, [key]: newWidth }));
     }
 
     function onMouseUp(ev: MouseEvent) {
-      const newWidth = Math.max(40, startWidth + ev.clientX - startX);
+      const newWidth = Math.max(minColWidth(key), startWidth + ev.clientX - startX);
       setColWidths((prev) => {
         const next = { ...prev, [key]: newWidth };
         localStorage.setItem(LS_WIDTHS_KEY, JSON.stringify(next));
@@ -1729,9 +1731,9 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
     for (let i = 0; i < scalable.length; i++) {
       const k = scalable[i];
       if (i === scalable.length - 1) {
-        next[k] = Math.max(40, available - allocated);
+        next[k] = Math.max(minColWidth(k), available - allocated);
       } else {
-        next[k] = Math.max(40, Math.floor(colWidths[k] * scale));
+        next[k] = Math.max(minColWidth(k), Math.floor(colWidths[k] * scale));
         allocated += next[k];
       }
     }
