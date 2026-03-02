@@ -6,7 +6,7 @@ Testen des Exports JSON
 bei type = boolean und role = state auch ein switch anzeigen
 
 
-Testen import funkti1on für json (mit copy paste fenster)
+1
 
 Absichern der Import Funktion - Zeil schon vorhanden?
 

@@ -5,6 +5,6 @@ services:
     ports:
       - "8080:80"
     environment:
-      IOBROKER_HOST: 10.4.0.20
+      IOBROKER_HOST: 10.4.0.33
       IOBROKER_PORT: 8093
     restart: unless-stopped

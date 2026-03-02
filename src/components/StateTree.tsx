@@ -233,11 +233,11 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
       {ctxMenu && (() => {
         const items: ContextMenuEntry[] = [];
         if (node.isLeaf) {
+          items.push({ icon: <Search size={13} />, label: isEn ? 'Set as filter' : 'Als Filter setzen', onClick: () => onSearch(node.fullPath) });
+          items.push({ separator: true } as const);
           items.push({ icon: <Check size={13} />, label: isEn ? 'Select' : 'Auswählen', onClick: () => onSelect(node.fullPath) });
           items.push({ separator: true } as const);
           items.push({ icon: <Copy size={13} />, label: isEn ? 'Copy ID' : 'ID kopieren', onClick: () => copyText(node.fullPath) });
-          items.push({ separator: true } as const);
-          items.push({ icon: <Search size={13} />, label: isEn ? 'Set as filter' : 'Als Filter setzen', onClick: () => onSearch(node.fullPath) });
         } else {
           items.push({ icon: <Search size={13} />, label: isEn ? `Show in table: ${node.fullPath}` : `In Tabelle anzeigen: ${node.fullPath}`, onClick: () => onTreeScope(`${node.fullPath}.`) });
           items.push({ separator: true } as const);

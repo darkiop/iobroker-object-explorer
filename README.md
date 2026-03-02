@@ -18,7 +18,7 @@ npx tsc --noEmit   # nur Type-Check
 
 **Voraussetzungen:** ioBroker mit aktivem [REST API Adapter](https://github.com/ioBroker/ioBroker.rest-api) (Port `8093`). Für Historydaten wird aktuell **ausschließlich der `sql.0`-Adapter** unterstützt (History- und InfluxDB-Adapter werden nicht erkannt).
 
-Der Vite-Dev-Server proxied `/api` → `http://10.4.0.20:8093` (konfigurierbar in `vite.config.ts`).
+Der Vite-Dev-Server proxied `/api` → `http://10.4.0.33:8093` (konfigurierbar in `vite.config.ts`).
 
 ---
 
@@ -27,7 +27,7 @@ Der Vite-Dev-Server proxied `/api` → `http://10.4.0.20:8093` (konfigurierbar i
 ```bash
 docker build -t iobroker-object-explorer .
 docker run -p 8080:80 \
-  -e IOBROKER_HOST=10.4.0.20 \
+  -e IOBROKER_HOST=10.4.0.33 \
   -e IOBROKER_PORT=8093 \
   iobroker-object-explorer
 ```
@@ -38,7 +38,7 @@ Alternativ über `docker-compose.yml`:
 
 ```yaml
 environment:
-  IOBROKER_HOST: 10.4.0.20
+  IOBROKER_HOST: 10.4.0.33
   IOBROKER_PORT: 8093
 ```
 

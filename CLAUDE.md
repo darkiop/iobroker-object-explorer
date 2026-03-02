@@ -37,7 +37,7 @@ SearchBar (pattern input)
 - **`src/context/ThemeContext.tsx`** — Dark/light mode context
 
 ### API Proxy
-Vite proxies `/api` to the ioBroker REST API (configured in `vite.config.ts`, default `http://10.4.0.20:8093`).
+Vite proxies `/api` to the ioBroker REST API (configured in `vite.config.ts`, default `http://10.4.0.33:8093`).
 
 ### Runtime Config (Docker)
 At runtime `window.__CONFIG__.ioBrokerHost` overrides the proxy label in the header. A Docker entrypoint generates `/config.js` from env vars (`IOBROKER_HOST`). The file is loaded via `<script src="/config.js">` in `index.html`. TypeScript declaration in `src/vite-env.d.ts`.

@@ -2,10 +2,11 @@
 set -e
 
 # Generate runtime config.js from environment variables.
-# Falls back to the defaults from public/config.js if env vars are not set.
+# IOBROKER_HOST must be set via docker-compose.yml or -e flag.
+: "${IOBROKER_HOST:?IOBROKER_HOST is not set. Set it in docker-compose.yml or via -e IOBROKER_HOST=...}"
 cat > /usr/share/nginx/html/config.js << EOF
 window.__CONFIG__ = {
-  ioBrokerHost: '${IOBROKER_HOST:-10.4.0.20}:${IOBROKER_PORT:-8093}',
+  ioBrokerHost: '${IOBROKER_HOST}:${IOBROKER_PORT:-8093}',
 };
 EOF
 
