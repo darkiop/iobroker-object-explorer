@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Upload, CheckCircle, AlertTriangle, FileJson } from 'lucide-react';
+import { X, Upload, CheckCircle, AlertTriangle, FileJson, FilePlus } from 'lucide-react';
 import { useImportDatapoints } from '../hooks/useStates';
 import { useTheme } from '../context/ThemeContext';
 import type { IoBrokerObject } from '../types/iobroker';
@@ -217,6 +217,24 @@ export default function ImportDatapointsModal({ onClose, language = 'en' }: Prop
     setResult(null);
   }
 
+  function handleCreateEmptyJson() {
+    const template = {
+      '0_userdata.0.my_datapoint': {
+        _id: '0_userdata.0.my_datapoint',
+        type: 'state',
+        common: {
+          name: 'My Datapoint',
+          type: 'number',
+          role: 'value',
+          read: true,
+          write: false,
+        },
+        native: {},
+      },
+    };
+    handleJsonChange(JSON.stringify(template, null, 2));
+  }
+
   function handleImport() {
     const { data, error } = validateImportData(json);
     if (error) { setParseError(error); return; }
@@ -293,11 +311,22 @@ export default function ImportDatapointsModal({ onClose, language = 'en' }: Prop
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-gray-500 dark:text-gray-400">JSON</span>
-              {objectCount > 0 && (
-                <span className="text-xs text-gray-400 dark:text-gray-500">
-                  {objectCount} {isEn ? 'object(s)' : 'Objekt(e)'}
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {objectCount > 0 && (
+                  <span className="text-xs text-gray-400 dark:text-gray-500">
+                    {objectCount} {isEn ? 'object(s)' : 'Objekt(e)'}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={handleCreateEmptyJson}
+                  className="flex items-center gap-1 px-2 py-0.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  title={isEn ? 'Insert empty template with required fields' : 'Leeres Template mit Pflichtfeldern einfügen'}
+                >
+                  <FilePlus size={12} />
+                  {isEn ? 'Empty template' : 'Leeres Template'}
+                </button>
+              </div>
             </div>
             <JsonEditor value={json} onChange={handleJsonChange} dark={dark} />
           </div>
