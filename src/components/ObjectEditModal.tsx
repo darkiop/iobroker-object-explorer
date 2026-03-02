@@ -50,6 +50,26 @@ function getObjectName(common: { name: string | Record<string, string> } | undef
   return common.name.de || common.name.en || Object.values(common.name)[0] || '';
 }
 
+const SELECT_CLS = 'w-full bg-gray-50/70 text-gray-700 text-sm rounded-md px-2.5 py-1.5 border border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300/70 disabled:opacity-50 dark:bg-gray-800/70 dark:text-gray-200 dark:border-gray-700 dark:focus:border-gray-600 dark:focus:ring-gray-600/60 transition-colors';
+
+function InlineInputRow({ label, value, onSave, isPending }: { label: string; value: string; onSave: (v: string) => void; isPending: boolean }) {
+  const [draft, setDraft] = useState(value);
+  useEffect(() => { setDraft(value); }, [value]);
+  return (
+    <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800 items-center">
+      <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{label}</span>
+      <input
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => { if (draft !== value) onSave(draft); }}
+        onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); else if (e.key === 'Escape') setDraft(value); }}
+        disabled={isPending}
+        className={SELECT_CLS}
+      />
+    </div>
+  );
+}
+
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex gap-4 py-1.5 border-b border-gray-200 dark:border-gray-800">
@@ -594,7 +614,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
           <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
             {tab === 'details' && (
               <div className="px-5 py-4 space-y-0 overflow-y-auto flex-1">
-                <EditableRow label="Name" value={getObjectName(obj.common)} onSave={(v) => saveField('name', v)} isPending={extend.isPending} language={language} />
+                <InlineInputRow label="Name" value={getObjectName(obj.common)} onSave={(v) => saveField('name', v)} isPending={extend.isPending} />
                 <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800 items-center">
                   <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{isEn ? 'Type' : 'Typ'}</span>
                   <div className="flex-1 relative">
@@ -703,12 +723,11 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                     />
                   </div>
                 </div>
-                <EditableRow
+                <InlineInputRow
                   label={isEn ? 'Description' : 'Beschreibung'}
                   value={typeof obj.common?.desc === 'string' ? obj.common.desc : obj.common?.desc ? JSON.stringify(obj.common.desc) : ''}
                   onSave={(v) => saveField('desc', v)}
                   isPending={extend.isPending}
-                  language={language}
                 />
                 <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800 items-center">
                   <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{isEn ? 'Read/Write' : 'Lesen/Schreiben'}</span>
