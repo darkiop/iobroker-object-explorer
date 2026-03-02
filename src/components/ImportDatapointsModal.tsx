@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Upload, CheckCircle, AlertTriangle } from 'lucide-react';
+import { X, Upload, CheckCircle, AlertTriangle, FileJson } from 'lucide-react';
 import { useImportDatapoints } from '../hooks/useStates';
 import { useTheme } from '../context/ThemeContext';
 import type { IoBrokerObject } from '../types/iobroker';
@@ -165,6 +165,43 @@ export default function ImportDatapointsModal({ onClose, language = 'en' }: Prop
   const [result, setResult] = useState<{ imported: number; errors: string[] } | null>(null);
 
   const importMutation = useImportDatapoints();
+  const [isDragOver, setIsDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function handleFileLoad(file: File) {
+    if (!file.name.endsWith('.json') && file.type !== 'application/json') {
+      setParseError(isEn ? 'Only .json files are supported.' : 'Nur .json-Dateien werden unterstützt.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result;
+      if (typeof text === 'string') handleJsonChange(text);
+    };
+    reader.readAsText(file);
+  }
+
+  function handleFileInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) handleFileLoad(file);
+    e.target.value = '';
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragOver(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragOver(false);
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFileLoad(file);
+  }
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -226,6 +263,32 @@ export default function ImportDatapointsModal({ onClose, language = 'en' }: Prop
               ? 'Paste a JSON object where keys are datapoint IDs and values are the full ioBroker object definitions.'
               : 'JSON-Objekt einfügen, bei dem die Schlüssel Datenpunkt-IDs und die Werte vollständige ioBroker-Objektdefinitionen sind.'}
           </p>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json,application/json"
+            className="hidden"
+            onChange={handleFileInputChange}
+          />
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className={`flex flex-col items-center justify-center gap-2 px-4 py-5 rounded-lg border-2 border-dashed cursor-pointer transition-colors ${
+              isDragOver
+                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                : 'border-gray-300 dark:border-gray-600 hover:border-blue-400 hover:bg-gray-50 dark:hover:bg-gray-800/50'
+            }`}
+          >
+            <FileJson size={22} className={isDragOver ? 'text-blue-500' : 'text-gray-400 dark:text-gray-500'} />
+            <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+              {isDragOver
+                ? (isEn ? 'Drop file here' : 'Datei hier ablegen')
+                : (isEn ? 'Drag & drop a .json file or click to select' : '.json-Datei hierher ziehen oder klicken zum Auswählen')}
+            </p>
+          </div>
 
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between">
