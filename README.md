@@ -18,7 +18,7 @@ npx tsc --noEmit   # nur Type-Check
 
 **Voraussetzungen:** ioBroker mit aktivem [REST API Adapter](https://github.com/ioBroker/ioBroker.rest-api) (Port `8093`). Für Historydaten wird aktuell **ausschließlich der `sql.0`-Adapter** unterstützt (History- und InfluxDB-Adapter werden nicht erkannt).
 
-Der Vite-Dev-Server proxied `/api` → `http://10.4.0.33:8093` (konfigurierbar in `vite.config.ts`).
+**Dev-Server konfigurieren:** `.env.local.example` nach `.env.local` kopieren und `VITE_IOBROKER_TARGET` setzen – das ist die einzige Stelle für die lokale Konfiguration. Der Vite-Dev-Server proxied `/api` auf diese Adresse und stellt `/config.js` dynamisch bereit.
 
 ---
 
@@ -27,19 +27,19 @@ Der Vite-Dev-Server proxied `/api` → `http://10.4.0.33:8093` (konfigurierbar i
 ```bash
 docker build -t iobroker-object-explorer .
 docker run -p 8080:80 \
-  -e IOBROKER_HOST=10.4.0.33 \
+  -e IOBROKER_HOST=<ip> \
   -e IOBROKER_PORT=8093 \
   iobroker-object-explorer
 ```
 
-Der Nginx-Container proxied `/api` zur ioBroker REST API. Zieladresse und Port werden über Umgebungsvariablen (`IOBROKER_HOST`, `IOBROKER_PORT`) konfiguriert – der Entrypoint generiert beim Start `/config.js` mit `window.__CONFIG__`, das im Browser zur Anzeige der REST-API-Adresse im Header genutzt wird.
+Der Nginx-Container proxied `/api` zur ioBroker REST API. `IOBROKER_HOST` ist **Pflicht** – der Container bricht beim Start ab wenn die Variable fehlt. Der Entrypoint generiert `/config.js` mit `window.__CONFIG__`, das im Browser zur Anzeige der REST-API-Adresse im Header genutzt wird.
 
-Alternativ über `docker-compose.yml`:
+Normalerweise über `docker-compose.yml` starten (empfohlen):
 
 ```yaml
 environment:
-  IOBROKER_HOST: 10.4.0.33
-  IOBROKER_PORT: 8093
+  IOBROKER_HOST: <ip>   # Pflicht
+  IOBROKER_PORT: 8093   # Optional, Standard: 8093
 ```
 
 ---
@@ -351,7 +351,7 @@ Rechtsklick → Datenpunkt kopieren
 | `src/components/ContextMenu.tsx` | Portal-basiertes Rechtsklick-Menü |
 | `src/components/ConfirmDialog.tsx` | Generischer Bestätigungs-Dialog |
 | `src/components/MultiDeleteDialog.tsx` | Mehrfach-Lösch-Dialog mit Fortschritt |
-| `vite.config.ts` | Dev-Server + API-Proxy |
+| `vite.config.ts` | Dev-Server + API-Proxy; liest `VITE_IOBROKER_TARGET` aus `.env.local`, generiert `/config.js` dynamisch |
 | `nginx.conf` | Nginx-Konfiguration für Docker (SPA-Fallback, API-Proxy) |
 | `Dockerfile` | Multi-Stage Build (Node 22 → Nginx Alpine) |
-| `docker/entrypoint.sh` | Generiert `/config.js` aus Umgebungsvariablen beim Container-Start |
+| `docker/entrypoint.sh` | Generiert `/config.js` aus `IOBROKER_HOST` / `IOBROKER_PORT` beim Container-Start; bricht ab wenn `IOBROKER_HOST` fehlt |
