@@ -16,9 +16,11 @@ npm run lint       # ESLint
 npx tsc --noEmit   # nur Type-Check
 ```
 
-**Voraussetzungen:** ioBroker mit aktivem [REST API Adapter](https://github.com/ioBroker/ioBroker.rest-api) (Port `8093`). Für Historydaten wird aktuell **ausschließlich der `sql.0`-Adapter** unterstützt (History- und InfluxDB-Adapter werden nicht erkannt).
+**Voraussetzungen:** ioBroker mit aktivem [REST API Adapter](https://github.com/ioBroker/ioBroker.rest-api) (Port `8093`) mit aktiviertem CORS. Für Historydaten wird aktuell **ausschließlich der `sql.0`-Adapter** unterstützt (History- und InfluxDB-Adapter werden nicht erkannt).
 
-**Dev-Server konfigurieren:** `.env.local.example` nach `.env.local` kopieren und `VITE_IOBROKER_TARGET` setzen – das ist die einzige Stelle für die lokale Konfiguration. Der Vite-Dev-Server proxied `/api` auf diese Adresse und stellt `/config.js` dynamisch bereit.
+Die ioBroker-Adresse kann direkt im Browser konfiguriert werden: Klick auf den Verbindungs-Badge im Header → `host:port` eingeben → Enter. Der Browser verbindet sich danach direkt mit der ioBroker REST API (kein Server-Proxy nötig).
+
+**Dev-Server konfigurieren:** `.env.local.example` nach `.env.local` kopieren und `VITE_IOBROKER_TARGET` setzen. Der Vite-Dev-Server proxied `/api` auf diese Adresse als Fallback, falls kein Host im Browser gesetzt ist.
 
 ---
 
@@ -32,7 +34,7 @@ docker run -p 8080:80 \
   iobroker-object-explorer
 ```
 
-Der Nginx-Container proxied `/api` zur ioBroker REST API. `IOBROKER_HOST` ist **Pflicht** – der Container bricht beim Start ab wenn die Variable fehlt. Der Entrypoint generiert `/config.js` mit `window.__CONFIG__`, das im Browser zur Anzeige der REST-API-Adresse im Header genutzt wird.
+Der Nginx-Container proxied `/api` zur ioBroker REST API. `IOBROKER_HOST` ist **Pflicht** – der Container bricht beim Start ab wenn die Variable fehlt. Der Entrypoint generiert `/config.js` mit `window.__CONFIG__`, das als initialer Host-Wert im Browser genutzt wird. Der Host kann danach jederzeit über den Header-Badge geändert werden (gespeichert im localStorage).
 
 Normalerweise über `docker-compose.yml` starten (empfohlen):
 

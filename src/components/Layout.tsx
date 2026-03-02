@@ -1,7 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Sun, Moon, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp } from 'lucide-react';
+import { Sun, Moon, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Pencil, Loader2, AlertCircle } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import LanguageDropdown from './LanguageDropdown';
+
+const LS_HOST_KEY = 'ioBrokerHost';
 
 interface LayoutProps {
   sidebar: React.ReactNode;
@@ -39,6 +41,34 @@ export default function Layout({
   const startWidth = useRef(0);
   const sidebarWidthRef = useRef(sidebarWidth);
   const { dark, toggle } = useTheme();
+
+  const currentHost = localStorage.getItem(LS_HOST_KEY) ?? window.__CONFIG__?.ioBrokerHost ?? '';
+  const [editingHost, setEditingHost] = useState(false);
+  const [hostInput, setHostInput] = useState(currentHost);
+  const [hostTesting, setHostTesting] = useState(false);
+  const [hostError, setHostError] = useState<string | null>(null);
+  const hostInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editingHost) { setHostError(null); hostInputRef.current?.select(); }
+  }, [editingHost]);
+
+  async function testAndSave() {
+    const val = hostInput.trim();
+    if (!val || val === currentHost) { setEditingHost(false); return; }
+    setHostTesting(true);
+    setHostError(null);
+    try {
+      const res = await fetch(`http://${val}/v1/objects?limit=1`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      localStorage.setItem(LS_HOST_KEY, val);
+      window.location.reload();
+    } catch {
+      setHostError(language === 'en' ? 'Host not reachable' : 'Host nicht erreichbar');
+      setHostTesting(false);
+      hostInputRef.current?.focus();
+    }
+  }
 
   useEffect(() => {
     sidebarWidthRef.current = sidebarWidth;
@@ -115,17 +145,42 @@ export default function Layout({
           <img src="/favicon.svg" alt="" className="w-6 h-6 shrink-0" />
           <h1 className="text-lg font-semibold text-gray-900 dark:text-white">ioBroker Object Explorer</h1>
         </div>
-        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2">
-          <span className={`inline-flex items-center px-3 py-1 rounded-md text-sm font-semibold font-mono shadow-sm border ${
-            apiConnected
-              ? 'border-emerald-300/80 dark:border-emerald-700/70 bg-emerald-100/80 dark:bg-emerald-900/35 text-emerald-700 dark:text-emerald-300'
-              : 'border-red-300/80 dark:border-red-700/70 bg-red-100/80 dark:bg-red-900/35 text-red-700 dark:text-red-300'
-          }`}>
-            {apiConnected
-              ? (language === 'en' ? 'Connected to' : 'Verbunden mit')
-              : (language === 'en' ? 'Not connected to' : 'Nicht verbunden mit')
-            }: {window.__CONFIG__?.ioBrokerHost ?? '—'}
-          </span>
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1">
+          {editingHost ? (
+            <form onSubmit={(e) => { e.preventDefault(); void testAndSave(); }} className="flex flex-col items-center gap-0.5">
+              <div className="flex items-center gap-1">
+                <input
+                  ref={hostInputRef}
+                  value={hostInput}
+                  onChange={(e) => { setHostInput(e.target.value); setHostError(null); }}
+                  onBlur={() => { if (!hostTesting) setEditingHost(false); }}
+                  onKeyDown={(e) => { if (e.key === 'Escape') setEditingHost(false); }}
+                  disabled={hostTesting}
+                  className={`px-2 py-0.5 rounded-md text-sm font-mono border bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 outline-none w-48 transition-colors ${hostTesting ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20' : hostError ? 'border-red-400' : 'border-blue-400'}`}
+                  placeholder="10.4.0.33:8093"
+                />
+                {hostTesting && <Loader2 size={14} className="animate-spin text-orange-400 shrink-0" />}
+                {hostError && <AlertCircle size={14} className="text-red-400 shrink-0" />}
+              </div>
+              {hostError && <span className="text-xs text-red-400">{hostError}</span>}
+            </form>
+          ) : (
+            <button
+              onClick={() => { setHostInput(currentHost); setEditingHost(true); }}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-sm font-semibold font-mono shadow-sm border transition-colors ${
+                apiConnected
+                  ? 'border-emerald-300/80 dark:border-emerald-700/70 bg-emerald-100/80 dark:bg-emerald-900/35 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200/80 dark:hover:bg-emerald-800/50'
+                  : 'border-red-300/80 dark:border-red-700/70 bg-red-100/80 dark:bg-red-900/35 text-red-700 dark:text-red-300 hover:bg-red-200/80 dark:hover:bg-red-800/50'
+              }`}
+              title={language === 'en' ? 'Click to change host' : 'Klicken zum Ändern'}
+            >
+              {apiConnected
+                ? (language === 'en' ? 'Connected to' : 'Verbunden mit')
+                : (language === 'en' ? 'Not connected to' : 'Nicht verbunden mit')
+              }: {currentHost || '—'}
+              <Pencil size={11} className="opacity-50" />
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <LanguageDropdown value={language} onChange={(next) => onLanguageChange?.(next)} compact />

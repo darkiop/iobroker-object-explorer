@@ -90,3 +90,4 @@
 - Deutsch und Englisch (Sprache umschaltbar im Header)
 - Responsive Layout; Sidebar einklappbar für mehr Tabellenbreite
 - Lokaler Speicher löschbar (zurücksetzen aller gespeicherten Einstellungen)
+- ioBroker-Host direkt im Browser konfigurierbar: Klick auf den Verbindungs-Badge im Header → `host:port` eingeben → Enter; Verbindungstest vor dem Speichern mit Statusanzeige (orange = Test läuft, rot = nicht erreichbar); Host wird im localStorage gespeichert

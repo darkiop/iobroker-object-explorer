@@ -16,7 +16,7 @@ import type { SortKey, DateFormatSetting } from './components/StateList';
 import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel } from './components/StateList';
 import type { IoBrokerObject, IoBrokerState } from './types/iobroker';
 import { filterObjectIds } from './utils/filterObjectIds';
-import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RotateCcw, Layers, X, Trash2, Check } from 'lucide-react';
+import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RotateCcw, Layers, X, Trash2, Check, Loader2, AlertCircle } from 'lucide-react';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -181,7 +181,11 @@ function AppContent() {
   const [quickPatterns, setQuickPatterns] = useState<Set<string>>(new Set());
   const [quickOpen, setQuickOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<'connection' | 'display' | 'columns' | 'filters'>('connection');
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [settingsHostInput, setSettingsHostInput] = useState('');
+  const [settingsHostTesting, setSettingsHostTesting] = useState(false);
+  const [settingsHostError, setSettingsHostError] = useState<string | null>(null);
   const [newQuickFilter, setNewQuickFilter] = useState('');
   const [appSettings, setAppSettings] = useState<AppSettings>(() => loadAppSettings());
   const [settingsDraft, setSettingsDraft] = useState<AppSettings>(() => loadAppSettings());
@@ -294,6 +298,9 @@ function AppContent() {
   }, []);
 
   const openSettings = useCallback(() => {
+    setSettingsHostInput(localStorage.getItem('ioBrokerHost') ?? window.__CONFIG__?.ioBrokerHost ?? '');
+    setSettingsHostError(null);
+    setSettingsTab('connection');
     const latest = loadAppSettings();
     try {
       const rawCols = localStorage.getItem('iobroker-visible-cols');
@@ -663,84 +670,170 @@ function AppContent() {
                   <X size={14} />
                 </button>
               </div>
-              <div className="p-4 flex flex-col gap-4 max-h-[75vh] overflow-y-auto">
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Language' : 'Sprache'}</span>
-                  <LanguageDropdown value={settingsDraft.language} onChange={(language) => setSettingsDraft((prev) => ({ ...prev, language }))} />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Date format' : 'Datumsformat'}</span>
-                  <DateFormatDropdown
-                    value={settingsDraft.dateFormat}
-                    onChange={(dateFormat) => setSettingsDraft((prev) => ({ ...prev, dateFormat }))}
-                  />
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Visible columns' : 'Angezeigte Spalten'}</span>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {ALL_COLUMNS.map(({ key }) => {
-                      const checked = settingsDraft.visibleCols.includes(key);
-                      return (
-                        <label key={key} className="flex items-center gap-2 px-2 py-1.5 rounded border border-gray-200 dark:border-gray-700 text-xs text-gray-700 dark:text-gray-300">
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => setSettingsDraft((prev) => {
-                              const next = checked
-                                ? prev.visibleCols.filter((k) => k !== key)
-                                : [...prev.visibleCols, key];
-                              return { ...prev, visibleCols: next.length > 0 ? next : prev.visibleCols };
-                            })}
-                            className="w-3.5 h-3.5 accent-blue-500"
-                          />
-                          <span>{getColumnLabel(key, appSettings.language)}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Additional quick filters' : 'Zusätzliche Schnellfilter'}</span>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={newQuickFilter}
-                      onChange={(e) => setNewQuickFilter(e.target.value)}
-                      placeholder={isEn ? 'e.g. hm-rpc.0.*' : 'z.B. hm-rpc.0.*'}
-                      className="flex-1 px-2 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 font-mono"
-                    />
+              {/* Tab bar */}
+              <div className="flex border-b border-gray-200 dark:border-gray-700 px-4">
+                {(['connection', 'display', 'columns', 'filters'] as const).map((tab) => {
+                  const label = {
+                    connection: isEn ? 'Connection' : 'Verbindung',
+                    display:    isEn ? 'Display'    : 'Anzeige',
+                    columns:    isEn ? 'Columns'    : 'Spalten',
+                    filters:    isEn ? 'Filters'    : 'Filter',
+                  }[tab];
+                  return (
                     <button
-                      onClick={addExtraQuickFilter}
-                      className="px-2.5 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                      key={tab}
+                      onClick={() => setSettingsTab(tab)}
+                      className={`px-3 py-2 text-xs font-medium border-b-2 -mb-px transition-colors ${
+                        settingsTab === tab
+                          ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                          : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                      }`}
                     >
-                      {isEn ? 'Add' : 'Hinzufügen'}
+                      {label}
                     </button>
-                  </div>
-                  <div className="rounded border border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/40">
-                    {settingsDraft.extraQuickFilters.length === 0 ? (
-                      <div className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">
-                        {isEn ? 'No additional filters' : 'Keine zusätzlichen Filter'}
+                  );
+                })}
+              </div>
+              <div className="p-4 flex flex-col gap-4 min-h-[260px] max-h-[65vh] overflow-y-auto">
+                {/* Tab: Verbindung */}
+                {settingsTab === 'connection' && (
+                  <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'ioBroker REST API host' : 'ioBroker REST API Host'}</span>
+                      <div className="flex items-center gap-2">
+                        <input
+                          value={settingsHostInput}
+                          onChange={(e) => { setSettingsHostInput(e.target.value); setSettingsHostError(null); }}
+                          disabled={settingsHostTesting}
+                          placeholder="10.4.0.33:8093"
+                          className={`flex-1 px-2 py-1.5 text-xs rounded border font-mono bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none transition-colors ${
+                            settingsHostTesting ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20' : settingsHostError ? 'border-red-400' : 'border-gray-300 dark:border-gray-600 focus:ring-1 focus:ring-blue-400'
+                          }`}
+                        />
+                        <button
+                          disabled={settingsHostTesting}
+                          onClick={async () => {
+                            const val = settingsHostInput.trim();
+                            if (!val) return;
+                            setSettingsHostTesting(true);
+                            setSettingsHostError(null);
+                            try {
+                              const res = await fetch(`http://${val}/v1/objects?limit=1`);
+                              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                              localStorage.setItem('ioBrokerHost', val);
+                              window.location.reload();
+                            } catch {
+                              setSettingsHostError(isEn ? 'Host not reachable' : 'Host nicht erreichbar');
+                              setSettingsHostTesting(false);
+                            }
+                          }}
+                          className="px-2.5 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 transition-colors flex items-center gap-1.5"
+                        >
+                          {settingsHostTesting
+                            ? <><Loader2 size={12} className="animate-spin" />{isEn ? 'Testing…' : 'Teste…'}</>
+                            : isEn ? 'Test & Connect' : 'Test & Verbinden'
+                          }
+                        </button>
                       </div>
-                    ) : (
-                      <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                        {settingsDraft.extraQuickFilters.map((patternItem) => (
-                          <li key={patternItem} className="flex items-center justify-between gap-2 px-3 py-2">
-                            <span className="text-xs font-mono text-gray-700 dark:text-gray-300 truncate">{patternItem}</span>
-                            <button
-                              onClick={() => setSettingsDraft((prev) => ({ ...prev, extraQuickFilters: prev.extraQuickFilters.filter((p) => p !== patternItem) }))}
-                              title={isEn ? 'Remove filter' : 'Filter entfernen'}
-                              className="shrink-0 p-1 rounded text-gray-500 hover:text-red-500 hover:bg-red-500/10 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+                      {settingsHostError && (
+                        <span className="flex items-center gap-1 text-xs text-red-500">
+                          <AlertCircle size={12} /> {settingsHostError}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                      {isEn
+                        ? 'The browser connects directly to the ioBroker REST API. CORS must be enabled on the adapter. The host is stored in localStorage and takes precedence over the server configuration.'
+                        : 'Der Browser verbindet sich direkt mit der ioBroker REST API. CORS muss im Adapter aktiviert sein. Der Host wird im localStorage gespeichert und hat Vorrang vor der Serverkonfiguration.'}
+                    </p>
                   </div>
-                </div>
+                )}
+                {/* Tab: Anzeige */}
+                {settingsTab === 'display' && (
+                  <div className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Language' : 'Sprache'}</span>
+                      <LanguageDropdown value={settingsDraft.language} onChange={(language) => setSettingsDraft((prev) => ({ ...prev, language }))} />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Date format' : 'Datumsformat'}</span>
+                      <DateFormatDropdown
+                        value={settingsDraft.dateFormat}
+                        onChange={(dateFormat) => setSettingsDraft((prev) => ({ ...prev, dateFormat }))}
+                      />
+                    </div>
+                  </div>
+                )}
+                {/* Tab: Spalten */}
+                {settingsTab === 'columns' && (
+                  <div className="flex flex-col gap-2">
+                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Visible columns' : 'Angezeigte Spalten'}</span>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {ALL_COLUMNS.map(({ key }) => {
+                        const checked = settingsDraft.visibleCols.includes(key);
+                        return (
+                          <label key={key} className="flex items-center gap-2 px-2 py-1.5 rounded border border-gray-200 dark:border-gray-700 text-xs text-gray-700 dark:text-gray-300">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => setSettingsDraft((prev) => {
+                                const next = checked
+                                  ? prev.visibleCols.filter((k) => k !== key)
+                                  : [...prev.visibleCols, key];
+                                return { ...prev, visibleCols: next.length > 0 ? next : prev.visibleCols };
+                              })}
+                              className="w-3.5 h-3.5 accent-blue-500"
+                            />
+                            <span>{getColumnLabel(key, appSettings.language)}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {/* Tab: Filter */}
+                {settingsTab === 'filters' && (
+                  <div className="flex flex-col gap-2">
+                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Additional quick filters' : 'Zusätzliche Schnellfilter'}</span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={newQuickFilter}
+                        onChange={(e) => setNewQuickFilter(e.target.value)}
+                        placeholder={isEn ? 'e.g. hm-rpc.0.*' : 'z.B. hm-rpc.0.*'}
+                        className="flex-1 px-2 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 font-mono"
+                      />
+                      <button
+                        onClick={addExtraQuickFilter}
+                        className="px-2.5 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                      >
+                        {isEn ? 'Add' : 'Hinzufügen'}
+                      </button>
+                    </div>
+                    <div className="rounded border border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/40">
+                      {settingsDraft.extraQuickFilters.length === 0 ? (
+                        <div className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">
+                          {isEn ? 'No additional filters' : 'Keine zusätzlichen Filter'}
+                        </div>
+                      ) : (
+                        <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                          {settingsDraft.extraQuickFilters.map((patternItem) => (
+                            <li key={patternItem} className="flex items-center justify-between gap-2 px-3 py-2">
+                              <span className="text-xs font-mono text-gray-700 dark:text-gray-300 truncate">{patternItem}</span>
+                              <button
+                                onClick={() => setSettingsDraft((prev) => ({ ...prev, extraQuickFilters: prev.extraQuickFilters.filter((p) => p !== patternItem) }))}
+                                title={isEn ? 'Remove filter' : 'Filter entfernen'}
+                                className="shrink-0 p-1 rounded text-gray-500 hover:text-red-500 hover:bg-red-500/10 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
                 <button

@@ -1,9 +1,14 @@
 import type { IoBrokerState, IoBrokerObject, IoBrokerObjectCommon, HistoryEntry, HistoryOptions } from '../types/iobroker';
 
-const BASE_URL = '/api/v1';
+const LS_HOST_KEY = 'ioBrokerHost';
+
+function getBaseUrl(): string {
+  const host = localStorage.getItem(LS_HOST_KEY) ?? window.__CONFIG__?.ioBrokerHost;
+  return host ? `http://${host}/v1` : '/api/v1';
+}
 
 async function fetchApi<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`);
+  const res = await fetch(`${getBaseUrl()}${path}`);
   if (!res.ok) {
     throw new Error(`API error: ${res.status} ${res.statusText}`);
   }
@@ -168,7 +173,7 @@ export async function getHistory(id: string, options: HistoryOptions): Promise<H
 }
 
 async function sendToSql(command: string, message: unknown): Promise<unknown> {
-  const res = await fetch(`${BASE_URL}/command/sendTo`, {
+  const res = await fetch(`${getBaseUrl()}/command/sendTo`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ adapterInstance: 'sql.0', command, message }),
@@ -263,7 +268,7 @@ export function hasSmartName(obj: IoBrokerObject): boolean {
 }
 
 export async function createObject(id: string, common: Partial<IoBrokerObjectCommon>, objectType: 'state' | 'folder' | 'device' | 'channel' = 'state'): Promise<void> {
-  const res = await fetch(`${BASE_URL}/object/${encodeURIComponent(id)}`, {
+  const res = await fetch(`${getBaseUrl()}/object/${encodeURIComponent(id)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ type: objectType, common, native: {} }),
@@ -273,7 +278,7 @@ export async function createObject(id: string, common: Partial<IoBrokerObjectCom
 }
 
 export async function deleteObject(id: string): Promise<void> {
-  const res = await fetch(`${BASE_URL}/object/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  const res = await fetch(`${getBaseUrl()}/object/${encodeURIComponent(id)}`, { method: 'DELETE' });
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
   objectsCache = null;
 }
@@ -287,7 +292,7 @@ export async function renameDatapoint(oldId: string, newId: string, obj: IoBroke
 }
 
 export async function putFullObject(id: string, obj: IoBrokerObject): Promise<void> {
-  const res = await fetch(`${BASE_URL}/object/${encodeURIComponent(id)}`, {
+  const res = await fetch(`${getBaseUrl()}/object/${encodeURIComponent(id)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(obj),
@@ -301,7 +306,7 @@ export async function importDatapoints(data: Record<string, IoBrokerObject>): Pr
   let imported = 0;
   for (const [id, obj] of Object.entries(data)) {
     try {
-      await fetch(`${BASE_URL}/object/${encodeURIComponent(id)}`, {
+      await fetch(`${getBaseUrl()}/object/${encodeURIComponent(id)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...obj, _id: id }),
@@ -316,7 +321,7 @@ export async function importDatapoints(data: Record<string, IoBrokerObject>): Pr
 }
 
 export async function extendObject(id: string, obj: { common: Partial<IoBrokerObject['common']> }): Promise<void> {
-  const res = await fetch(`${BASE_URL}/object/${encodeURIComponent(id)}`, {
+  const res = await fetch(`${getBaseUrl()}/object/${encodeURIComponent(id)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(obj),
@@ -474,7 +479,7 @@ export async function updateRoomMembershipBatch(objectIds: string[], newRoomEnum
 }
 
 export async function setState(id: string, val: unknown, ack?: boolean): Promise<void> {
-  const res = await fetch(`${BASE_URL}/state/${encodeURIComponent(id)}`, {
+  const res = await fetch(`${getBaseUrl()}/state/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(ack === undefined ? { val } : { val, ack }),
