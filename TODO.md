@@ -1,5 +1,6 @@
 Testen des Exports JSON
 
+Tabellen Ansicht für History (mit Löschen Button)
 
 
 -----

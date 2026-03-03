@@ -28,7 +28,6 @@ const queryClient = new QueryClient({
 });
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200, 500];
-const LS_PAGE_SIZE = 'iobroker-page-size';
 const LS_APP_SETTINGS = 'iobroker-app-settings';
 const LS_EXPERT_MODE = 'iobroker-expert-mode';
 const DEFAULT_QUICK_PATTERNS = ['alias.0.*', 'javascript.0.*', '0_userdata.0.*'] as const;
@@ -43,6 +42,7 @@ interface AppSettings {
   visibleCols: SortKey[];
   extraQuickFilters: string[];
   toolbarLabels: boolean;
+  pageSize: number;
 }
 
 function getDefaultAppSettings(): AppSettings {
@@ -52,6 +52,7 @@ function getDefaultAppSettings(): AppSettings {
     visibleCols: DEFAULT_COLS,
     extraQuickFilters: [],
     toolbarLabels: true,
+    pageSize: 50,
   };
 }
 
@@ -73,12 +74,14 @@ function loadAppSettings(): AppSettings {
     const validCols = (parsed.visibleCols ?? []).filter((k): k is SortKey => ALL_COLUMNS.some((c) => c.key === k));
     const validDate = parsed.dateFormat === 'de' || parsed.dateFormat === 'us' || parsed.dateFormat === 'iso' ? parsed.dateFormat : 'de';
     const validExtra = (parsed.extraQuickFilters ?? []).map(normalizeQuickPattern).filter(Boolean);
+    const parsedPageSize = typeof parsed.pageSize === 'number' && PAGE_SIZE_OPTIONS.includes(parsed.pageSize) ? parsed.pageSize : 50;
     return {
       language: validLanguage,
       dateFormat: validDate,
       visibleCols: validCols.length > 0 ? validCols : DEFAULT_COLS,
       extraQuickFilters: [...new Set(validExtra.filter((p) => !DEFAULT_QUICK_PATTERNS.includes(p as typeof DEFAULT_QUICK_PATTERNS[number])))],
       toolbarLabels: parsed.toolbarLabels !== false,
+      pageSize: parsedPageSize,
     };
   } catch {
     return fallback;
@@ -167,10 +170,6 @@ function AppContent() {
   const [pattern, setPattern] = useState('*');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState<number>(() => {
-    const stored = parseInt(localStorage.getItem(LS_PAGE_SIZE) ?? '', 10);
-    return PAGE_SIZE_OPTIONS.includes(stored) ? stored : 50;
-  });
   const [historyOnly, setHistoryOnly] = useState(false);
   const [smartOnly, setSmartOnly] = useState(false);
   const [colFilters, setColFilters] = useState<Partial<Record<SortKey, string>>>({});
@@ -283,12 +282,12 @@ function AppContent() {
   );
 
   const totalCount = tableIds.length;
-  const pageStart = page * pageSize;
+  const pageStart = page * appSettings.pageSize;
   const pageIds = useMemo(
-    () => tableIds.slice(pageStart, pageStart + pageSize),
-    [tableIds, pageStart, pageSize]
+    () => tableIds.slice(pageStart, pageStart + appSettings.pageSize),
+    [tableIds, pageStart, appSettings.pageSize]
   );
-  const totalPages = Math.ceil(totalCount / pageSize);
+  const totalPages = Math.ceil(totalCount / appSettings.pageSize);
 
   const { data: stateValues, refetch: refetchStateValues } = useStateValues(pageIds);
 
@@ -348,14 +347,17 @@ function AppContent() {
     const nextCols = settingsDraft.visibleCols.filter((k) => ALL_COLUMNS.some((c) => c.key === k));
     const normalizedExtra = [...new Set(settingsDraft.extraQuickFilters.map(normalizeQuickPattern).filter(Boolean))]
       .filter((p) => !DEFAULT_QUICK_PATTERNS.includes(p as typeof DEFAULT_QUICK_PATTERNS[number]));
+    const validPageSize = PAGE_SIZE_OPTIONS.includes(settingsDraft.pageSize) ? settingsDraft.pageSize : 50;
     const next: AppSettings = {
       language: settingsDraft.language,
       dateFormat: settingsDraft.dateFormat,
       visibleCols: nextCols.length > 0 ? nextCols : DEFAULT_COLS,
       extraQuickFilters: normalizedExtra,
       toolbarLabels: settingsDraft.toolbarLabels,
+      pageSize: validPageSize,
     };
     setAppSettings(next);
+    setPage(0);
     localStorage.setItem(LS_APP_SETTINGS, JSON.stringify(next));
     localStorage.setItem('iobroker-visible-cols', JSON.stringify(next.visibleCols));
     const allowed = new Set([...DEFAULT_QUICK_PATTERNS, ...next.extraQuickFilters]);
@@ -829,6 +831,16 @@ function AppContent() {
                         }`} />
                       </button>
                     </div>
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Rows per page' : 'Zeilen pro Seite'}</span>
+                      <select
+                        value={settingsDraft.pageSize}
+                        onChange={(e) => setSettingsDraft((prev) => ({ ...prev, pageSize: parseInt(e.target.value, 10) }))}
+                        className="h-8 px-2.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400 w-28"
+                      >
+                        {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
+                      </select>
+                    </div>
                   </div>
                 )}
                 {/* Tab: Spalten */}
@@ -962,53 +974,32 @@ function AppContent() {
           <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full gap-2">
             <div className="flex items-center justify-start">
               {totalPages > 1 && (
-                <div className="flex items-center justify-start gap-2">
-                  <button
-                    onClick={() => setPage((p) => Math.max(0, p - 1))}
-                    disabled={page === 0}
-                    className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                  >
-                    {isEn ? 'Previous' : 'Zurück'}
-                  </button>
-                  <span className="text-xs text-gray-400 dark:text-gray-500">
-                    {isEn ? 'Page' : 'Seite'} {page + 1} {isEn ? 'of' : 'von'} {totalPages} ({pageStart + 1}–{Math.min(pageStart + pageSize, totalCount)} {isEn ? 'of' : 'von'} {totalCount})
-                  </span>
-                </div>
+                <button
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                  className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                >
+                  {isEn ? 'Previous' : 'Zurück'}
+                </button>
               )}
             </div>
             <div className="text-center">
-              <span className="text-xs text-gray-500 dark:text-gray-400">
-                {isEn ? 'Datapoints' : 'Datenpunkte'}: <span className="text-gray-700 dark:text-gray-200">{pageIds.length}</span> {isEn ? 'of' : 'von'} <span className="text-gray-700 dark:text-gray-200">{totalCount}</span>
+              <span className="text-xs text-gray-400 dark:text-gray-500">
+                {totalPages > 1
+                  ? <>{isEn ? 'Page' : 'Seite'} {page + 1} {isEn ? 'of' : 'von'} {totalPages} ({pageStart + 1}–{Math.min(pageStart + appSettings.pageSize, totalCount)} {isEn ? 'of' : 'von'} {totalCount})</>
+                  : <>{isEn ? 'Datapoints' : 'Datenpunkte'}: <span className="text-gray-700 dark:text-gray-200">{totalCount}</span></>
+                }
               </span>
             </div>
             <div className="flex items-center justify-end gap-2">
               {totalPages > 1 && (
-                <>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-gray-400 dark:text-gray-500">{isEn ? 'Rows:' : 'Zeilen:'}</span>
-                    <select
-                      value={pageSize}
-                      onChange={(e) => {
-                        const v = parseInt(e.target.value, 10);
-                        setPageSize(v);
-                        setPage(0);
-                        localStorage.setItem(LS_PAGE_SIZE, String(v));
-                      }}
-                      className="text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                    >
-                      {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
-                    </select>
-                  </div>
-                  <div className="flex justify-end">
-                    <button
-                      onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                      disabled={page >= totalPages - 1}
-                      className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                    >
-                      {isEn ? 'Next' : 'Weiter'}
-                    </button>
-                  </div>
-                </>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                  disabled={page >= totalPages - 1}
+                  className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                >
+                  {isEn ? 'Next' : 'Weiter'}
+                </button>
               )}
             </div>
           </div>
