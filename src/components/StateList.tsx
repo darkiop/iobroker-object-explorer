@@ -614,7 +614,7 @@ const EditableValueCell = React.memo(function EditableValueCell({
   return (
     <td
       data-col="value"
-      className="px-3 py-2 text-left font-mono font-medium overflow-hidden whitespace-nowrap group/value"
+      className="px-3 py-2 text-xs text-left font-mono overflow-hidden whitespace-nowrap group/value"
       onClick={(e) => { e.stopPropagation(); onOpen(id); }}
     >
       <div className={`flex items-center justify-start gap-1 ${valueColor}`}>
@@ -1585,7 +1585,7 @@ const StateRow = React.memo(function StateRow({
         </td>
       )}
       {show('ts') && (
-        <td data-col="ts" className="px-3 py-2 text-gray-400 dark:text-gray-500 text-xs overflow-hidden">
+        <td data-col="ts" className="px-3 py-2 text-gray-400 dark:text-gray-500 text-xs font-mono overflow-hidden">
           <span className="truncate block">{state ? formatTimestamp(state.ts, dateFormat) : ''}</span>
         </td>
       )}
@@ -2458,7 +2458,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
       })()}
 
       <div ref={containerRef} onScroll={handleBodyScroll} className="overflow-x-auto overflow-y-auto flex-1">
-        <table className="text-sm text-left table-fixed" style={{ width: totalWidth }}>
+        <table className="text-xs text-left table-fixed" style={{ width: totalWidth }}>
           <thead ref={theadRef} className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-100 dark:bg-gray-800 sticky top-0 z-10">
             <tr>
               {show('checkbox') && <th style={{ width: w('checkbox'), minWidth: w('checkbox') }} />}
