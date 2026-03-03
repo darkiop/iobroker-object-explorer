@@ -24,7 +24,7 @@ interface StateTreeProps {
   language?: 'en' | 'de';
 }
 
-function buildTree(ids: string[]): TreeNode {
+function buildTree(ids: string[], structureIds: string[] = []): TreeNode {
   const root: TreeNode = { name: 'root', fullPath: '', children: new Map(), isLeaf: false, count: 0 };
 
   for (const id of ids) {
@@ -51,10 +51,31 @@ function buildTree(ids: string[]): TreeNode {
     }
   }
 
+  // Add folder/device/channel objects that may have no child states
+  for (const id of structureIds) {
+    const parts = id.split('.');
+    let current = root;
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      const fullPath = parts.slice(0, i + 1).join('.');
+      if (!current.children.has(part)) {
+        current.children.set(part, {
+          name: part,
+          fullPath,
+          children: new Map(),
+          isLeaf: false,
+          count: 0,
+        });
+      }
+      current = current.children.get(part)!;
+      // Never mark as leaf for structure nodes
+    }
+  }
+
   return root;
 }
 
-function buildAdapterTree(ids: string[]): TreeNode {
+function buildAdapterTree(ids: string[], structureIds: string[] = []): TreeNode {
   const root: TreeNode = { name: 'root', fullPath: '', children: new Map(), isLeaf: false };
 
   for (const id of ids) {
@@ -79,6 +100,31 @@ function buildAdapterTree(ids: string[]): TreeNode {
       }
       current = current.children.get(seg)!;
       if (i === remaining.length - 1) current.isLeaf = true;
+    }
+  }
+
+  // Add folder/device/channel objects that may have no child states
+  for (const id of structureIds) {
+    const parts = id.split('.');
+    const adapterKey = parts.length >= 2 ? `${parts[0]}.${parts[1]}` : parts[0];
+    if (!root.children.has(adapterKey)) {
+      root.children.set(adapterKey, {
+        name: adapterKey, fullPath: adapterKey, children: new Map(), isLeaf: false, count: 0,
+      });
+    }
+    const adapterNode = root.children.get(adapterKey)!;
+    const remaining = parts.slice(parts.length >= 2 ? 2 : 1);
+    let current = adapterNode;
+    for (let i = 0; i < remaining.length; i++) {
+      const seg = remaining[i];
+      const childPath = `${current.fullPath}.${seg}`;
+      if (!current.children.has(seg)) {
+        current.children.set(seg, {
+          name: seg, fullPath: childPath, children: new Map(), isLeaf: false,
+        });
+      }
+      current = current.children.get(seg)!;
+      // Never mark as leaf for structure nodes
     }
   }
 
@@ -170,11 +216,11 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
     a.click();
   }
   const hasChildren = node.children.size > 0;
-  const isFolder = hasChildren && !node.isLeaf;
+  const objectType = !node.isLeaf ? allObjects[node.fullPath]?.type : undefined;
+  const isFolder = !node.isLeaf && (hasChildren || objectType === 'folder' || objectType === 'device' || objectType === 'channel' || objectType === 'instance');
   const isExpandableFolder = isFolder && hasExpandableBranch(node, allObjects, showFolders, showDevices, showChannels);
   const isHistoryEnabled = node.isLeaf && historyIds.has(node.fullPath);
   const isSmartEnabled = node.isLeaf && smartIds.has(node.fullPath);
-  const objectType = isFolder ? allObjects[node.fullPath]?.type : undefined;
   const sortedChildren = useMemo(
     () => [...node.children.values()].sort((a, b) => a.name.localeCompare(b.name)),
     [node.children]
@@ -440,9 +486,17 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
     );
   }, [stateIds, historyOnly, historyIds, smartOnly, smartIds]);
 
+  const structureIds = useMemo(
+    () => Object.keys(allObjects).filter(id => {
+      const t = allObjects[id]?.type;
+      return t === 'folder' || t === 'device' || t === 'channel' || t === 'instance';
+    }),
+    [allObjects]
+  );
+
   const tree = useMemo(
-    () => treeViewMode === 'adapter' ? buildAdapterTree(filteredIds) : buildTree(filteredIds),
-    [filteredIds, treeViewMode]
+    () => treeViewMode === 'adapter' ? buildAdapterTree(filteredIds, structureIds) : buildTree(filteredIds, structureIds),
+    [filteredIds, structureIds, treeViewMode]
   );
   const sortedChildren = useMemo(
     () => [...tree.children.values()].sort((a, b) => a.name.localeCompare(b.name)),
