@@ -18,7 +18,7 @@ interface Props {
   language?: 'en' | 'de';
 }
 
-type Tab = 'details' | 'json' | 'alias';
+type Tab = 'details' | 'json' | 'alias' | 'custom';
 const STATE_TYPES = ['number', 'string', 'boolean', 'array', 'object', 'mixed'] as const;
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -370,6 +370,68 @@ function JsonEditor({ value, onChange }: { value: string; onChange: (v: string) 
   );
 }
 
+// ── Custom Settings helpers ─────────────────────────────────────────────────
+
+function CustomNumberInput({ value, onChange }: { value: number; onChange: (v: unknown) => void }) {
+  const [draft, setDraft] = useState(String(value));
+  useEffect(() => { setDraft(String(value)); }, [value]);
+  function commit() {
+    const n = Number(draft);
+    if (!isNaN(n)) onChange(n);
+    else setDraft(String(value));
+  }
+  return (
+    <input
+      type="number"
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => { if (e.key === 'Enter') commit(); }}
+      className="w-28 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 text-sm rounded px-2 py-0.5 border border-gray-200 dark:border-gray-700 focus:border-blue-400 dark:focus:border-blue-500 focus:outline-none"
+    />
+  );
+}
+
+function CustomSettingRow({ fieldKey, value, onChange }: { fieldKey: string; value: unknown; onChange: (v: unknown) => void }) {
+  const labelCls = 'text-gray-400 dark:text-gray-500 text-xs w-52 shrink-0 font-mono';
+  const rowCls = 'flex gap-4 py-1 border-b border-gray-100 dark:border-gray-800/60 items-center';
+
+  if (typeof value === 'boolean') {
+    return (
+      <div className={rowCls}>
+        <span className={labelCls}>{fieldKey}</span>
+        <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+          <input type="checkbox" checked={value} onChange={(e) => onChange(e.target.checked)} className="sr-only peer" />
+          <span className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${value ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600'}`}>
+            {value && <Check size={11} className="text-white" strokeWidth={3} />}
+          </span>
+        </label>
+      </div>
+    );
+  }
+
+  if (typeof value === 'number') {
+    return (
+      <div className={rowCls}>
+        <span className={labelCls}>{fieldKey}</span>
+        <CustomNumberInput value={value} onChange={onChange} />
+      </div>
+    );
+  }
+
+  return (
+    <div className={rowCls}>
+      <span className={labelCls}>{fieldKey}</span>
+      <input
+        type="text"
+        value={String(value ?? '')}
+        onChange={(e) => onChange(e.target.value)}
+        className="flex-1 min-w-0 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 text-sm rounded px-2 py-0.5 border border-gray-200 dark:border-gray-700 focus:border-blue-400 dark:focus:border-blue-500 focus:outline-none"
+      />
+    </div>
+  );
+}
+
 // ── main component ─────────────────────────────────────────────────────────
 
 export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, language = 'en' }: Props) {
@@ -382,6 +444,30 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
   const [showCopy, setShowCopy] = useState(false);
   const [showRename, setShowRename] = useState(false);
   const [showMove, setShowMove] = useState(false);
+
+  // Custom Settings tab state
+  const [customDraft, setCustomDraft] = useState<Record<string, Record<string, unknown>>>(
+    () => (obj.common.custom as Record<string, Record<string, unknown>>) ?? {}
+  );
+  const [expandedAdapters, setExpandedAdapters] = useState<Set<string>>(
+    () => new Set(Object.keys((obj.common.custom as Record<string, Record<string, unknown>>) ?? {}))
+  );
+
+  function toggleAdapter(adapterId: string) {
+    setExpandedAdapters((prev) => {
+      const next = new Set(prev);
+      if (next.has(adapterId)) next.delete(adapterId);
+      else next.add(adapterId);
+      return next;
+    });
+  }
+
+  function setCustomField(adapterId: string, field: string, value: unknown) {
+    setCustomDraft((prev) => ({
+      ...prev,
+      [adapterId]: { ...prev[adapterId], [field]: value },
+    }));
+  }
 
   // Alias tab state
   const [aliasId, setAliasId] = useState(obj.common.alias?.id ?? '');
@@ -450,6 +536,10 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
     putObject.mutate({ id, obj: parsed }, { onSuccess: onClose });
   }
 
+  function handleSaveCustom() {
+    putObject.mutate({ id, obj: { ...obj, common: { ...obj.common, custom: customDraft } } }, { onSuccess: onClose });
+  }
+
   function handleSaveAlias() {
     const trimmedId = aliasId.trim();
     const newCommon = { ...obj.common };
@@ -466,14 +556,9 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
   }
 
   function handleSave() {
-    if (tab === 'json') {
-      handleSaveJson();
-      return;
-    }
-    if (tab === 'alias') {
-      handleSaveAlias();
-      return;
-    }
+    if (tab === 'json') { handleSaveJson(); return; }
+    if (tab === 'alias') { handleSaveAlias(); return; }
+    if (tab === 'custom') { handleSaveCustom(); return; }
     // Details tab saves inline; keep a consistent primary action in footer.
     onClose();
   }
@@ -595,7 +680,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
 
           {/* Tabs */}
           <div className="flex border-b border-gray-200 dark:border-gray-700 shrink-0 px-5">
-            {(['details', 'json', ...(id.startsWith('alias.') ? ['alias'] : [])] as Tab[]).map((t) => (
+            {(['details', 'json', ...(id.startsWith('alias.') ? ['alias'] : []), 'custom'] as Tab[]).map((t) => (
               <button
                 key={t}
                 onClick={() => { setTab(t); setJsonError(null); }}
@@ -605,7 +690,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                     : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                 }`}
               >
-                {t === 'details' ? (isEn ? 'Details' : 'Details') : t === 'json' ? 'JSON' : 'Alias'}
+                {t === 'details' ? 'Details' : t === 'json' ? 'JSON' : t === 'alias' ? 'Alias' : 'Custom'}
               </button>
             ))}
           </div>
@@ -838,6 +923,62 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                   </div>
                 )}
               </>
+            )}
+
+            {tab === 'custom' && (
+              <div className="px-5 py-4 flex flex-col gap-3 overflow-y-auto flex-1">
+                {Object.keys(customDraft).length === 0 ? (
+                  <div className="text-gray-400 dark:text-gray-500 text-sm text-center py-8">
+                    {isEn ? 'No custom settings configured' : 'Keine benutzerdefinierten Einstellungen konfiguriert'}
+                  </div>
+                ) : (
+                  Object.entries(customDraft).map(([adapterId, settings]) => {
+                    const isExpanded = expandedAdapters.has(adapterId);
+                    const isEnabled = settings.enabled === true;
+                    const otherEntries = Object.entries(settings).filter(([k]) => k !== 'enabled');
+                    return (
+                      <div key={adapterId} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                        <button
+                          onClick={() => toggleAdapter(adapterId)}
+                          className="w-full flex items-center gap-2 px-3 py-2.5 bg-gray-50 dark:bg-gray-800/60 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left"
+                        >
+                          <ChevronDown
+                            size={14}
+                            className={`text-gray-400 dark:text-gray-500 transition-transform shrink-0 ${isExpanded ? '' : '-rotate-90'}`}
+                          />
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-200 flex-1">
+                            {isEn ? 'Settings' : 'Einstellungen'} {adapterId}
+                          </span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                            isEnabled
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
+                              : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                          }`}>
+                            {isEnabled ? 'ENABLED' : 'DISABLED'}
+                          </span>
+                        </button>
+                        {isExpanded && (
+                          <div className="px-3 py-1">
+                            <CustomSettingRow
+                              fieldKey="enabled"
+                              value={settings.enabled ?? false}
+                              onChange={(v) => setCustomField(adapterId, 'enabled', v)}
+                            />
+                            {otherEntries.map(([key, val]) => (
+                              <CustomSettingRow
+                                key={key}
+                                fieldKey={key}
+                                value={val}
+                                onChange={(v) => setCustomField(adapterId, key, v)}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             )}
 
             {tab === 'alias' && (

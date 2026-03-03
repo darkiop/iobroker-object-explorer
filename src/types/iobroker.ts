@@ -20,7 +20,7 @@ export interface IoBrokerObjectCommon {
   min?: number;
   max?: number;
   states?: Record<string, string>;
-  custom?: Record<string, { enabled?: boolean }>;
+  custom?: Record<string, { enabled?: boolean; [key: string]: unknown }>;
   desc?: string;
   members?: string[];
   smartName?: string | Record<string, string> | false;
