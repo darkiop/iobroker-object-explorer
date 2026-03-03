@@ -16,6 +16,7 @@ interface Props {
   onClose: () => void;
   onOpenHistory?: () => void;
   language?: 'en' | 'de';
+  dateFormat?: 'de' | 'us' | 'iso';
 }
 
 type Tab = 'details' | 'json' | 'alias' | 'custom';
@@ -434,7 +435,7 @@ function CustomSettingRow({ fieldKey, value, onChange }: { fieldKey: string; val
 
 // ── main component ─────────────────────────────────────────────────────────
 
-export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, language = 'en' }: Props) {
+export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, language = 'en', dateFormat = 'de' }: Props) {
   const isEn = language === 'en';
   const [tab, setTab] = useState<Tab>('details');
   const [draft, setDraft] = useState(() => JSON.stringify(obj, null, 2));
@@ -907,7 +908,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                         </button>
                       )}
                     </div>
-                    <HistoryChart stateId={id} unit={obj.common?.unit} settingsCollapsible language={language} />
+                    <HistoryChart stateId={id} unit={obj.common?.unit} settingsCollapsible language={language} dateFormat={dateFormat} />
                   </div>
                 )}
               </div>

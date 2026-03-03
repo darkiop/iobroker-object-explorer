@@ -30,6 +30,7 @@ interface HistoryChartProps {
   extraSeries?: ExtraSeries[];
   settingsCollapsible?: boolean;
   language?: 'en' | 'de';
+  dateFormat?: 'de' | 'us' | 'iso';
 }
 
 const SERIES_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
@@ -76,23 +77,34 @@ function toLocalDatetime(ts: number): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function formatTime(ts: number, rangeMs: number): string {
+function formatTime(ts: number, rangeMs: number, dateFormat: 'de' | 'us' | 'iso' = 'de'): string {
   const d = new Date(ts);
   const p = (n: number) => String(n).padStart(2, '0');
   const time = `${p(d.getHours())}:${p(d.getMinutes())}`;
   if (rangeMs <= 24 * 60 * 60 * 1000) {
     return time;
   }
-  return `${p(d.getDate())}.${p(d.getMonth() + 1)} ${time}`;
+  const day = p(d.getDate());
+  const month = p(d.getMonth() + 1);
+  const year = d.getFullYear();
+  if (dateFormat === 'iso') return `${year}-${month}-${day} ${time}`;
+  if (dateFormat === 'us') return `${month}/${day} ${time}`;
+  return `${day}.${month} ${time}`;
 }
 
-function formatTooltipTime(ts: number): string {
+function formatTooltipTime(ts: number, dateFormat: 'de' | 'us' | 'iso' = 'de'): string {
   const d = new Date(ts);
   const p = (n: number) => String(n).padStart(2, '0');
-  return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  const day = p(d.getDate());
+  const month = p(d.getMonth() + 1);
+  const year = d.getFullYear();
+  const time = `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  if (dateFormat === 'iso') return `${year}-${month}-${day} ${time}`;
+  if (dateFormat === 'us') return `${month}/${day}/${year} ${time}`;
+  return `${day}.${month}.${year} ${time}`;
 }
 
-function makeAxes(dark: boolean, isEn: boolean) {
+function makeAxes(dark: boolean, isEn: boolean, dateFormat: 'de' | 'us' | 'iso' = 'de') {
   const axisStroke = dark ? '#6b7280' : '#9ca3af';
   const tickColor = dark ? '#6b7280' : '#4b5563';
   return {
@@ -100,7 +112,7 @@ function makeAxes(dark: boolean, isEn: boolean) {
       dataKey: 'ts' as const,
       type: 'number' as const,
       domain: ['dataMin', 'dataMax'] as [string, string],
-      tickFormatter: (ts: number) => formatTime(ts, rangeMs),
+      tickFormatter: (ts: number) => formatTime(ts, rangeMs, dateFormat),
       stroke: axisStroke,
       tick: { fontSize: 11, fill: tickColor },
     }),
@@ -118,7 +130,7 @@ function makeAxes(dark: boolean, isEn: boolean) {
       },
       labelStyle: { color: dark ? '#9ca3af' : '#6b7280' },
       itemStyle: { color: '#60a5fa' },
-      labelFormatter: (ts: unknown) => formatTooltipTime(ts as number),
+      labelFormatter: (ts: unknown) => formatTooltipTime(ts as number, dateFormat),
       formatter: (value: number | undefined, name: string | undefined) => {
         const label = hasCompare && name === 'valComp' ? (isEn ? 'Compare' : 'Vergleich') : (isEn ? 'Value' : 'Wert');
         return [unit && value !== undefined ? `${value} ${unit}` : value ?? '', label] as [string | number, string];
@@ -161,10 +173,10 @@ function ConfirmDialog({ message, onConfirm, onCancel, isPending, language = 'en
   );
 }
 
-export default function HistoryChart({ stateId, unit, fillHeight = false, extraSeries, settingsCollapsible = false, language = 'en' }: HistoryChartProps) {
+export default function HistoryChart({ stateId, unit, fillHeight = false, extraSeries, settingsCollapsible = false, language = 'en', dateFormat = 'de' }: HistoryChartProps) {
   const isEn = language === 'en';
   const { dark } = useTheme();
-  const axes = makeAxes(dark, isEn);
+  const axes = makeAxes(dark, isEn, dateFormat);
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const [rangeMs, setRangeMs] = useState<number | null>(24 * 60 * 60 * 1000);
   const [customStart, setCustomStart] = useState(() => toLocalDatetime(Date.now() - 24 * 60 * 60 * 1000));
@@ -368,13 +380,13 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
     if (!confirmAction) return '';
     if (confirmAction.type === 'entry') {
       return isEn
-        ? `Delete value ${confirmAction.val}${unit ? ' ' + unit : ''} from ${formatTooltipTime(confirmAction.ts)}?`
-        : `Wert ${confirmAction.val}${unit ? ' ' + unit : ''} vom ${formatTooltipTime(confirmAction.ts)} löschen?`;
+        ? `Delete value ${confirmAction.val}${unit ? ' ' + unit : ''} from ${formatTooltipTime(confirmAction.ts, dateFormat)}?`
+        : `Wert ${confirmAction.val}${unit ? ' ' + unit : ''} vom ${formatTooltipTime(confirmAction.ts, dateFormat)} löschen?`;
     }
     if (confirmAction.type === 'range') {
       return isEn
-        ? `Delete all data from ${formatTooltipTime(confirmAction.start)} to ${formatTooltipTime(confirmAction.end)}?`
-        : `Alle Daten von ${formatTooltipTime(confirmAction.start)} bis ${formatTooltipTime(confirmAction.end)} löschen?`;
+        ? `Delete all data from ${formatTooltipTime(confirmAction.start, dateFormat)} to ${formatTooltipTime(confirmAction.end, dateFormat)}?`
+        : `Alle Daten von ${formatTooltipTime(confirmAction.start, dateFormat)} bis ${formatTooltipTime(confirmAction.end, dateFormat)} löschen?`;
     }
     return isEn
       ? 'Delete all history data for this datapoint permanently?'
@@ -463,7 +475,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
           <Tooltip
             contentStyle={{ backgroundColor: dark ? '#1f2937' : '#ffffff', border: `1px solid ${dark ? '#374151' : '#e5e7eb'}`, borderRadius: 6 }}
             labelStyle={{ color: dark ? '#9ca3af' : '#6b7280' }}
-            labelFormatter={(ts: unknown) => formatTooltipTime(ts as number)}
+            labelFormatter={(ts: unknown) => formatTooltipTime(ts as number, dateFormat)}
             formatter={(value: unknown, name: string | undefined) => {
               const s = seriesMeta.find(x => x.key === name);
               const v = value as number | undefined;

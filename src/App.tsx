@@ -668,6 +668,7 @@ function AppContent() {
             id={selectedId}
             obj={allObjects[selectedId]}
             language={appSettings.language}
+            dateFormat={appSettings.dateFormat}
             onClose={() => setSelectedId(null)}
             onOpenHistory={hasHistory(allObjects[selectedId]) ? () => setHistoryModalId(selectedId) : undefined}
           />
@@ -678,6 +679,7 @@ function AppContent() {
             unit={allObjects[historyModalId]?.common?.unit}
             objects={allObjects}
             language={appSettings.language}
+            dateFormat={appSettings.dateFormat}
             onClose={() => setHistoryModalId(null)}
           />
         )}
