@@ -13,7 +13,7 @@ import {
   ResponsiveContainer,
   Brush,
 } from 'recharts';
-import { Trash2, CircleDot, Download, GitCompareArrows, ChevronDown, ChevronRight } from 'lucide-react';
+import { Trash2, CircleDot, Download, ChevronDown, ChevronRight } from 'lucide-react';
 import { useHistory, useDeleteHistory } from '../hooks/useStates';
 import type { HistoryOptions } from '../types/iobroker';
 
@@ -613,7 +613,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
               <button
                 key={p.label}
                 onClick={() => setRangeMs(p.ms)}
-                className={`px-2 py-1 text-xs rounded ${
+                className={`h-7 px-2 text-xs rounded ${
                   rangeMs === p.ms
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
@@ -628,7 +628,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
                 setCustomStart(toLocalDatetime(options.start));
                 setCustomEnd(toLocalDatetime(options.end));
               }}
-              className={`px-2 py-1 text-xs rounded ${
+              className={`h-7 px-2 text-xs rounded ${
                 rangeMs === null
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
@@ -637,13 +637,13 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
               {isEn ? 'Manual' : 'Manuell'}
             </button>
           </div>
-          <div className="flex gap-2 items-center flex-wrap">
+          <div className="flex gap-1 items-center flex-wrap">
             <div className="flex gap-1">
               {CHART_TYPES.map((ct) => (
                 <button
                   key={ct.value}
                   onClick={() => setChartType(ct.value)}
-                  className={`px-2 py-1 text-xs rounded ${
+                  className={`h-7 px-2 text-xs rounded ${
                     chartType === ct.value
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
@@ -655,7 +655,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
             </div>
             <button
               onClick={() => setShowDots(!showDots)}
-              className={`px-2 py-1 text-xs rounded ${
+              className={`h-7 w-7 flex items-center justify-center text-xs rounded ${
                 showDots
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
@@ -667,7 +667,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
             <select
               value={aggregate}
               onChange={(e) => setAggregate(e.target.value as HistoryOptions['aggregate'])}
-              className="bg-gray-200 text-gray-700 text-xs rounded px-2 py-1 border border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600"
+              className="h-7 bg-gray-200 text-gray-700 text-xs rounded px-2 border border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600"
             >
               {AGGREGATES.map((a) => (
                 <option key={a.value} value={a.value}>{isEn ? a.labelEn : a.labelDe}</option>
@@ -675,12 +675,11 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
             </select>
             {/* Comparison buttons */}
             <div className="flex items-center gap-1">
-              <GitCompareArrows size={13} className="text-gray-400 dark:text-gray-500" />
-              {COMPARE_OFFSETS.map((c) => (
+{COMPARE_OFFSETS.map((c) => (
                 <button
                   key={c.value}
                   onClick={() => setCompareOffset(compareOffset === c.value ? null : c.value)}
-                  className={`px-2 py-1 text-xs rounded ${
+                  className={`h-7 px-2 text-xs rounded ${
                     compareOffset === c.value
                       ? 'bg-orange-500 text-white'
                       : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
@@ -694,7 +693,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
             {/* Export PNG */}
             <button
               onClick={handleExportPng}
-              className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+              className="h-7 flex items-center gap-1 px-2 text-xs rounded bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
               title={isEn ? 'Export chart as PNG' : 'Chart als PNG exportieren'}
             >
               <Download size={12} />
@@ -702,7 +701,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
             </button>
             <button
               onClick={() => setDeleteMode(!deleteMode)}
-              className={`flex items-center gap-1 px-2 py-1 text-xs rounded ${
+              className={`h-7 flex items-center gap-1 px-2 text-xs rounded ${
                 deleteMode
                   ? 'bg-red-600/30 text-red-300 border border-red-500/40'
                   : 'bg-gray-200 text-red-500 hover:bg-red-100 dark:bg-gray-700 dark:text-red-400 dark:hover:bg-red-900/30 dark:hover:text-red-300'
@@ -714,7 +713,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
             </button>
             <button
               onClick={() => setConfirmAction({ type: 'range', start: options.start, end: options.end })}
-              className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-gray-200 text-red-500 hover:bg-red-100 dark:bg-gray-700 dark:text-red-400 dark:hover:bg-red-900/30 dark:hover:text-red-300"
+              className="h-7 flex items-center gap-1 px-2 text-xs rounded bg-gray-200 text-red-500 hover:bg-red-100 dark:bg-gray-700 dark:text-red-400 dark:hover:bg-red-900/30 dark:hover:text-red-300"
               title={isEn ? 'Delete time range' : 'Zeitbereich löschen'}
             >
               <Trash2 size={12} />
@@ -722,7 +721,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
             </button>
             <button
               onClick={() => setConfirmAction({ type: 'all' })}
-              className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-gray-200 text-red-500 hover:bg-red-100 dark:bg-gray-700 dark:text-red-400 dark:hover:bg-red-900/30 dark:hover:text-red-300"
+              className="h-7 flex items-center gap-1 px-2 text-xs rounded bg-gray-200 text-red-500 hover:bg-red-100 dark:bg-gray-700 dark:text-red-400 dark:hover:bg-red-900/30 dark:hover:text-red-300"
               title={isEn ? 'Delete all history data' : 'Alle History-Daten löschen'}
             >
               <Trash2 size={12} />
