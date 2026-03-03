@@ -89,7 +89,7 @@ function formatTime(ts: number, rangeMs: number, dateFormat: 'de' | 'us' | 'iso'
   const year = d.getFullYear();
   if (dateFormat === 'iso') return `${year}-${month}-${day} ${time}`;
   if (dateFormat === 'us') return `${month}/${day} ${time}`;
-  return `${day}.${month} ${time}`;
+  return `${day}.${month}. ${time}`;
 }
 
 function formatTooltipTime(ts: number, dateFormat: 'de' | 'us' | 'iso' = 'de'): string {
@@ -446,6 +446,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
         stroke="#3b82f6"
         fill={dark ? '#1f2937' : '#f9fafb'}
         travellerWidth={8}
+        tickFormatter={(ts: number) => formatTime(ts, effectiveRangeMs, dateFormat)}
         startIndex={viewWindow?.start ?? 0}
         endIndex={viewWindow?.end ?? maxIndex}
         onChange={(range) => {
