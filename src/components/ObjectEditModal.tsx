@@ -659,20 +659,6 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                   <Wrench size={15} />
                 </button>
               )}
-              <button
-                onClick={() => setShowCopy(true)}
-                title={isEn ? 'Copy datapoint' : 'Datenpunkt kopieren'}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-blue-500 hover:bg-blue-500/10 dark:text-gray-500 dark:hover:text-blue-400 transition-colors"
-              >
-                <Copy size={15} />
-              </button>
-              <button
-                onClick={() => setConfirmDelete(true)}
-                title={isEn ? 'Delete datapoint' : 'Datenpunkt löschen'}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-500/10 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
-              >
-                <Trash2 size={15} />
-              </button>
               <button onClick={onClose} className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
                 <X size={15} />
               </button>
@@ -1060,6 +1046,15 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
           {/* Footer */}
           <div className="flex items-center justify-between gap-2 px-5 py-3 border-t border-gray-200 dark:border-gray-700 shrink-0">
             <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(true)}
+                className="flex items-center gap-1 px-2.5 py-1.5 text-xs rounded border border-red-300 dark:border-red-700/50 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                title={isEn ? 'Delete datapoint' : 'Datenpunkt löschen'}
+              >
+                <Trash2 size={12} />
+                {isEn ? 'Delete' : 'Löschen'}
+              </button>
               <button
                 type="button"
                 onClick={() => setShowCopy(true)}
