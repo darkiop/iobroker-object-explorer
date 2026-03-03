@@ -46,7 +46,7 @@ export default function HistoryModal({ stateId, unit, onClose, objects, language
 
   const suggestions = useMemo(() => {
     const q = addInput.trim().toLowerCase();
-    if (!q) return [];
+    if (!q) return historyIds.slice(0, 10);
     return historyIds.filter(id => id.toLowerCase().includes(q)).slice(0, 10);
   }, [historyIds, addInput]);
 
@@ -147,7 +147,7 @@ export default function HistoryModal({ stateId, unit, onClose, objects, language
                   onFocus={() => setInputFocused(true)}
                   onBlur={() => setTimeout(() => setInputFocused(false), 100)}
                   placeholder={isEn ? 'Add datapoint ID…' : 'Datenpunkt-ID hinzufügen…'}
-                  className="text-xs rounded px-2 py-1 w-52 border bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 focus:outline-none focus:border-blue-400 placeholder-gray-400 dark:placeholder-gray-500"
+                  className="text-xs rounded px-2 py-1 w-80 border bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 focus:outline-none focus:border-blue-400 placeholder-gray-400 dark:placeholder-gray-500"
                 />
                 {previewName && (
                   <span className="absolute left-2 -bottom-4 text-[10px] text-green-600 dark:text-green-400 whitespace-nowrap">
@@ -155,7 +155,7 @@ export default function HistoryModal({ stateId, unit, onClose, objects, language
                   </span>
                 )}
                 {showSuggestions && (
-                  <ul className="absolute top-full left-0 mt-1 w-72 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg max-h-48 overflow-y-auto">
+                  <ul className="absolute top-full left-0 mt-1 w-full z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg max-h-48 overflow-y-auto">
                     {suggestions.map((id, i) => (
                       <li
                         key={id}
