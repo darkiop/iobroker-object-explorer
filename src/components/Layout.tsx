@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Sun, Moon, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Pencil, Loader2, AlertCircle } from 'lucide-react';
+import { Sun, Moon, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Pencil, Loader2, AlertCircle, Check } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import LanguageDropdown from './LanguageDropdown';
 
@@ -44,18 +44,28 @@ export default function Layout({
 
   const currentHost = localStorage.getItem(LS_HOST_KEY) ?? window.__CONFIG__?.ioBrokerHost ?? '';
   const [editingHost, setEditingHost] = useState(false);
-  const [hostInput, setHostInput] = useState(currentHost);
+  const [hostIp, setHostIp] = useState('');
+  const [hostPort, setHostPort] = useState('8093');
   const [hostTesting, setHostTesting] = useState(false);
   const [hostError, setHostError] = useState<string | null>(null);
-  const hostInputRef = useRef<HTMLInputElement>(null);
+  const hostIpRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (editingHost) { setHostError(null); hostInputRef.current?.select(); }
-  }, [editingHost]);
+    if (editingHost) {
+      const colonIdx = currentHost.lastIndexOf(':');
+      setHostIp(colonIdx > 0 ? currentHost.slice(0, colonIdx) : currentHost);
+      setHostPort(colonIdx > 0 ? currentHost.slice(colonIdx + 1) : '8093');
+      setHostError(null);
+      hostIpRef.current?.select();
+    }
+  }, [editingHost, currentHost]);
 
   async function testAndSave() {
-    const val = hostInput.trim();
-    if (!val || val === currentHost) { setEditingHost(false); return; }
+    const ip = hostIp.trim();
+    const port = hostPort.trim();
+    if (!ip) { setEditingHost(false); return; }
+    const val = port ? `${ip}:${port}` : ip;
+    if (val === currentHost) { setEditingHost(false); return; }
     setHostTesting(true);
     setHostError(null);
     try {
@@ -66,7 +76,7 @@ export default function Layout({
     } catch {
       setHostError(language === 'en' ? 'Host not reachable' : 'Host nicht erreichbar');
       setHostTesting(false);
-      hostInputRef.current?.focus();
+      hostIpRef.current?.focus();
     }
   }
 
@@ -150,23 +160,41 @@ export default function Layout({
             <form onSubmit={(e) => { e.preventDefault(); void testAndSave(); }} className="flex flex-col items-center gap-0.5">
               <div className="flex items-center gap-1">
                 <input
-                  ref={hostInputRef}
-                  value={hostInput}
-                  onChange={(e) => { setHostInput(e.target.value); setHostError(null); }}
-                  onBlur={() => { if (!hostTesting) setEditingHost(false); }}
+                  ref={hostIpRef}
+                  value={hostIp}
+                  onChange={(e) => { setHostIp(e.target.value); setHostError(null); }}
+                  onBlur={() => { if (!hostTesting) setTimeout(() => setEditingHost(false), 150); }}
                   onKeyDown={(e) => { if (e.key === 'Escape') setEditingHost(false); }}
                   disabled={hostTesting}
-                  className={`px-2 py-0.5 rounded-md text-sm font-mono border bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 outline-none w-48 transition-colors ${hostTesting ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20' : hostError ? 'border-red-400' : 'border-blue-400'}`}
-                  placeholder="10.4.0.33:8093"
+                  className={`px-2 py-0.5 rounded-md text-sm font-mono border bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 outline-none w-36 transition-colors ${hostTesting ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20' : hostError ? 'border-red-400' : 'border-blue-400'}`}
+                  placeholder="10.4.0.33"
                 />
-                {hostTesting && <Loader2 size={14} className="animate-spin text-orange-400 shrink-0" />}
+                <span className="text-gray-400 dark:text-gray-500 text-sm">:</span>
+                <input
+                  value={hostPort}
+                  onChange={(e) => { setHostPort(e.target.value); setHostError(null); }}
+                  onBlur={() => { if (!hostTesting) setTimeout(() => setEditingHost(false), 150); }}
+                  onFocus={(e) => e.currentTarget.select()}
+                  onKeyDown={(e) => { if (e.key === 'Escape') setEditingHost(false); }}
+                  disabled={hostTesting}
+                  className={`px-2 py-0.5 rounded-md text-sm font-mono border bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 outline-none w-16 transition-colors ${hostTesting ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20' : hostError ? 'border-red-400' : 'border-blue-400'}`}
+                  placeholder="8093"
+                />
+                <button
+                  type="submit"
+                  disabled={hostTesting}
+                  className="p-0.5 rounded text-blue-500 hover:text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 disabled:opacity-40 transition-colors shrink-0"
+                  title={language === 'en' ? 'Apply' : 'Übernehmen'}
+                >
+                  {hostTesting ? <Loader2 size={14} className="animate-spin text-orange-400" /> : <Check size={14} />}
+                </button>
                 {hostError && <AlertCircle size={14} className="text-red-400 shrink-0" />}
               </div>
               {hostError && <span className="text-xs text-red-400">{hostError}</span>}
             </form>
           ) : (
             <button
-              onClick={() => { setHostInput(currentHost); setEditingHost(true); }}
+              onClick={() => { setEditingHost(true); }}
               className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-sm font-semibold font-mono shadow-sm border transition-colors ${
                 apiConnected
                   ? 'border-emerald-300/80 dark:border-emerald-700/70 bg-emerald-100/80 dark:bg-emerald-900/35 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200/80 dark:hover:bg-emerald-800/50'
