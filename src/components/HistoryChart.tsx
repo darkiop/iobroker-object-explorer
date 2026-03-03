@@ -13,7 +13,7 @@ import {
   ResponsiveContainer,
   Brush,
 } from 'recharts';
-import { Trash2, CircleDot, Download, ChevronDown, ChevronRight } from 'lucide-react';
+import { Trash2, CircleDot, Download, ChevronDown, ChevronRight, Table2, BarChart2 } from 'lucide-react';
 import { useHistory, useDeleteHistory } from '../hooks/useStates';
 import type { HistoryOptions } from '../types/iobroker';
 
@@ -36,6 +36,7 @@ interface HistoryChartProps {
 const SERIES_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 type ChartType = 'line' | 'area' | 'bar';
+type ViewMode = 'chart' | 'table';
 type CompareOffset = null | '1w' | '1m';
 
 type ConfirmAction =
@@ -188,6 +189,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
   const [showDots, setShowDots] = useState(false);
   const [compareOffset, setCompareOffset] = useState<CompareOffset>(null);
   const [settingsOpen, setSettingsOpen] = useState(!settingsCollapsible);
+  const [viewMode, setViewMode] = useState<ViewMode>('chart');
   const [viewWindow, setViewWindow] = useState<{ start: number; end: number } | null>(null);
   const [panDrag, setPanDrag] = useState<{ anchorIdx: number; start: number; end: number } | null>(null);
 
@@ -597,6 +599,82 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
     );
   }
 
+  function renderTable() {
+    if (hasMultiSeries && multiChartData) {
+      const seriesMeta = [
+        { key: 'val', label: stateId.split('.').slice(-2).join('.'), unit },
+        ...es.map((s, i) => ({ key: `v${i + 1}`, label: s.label, unit: s.unit })),
+      ];
+      const rows = [...(multiChartData as Array<Record<string, unknown>>)].reverse();
+      return (
+        <div className={`overflow-auto border border-gray-200 dark:border-gray-700 rounded ${fillHeight ? 'flex-1 min-h-0' : 'max-h-96'}`}>
+          <table className="w-full text-xs font-mono border-collapse">
+            <thead className="sticky top-0 bg-white dark:bg-gray-900 z-10">
+              <tr className="border-b border-gray-200 dark:border-gray-700">
+                <th className="text-left px-3 py-2 text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
+                  {isEn ? 'Timestamp' : 'Zeitstempel'}
+                </th>
+                {seriesMeta.map(s => (
+                  <th key={s.key} className="text-right px-3 py-2 text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
+                    {s.label}{s.unit ? ` (${s.unit})` : ''}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, i) => (
+                <tr key={i} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                  <td className="px-3 py-1.5 text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                    {formatTooltipTime(row.ts as number, dateFormat)}
+                  </td>
+                  {seriesMeta.map(s => (
+                    <td key={s.key} className="text-right px-3 py-1.5 text-gray-700 dark:text-gray-300">
+                      {row[s.key] != null ? String(row[s.key]) : '—'}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    const rows = [...(data ?? [])].reverse();
+    return (
+      <div className={`overflow-auto border border-gray-200 dark:border-gray-700 rounded ${fillHeight ? 'flex-1 min-h-0' : 'max-h-96'}`}>
+        <table className="w-full text-xs font-mono border-collapse">
+          <thead className="sticky top-0 bg-white dark:bg-gray-900 z-10">
+            <tr className="border-b border-gray-200 dark:border-gray-700">
+              <th className="text-left px-3 py-2 text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
+                {isEn ? 'Timestamp' : 'Zeitstempel'}
+              </th>
+              <th className="text-right px-3 py-2 text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
+                {isEn ? 'Value' : 'Wert'}{unit ? ` (${unit})` : ''}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((entry, i) => (
+              <tr
+                key={i}
+                className={`border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${deleteMode ? 'cursor-pointer hover:bg-red-50 dark:hover:bg-red-900/20' : ''}`}
+                onClick={deleteMode ? () => setConfirmAction({ type: 'entry', ts: entry.ts, val: entry.val }) : undefined}
+              >
+                <td className="px-3 py-1.5 text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                  {formatTooltipTime(entry.ts, dateFormat)}
+                </td>
+                <td className={`text-right px-3 py-1.5 ${deleteMode ? 'text-red-500 dark:text-red-400' : 'text-gray-700 dark:text-gray-300'}`}>
+                  {entry.val != null ? `${entry.val}${unit ? ' ' + unit : ''}` : '—'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
   return (
     <div className={`relative ${fillHeight ? 'h-full flex flex-col' : 'mt-4'}`}>
       <div className={`flex flex-col gap-2 mb-3 ${fillHeight ? 'shrink-0' : ''}`}>
@@ -641,31 +719,59 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
           </div>
           <div className="flex gap-1 items-center flex-wrap">
             <div className="flex gap-1">
-              {CHART_TYPES.map((ct) => (
-                <button
-                  key={ct.value}
-                  onClick={() => setChartType(ct.value)}
-                  className={`h-7 px-2 text-xs rounded ${
-                    chartType === ct.value
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  {isEn ? ct.labelEn : ct.labelDe}
-                </button>
-              ))}
+              <button
+                onClick={() => setViewMode('chart')}
+                className={`h-7 w-7 flex items-center justify-center rounded ${
+                  viewMode === 'chart'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                }`}
+                title={isEn ? 'Chart view' : 'Diagrammansicht'}
+              >
+                <BarChart2 size={13} />
+              </button>
+              <button
+                onClick={() => setViewMode('table')}
+                className={`h-7 w-7 flex items-center justify-center rounded ${
+                  viewMode === 'table'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                }`}
+                title={isEn ? 'Table view' : 'Tabellenansicht'}
+              >
+                <Table2 size={13} />
+              </button>
             </div>
-            <button
-              onClick={() => setShowDots(!showDots)}
-              className={`h-7 w-7 flex items-center justify-center text-xs rounded ${
-                showDots
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
-              }`}
-              title={isEn ? 'Show data points' : 'Datenpunkte anzeigen'}
-            >
-              <CircleDot size={14} />
-            </button>
+            {viewMode === 'chart' && (
+              <div className="flex gap-1">
+                {CHART_TYPES.map((ct) => (
+                  <button
+                    key={ct.value}
+                    onClick={() => setChartType(ct.value)}
+                    className={`h-7 px-2 text-xs rounded ${
+                      chartType === ct.value
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    {isEn ? ct.labelEn : ct.labelDe}
+                  </button>
+                ))}
+              </div>
+            )}
+            {viewMode === 'chart' && (
+              <button
+                onClick={() => setShowDots(!showDots)}
+                className={`h-7 w-7 flex items-center justify-center text-xs rounded ${
+                  showDots
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                }`}
+                title={isEn ? 'Show data points' : 'Datenpunkte anzeigen'}
+              >
+                <CircleDot size={14} />
+              </button>
+            )}
             <select
               value={aggregate}
               onChange={(e) => setAggregate(e.target.value as HistoryOptions['aggregate'])}
@@ -807,6 +913,8 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
         <div className={`flex items-center justify-center text-gray-400 dark:text-gray-500 text-sm ${fillHeight ? 'flex-1' : 'h-48'}`}>
           {isEn ? 'No history data in selected range' : 'Keine History-Daten im Zeitraum gefunden'}
         </div>
+      ) : viewMode === 'table' ? (
+        renderTable()
       ) : (
         <div
           ref={chartContainerRef}
