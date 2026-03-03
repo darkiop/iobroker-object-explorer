@@ -324,11 +324,9 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
         className={`group/row flex items-center gap-1.5 px-2 py-1 cursor-pointer rounded text-sm ${
           selectedId === node.fullPath
             ? 'bg-blue-600/30 text-blue-600 dark:text-blue-300 hover:bg-blue-600/35'
-            : isActiveScope
-              ? 'bg-blue-500/10 border-l-2 border-blue-400/70 text-gray-700 dark:text-gray-300 hover:bg-blue-500/15'
-              : `hover:bg-gray-200/50 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-300 ${namespaceRowClass}`
+            : `hover:bg-gray-200/50 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-300 ${namespaceRowClass}`
         }`}
-        style={{ paddingLeft: `${depth * 14 + (isActiveScope ? 2 : 4)}px` }}
+        style={{ paddingLeft: `${depth * 14 + 4}px` }}
         onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY }); }}
         onClick={() => {
           if (node.isLeaf) {
