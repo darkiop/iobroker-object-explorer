@@ -1,9 +1,10 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Plus } from 'lucide-react';
 import HistoryChart from './HistoryChart';
 import type { ExtraSeries } from './HistoryChart';
 import type { IoBrokerObject } from '../types/iobroker';
+import { hasHistory } from '../api/iobroker';
 
 interface Props {
   stateId: string;
@@ -24,6 +25,8 @@ export default function HistoryModal({ stateId, unit, onClose, objects, language
   const isEn = language === 'en';
   const [extraSeries, setExtraSeries] = useState<ExtraSeries[]>([]);
   const [addInput, setAddInput] = useState('');
+  const [suggestionIdx, setSuggestionIdx] = useState(-1);
+  const [inputFocused, setInputFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -34,23 +37,61 @@ export default function HistoryModal({ stateId, unit, onClose, objects, language
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [onClose]);
 
-  function addSeries() {
-    const id = addInput.trim();
-    if (!id || extraSeries.length >= 4 || extraSeries.some(s => s.id === id) || id === stateId) return;
+  const historyIds = useMemo(() => {
+    if (!objects) return [];
+    return Object.keys(objects)
+      .filter(id => id !== stateId && !extraSeries.some(s => s.id === id) && hasHistory(objects[id]))
+      .sort();
+  }, [objects, stateId, extraSeries]);
+
+  const suggestions = useMemo(() => {
+    const q = addInput.trim().toLowerCase();
+    if (!q) return [];
+    return historyIds.filter(id => id.toLowerCase().includes(q)).slice(0, 10);
+  }, [historyIds, addInput]);
+
+  useEffect(() => setSuggestionIdx(-1), [suggestions]);
+
+  function selectSuggestion(id: string) {
     const obj = objects?.[id];
     const name = getObjectName(obj) || id.split('.').slice(-2).join('.');
     const u = obj?.common?.unit;
     setExtraSeries(prev => [...prev, { id, label: name, unit: u }]);
     setAddInput('');
+    setSuggestionIdx(-1);
     setTimeout(() => inputRef.current?.focus(), 0);
+  }
+
+  function addSeries() {
+    const id = addInput.trim();
+    if (!id || extraSeries.length >= 4 || extraSeries.some(s => s.id === id) || id === stateId) return;
+    selectSuggestion(id);
   }
 
   function removeSeries(id: string) {
     setExtraSeries(prev => prev.filter(s => s.id !== id));
   }
 
-  // Preview: name of the typed ID (if found in objects)
-  const previewName = addInput.trim() && objects?.[addInput.trim()]
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSuggestionIdx(i => Math.min(i + 1, suggestions.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSuggestionIdx(i => Math.max(i - 1, -1));
+    } else if (e.key === 'Enter') {
+      if (suggestionIdx >= 0 && suggestions[suggestionIdx]) {
+        selectSuggestion(suggestions[suggestionIdx]);
+      } else {
+        addSeries();
+      }
+    }
+  }
+
+  const showSuggestions = inputFocused && suggestions.length > 0;
+
+  // Preview: name of the typed ID (if found in objects and no suggestions shown)
+  const previewName = !showSuggestions && addInput.trim() && objects?.[addInput.trim()]
     ? getObjectName(objects[addInput.trim()]) || null
     : null;
 
@@ -102,7 +143,9 @@ export default function HistoryModal({ stateId, unit, onClose, objects, language
                   type="text"
                   value={addInput}
                   onChange={(e) => setAddInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') addSeries(); }}
+                  onKeyDown={handleKeyDown}
+                  onFocus={() => setInputFocused(true)}
+                  onBlur={() => setTimeout(() => setInputFocused(false), 100)}
                   placeholder={isEn ? 'Add datapoint ID…' : 'Datenpunkt-ID hinzufügen…'}
                   className="text-xs rounded px-2 py-1 w-52 border bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 focus:outline-none focus:border-blue-400 placeholder-gray-400 dark:placeholder-gray-500"
                 />
@@ -110,6 +153,24 @@ export default function HistoryModal({ stateId, unit, onClose, objects, language
                   <span className="absolute left-2 -bottom-4 text-[10px] text-green-600 dark:text-green-400 whitespace-nowrap">
                     {previewName}
                   </span>
+                )}
+                {showSuggestions && (
+                  <ul className="absolute top-full left-0 mt-1 w-72 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg max-h-48 overflow-y-auto">
+                    {suggestions.map((id, i) => (
+                      <li
+                        key={id}
+                        onMouseDown={(e) => { e.preventDefault(); selectSuggestion(id); }}
+                        className={`px-2 py-1 text-xs font-mono cursor-pointer truncate ${
+                          i === suggestionIdx
+                            ? 'bg-blue-600 text-white'
+                            : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
+                        }`}
+                        title={id}
+                      >
+                        {id}
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </div>
               <button
