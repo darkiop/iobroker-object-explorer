@@ -175,6 +175,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   showFolders,
   showDevices,
   showChannels,
+  treeFilter,
   language,
 }: {
   node: TreeNode;
@@ -191,6 +192,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   showFolders: boolean;
   showDevices: boolean;
   showChannels: boolean;
+  treeFilter: string | null;
   language: 'en' | 'de';
 }) {
   const isEn = language === 'en';
@@ -221,6 +223,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   const isExpandableFolder = isFolder && hasExpandableBranch(node, allObjects, showFolders, showDevices, showChannels);
   const isHistoryEnabled = node.isLeaf && historyIds.has(node.fullPath);
   const isSmartEnabled = node.isLeaf && smartIds.has(node.fullPath);
+  const isActiveScope = !!treeFilter && treeFilter === node.fullPath + '.';
   const sortedChildren = useMemo(
     () => [...node.children.values()].sort((a, b) => a.name.localeCompare(b.name)),
     [node.children]
@@ -276,6 +279,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
             showFolders={showFolders}
             showDevices={showDevices}
             showChannels={showChannels}
+            treeFilter={treeFilter}
             language={language}
           />
         ))}
@@ -317,10 +321,14 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
       })()}
 
       <div
-        className={`group/row flex items-center gap-1.5 px-2 py-1 cursor-pointer hover:bg-gray-200/50 dark:hover:bg-gray-700/50 rounded text-sm ${
-          selectedId === node.fullPath ? 'bg-blue-600/30 text-blue-600 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300'
-        } ${selectedId === node.fullPath ? '' : namespaceRowClass}`}
-        style={{ paddingLeft: `${depth * 14 + 4}px` }}
+        className={`group/row flex items-center gap-1.5 px-2 py-1 cursor-pointer rounded text-sm ${
+          selectedId === node.fullPath
+            ? 'bg-blue-600/30 text-blue-600 dark:text-blue-300 hover:bg-blue-600/35'
+            : isActiveScope
+              ? 'bg-blue-500/10 border-l-2 border-blue-400/70 text-gray-700 dark:text-gray-300 hover:bg-blue-500/15'
+              : `hover:bg-gray-200/50 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-300 ${namespaceRowClass}`
+        }`}
+        style={{ paddingLeft: `${depth * 14 + (isActiveScope ? 2 : 4)}px` }}
         onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY }); }}
         onClick={() => {
           if (node.isLeaf) {
@@ -432,7 +440,11 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
         {isFolder && (
           <button
             onClick={(e) => { e.stopPropagation(); onTreeScope(`${node.fullPath}.`); }}
-            className="ml-auto shrink-0 opacity-0 group-hover/row:opacity-100 text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 rounded p-1 transition-all"
+            className={`ml-auto shrink-0 rounded p-1 transition-all ${
+              isActiveScope
+                ? 'text-blue-600 dark:text-blue-300 bg-blue-500/25 dark:bg-blue-400/25'
+                : 'opacity-0 group-hover/row:opacity-100 text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20'
+            }`}
             title={`In Tabelle anzeigen: ${node.fullPath}`}
           >
             <Search size={14} />
@@ -457,6 +469,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
             showFolders={showFolders}
             showDevices={showDevices}
             showChannels={showChannels}
+            treeFilter={treeFilter}
             language={language}
           />
         ))}
@@ -465,7 +478,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
 });
 
 
-function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeScope, onCreateAtPath, historyOnly, smartOnly, historyIds, smartIds, expandToDepth, language = 'en' }: StateTreeProps) {
+function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeScope, onCreateAtPath, historyOnly, smartOnly, historyIds, smartIds, expandToDepth, treeFilter = null, language = 'en' }: StateTreeProps) {
   const isEn = language === 'en';
   const [expandSignal, setExpandSignal] = useState<{ depth: number; seq: number }>({ depth: 0, seq: 0 });
   const [showFolders,  setShowFolders]  = useState(true);
@@ -606,6 +619,7 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
               showFolders={showFolders}
               showDevices={showDevices}
               showChannels={showChannels}
+              treeFilter={treeFilter}
               language={language}
             />
           ))
