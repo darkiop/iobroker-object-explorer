@@ -633,7 +633,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
               className={`h-7 px-2 text-xs rounded ${
                 rangeMs === null
                   ? 'bg-blue-600 text-white'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
               }`}
             >
               {isEn ? 'Manual' : 'Manuell'}
@@ -660,7 +660,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
               className={`h-7 w-7 flex items-center justify-center text-xs rounded ${
                 showDots
                   ? 'bg-blue-600 text-white'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
               }`}
               title={isEn ? 'Show data points' : 'Datenpunkte anzeigen'}
             >
