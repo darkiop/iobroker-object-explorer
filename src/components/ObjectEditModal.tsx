@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Save, AlertTriangle, Link2, Pencil, Check, Wrench, Trash2, Maximize2, Copy, ChevronDown, Lock, Zap, PenLine, FolderInput } from 'lucide-react';
-import { usePutObject, useExtendObject, useStateDetail, useSetState, useAllRoles, useAllUnits, useDeleteObject, useAllObjects, useRoomEnums, useFunctionEnums, useUpdateRoomMembership, useUpdateFunctionMembership } from '../hooks/useStates';
+import { usePutObject, useExtendObject, useStateDetail, useSetState, useAllRoles, useAllUnits, useDeleteObject, useAllObjects, useRoomEnums, useFunctionEnums, useUpdateRoomMembership, useUpdateFunctionMembership, useSqlInstances } from '../hooks/useStates';
 import { hasHistory } from '../api/iobroker';
 import HistoryChart from './HistoryChart';
 import ConfirmDialog from './ConfirmDialog';
@@ -21,6 +21,25 @@ interface Props {
 
 type Tab = 'details' | 'json' | 'alias' | 'custom';
 const STATE_TYPES = ['number', 'string', 'boolean', 'array', 'object', 'mixed'] as const;
+
+const SQL_CUSTOM_DEFAULT: Record<string, unknown> = {
+  enabled: true,
+  storageType: '',
+  counter: false,
+  aliasId: '',
+  debounceTime: 0,
+  blockTime: 0,
+  changesOnly: true,
+  changesRelogInterval: 0,
+  changesMinDelta: 0,
+  ignoreBelowNumber: '',
+  disableSkippedValueLogging: false,
+  retention: 31536000,
+  customRetentionDuration: 365,
+  maxLength: 0,
+  enableDebugLogs: false,
+  debounce: 1000,
+};
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -496,6 +515,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
   const updateFn = useUpdateFunctionMembership();
   const { data: allObjects } = useAllObjects();
   const existingIds = useMemo(() => new Set(Object.keys(allObjects ?? {})), [allObjects]);
+  const { data: sqlInstances = [] } = useSqlInstances();
 
   const role = obj.common?.role ?? '';
   const type = obj.common?.type ?? '';
@@ -914,6 +934,36 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
 
             {tab === 'custom' && (
               <div className="px-5 py-4 flex flex-col gap-3 overflow-y-auto flex-1">
+                {sqlInstances.length > 0 && (
+                  <div className="flex flex-col gap-1.5 pb-3 border-b border-gray-200 dark:border-gray-700">
+                    <div className="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                      {isEn ? 'Available adapters' : 'Verfügbare Adapter'}
+                    </div>
+                    {sqlInstances.map((instanceId) => {
+                      const alreadyConfigured = instanceId in customDraft;
+                      return (
+                        <label key={instanceId} className="inline-flex items-center gap-2 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={alreadyConfigured}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setCustomDraft((prev) => ({ ...prev, [instanceId]: { ...SQL_CUSTOM_DEFAULT } }));
+                                setExpandedAdapters((prev) => new Set([...prev, instanceId]));
+                              } else {
+                                setCustomDraft((prev) => { const next = { ...prev }; delete next[instanceId]; return next; });
+                                setExpandedAdapters((prev) => { const next = new Set(prev); next.delete(instanceId); return next; });
+                              }
+                            }}
+                            className="w-3.5 h-3.5 rounded accent-blue-500 cursor-pointer"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-200 font-mono">{instanceId}</span>
+                          <span className="text-xs text-gray-400 dark:text-gray-500">SQL History</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
                 {Object.keys(customDraft).length === 0 ? (
                   <div className="text-gray-400 dark:text-gray-500 text-sm text-center py-8">
                     {isEn ? 'No custom settings configured' : 'Keine benutzerdefinierten Einstellungen konfiguriert'}

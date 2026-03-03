@@ -364,6 +364,13 @@ export async function getFunctionMap(): Promise<Record<string, string>> {
   return map;
 }
 
+export async function getSqlInstances(): Promise<string[]> {
+  const res = await fetchApi<Record<string, IoBrokerObject>>('/objects?type=instance');
+  return Object.entries(res)
+    .filter(([id, o]) => /^system\.adapter\.sql\.\d+$/.test(id) && o.common?.enabled === true)
+    .map(([id]) => id.replace('system.adapter.', ''));
+}
+
 export async function getFunctionEnums(): Promise<Array<{ id: string; name: string }>> {
   const res = await fetchApi<Record<string, IoBrokerObject>>('/objects?type=enum');
   const fns: Array<{ id: string; name: string }> = [];
