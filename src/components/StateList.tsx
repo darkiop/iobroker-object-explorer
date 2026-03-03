@@ -566,8 +566,8 @@ const EditableValueCell = React.memo(function EditableValueCell({
 
   if (!expertMode && state && (isSwitch || isButton)) {
     return (
-      <td data-col="value" className="px-3 py-1.5 text-right overflow-hidden whitespace-nowrap group/value" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-end gap-1.5">
+      <td data-col="value" className="px-3 py-1.5 text-left overflow-hidden whitespace-nowrap group/value" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-start gap-1.5">
           {isSwitch ? (
             <button
               onClick={(e) => {
@@ -612,10 +612,16 @@ const EditableValueCell = React.memo(function EditableValueCell({
   return (
     <td
       data-col="value"
-      className="px-3 py-2 text-right font-mono font-medium overflow-hidden whitespace-nowrap group/value"
+      className="px-3 py-2 text-left font-mono font-medium overflow-hidden whitespace-nowrap group/value"
       onClick={(e) => { e.stopPropagation(); onOpen(id); }}
     >
-      <div className={`flex items-center justify-end gap-1 ${valueColor}`}>
+      <div className={`flex items-center justify-start gap-1 ${valueColor}`}>
+        {trendIcon}
+        {state ? (() => {
+          const v = formatValue(val);
+          const truncated = v.length > 16 ? v.slice(0, 16) + '…' : v;
+          return <span title={v}>{truncated}</span>;
+        })() : <span className="text-gray-300 dark:text-gray-600">…</span>}
         <button
           onClick={(e) => { e.stopPropagation(); onOpen(id); }}
           className="opacity-0 group-hover/value:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
@@ -623,12 +629,6 @@ const EditableValueCell = React.memo(function EditableValueCell({
         >
           <Pencil size={12} />
         </button>
-        {trendIcon}
-        {state ? (() => {
-          const v = formatValue(val);
-          const truncated = v.length > 16 ? v.slice(0, 16) + '…' : v;
-          return <span title={v}>{truncated}</span>;
-        })() : <span className="text-gray-300 dark:text-gray-600">…</span>}
       </div>
     </td>
   );
@@ -2465,7 +2465,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
               {show('function') && <SortHeader label={isEn ? 'Function' : 'Funktion'} sortKey="function" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('function')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('type')    && <SortHeader label={isEn ? 'Type' : 'Typ'} sortKey="type" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('type')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('role')    && <SortHeader label={isEn ? 'Role' : 'Rolle'} sortKey="role" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('role')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
-              {show('value')   && <SortHeader label={isEn ? 'Value' : 'Wert'} sortKey="value" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('value')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} className="text-right" />}
+              {show('value')   && <SortHeader label={isEn ? 'Value' : 'Wert'} sortKey="value" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('value')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} className="text-left" />}
               {show('unit')    && <SortHeader label={isEn ? 'Unit' : 'Einheit'} sortKey="unit" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('unit')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('ack')     && <SortHeader label="ACK" sortKey="ack" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('ack')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
               {show('ts')      && <SortHeader label={isEn ? 'Last Update' : 'Letztes Update'} sortKey="ts" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('ts')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
