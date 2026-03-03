@@ -224,6 +224,26 @@ function AppContent() {
     return set;
   }, [stateObjects]);
 
+  // Tree uses all objects (not just pattern-filtered) so namespace structure is always complete
+  const allStateIds = useMemo(
+    () => Object.keys(allObjects).filter(id => allObjects[id]?.type === 'state').sort(),
+    [allObjects]
+  );
+  const treeHistoryIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const [id, obj] of Object.entries(allObjects)) {
+      if (hasHistory(obj)) set.add(id);
+    }
+    return set;
+  }, [allObjects]);
+  const treeSmartIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const [id, obj] of Object.entries(allObjects)) {
+      if (hasSmartName(obj)) set.add(id);
+    }
+    return set;
+  }, [allObjects]);
+
   // Reverse alias map: non-alias data point ID → [alias.0.* IDs that point to it]
   // Cached in QueryClient via useAliasMap (select on ['objects','all'])
   const { data: aliasMapData } = useAliasMap();
@@ -603,7 +623,7 @@ function AppContent() {
           )}
           <div className="flex-1 overflow-y-auto py-1">
             <StateTree
-              stateIds={objectIds}
+              stateIds={allStateIds}
               allObjects={allObjects}
               selectedId={selectedId}
               onSelect={setSelectedId}
@@ -612,8 +632,8 @@ function AppContent() {
               onCreateAtPath={handleCreateDatapointAtPath}
               historyOnly={historyOnly}
               smartOnly={smartOnly}
-              historyIds={historyIds}
-              smartIds={smartIds}
+              historyIds={treeHistoryIds}
+              smartIds={treeSmartIds}
               expandToDepth={treeExpandSignal}
               treeFilter={treeFilter}
               onClearTreeFilter={handleClearTreeFilter}
