@@ -172,15 +172,50 @@ export function useSetState() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, val, ack }: { id: string; val: unknown; ack?: boolean }) => setState(id, val, ack),
-    onSuccess: (_data, { id, val, ack }) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.states.detail(id) });
-      queryClient.setQueriesData(
+    onMutate: async ({ id, val, ack }) => {
+      // Cancel outgoing refetches to avoid overwriting the optimistic update
+      await queryClient.cancelQueries({ queryKey: queryKeys.states.valuesRoot });
+      await queryClient.cancelQueries({ queryKey: queryKeys.states.detail(id) });
+
+      // Snapshot for rollback
+      const prevBatch = queryClient.getQueriesData<Record<string, IoBrokerState>>({ queryKey: queryKeys.states.valuesRoot });
+      const prevDetail = queryClient.getQueryData<IoBrokerState>(queryKeys.states.detail(id));
+
+      const now = Date.now();
+
+      // Optimistically update the table immediately
+      queryClient.setQueriesData<Record<string, IoBrokerState>>(
         { queryKey: queryKeys.states.valuesRoot },
-        (old: Record<string, IoBrokerState> | undefined) => {
+        (old) => {
           if (!old || !(id in old)) return old;
-          return { ...old, [id]: { ...old[id], val, ts: Date.now(), ack: ack ?? false } };
+          return { ...old, [id]: { ...old[id], val, ts: now, ack: ack ?? false } };
         }
       );
+
+      // Optimistically update the detail view
+      if (prevDetail) {
+        queryClient.setQueryData<IoBrokerState>(
+          queryKeys.states.detail(id),
+          { ...prevDetail, val, ts: now, ack: ack ?? false }
+        );
+      }
+
+      return { prevBatch, prevDetail };
+    },
+    onError: (_error, { id }, context) => {
+      // Revert optimistic updates on error
+      if (context?.prevBatch) {
+        for (const [queryKey, data] of context.prevBatch) {
+          queryClient.setQueryData(queryKey, data);
+        }
+      }
+      if (context?.prevDetail) {
+        queryClient.setQueryData(queryKeys.states.detail(id), context.prevDetail);
+      }
+    },
+    onSettled: (_data, _error, { id }) => {
+      // Sync detail with actual server state after mutation
+      queryClient.invalidateQueries({ queryKey: queryKeys.states.detail(id) });
     },
   });
 }
