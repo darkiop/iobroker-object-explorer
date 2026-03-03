@@ -2573,7 +2573,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                               onChange={(e) => onColFilterChange({ ...colFilters, [key]: e.target.value })}
                               onKeyDown={(e) => { if (e.key === 'Escape' && colFilters[key]?.trim()) { e.stopPropagation(); onColFilterChange({ ...colFilters, [key]: '' }); } }}
                               placeholder="Filter..."
-                              className={`w-full py-0.5 text-xs rounded border bg-gray-50/70 dark:bg-gray-800/70 text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500 ${
+                              className={`w-full h-7 py-0 text-xs rounded border bg-gray-50/70 dark:bg-gray-800/70 text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500 ${
                                 colFilters[key]?.trim()
                                   ? 'pl-1.5 pr-5 border-blue-400 dark:border-blue-500'
                                   : 'px-1.5 border-gray-300 dark:border-gray-600'
