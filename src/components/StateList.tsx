@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Lock, Search, Link2, FileEdit, Download, ChevronDown, RefreshCw, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw } from 'lucide-react';
+import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Lock, Search, Link2, FileEdit, Download, ChevronDown, RefreshCw, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw, Tag } from 'lucide-react';
 import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
@@ -43,6 +43,8 @@ interface StateListProps {
   language?: 'en' | 'de';
   expertMode?: boolean;
   onToggleExpertMode?: () => void;
+  toolbarLabels?: boolean;
+  onToggleToolbarLabels?: () => void;
 }
 
 function formatTimestamp(ts: number, dateFormat: DateFormatSetting): string {
@@ -1631,7 +1633,7 @@ const StateRow = React.memo(function StateRow({
   );
 });
 
-function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en', expertMode = false, onToggleExpertMode }: StateListProps) {
+function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en', expertMode = false, onToggleExpertMode, toolbarLabels = true, onToggleToolbarLabels }: StateListProps) {
   const isEn = language === 'en';
   const [sortKey, setSortKey] = useState<SortKey>('id');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
@@ -1650,6 +1652,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [valueEditId, setValueEditId] = useState<string | null>(null);
   const [confirmResetLs, setConfirmResetLs] = useState(false);
+  const showToolbarLabels = toolbarLabels;
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [multiDeleteOpen, setMultiDeleteOpen] = useState(false);
   const deleteObject = useDeleteObject();
@@ -2087,16 +2090,18 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
         <button
           onClick={() => setNewDatapointOpen(true)}
           title={isEn ? 'New datapoint' : 'Neuer Datenpunkt'}
-          className="flex items-center justify-center w-7 h-7 rounded-lg text-green-600 bg-green-500/10 hover:bg-green-500/20 dark:text-green-400 dark:hover:bg-green-500/20 transition-colors"
+          className={`flex items-center gap-1.5 rounded-lg text-green-600 bg-green-500/10 hover:bg-green-500/20 dark:text-green-400 dark:hover:bg-green-500/20 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
         >
           <Plus size={16} />
+          {showToolbarLabels && <span>{isEn ? 'New' : 'Neu'}</span>}
         </button>
         <div className="relative group/export">
           <button
             title="Exportieren"
-            className="flex items-center justify-center w-7 h-7 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-colors"
+            className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
           >
             <Download size={16} />
+            {showToolbarLabels && <span>Export</span>}
           </button>
           <div className="absolute left-0 top-full mt-1 z-50 hidden group-hover/export:flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg overflow-hidden min-w-[90px]">
             <button
@@ -2116,16 +2121,18 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
         <button
           onClick={() => setImportOpen(true)}
           title={isEn ? 'Import datapoints (JSON)' : 'Datenpunkte importieren (JSON)'}
-          className="flex items-center justify-center w-7 h-7 rounded-lg text-gray-500 hover:text-violet-600 hover:bg-violet-500/10 dark:text-gray-400 dark:hover:text-violet-400 dark:hover:bg-violet-500/10 transition-colors"
+          className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-violet-600 hover:bg-violet-500/10 dark:text-gray-400 dark:hover:text-violet-400 dark:hover:bg-violet-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
         >
           <Upload size={16} />
+          {showToolbarLabels && <span>Import</span>}
         </button>
         <button
           onClick={() => onManualRefresh?.()}
           title={isEn ? 'Refresh data' : 'Daten aktualisieren'}
-          className="flex items-center justify-center w-7 h-7 rounded-lg text-gray-500 hover:text-emerald-600 hover:bg-emerald-500/10 dark:text-gray-400 dark:hover:text-emerald-400 dark:hover:bg-emerald-500/10 transition-colors"
+          className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-emerald-600 hover:bg-emerald-500/10 dark:text-gray-400 dark:hover:text-emerald-400 dark:hover:bg-emerald-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
         >
           <RefreshCw size={15} />
+          {showToolbarLabels && <span>{isEn ? 'Refresh' : 'Aktualisieren'}</span>}
         </button>
         {checkedIds.size > 0 && (
           <button
@@ -2187,6 +2194,13 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
           className="p-2 rounded-lg transition-colors text-gray-400 hover:text-red-500 hover:bg-red-500/10 dark:text-gray-500 dark:hover:text-red-400 dark:hover:bg-red-500/10"
         >
           <RotateCcw size={17} />
+        </button>
+        <button
+          onClick={() => onToggleToolbarLabels?.()}
+          title={showToolbarLabels ? (isEn ? 'Hide button labels' : 'Beschriftungen ausblenden') : (isEn ? 'Show button labels' : 'Beschriftungen einblenden')}
+          className={`p-2 rounded-lg transition-colors ${showToolbarLabels ? 'text-blue-600 bg-blue-500/15 hover:bg-blue-500/25 dark:text-blue-400 dark:hover:bg-blue-500/20' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200 dark:text-gray-500 dark:hover:text-gray-300 dark:hover:bg-gray-700'}`}
+        >
+          <Tag size={16} />
         </button>
         <ColPicker visible={visibleCols} onChange={handleColChange} language={language} />
       </div>

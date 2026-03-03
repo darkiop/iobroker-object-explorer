@@ -42,6 +42,7 @@ interface AppSettings {
   dateFormat: DateFormatSetting;
   visibleCols: SortKey[];
   extraQuickFilters: string[];
+  toolbarLabels: boolean;
 }
 
 function getDefaultAppSettings(): AppSettings {
@@ -50,6 +51,7 @@ function getDefaultAppSettings(): AppSettings {
     dateFormat: 'de',
     visibleCols: DEFAULT_COLS,
     extraQuickFilters: [],
+    toolbarLabels: true,
   };
 }
 
@@ -76,6 +78,7 @@ function loadAppSettings(): AppSettings {
       dateFormat: validDate,
       visibleCols: validCols.length > 0 ? validCols : DEFAULT_COLS,
       extraQuickFilters: [...new Set(validExtra.filter((p) => !DEFAULT_QUICK_PATTERNS.includes(p as typeof DEFAULT_QUICK_PATTERNS[number])))],
+      toolbarLabels: parsed.toolbarLabels !== false,
     };
   } catch {
     return fallback;
@@ -350,6 +353,7 @@ function AppContent() {
       dateFormat: settingsDraft.dateFormat,
       visibleCols: nextCols.length > 0 ? nextCols : DEFAULT_COLS,
       extraQuickFilters: normalizedExtra,
+      toolbarLabels: settingsDraft.toolbarLabels,
     };
     setAppSettings(next);
     localStorage.setItem(LS_APP_SETTINGS, JSON.stringify(next));
@@ -461,6 +465,15 @@ function AppContent() {
       localStorage.setItem(LS_EXPERT_MODE, String(next));
       return next;
     });
+  }, []);
+
+  const handleToggleToolbarLabels = useCallback(() => {
+    setAppSettings((prev) => {
+      const next = { ...prev, toolbarLabels: !prev.toolbarLabels };
+      localStorage.setItem(LS_APP_SETTINGS, JSON.stringify(next));
+      return next;
+    });
+    setSettingsDraft((prev) => ({ ...prev, toolbarLabels: !prev.toolbarLabels }));
   }, []);
 
   useEffect(() => {
@@ -798,6 +811,22 @@ function AppContent() {
                         onChange={(dateFormat) => setSettingsDraft((prev) => ({ ...prev, dateFormat }))}
                       />
                     </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Toolbar button labels' : 'Beschriftungen in der Toolbar'}</span>
+                      <button
+                        type="button"
+                        onClick={() => setSettingsDraft((prev) => ({ ...prev, toolbarLabels: !prev.toolbarLabels }))}
+                        className={`relative w-10 h-6 rounded-full border transition-colors ${
+                          settingsDraft.toolbarLabels
+                            ? 'bg-blue-500/30 border-blue-400/70'
+                            : 'bg-gray-200 dark:bg-gray-700 border-gray-300 dark:border-gray-600'
+                        }`}
+                      >
+                        <span className={`absolute top-0.5 w-4 h-4 rounded-full transition-all ${
+                          settingsDraft.toolbarLabels ? 'left-5 bg-blue-500' : 'left-0.5 bg-white dark:bg-gray-300'
+                        }`} />
+                      </button>
+                    </div>
                   </div>
                 )}
                 {/* Tab: Spalten */}
@@ -922,6 +951,8 @@ function AppContent() {
             language={appSettings.language}
             expertMode={expertMode}
             onToggleExpertMode={handleToggleExpertMode}
+            toolbarLabels={appSettings.toolbarLabels}
+            onToggleToolbarLabels={handleToggleToolbarLabels}
           />
         </div>
 
