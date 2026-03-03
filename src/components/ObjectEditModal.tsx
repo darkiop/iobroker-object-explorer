@@ -595,7 +595,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
 
           {/* Tabs */}
           <div className="flex border-b border-gray-200 dark:border-gray-700 shrink-0 px-5">
-            {(['details', 'json', 'alias'] as Tab[]).map((t) => (
+            {(['details', 'json', ...(id.startsWith('alias.') ? ['alias'] : [])] as Tab[]).map((t) => (
               <button
                 key={t}
                 onClick={() => { setTab(t); setJsonError(null); }}
