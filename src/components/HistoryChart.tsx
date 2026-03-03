@@ -444,6 +444,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
         dataKey="ts"
         height={18}
         stroke="#3b82f6"
+        fill={dark ? '#1f2937' : '#f9fafb'}
         travellerWidth={8}
         startIndex={viewWindow?.start ?? 0}
         endIndex={viewWindow?.end ?? maxIndex}
