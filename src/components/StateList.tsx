@@ -80,6 +80,12 @@ function getObjectName(obj: IoBrokerObject | undefined): string {
   return obj.common.name.de || obj.common.name.en || Object.values(obj.common.name)[0] || '';
 }
 
+function resolveI18n(val: string | Record<string, string> | undefined): string | undefined {
+  if (!val) return undefined;
+  if (typeof val === 'string') return val;
+  return val.de || val.en || Object.values(val)[0] || undefined;
+}
+
 const EditableNameCell = React.memo(function EditableNameCell({ id, name, desc }: { id: string; name: string; desc?: string }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(name);
@@ -1545,7 +1551,7 @@ const StateRow = React.memo(function StateRow({
           </div>
         </td>
       )}
-      {show('name') && <EditableNameCell id={id} name={name} desc={obj?.common?.desc} />}
+      {show('name') && <EditableNameCell id={id} name={name} desc={resolveI18n(obj?.common?.desc)} />}
       {show('room') && (
         <EditableRoomCell
           id={id}
