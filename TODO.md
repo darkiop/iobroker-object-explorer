@@ -1,19 +1,8 @@
 Testen des Exports JSON
 
-16:10:53 [vite] hmr invalidate /src/components/StateList.tsx Could not Fast Refresh ("ALL_COLUMNS" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
 
-
-bei type = boolean und role = state auch ein switch anzeigen
-
-
-1
-
-Absichern der Import Funktion - Zeil schon vorhanden?
-
-Create Empty JSON Button beim Import (vor Import Pflichtfelder berücksichtigen)
 
 -----
-
 
 | ID | Beschreibung | Kategorie | Priorität | Aufwand | Status |
 |---|---|---|---|---|---|

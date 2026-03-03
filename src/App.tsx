@@ -183,7 +183,8 @@ function AppContent() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<'connection' | 'display' | 'columns' | 'filters'>('connection');
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  const [settingsHostInput, setSettingsHostInput] = useState('');
+  const [settingsHostIp, setSettingsHostIp] = useState('');
+  const [settingsHostPort, setSettingsHostPort] = useState('8093');
   const [settingsHostTesting, setSettingsHostTesting] = useState(false);
   const [settingsHostError, setSettingsHostError] = useState<string | null>(null);
   const [newQuickFilter, setNewQuickFilter] = useState('');
@@ -298,7 +299,10 @@ function AppContent() {
   }, []);
 
   const openSettings = useCallback(() => {
-    setSettingsHostInput(localStorage.getItem('ioBrokerHost') ?? window.__CONFIG__?.ioBrokerHost ?? '');
+    const stored = localStorage.getItem('ioBrokerHost') ?? window.__CONFIG__?.ioBrokerHost ?? '';
+    const colonIdx = stored.lastIndexOf(':');
+    setSettingsHostIp(colonIdx > 0 ? stored.slice(0, colonIdx) : stored);
+    setSettingsHostPort(colonIdx > 0 ? stored.slice(colonIdx + 1) : '8093');
     setSettingsHostError(null);
     setSettingsTab('connection');
     const latest = loadAppSettings();
@@ -702,19 +706,31 @@ function AppContent() {
                       <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'ioBroker REST API host' : 'ioBroker REST API Host'}</span>
                       <div className="flex items-center gap-2">
                         <input
-                          value={settingsHostInput}
-                          onChange={(e) => { setSettingsHostInput(e.target.value); setSettingsHostError(null); }}
+                          value={settingsHostIp}
+                          onChange={(e) => { setSettingsHostIp(e.target.value); setSettingsHostError(null); }}
                           disabled={settingsHostTesting}
-                          placeholder="10.4.0.33:8093"
+                          placeholder="10.4.0.33"
                           className={`flex-1 px-2 py-1.5 text-xs rounded border font-mono bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none transition-colors ${
+                            settingsHostTesting ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20' : settingsHostError ? 'border-red-400' : 'border-gray-300 dark:border-gray-600 focus:ring-1 focus:ring-blue-400'
+                          }`}
+                        />
+                        <span className="text-gray-400 dark:text-gray-500 text-xs">:</span>
+                        <input
+                          value={settingsHostPort}
+                          onChange={(e) => { setSettingsHostPort(e.target.value); setSettingsHostError(null); }}
+                          disabled={settingsHostTesting}
+                          placeholder="8093"
+                          className={`w-20 px-2 py-1.5 text-xs rounded border font-mono bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none transition-colors ${
                             settingsHostTesting ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20' : settingsHostError ? 'border-red-400' : 'border-gray-300 dark:border-gray-600 focus:ring-1 focus:ring-blue-400'
                           }`}
                         />
                         <button
                           disabled={settingsHostTesting}
                           onClick={async () => {
-                            const val = settingsHostInput.trim();
-                            if (!val) return;
+                            const ip = settingsHostIp.trim();
+                            const port = settingsHostPort.trim();
+                            if (!ip) return;
+                            const val = port ? `${ip}:${port}` : ip;
                             setSettingsHostTesting(true);
                             setSettingsHostError(null);
                             try {

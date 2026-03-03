@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, memo } from 'react';
-import { ChevronRight, ChevronDown, ChevronsUpDown, ChevronsDownUp, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil, LayoutList, LayoutGrid, Plus, FileCode2, Link2, UserRound, ShieldAlert } from 'lucide-react';
+import { ChevronRight, ChevronDown, ChevronsUpDown, ChevronsDownUp, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil, LayoutList, LayoutGrid, Plus, FileCode2, Link2, UserRound, ShieldAlert, Download } from 'lucide-react';
 import type { TreeNode, IoBrokerObject } from '../types/iobroker';
 import ObjectEditModal from './ObjectEditModal';
 import ContextMenu from './ContextMenu';
@@ -152,6 +152,23 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   const [copied, setCopied] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+
+  function exportSubtree() {
+    const prefix = node.fullPath + '.';
+    const idsToExport = node.isLeaf
+      ? [node.fullPath]
+      : Object.keys(allObjects).filter((id) => id === node.fullPath || id.startsWith(prefix));
+    const out: Record<string, IoBrokerObject> = {};
+    for (const id of idsToExport) {
+      const obj = allObjects[id];
+      if (obj) out[id] = obj;
+    }
+    if (Object.keys(out).length === 0) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' }));
+    a.download = `iobroker-export-${node.fullPath.replace(/\./g, '_')}-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+  }
   const hasChildren = node.children.size > 0;
   const isFolder = hasChildren && !node.isLeaf;
   const isExpandableFolder = isFolder && hasExpandableBranch(node, allObjects, showFolders, showDevices, showChannels);
@@ -238,6 +255,8 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
           items.push({ icon: <Check size={13} />, label: isEn ? 'Select' : 'Auswählen', onClick: () => onSelect(node.fullPath) });
           items.push({ separator: true } as const);
           items.push({ icon: <Copy size={13} />, label: isEn ? 'Copy ID' : 'ID kopieren', onClick: () => copyText(node.fullPath) });
+          items.push({ separator: true } as const);
+          items.push({ icon: <Download size={13} />, label: isEn ? 'Export (JSON)' : 'Exportieren (JSON)', onClick: exportSubtree });
         } else {
           items.push({ icon: <Search size={13} />, label: isEn ? `Show in table: ${node.fullPath}` : `In Tabelle anzeigen: ${node.fullPath}`, onClick: () => onTreeScope(`${node.fullPath}.`) });
           items.push({ separator: true } as const);
@@ -245,6 +264,8 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
           items.push({ icon: <Copy size={13} />, label: isEn ? 'Copy pattern' : 'Muster kopieren', onClick: () => copyText(`${node.fullPath}.*`) });
           items.push({ separator: true } as const);
           items.push({ icon: <Pencil size={13} />, label: isEn ? 'Edit object' : 'Objekt bearbeiten', onClick: () => setEditOpen(true) });
+          items.push({ separator: true } as const);
+          items.push({ icon: <Download size={13} />, label: isEn ? 'Export subtree (JSON)' : 'Unterstruktur exportieren (JSON)', onClick: exportSubtree });
         }
         return <ContextMenu x={ctxMenu.x} y={ctxMenu.y} items={items} onClose={() => setCtxMenu(null)} />;
       })()}
