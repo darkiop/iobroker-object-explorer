@@ -31,6 +31,7 @@ interface StateListProps {
   onColFilterChange: (filters: Partial<Record<SortKey, string>>) => void;
   pattern?: string;
   aliasMap?: Map<string, string[]>;
+  allObjectIds?: Set<string>;
   onNavigateTo?: (ids: string[]) => void;
   exportIds?: string[];
   treeFilter?: string | null;
@@ -1349,6 +1350,7 @@ interface StateRowProps {
   isSelected: boolean;
   isChecked: boolean;
   aliasIds: string[] | undefined;
+  ownTargetExists: boolean;
   visibleCols: SortKey[];
   colWidths: Record<SortKey, number>;
   roles: string[];
@@ -1383,7 +1385,7 @@ function aliasIdsEqual(a?: string[], b?: string[]): boolean {
 
 const StateRow = React.memo(function StateRow({
   id, state, obj, roomName, fnName,
-  isSelected, isChecked, aliasIds,
+  isSelected, isChecked, aliasIds, ownTargetExists,
   visibleCols, colWidths, roles, units, roomEnums, fnEnums,
   onSelect, onCheck, onContextMenu, onHistoryClick, onNavigateTo, onDeleteClick,
   onSelectRoom, onSelectFunction, onOpenValueModal,
@@ -1521,8 +1523,8 @@ const StateRow = React.memo(function StateRow({
                     <span className="mr-1">{isEn ? 'Source:' : 'Quelle:'}</span>
                     <button
                       onClick={(e) => { e.stopPropagation(); onNavigateTo([ownTarget]); }}
-                      className="font-mono underline decoration-dotted hover:text-blue-500 dark:hover:text-blue-400"
-                      title={ownTarget}
+                      className={`font-mono underline decoration-dotted ${ownTargetExists ? 'hover:text-blue-500 dark:hover:text-blue-400' : 'text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300'}`}
+                      title={ownTargetExists ? ownTarget : `${ownTarget} (${isEn ? 'target does not exist' : 'Ziel existiert nicht'})`}
                     >
                       {ownTarget}
                     </button>
@@ -1621,6 +1623,7 @@ const StateRow = React.memo(function StateRow({
     prev.isSelected === next.isSelected &&
     prev.isChecked === next.isChecked &&
     aliasIdsEqual(prev.aliasIds, next.aliasIds) &&
+    prev.ownTargetExists === next.ownTargetExists &&
     prev.visibleCols === next.visibleCols &&
     prev.colWidths === next.colWidths &&
     prev.roles === next.roles &&
@@ -1639,7 +1642,7 @@ const StateRow = React.memo(function StateRow({
   );
 });
 
-function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en', expertMode = false, onToggleExpertMode, toolbarLabels = true, onToggleToolbarLabels }: StateListProps) {
+function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, allObjectIds, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en', expertMode = false, onToggleExpertMode, toolbarLabels = true, onToggleToolbarLabels }: StateListProps) {
   const isEn = language === 'en';
   const [sortKey, setSortKey] = useState<SortKey>('id');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
@@ -2622,6 +2625,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                 isSelected={selectedId === id}
                 isChecked={checkedIds.has(id)}
                 aliasIds={aliasMap?.get(id)}
+                ownTargetExists={!objects[id]?.common?.alias?.id || (allObjectIds ? allObjectIds.has(objects[id]!.common!.alias!.id as string) : !!objects[objects[id]!.common!.alias!.id as string])}
                 visibleCols={visibleCols}
                 colWidths={colWidths}
                 roles={roles}

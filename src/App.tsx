@@ -953,6 +953,7 @@ function AppContent() {
             onColFilterChange={handleColFilterChange}
             pattern={pattern}
             aliasMap={aliasMap}
+            allObjectIds={existingIds}
             onNavigateTo={handleNavigateTo}
             exportIds={tableIds}
             treeFilter={treeFilter}
