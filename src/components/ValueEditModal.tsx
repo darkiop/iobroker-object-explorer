@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
+import DOMPurify from 'dompurify';
 import { Check, X } from 'lucide-react';
 import type { IoBrokerObject, IoBrokerState } from '../types/iobroker';
 import { useSetState } from '../hooks/useStates';
@@ -260,7 +261,7 @@ export default function ValueEditModal({ id, state, obj, onClose, language = 'en
             <div className="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500">{isEn ? 'Current value preview' : 'Aktuelle Wertvorschau'}</div>
             <div className={`rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-800/70 p-3 ${valueInputKind === 'json' ? 'flex-1 min-h-40 max-h-72 overflow-auto' : 'h-10 flex items-center overflow-hidden'}`}>
               {htmlValue && (
-                <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: htmlValue }} />
+                <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(htmlValue) }} />
               )}
               {!htmlValue && jsonText && (
                 <pre className="m-0 text-xs leading-5 whitespace-pre-wrap break-words font-mono">
