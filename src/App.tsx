@@ -56,6 +56,26 @@ function getDefaultAppSettings(): AppSettings {
   };
 }
 
+function parseEnumFilters(pattern: string): { basePattern: string; roomFilter: string | null; functionFilter: string | null } {
+  let base = pattern;
+  let roomFilter: string | null = null;
+  let functionFilter: string | null = null;
+
+  const roomMatch = base.match(/\broom:"([^"]+)"/i) || base.match(/\broom:(\S+)/i);
+  if (roomMatch) {
+    roomFilter = roomMatch[1];
+    base = base.replace(roomMatch[0], '').trim();
+  }
+
+  const funcMatch = base.match(/\bfunction:"([^"]+)"/i) || base.match(/\bfunction:(\S+)/i);
+  if (funcMatch) {
+    functionFilter = funcMatch[1];
+    base = base.replace(funcMatch[0], '').trim();
+  }
+
+  return { basePattern: base || '*', roomFilter, functionFilter };
+}
+
 function normalizeQuickPattern(input: string): string {
   let v = input.trim();
   if (!v) return '';
@@ -199,7 +219,9 @@ function AppContent() {
   const [expertMode, setExpertMode] = useState<boolean>(() => localStorage.getItem(LS_EXPERT_MODE) === 'true');
   const prevTreeFilterRef = useRef<string | null>(null);
 
-  const { data: stateObjectsData, error: objectsError, refetch: refetchFilteredObjects } = useFilteredObjects(pattern, fulltextEnabled, exactEnabled);
+  const { basePattern, roomFilter, functionFilter } = useMemo(() => parseEnumFilters(pattern), [pattern]);
+
+  const { data: stateObjectsData, error: objectsError, refetch: refetchFilteredObjects } = useFilteredObjects(basePattern, fulltextEnabled, exactEnabled);
   const { data: allObjectsData, refetch: refetchAllObjects } = useAllObjects();
   const { data: roomMapData, refetch: refetchRoomMap } = useRoomMap();
   const { data: functionMapData, refetch: refetchFunctionMap } = useFunctionMap();
@@ -273,8 +295,10 @@ function AppContent() {
       roomFilters,
       functionFilters,
       quickPatterns,
+      patternRoomFilter: roomFilter,
+      patternFunctionFilter: functionFilter,
     });
-  }, [stateObjects, historyOnly, historyIds, smartOnly, smartIds, colFilters, roomMap, functionMap, aliasMap, roomFilters, functionFilters, quickPatterns]);
+  }, [stateObjects, historyOnly, historyIds, smartOnly, smartIds, colFilters, roomMap, functionMap, aliasMap, roomFilters, functionFilters, quickPatterns, roomFilter, functionFilter]);
 
   const tableIds = useMemo(
     () => treeFilter ? objectIds.filter((id) => id.startsWith(treeFilter)) : objectIds,
@@ -313,6 +337,34 @@ function AppContent() {
     setRoomFilters(new Set());
     setFunctionFilters(new Set());
     setQuickPatterns(new Set());
+  }, []);
+
+  const handleRoomToggle = useCallback((name: string) => {
+    setPattern(prev => {
+      const { basePattern: base, roomFilter: currentRoom, functionFilter: currentFunc } = parseEnumFilters(prev);
+      const isActive = currentRoom?.toLowerCase() === name.toLowerCase();
+      const encoded = name.includes(' ') ? `"${name}"` : name;
+      const basePart = base === '*' ? '' : base;
+      const funcPart = currentFunc ? `function:${currentFunc.includes(' ') ? `"${currentFunc}"` : currentFunc}` : '';
+      const roomPart = isActive ? '' : `room:${encoded}`;
+      return [roomPart, funcPart, basePart].filter(Boolean).join(' ') || '*';
+    });
+    setPage(0);
+    setSelectedId(null);
+  }, []);
+
+  const handleFunctionToggle = useCallback((name: string) => {
+    setPattern(prev => {
+      const { basePattern: base, roomFilter: currentRoom, functionFilter: currentFunc } = parseEnumFilters(prev);
+      const isActive = currentFunc?.toLowerCase() === name.toLowerCase();
+      const encoded = name.includes(' ') ? `"${name}"` : name;
+      const basePart = base === '*' ? '' : base;
+      const roomPart = currentRoom ? `room:${currentRoom.includes(' ') ? `"${currentRoom}"` : currentRoom}` : '';
+      const funcPart = isActive ? '' : `function:${encoded}`;
+      return [roomPart, funcPart, basePart].filter(Boolean).join(' ') || '*';
+    });
+    setPage(0);
+    setSelectedId(null);
   }, []);
 
   const handleColFilterChange = useCallback((filters: Partial<Record<SortKey, string>>) => {
@@ -581,7 +633,7 @@ function AppContent() {
                 <span className="flex items-center gap-1.5 font-medium">
                   <Home size={12} />
                   {isEn ? 'Rooms' : 'Räume'}
-                  {roomFilters.size > 0 && <span className="px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 text-[10px]">{roomFilters.size === 1 ? [...roomFilters][0] : roomFilters.size}</span>}
+                  {roomFilter && <span className="px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 text-[10px]">{roomFilter}</span>}
                 </span>
                 {roomsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
               </button>
@@ -590,9 +642,9 @@ function AppContent() {
                   {roomEnums.map(({ name }, i) => (
                     <button
                       key={name}
-                      onClick={() => handleSearch(name)}
+                      onClick={() => handleRoomToggle(name)}
                       className={`px-2 py-0.5 rounded text-xs transition-colors ${
-                        pattern === name
+                        roomFilter?.toLowerCase() === name.toLowerCase()
                           ? `bg-gray-200 dark:bg-gray-700 ${ENUM_COLORS[i % ENUM_COLORS.length]} hover:bg-gray-300 dark:hover:bg-gray-600`
                           : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                       }`}
@@ -613,7 +665,7 @@ function AppContent() {
                 <span className="flex items-center gap-1.5 font-medium">
                   <Zap size={12} />
                   {isEn ? 'Functions' : 'Funktionen'}
-                  {functionFilters.size > 0 && <span className="px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 text-[10px]">{functionFilters.size === 1 ? [...functionFilters][0] : functionFilters.size}</span>}
+                  {functionFilter && <span className="px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 text-[10px]">{functionFilter}</span>}
                 </span>
                 {functionsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
               </button>
@@ -622,9 +674,9 @@ function AppContent() {
                   {functionEnums.map(({ name }, i) => (
                     <button
                       key={name}
-                      onClick={() => handleSearch(name)}
+                      onClick={() => handleFunctionToggle(name)}
                       className={`px-2 py-0.5 rounded text-xs transition-colors ${
-                        pattern === name
+                        functionFilter?.toLowerCase() === name.toLowerCase()
                           ? `bg-gray-200 dark:bg-gray-700 ${ENUM_COLORS[i % ENUM_COLORS.length]} hover:bg-gray-300 dark:hover:bg-gray-600`
                           : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                       }`}

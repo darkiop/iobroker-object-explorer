@@ -15,6 +15,8 @@ interface FilterObjectIdsParams {
   roomFilters: Set<string>;
   functionFilters: Set<string>;
   quickPatterns: Set<string>;
+  patternRoomFilter?: string | null;
+  patternFunctionFilter?: string | null;
 }
 
 function quickPatternToRegex(pattern: string): RegExp {
@@ -41,6 +43,8 @@ export function filterObjectIds({
   roomFilters,
   functionFilters,
   quickPatterns,
+  patternRoomFilter,
+  patternFunctionFilter,
 }: FilterObjectIdsParams): string[] {
   let next = ids;
 
@@ -86,6 +90,15 @@ export function filterObjectIds({
 
   if (roomFilters.size > 0) next = next.filter((id) => roomFilters.has(roomMap[id]));
   if (functionFilters.size > 0) next = next.filter((id) => functionFilters.has(functionMap[id]));
+
+  if (patternRoomFilter) {
+    const f = patternRoomFilter.toLowerCase();
+    next = next.filter((id) => (roomMap[id] || '').toLowerCase().includes(f));
+  }
+  if (patternFunctionFilter) {
+    const f = patternFunctionFilter.toLowerCase();
+    next = next.filter((id) => (functionMap[id] || '').toLowerCase().includes(f));
+  }
 
   if (quickPatterns.size > 0) {
     const quickRegexes = [...quickPatterns].map(quickPatternToRegex);
