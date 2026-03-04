@@ -318,6 +318,8 @@ export default function ValueEditModal({ id, state, obj, onClose, language = 'en
                   onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
                   disabled={(isReadonly && !forceWrite) || setStateMutation.isPending}
                   spellCheck={false}
+                  autoFocus
+                  onFocus={(e) => e.target.select()}
                   className="w-full h-10 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-mono text-gray-800 dark:text-gray-100 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:opacity-60"
                 />
               )}

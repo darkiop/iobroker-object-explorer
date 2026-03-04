@@ -1,7 +1,7 @@
 Testen des Exports JSON
 
 
-Im Edit Value Modal das Input New Value direkt markiert.
+
 
 -----
 

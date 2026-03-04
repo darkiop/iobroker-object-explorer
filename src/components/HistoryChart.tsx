@@ -200,7 +200,9 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
   const options = useMemo<HistoryOptions>(() => {
     if (rangeMs !== null) {
       const now = Date.now();
-      return { start: now - rangeMs, end: now, count: 500, aggregate };
+      // Request enough points to cover the full range at up to 1 sample/5s, capped at 5000
+      const count = Math.min(Math.ceil(rangeMs / 5000), 5000);
+      return { start: now - rangeMs, end: now, count, aggregate };
     }
     return {
       start: new Date(customStart).getTime(),
@@ -286,14 +288,8 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
       setViewWindow(null);
       return;
     }
-    setViewWindow((prev) => {
-      if (!prev) return { start: 0, end: maxIndex };
-      const start = Math.max(0, Math.min(prev.start, maxIndex));
-      const end = Math.max(start + 1, Math.min(prev.end, maxIndex));
-      if (start === prev.start && end === prev.end) return prev;
-      return { start, end };
-    });
-  }, [activeChartData.length, maxIndex]);
+    setViewWindow({ start: 0, end: maxIndex });
+  }, [options, activeChartData.length, maxIndex]);
 
   const xDomain = useMemo<[number, number] | undefined>(() => {
     if (!viewWindow || activeChartData.length === 0) return undefined;
