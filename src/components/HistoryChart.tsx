@@ -192,6 +192,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
   const [viewMode, setViewMode] = useState<ViewMode>('chart');
   const [viewWindow, setViewWindow] = useState<{ start: number; end: number } | null>(null);
   const [panDrag, setPanDrag] = useState<{ anchorIdx: number; start: number; end: number } | null>(null);
+  const [tablePage, setTablePage] = useState(0);
 
   const { deleteEntry, deleteRange, deleteAll } = useDeleteHistory();
   const isPending = deleteEntry.isPending || deleteRange.isPending || deleteAll.isPending;
@@ -277,6 +278,8 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
   }, [hasMultiSeries, multiChartData, compareOffset, mergedChartData, chartData]);
 
   const maxIndex = activeChartData.length - 1;
+
+  useEffect(() => { setTablePage(0); }, [data, multiChartData]);
 
   useEffect(() => {
     if (activeChartData.length <= 1) {
@@ -599,6 +602,34 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
     );
   }
 
+  const TABLE_PAGE_SIZE = 50;
+
+  function renderTablePagination(totalRows: number) {
+    if (totalRows <= TABLE_PAGE_SIZE) return null;
+    const totalPages = Math.ceil(totalRows / TABLE_PAGE_SIZE);
+    const from = tablePage * TABLE_PAGE_SIZE + 1;
+    const to = Math.min((tablePage + 1) * TABLE_PAGE_SIZE, totalRows);
+    return (
+      <div className="flex items-center justify-between gap-2 px-3 py-2 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 shrink-0">
+        <button
+          onClick={() => setTablePage(p => p - 1)}
+          disabled={tablePage === 0}
+          className="px-2 py-0.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          {isEn ? '← Prev' : '← Zurück'}
+        </button>
+        <span>{isEn ? `${from}–${to} of ${totalRows}` : `${from}–${to} von ${totalRows}`}</span>
+        <button
+          onClick={() => setTablePage(p => p + 1)}
+          disabled={tablePage >= totalPages - 1}
+          className="px-2 py-0.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          {isEn ? 'Next →' : 'Weiter →'}
+        </button>
+      </div>
+    );
+  }
+
   function renderTable() {
     if (hasMultiSeries && multiChartData) {
       const seriesMeta = [
@@ -606,71 +637,81 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
         ...es.map((s, i) => ({ key: `v${i + 1}`, label: s.label, unit: s.unit })),
       ];
       const rows = [...(multiChartData as Array<Record<string, unknown>>)].reverse();
+      const pagination = renderTablePagination(rows.length);
+      const pageRows = rows.slice(tablePage * TABLE_PAGE_SIZE, (tablePage + 1) * TABLE_PAGE_SIZE);
       return (
-        <div className={`overflow-auto border border-gray-200 dark:border-gray-700 rounded ${fillHeight ? 'flex-1 min-h-0' : 'max-h-96'}`}>
+        <div className={`border border-gray-200 dark:border-gray-700 rounded flex flex-col ${fillHeight ? 'flex-1 min-h-0' : ''}`}>
+          <div className={`overflow-auto ${fillHeight ? 'flex-1 min-h-0' : 'max-h-96'}`}>
+            <table className="w-full text-xs font-mono border-collapse">
+              <thead className="sticky top-0 bg-white dark:bg-gray-900 z-10">
+                <tr className="border-b border-gray-200 dark:border-gray-700">
+                  <th className="text-left px-3 py-2 text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
+                    {isEn ? 'Timestamp' : 'Zeitstempel'}
+                  </th>
+                  {seriesMeta.map(s => (
+                    <th key={s.key} className="text-right px-3 py-2 text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
+                      {s.label}{s.unit ? ` (${s.unit})` : ''}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {pageRows.map((row) => (
+                  <tr key={String(row.ts)} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                    <td className="px-3 py-1.5 text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                      {formatTooltipTime(row.ts as number, dateFormat)}
+                    </td>
+                    {seriesMeta.map(s => (
+                      <td key={s.key} className="text-right px-3 py-1.5 text-gray-700 dark:text-gray-300">
+                        {row[s.key] != null ? String(row[s.key]) : '—'}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {pagination}
+        </div>
+      );
+    }
+
+    const rows = [...(data ?? [])].reverse();
+    const pagination = renderTablePagination(rows.length);
+    const pageRows = rows.slice(tablePage * TABLE_PAGE_SIZE, (tablePage + 1) * TABLE_PAGE_SIZE);
+    return (
+      <div className={`border border-gray-200 dark:border-gray-700 rounded flex flex-col ${fillHeight ? 'flex-1 min-h-0' : ''}`}>
+        <div className={`overflow-auto ${fillHeight ? 'flex-1 min-h-0' : 'max-h-96'}`}>
           <table className="w-full text-xs font-mono border-collapse">
             <thead className="sticky top-0 bg-white dark:bg-gray-900 z-10">
               <tr className="border-b border-gray-200 dark:border-gray-700">
                 <th className="text-left px-3 py-2 text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
                   {isEn ? 'Timestamp' : 'Zeitstempel'}
                 </th>
-                {seriesMeta.map(s => (
-                  <th key={s.key} className="text-right px-3 py-2 text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
-                    {s.label}{s.unit ? ` (${s.unit})` : ''}
-                  </th>
-                ))}
+                <th className="text-right px-3 py-2 text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
+                  {isEn ? 'Value' : 'Wert'}{unit ? ` (${unit})` : ''}
+                </th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, i) => (
-                <tr key={i} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+              {pageRows.map((entry) => (
+                <tr
+                  key={String(entry.ts)}
+                  className={`border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${deleteMode ? 'cursor-pointer hover:bg-red-50 dark:hover:bg-red-900/20' : ''}`}
+                  onClick={deleteMode ? () => setConfirmAction({ type: 'entry', ts: entry.ts, val: entry.val }) : undefined}
+                >
                   <td className="px-3 py-1.5 text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                    {formatTooltipTime(row.ts as number, dateFormat)}
+                    {formatTooltipTime(entry.ts, dateFormat)}
                   </td>
-                  {seriesMeta.map(s => (
-                    <td key={s.key} className="text-right px-3 py-1.5 text-gray-700 dark:text-gray-300">
-                      {row[s.key] != null ? String(row[s.key]) : '—'}
-                    </td>
-                  ))}
+                  <td className={`text-right px-3 py-1.5 ${deleteMode ? 'text-red-500 dark:text-red-400' : 'text-gray-700 dark:text-gray-300'}`}>
+                    {entry.val != null ? `${entry.val}${unit ? ' ' + unit : ''}` : '—'}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      );
-    }
-
-    const rows = [...(data ?? [])].reverse();
-    return (
-      <div className={`overflow-auto border border-gray-200 dark:border-gray-700 rounded ${fillHeight ? 'flex-1 min-h-0' : 'max-h-96'}`}>
-        <table className="w-full text-xs font-mono border-collapse">
-          <thead className="sticky top-0 bg-white dark:bg-gray-900 z-10">
-            <tr className="border-b border-gray-200 dark:border-gray-700">
-              <th className="text-left px-3 py-2 text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
-                {isEn ? 'Timestamp' : 'Zeitstempel'}
-              </th>
-              <th className="text-right px-3 py-2 text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
-                {isEn ? 'Value' : 'Wert'}{unit ? ` (${unit})` : ''}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((entry, i) => (
-              <tr
-                key={i}
-                className={`border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${deleteMode ? 'cursor-pointer hover:bg-red-50 dark:hover:bg-red-900/20' : ''}`}
-                onClick={deleteMode ? () => setConfirmAction({ type: 'entry', ts: entry.ts, val: entry.val }) : undefined}
-              >
-                <td className="px-3 py-1.5 text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                  {formatTooltipTime(entry.ts, dateFormat)}
-                </td>
-                <td className={`text-right px-3 py-1.5 ${deleteMode ? 'text-red-500 dark:text-red-400' : 'text-gray-700 dark:text-gray-300'}`}>
-                  {entry.val != null ? `${entry.val}${unit ? ' ' + unit : ''}` : '—'}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        {pagination}
       </div>
     );
   }
