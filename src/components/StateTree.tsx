@@ -21,6 +21,7 @@ interface StateTreeProps {
   expandToDepth?: { depth: number; seq: number };
   treeFilter?: string | null;
   onClearTreeFilter?: () => void;
+  pattern?: string;
   language?: 'en' | 'de';
 }
 
@@ -176,6 +177,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   showDevices,
   showChannels,
   treeFilter,
+  pattern,
   language,
 }: {
   node: TreeNode;
@@ -193,6 +195,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   showDevices: boolean;
   showChannels: boolean;
   treeFilter: string | null;
+  pattern?: string;
   language: 'en' | 'de';
 }) {
   const isEn = language === 'en';
@@ -223,7 +226,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   const isExpandableFolder = isFolder && hasExpandableBranch(node, allObjects, showFolders, showDevices, showChannels);
   const isHistoryEnabled = node.isLeaf && historyIds.has(node.fullPath);
   const isSmartEnabled = node.isLeaf && smartIds.has(node.fullPath);
-  const isActiveScope = !!treeFilter && treeFilter === node.fullPath + '.';
+  const isActiveScope = (!!treeFilter && treeFilter === node.fullPath + '.') || (!!pattern && pattern === node.fullPath + '.*');
   const sortedChildren = useMemo(
     () => [...node.children.values()].sort((a, b) => a.name.localeCompare(b.name)),
     [node.children]
@@ -280,6 +283,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
             showDevices={showDevices}
             showChannels={showChannels}
             treeFilter={treeFilter}
+            pattern={pattern}
             language={language}
           />
         ))}
@@ -468,6 +472,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
             showDevices={showDevices}
             showChannels={showChannels}
             treeFilter={treeFilter}
+            pattern={pattern}
             language={language}
           />
         ))}
@@ -476,7 +481,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
 });
 
 
-function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeScope, onCreateAtPath, historyOnly, smartOnly, historyIds, smartIds, expandToDepth, treeFilter = null, language = 'en' }: StateTreeProps) {
+function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeScope, onCreateAtPath, historyOnly, smartOnly, historyIds, smartIds, expandToDepth, treeFilter = null, pattern, language = 'en' }: StateTreeProps) {
   const isEn = language === 'en';
   const [expandSignal, setExpandSignal] = useState<{ depth: number; seq: number }>({ depth: 0, seq: 0 });
   const [showFolders,  setShowFolders]  = useState(true);
@@ -618,6 +623,7 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
               showDevices={showDevices}
               showChannels={showChannels}
               treeFilter={treeFilter}
+              pattern={pattern}
               language={language}
             />
           ))

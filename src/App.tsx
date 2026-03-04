@@ -440,7 +440,7 @@ function AppContent() {
     setColFilters({});
   }, []);
 
-  const handleTreeScope = useCallback((prefix: string) => { setTreeFilter(prefix); setPage(0); }, []);
+  const handleTreeScope = useCallback((prefix: string) => { handleSearch(prefix.replace(/\.$/, '') + '.*'); }, [handleSearch]);
   const handleCreateDatapointAtPath = useCallback((prefix: string) => {
     setNewDatapointInitialId(prefix);
   }, []);
@@ -539,9 +539,9 @@ function AppContent() {
                 {quickPatternOptions.map((q) => (
                   <button
                     key={q}
-                    onClick={() => { const adding = !quickPatterns.has(q); setQuickPatterns(prev => { const n = new Set(prev); adding ? n.add(q) : n.delete(q); return n; }); setPage(0); if (adding) setTreeExpandSignal(s => ({ depth: 2, seq: (s?.seq ?? 0) + 1 })); }}
+                    onClick={() => handleSearch(q)}
                     className={`px-2 py-0.5 rounded text-xs font-mono transition-colors ${
-                      quickPatterns.has(q)
+                      pattern === q
                         ? `bg-gray-200 dark:bg-gray-700 ${(QUICK_COLORS[q] ?? 'text-blue-600 dark:text-blue-400')} hover:bg-gray-300 dark:hover:bg-gray-600`
                         : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                     }`}
@@ -590,9 +590,9 @@ function AppContent() {
                   {roomEnums.map(({ name }, i) => (
                     <button
                       key={name}
-                      onClick={() => { setRoomFilters(prev => { const n = new Set(prev); n.has(name) ? n.delete(name) : n.add(name); return n; }); setPage(0); }}
+                      onClick={() => handleSearch(name)}
                       className={`px-2 py-0.5 rounded text-xs transition-colors ${
-                        roomFilters.has(name)
+                        pattern === name
                           ? `bg-gray-200 dark:bg-gray-700 ${ENUM_COLORS[i % ENUM_COLORS.length]} hover:bg-gray-300 dark:hover:bg-gray-600`
                           : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                       }`}
@@ -622,9 +622,9 @@ function AppContent() {
                   {functionEnums.map(({ name }, i) => (
                     <button
                       key={name}
-                      onClick={() => { setFunctionFilters(prev => { const n = new Set(prev); n.has(name) ? n.delete(name) : n.add(name); return n; }); setPage(0); }}
+                      onClick={() => handleSearch(name)}
                       className={`px-2 py-0.5 rounded text-xs transition-colors ${
-                        functionFilters.has(name)
+                        pattern === name
                           ? `bg-gray-200 dark:bg-gray-700 ${ENUM_COLORS[i % ENUM_COLORS.length]} hover:bg-gray-300 dark:hover:bg-gray-600`
                           : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                       }`}
@@ -652,6 +652,7 @@ function AppContent() {
               expandToDepth={treeExpandSignal}
               treeFilter={treeFilter}
               onClearTreeFilter={handleClearTreeFilter}
+              pattern={pattern}
               language={appSettings.language}
             />
           </div>
