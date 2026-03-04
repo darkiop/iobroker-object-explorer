@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Save, AlertTriangle, Link2, Pencil, Check, Wrench, Trash2, Maximize2, Copy, ChevronDown, Lock, Zap, PenLine, FolderInput } from 'lucide-react';
+import { X, Save, AlertTriangle, Link2, Check, Wrench, Trash2, Maximize2, Copy, ChevronDown, Lock, Zap, PenLine, FolderInput } from 'lucide-react';
 import { usePutObject, useExtendObject, useStateDetail, useSetState, useAllRoles, useAllUnits, useDeleteObject, useAllObjects, useRoomEnums, useFunctionEnums, useUpdateRoomMembership, useUpdateFunctionMembership, useSqlInstances } from '../hooks/useStates';
 import { hasHistory } from '../api/iobroker';
 import HistoryChart from './HistoryChart';
@@ -95,112 +95,6 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
     <div className="flex gap-4 py-1.5 border-b border-gray-200 dark:border-gray-800">
       <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{label}</span>
       <span className="text-gray-800 dark:text-gray-200 text-sm break-all">{value}</span>
-    </div>
-  );
-}
-
-function EditableRow({ label, value, onSave, isPending, suggestions, language = 'en' }: {
-  label: string;
-  value: string;
-  onSave: (val: string) => void;
-  isPending: boolean;
-  suggestions?: string[];
-  language?: 'en' | 'de';
-}) {
-  const isEn = language === 'en';
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(-1);
-  const wrapperRef = useRef<HTMLDivElement>(null);
-
-  const filtered = suggestions && draft
-    ? suggestions.filter((s) => s.toLowerCase().includes(draft.toLowerCase()))
-    : (suggestions ?? []);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-        setShowSuggestions(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  function commit(val: string) {
-    onSave(val);
-    setEditing(false);
-    setShowSuggestions(false);
-  }
-
-  if (!editing) {
-    return (
-      <div className="group/edit flex gap-4 py-1.5 border-b border-gray-200 dark:border-gray-800">
-        <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{label}</span>
-        <span className="text-gray-800 dark:text-gray-200 text-sm break-all flex-1">{value || '—'}</span>
-        <button
-          onClick={() => { setDraft(value); setEditing(true); setShowSuggestions(!!suggestions); setActiveIndex(-1); }}
-          className="opacity-0 group-hover/edit:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
-          title={isEn ? 'Edit' : 'Bearbeiten'}
-        >
-          <Pencil size={12} />
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800">
-      <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide pt-1">{label}</span>
-      <div className="flex-1 flex gap-1.5 items-start">
-        <div className="relative flex-1" ref={wrapperRef}>
-          <input
-            type="text"
-            value={draft}
-            onChange={(e) => { setDraft(e.target.value); setShowSuggestions(true); setActiveIndex(-1); }}
-            onFocus={() => suggestions && setShowSuggestions(true)}
-            onKeyDown={(e) => {
-              if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                setActiveIndex((i) => Math.min(i + 1, filtered.length - 1));
-              } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                setActiveIndex((i) => Math.max(i - 1, -1));
-              } else if (e.key === 'Enter') {
-                if (activeIndex >= 0 && filtered[activeIndex]) commit(filtered[activeIndex]);
-                else commit(draft);
-              } else if (e.key === 'Escape') {
-                if (showSuggestions) setShowSuggestions(false);
-                else setEditing(false);
-              }
-            }}
-            autoFocus
-            disabled={isPending}
-            className="w-full bg-gray-50/70 text-gray-700 text-sm rounded-md px-2.5 py-1.5 border border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300/70 disabled:opacity-50 dark:bg-gray-800/70 dark:text-gray-200 dark:border-gray-700 dark:focus:border-gray-600 dark:focus:ring-gray-600/60 transition-colors"
-          />
-          {showSuggestions && filtered.length > 0 && (
-            <ul className="absolute z-50 top-full left-0 right-0 mt-0.5 max-h-48 overflow-y-auto bg-white border border-gray-200 rounded shadow-lg dark:bg-gray-800 dark:border-gray-600">
-              {filtered.map((s, i) => (
-                <li
-                  key={s}
-                  onMouseDown={(e) => { e.preventDefault(); commit(s); }}
-                  onMouseEnter={() => setActiveIndex(i)}
-                  className={`px-2 py-1 text-sm cursor-pointer ${i === activeIndex ? 'bg-blue-600 text-white' : 'text-gray-800 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700'}`}
-                >
-                  {s}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-        <button onClick={() => commit(draft)} disabled={isPending} className="text-green-500 hover:text-green-600 dark:text-green-400 disabled:opacity-50 mt-0.5" title={isEn ? 'Save' : 'Speichern'}>
-          <Check size={14} />
-        </button>
-        <button onClick={() => setEditing(false)} disabled={isPending} className="text-gray-400 hover:text-gray-600 dark:text-gray-500 disabled:opacity-50 mt-0.5" title={isEn ? 'Cancel' : 'Abbrechen'}>
-          <X size={14} />
-        </button>
-      </div>
     </div>
   );
 }

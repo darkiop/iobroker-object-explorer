@@ -1642,7 +1642,7 @@ const StateRow = React.memo(function StateRow({
   );
 });
 
-function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, allObjectIds, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en', expertMode = false, onToggleExpertMode, toolbarLabels = true, onToggleToolbarLabels }: StateListProps) {
+function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, allObjectIds, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en', expertMode = false, onToggleExpertMode, toolbarLabels = true }: StateListProps) {
   const isEn = language === 'en';
   const [sortKey, setSortKey] = useState<SortKey>('id');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
