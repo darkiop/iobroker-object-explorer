@@ -336,14 +336,8 @@ const EditableUnitCell = React.memo(function EditableUnitCell({ id, unit, sugges
       onClick={(e) => { e.stopPropagation(); openEdit(); }}
     >
       <div className="flex items-center gap-1.5">
-        {unit ? (
-          <>
-            <span className="truncate" title={unit}>{unit}</span>
-            <Pencil size={12} className="opacity-0 group-hover/unit:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity" />
-          </>
-        ) : (
-          <span className="truncate" />
-        )}
+        {unit && <span className="truncate min-w-0" title={unit}>{unit}</span>}
+        <Pencil size={12} className="opacity-0 group-hover/unit:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity" />
       </div>
       {editing && cellRect && createPortal(
         <>
@@ -726,17 +720,11 @@ const EditableRoomCell = React.memo(function EditableRoomCell({ id, currentRoomE
       onClick={(e) => { e.stopPropagation(); openEdit(); }}
     >
       <div className="flex items-center gap-1.5">
-        {roomName ? (
-          <>
-            <span className="truncate" title={roomName}>{roomName}</span>
-            <Pencil
-              size={12}
-              className="opacity-0 group-hover/room:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
-            />
-          </>
-        ) : (
-          <span className="truncate" />
-        )}
+        {roomName && <span className="truncate min-w-0" title={roomName}>{roomName}</span>}
+        <Pencil
+          size={12}
+          className="opacity-0 group-hover/room:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
+        />
       </div>
       {editing && cellRect && createPortal(
         <>
@@ -827,17 +815,11 @@ const EditableFunctionCell = React.memo(function EditableFunctionCell({ id, curr
       onClick={(e) => { e.stopPropagation(); openEdit(); }}
     >
       <div className="flex items-center gap-1.5">
-        {fnName ? (
-          <>
-            <span className="truncate" title={fnName}>{fnName}</span>
-            <Pencil
-              size={12}
-              className="opacity-0 group-hover/fn:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
-            />
-          </>
-        ) : (
-          <span className="truncate" />
-        )}
+        {fnName && <span className="truncate min-w-0" title={fnName}>{fnName}</span>}
+        <Pencil
+          size={12}
+          className="opacity-0 group-hover/fn:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
+        />
       </div>
       {editing && cellRect && createPortal(
         <>
