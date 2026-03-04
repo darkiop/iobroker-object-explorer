@@ -25,3 +25,4 @@ dist-ssr
 urls.md
 
 docker-compose.yml
+.env.local
