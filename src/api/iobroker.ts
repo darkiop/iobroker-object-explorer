@@ -42,7 +42,11 @@ function scoreObject(id: string, obj: IoBrokerObject, query: string): number {
   if (idLow.includes(q)) return 60;
   const name = getNameString(obj.common?.name).toLowerCase();
   if (name && name.includes(q)) return 50;
-  const aliasId = (obj.common?.alias?.id ?? '').toLowerCase();
+  const rawAliasId = obj.common?.alias?.id;
+  const aliasId = (typeof rawAliasId === 'object'
+    ? [rawAliasId?.read, rawAliasId?.write].filter(Boolean).join(' ')
+    : (rawAliasId ?? '')
+  ).toLowerCase();
   if (aliasId && aliasId.includes(q)) return 40;
   const desc = (typeof obj.common?.desc === 'string' ? obj.common.desc : '').toLowerCase();
   if (desc && desc.includes(q)) return 30;
@@ -242,10 +246,19 @@ export function buildAliasReverseMap(allObjects: Record<string, IoBrokerObject>)
   const map = new Map<string, string[]>();
   for (const [id, obj] of Object.entries(allObjects)) {
     if (!id.startsWith('alias.0.')) continue;
-    const targetId = obj.common?.alias?.id ?? obj.common?.alias?.read;
-    if (!targetId) continue;
-    if (!map.has(targetId)) map.set(targetId, []);
-    map.get(targetId)!.push(id);
+    const aliasIdField = obj.common?.alias?.id;
+    const targets: string[] = [];
+    if (typeof aliasIdField === 'object') {
+      if (aliasIdField?.read) targets.push(aliasIdField.read);
+      if (aliasIdField?.write && aliasIdField.write !== aliasIdField.read) targets.push(aliasIdField.write);
+    } else {
+      const t = aliasIdField ?? obj.common?.alias?.read;
+      if (t) targets.push(t);
+    }
+    for (const targetId of targets) {
+      if (!map.has(targetId)) map.set(targetId, []);
+      map.get(targetId)!.push(id);
+    }
   }
   return map;
 }

@@ -411,7 +411,10 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
   }
 
   // Alias tab state
-  const [aliasId, setAliasId] = useState(obj.common.alias?.id ?? '');
+  const [aliasSeparateIds, setAliasSeparateIds] = useState(() => typeof obj.common.alias?.id === 'object');
+  const [aliasId, setAliasId] = useState(() => typeof obj.common.alias?.id === 'string' ? obj.common.alias.id : '');
+  const [aliasReadId, setAliasReadId] = useState(() => typeof obj.common.alias?.id === 'object' ? (obj.common.alias.id.read ?? '') : '');
+  const [aliasWriteId, setAliasWriteId] = useState(() => typeof obj.common.alias?.id === 'object' ? (obj.common.alias.id.write ?? '') : '');
   const [aliasRead, setAliasRead] = useState(obj.common.alias?.read ?? '');
   const [aliasWrite, setAliasWrite] = useState(obj.common.alias?.write ?? '');
   const [roomEnumId, setRoomEnumId] = useState<string | null>(() => {
@@ -491,16 +494,29 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
   }
 
   function handleSaveAlias() {
-    const trimmedId = aliasId.trim();
     const newCommon = { ...obj.common };
-    if (trimmedId) {
-      newCommon.alias = {
-        id: trimmedId,
-        ...(aliasRead.trim() ? { read: aliasRead.trim() } : {}),
-        ...(aliasWrite.trim() ? { write: aliasWrite.trim() } : {}),
-      };
+    const formulas = {
+      ...(aliasRead.trim() ? { read: aliasRead.trim() } : {}),
+      ...(aliasWrite.trim() ? { write: aliasWrite.trim() } : {}),
+    };
+    if (aliasSeparateIds) {
+      const rId = aliasReadId.trim();
+      const wId = aliasWriteId.trim();
+      if (rId || wId) {
+        newCommon.alias = {
+          id: { ...(rId ? { read: rId } : {}), ...(wId ? { write: wId } : {}) },
+          ...formulas,
+        };
+      } else {
+        delete newCommon.alias;
+      }
     } else {
-      delete newCommon.alias;
+      const trimmedId = aliasId.trim();
+      if (trimmedId) {
+        newCommon.alias = { id: trimmedId, ...formulas };
+      } else {
+        delete newCommon.alias;
+      }
     }
     putObject.mutate({ id, obj: { ...obj, common: newCommon } }, {
       onSuccess: onClose,
@@ -979,25 +995,75 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
 
             {tab === 'alias' && (
               <div className="px-5 py-4 flex flex-col gap-5 overflow-y-auto flex-1">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-                    <Link2 size={11} className="text-amber-500" />
-                    {isEn ? 'Target datapoint (alias.id)' : 'Ziel-Datenpunkt (alias.id)'}
-                  </label>
+                <label className="inline-flex items-center gap-2 cursor-pointer select-none">
                   <input
-                    type="text"
-                    value={aliasId}
-                    onChange={(e) => setAliasId(e.target.value)}
-                    className={`${inputCls} font-mono`}
-                    placeholder={isEn ? 'e.g. hm-rpc.0.ABC123.1.STATE' : 'z.B. hm-rpc.0.ABC123.1.STATE'}
-                    spellCheck={false}
+                    type="checkbox"
+                    checked={aliasSeparateIds}
+                    onChange={(e) => setAliasSeparateIds(e.target.checked)}
+                    className="sr-only peer"
                   />
-                  <p className="text-[11px] text-gray-400 dark:text-gray-500">
-                    {isEn
-                      ? 'ID of the source datapoint this alias points to. Leave empty to remove alias.'
-                      : 'ID des Quell-Datenpunkts, auf den dieser Alias zeigt. Leer lassen, um den Alias zu entfernen.'}
-                  </p>
-                </div>
+                  <span className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${aliasSeparateIds ? 'bg-amber-500 border-amber-500' : 'bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600'}`}>
+                    {aliasSeparateIds && <Check size={11} className="text-white" strokeWidth={3} />}
+                  </span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    {isEn ? 'Separate source IDs for read and write (alias.id.read / alias.id.write)' : 'Separate Quell-IDs für Lesen und Schreiben (alias.id.read / alias.id.write)'}
+                  </span>
+                </label>
+
+                {aliasSeparateIds ? (
+                  <>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                        <Link2 size={11} className="text-amber-500" />
+                        {isEn ? 'Read source ID (alias.id.read)' : 'Lese-Quell-ID (alias.id.read)'}
+                        <span className="font-normal text-gray-400 dark:text-gray-500">- {isEn ? 'optional' : 'optional'}</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={aliasReadId}
+                        onChange={(e) => setAliasReadId(e.target.value)}
+                        className={`${inputCls} font-mono`}
+                        placeholder={isEn ? 'e.g. hm-rpc.0.ABC123.1.STATE' : 'z.B. hm-rpc.0.ABC123.1.STATE'}
+                        spellCheck={false}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                        <Link2 size={11} className="text-amber-500" />
+                        {isEn ? 'Write source ID (alias.id.write)' : 'Schreib-Quell-ID (alias.id.write)'}
+                        <span className="font-normal text-gray-400 dark:text-gray-500">- {isEn ? 'optional' : 'optional'}</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={aliasWriteId}
+                        onChange={(e) => setAliasWriteId(e.target.value)}
+                        className={`${inputCls} font-mono`}
+                        placeholder={isEn ? 'e.g. hm-rpc.0.ABC123.1.STATE' : 'z.B. hm-rpc.0.ABC123.1.STATE'}
+                        spellCheck={false}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                      <Link2 size={11} className="text-amber-500" />
+                      {isEn ? 'Target datapoint (alias.id)' : 'Ziel-Datenpunkt (alias.id)'}
+                    </label>
+                    <input
+                      type="text"
+                      value={aliasId}
+                      onChange={(e) => setAliasId(e.target.value)}
+                      className={`${inputCls} font-mono`}
+                      placeholder={isEn ? 'e.g. hm-rpc.0.ABC123.1.STATE' : 'z.B. hm-rpc.0.ABC123.1.STATE'}
+                      spellCheck={false}
+                    />
+                    <p className="text-[11px] text-gray-400 dark:text-gray-500">
+                      {isEn
+                        ? 'ID of the source datapoint this alias points to. Leave empty to remove alias.'
+                        : 'ID des Quell-Datenpunkts, auf den dieser Alias zeigt. Leer lassen, um den Alias zu entfernen.'}
+                    </p>
+                  </div>
+                )}
 
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
