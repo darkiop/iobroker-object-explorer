@@ -51,7 +51,7 @@ Auth für REST API implementieren
 | FE-041 | History-Adapter auswählbar: Aktuell hardcodiert auf sql.0; Unterstützung für influxdb.0 und history.0. | Feature | mittel | M | offen |
 | FE-042 | Batch-Bearbeitung: Mehrere selektierte Zeilen gleichzeitig editieren (Rolle, Einheit, Raum, Funktion). | Feature | mittel | M | umgesetzt |
 | FE-043 | Schwellwert-Highlighting: Min/Max-Schwellwerte pro Datenpunkt; Zeile leuchtet rot/gelb wenn Wert außerhalb liegt. | Feature | mittel | M | umgesetzt |
-| FE-044 | Alias-Formel-Tester: Read/Write-Formeln im Alias-Tab direkt testbar machen. | Feature | mittel | S | offen |
+| FE-044 | Alias-Formel-Tester: Read/Write-Formeln im Alias-Tab direkt testbar machen. | Feature | mittel | S | umgesetzt |
 | FE-045 | Adapter-Gruppierung im Baum: Optionale Ansicht die Datenpunkte nach Adapter gruppiert statt nach Pfadhierarchie. | Feature | niedrig | L | offen |
 | FE-046 | Periodischer Vergleich im Chart: Aktuellen Zeitraum mit gleichem Zeitraum letzte Woche überlagern. | Chart | niedrig | M | umgesetzt |
 | FE-047 | Verlaufsdaten-Import: CSV-Datei hochladen und als History-Einträge in sql.0 importieren. | Feature | niedrig | L | offen |
@@ -75,5 +75,5 @@ Auth für REST API implementieren
 | FE-065 | CORS-Fehler nicht erkennbar: kein spezifisches Error-Handling für CORS-Preflight-Fehler; Nutzer sieht nur generischen Netzwerkfehler ohne Hinweis auf CORS-Konfiguration. | UX | niedrig | S | offen |
 | FE-066 | filterObjectIds.ts: 12 sequentielle `.filter()`-Aufrufe (je O(n)) zu einem einzigen Pass zusammenführen → O(n) statt O(12n) bei großen Objektmengen. | Performance | mittel | S | offen |
 | FE-067 | ContextMenu: Array-Index als React-`key` statt stabiler Label-basierter ID — verursacht fehlerhafte DOM-Wiederverwendung bei dynamisch generierten Menüs. | Performance | niedrig | S | offen |
-| FE-068 | StateList Column-Resize: `localStorage.setItem` wird auf jedem `mousemove`-Event (~60/s) aufgerufen — Schreiben auf 500 ms debouncen. | Performance | mittel | S | offen |
+| FE-068 | StateList Column-Resize: `localStorage.setItem` wird auf jedem `mousemove`-Event (~60/s) aufgerufen — Schreiben auf 500 ms debouncen. | Performance | mittel | S | umgesetzt |
 | FE-069 | Modals (ValueEditModal, ObjectEditModal u.a.): `onClose`-Referenz als Dependency im Escape-KeyDown-Effect führt zu unnötiger Listener-Neuregistrierung bei jedem Render. | Performance | niedrig | S | offen |

@@ -1670,6 +1670,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   const containerRef = useRef<HTMLDivElement>(null);
   const theadRef = useRef<HTMLTableSectionElement>(null);
   const autoFitRef = useRef(!localStorage.getItem(LS_WIDTHS_KEY));
+  const saveWidthsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollRafRef = useRef<number | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(0);
@@ -1728,19 +1729,30 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   function handleResizeStart(e: React.MouseEvent, key: SortKey) {
     const startX = e.clientX;
     const startWidth = colWidths[key];
+    let latestWidths: Record<SortKey, number> = colWidths;
 
     function onMouseMove(ev: MouseEvent) {
       const newWidth = Math.max(minColWidth(key), startWidth + ev.clientX - startX);
-      setColWidths((prev) => ({ ...prev, [key]: newWidth }));
+      setColWidths((prev) => {
+        latestWidths = { ...prev, [key]: newWidth };
+        return latestWidths;
+      });
+      if (saveWidthsTimerRef.current !== null) clearTimeout(saveWidthsTimerRef.current);
+      saveWidthsTimerRef.current = setTimeout(() => {
+        localStorage.setItem(LS_WIDTHS_KEY, JSON.stringify(latestWidths));
+        saveWidthsTimerRef.current = null;
+      }, 500);
     }
 
     function onMouseUp(ev: MouseEvent) {
+      if (saveWidthsTimerRef.current !== null) {
+        clearTimeout(saveWidthsTimerRef.current);
+        saveWidthsTimerRef.current = null;
+      }
       const newWidth = Math.max(minColWidth(key), startWidth + ev.clientX - startX);
-      setColWidths((prev) => {
-        const next = { ...prev, [key]: newWidth };
-        localStorage.setItem(LS_WIDTHS_KEY, JSON.stringify(next));
-        return next;
-      });
+      const finalWidths = { ...latestWidths, [key]: newWidth };
+      setColWidths(finalWidths);
+      localStorage.setItem(LS_WIDTHS_KEY, JSON.stringify(finalWidths));
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
     }

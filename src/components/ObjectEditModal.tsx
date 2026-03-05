@@ -91,6 +91,31 @@ function InlineInputRow({ label, value, onSave, isPending }: { label: string; va
   );
 }
 
+function InlineNumberRow({ label, value, onSave, onClear, isPending }: { label: string; value: number | undefined; onSave: (v: number) => void; onClear: () => void; isPending: boolean }) {
+  const [draft, setDraft] = useState(value !== undefined ? String(value) : '');
+  useEffect(() => { setDraft(value !== undefined ? String(value) : ''); }, [value]);
+  function commit() {
+    if (draft === '') { onClear(); return; }
+    const n = parseFloat(draft);
+    if (!isNaN(n) && n !== value) onSave(n);
+  }
+  return (
+    <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800 items-center">
+      <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{label}</span>
+      <input
+        type="number"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); else if (e.key === 'Escape') setDraft(value !== undefined ? String(value) : ''); }}
+        disabled={isPending}
+        placeholder="—"
+        className={SELECT_CLS + ' [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'}
+      />
+    </div>
+  );
+}
+
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex gap-4 py-1.5 border-b border-gray-200 dark:border-gray-800">
@@ -397,6 +422,8 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
     const hit = Object.keys(obj.enums ?? {}).find((enumId) => enumId.startsWith('enum.functions.'));
     return hit ?? null;
   });
+  const [aliasTestInput, setAliasTestInput] = useState('');
+  const [aliasTestResult, setAliasTestResult] = useState<{ read?: string; readErr?: string; write?: string; writeErr?: string } | null>(null);
 
   const putObject = usePutObject();
   const extend = useExtendObject();
@@ -507,6 +534,29 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
       { objectId: id, oldFnEnumId, newFnEnumId: nextFnEnumId },
       { onError: () => setFnEnumId(oldFnEnumId) }
     );
+  }
+
+  function runFormulaTest() {
+    const raw = aliasTestInput.trim();
+    const val: unknown = raw === '' ? undefined : isNaN(Number(raw)) ? raw : Number(raw);
+    const result: typeof aliasTestResult = {};
+    if (aliasRead.trim()) {
+      try {
+        // eslint-disable-next-line no-new-func
+        result.read = String(new Function('val', `return (${aliasRead.trim()})`)(val));
+      } catch (e) {
+        result.readErr = e instanceof Error ? e.message : String(e);
+      }
+    }
+    if (aliasWrite.trim()) {
+      try {
+        // eslint-disable-next-line no-new-func
+        result.write = String(new Function('val', `return (${aliasWrite.trim()})`)(val));
+      } catch (e) {
+        result.writeErr = e instanceof Error ? e.message : String(e);
+      }
+    }
+    setAliasTestResult(result);
   }
 
   const inputCls = 'px-2.5 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500';
@@ -765,8 +815,12 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                     </label>
                   </div>
                 </div>
-                {obj.common?.min !== undefined && (
-                  <DetailRow label="Min/Max" value={`${obj.common.min} / ${obj.common.max}`} />
+                {type === 'number' && (
+                  <>
+                    <InlineNumberRow label="Min" value={obj.common?.min} onSave={(v) => extend.mutate({ id, common: { min: v } })} onClear={() => extend.mutate({ id, common: { min: undefined } })} isPending={extend.isPending} />
+                    <InlineNumberRow label="Max" value={obj.common?.max} onSave={(v) => extend.mutate({ id, common: { max: v } })} onClear={() => extend.mutate({ id, common: { max: undefined } })} isPending={extend.isPending} />
+                    <InlineNumberRow label="Step" value={obj.common?.step} onSave={(v) => extend.mutate({ id, common: { step: v } })} onClear={() => extend.mutate({ id, common: { step: undefined } })} isPending={extend.isPending} />
+                  </>
                 )}
 
                 {state && (
@@ -982,6 +1036,46 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                     <code className="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">val</code>
                   </p>
                 </div>
+
+                {(aliasRead.trim() || aliasWrite.trim()) && (
+                  <div className="flex flex-col gap-2 pt-1">
+                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                      {isEn ? 'Formula tester' : 'Formel-Tester'}
+                    </span>
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="text"
+                        value={aliasTestInput}
+                        onChange={(e) => { setAliasTestInput(e.target.value); setAliasTestResult(null); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') runFormulaTest(); }}
+                        className={`${inputCls} font-mono flex-1`}
+                        placeholder={isEn ? 'Test value (val)' : 'Testwert (val)'}
+                        spellCheck={false}
+                      />
+                      <button
+                        onClick={runFormulaTest}
+                        disabled={!aliasTestInput.trim()}
+                        className="px-3 py-1.5 text-xs rounded border border-blue-400 dark:border-blue-600 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors shrink-0 font-medium disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                      >
+                        {isEn ? 'Test' : 'Testen'}
+                      </button>
+                    </div>
+                    {aliasTestResult && (
+                      <div className="flex flex-col gap-1 font-mono text-xs">
+                        {aliasRead.trim() && (
+                          aliasTestResult.readErr
+                            ? <div className="text-red-500 dark:text-red-400">Read: <span className="text-red-600 dark:text-red-300">{aliasTestResult.readErr}</span></div>
+                            : <div className="text-gray-600 dark:text-gray-300">Read: <span className="text-green-700 dark:text-green-400 font-semibold">{aliasTestResult.read}</span></div>
+                        )}
+                        {aliasWrite.trim() && (
+                          aliasTestResult.writeErr
+                            ? <div className="text-red-500 dark:text-red-400">Write: <span className="text-red-600 dark:text-red-300">{aliasTestResult.writeErr}</span></div>
+                            : <div className="text-gray-600 dark:text-gray-300">Write: <span className="text-green-700 dark:text-green-400 font-semibold">{aliasTestResult.write}</span></div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {obj.common.alias && (
                   <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2.5 text-xs border border-amber-200 dark:border-amber-800/40">
