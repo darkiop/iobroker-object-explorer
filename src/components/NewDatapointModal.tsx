@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Check } from 'lucide-react';
 import { useCreateDatapoint, useAllRoles } from '../hooks/useStates';
+import { isValidIoBrokerId } from '../utils/validation';
 
 const STATE_TYPES = ['number', 'string', 'boolean', 'mixed'] as const;
 const OBJECT_TYPES = ['state', 'folder', 'device', 'channel'] as const;
@@ -58,8 +59,16 @@ export default function NewDatapointModal({ onClose, existingIds, initialId = ''
 
   function validate(): string {
     if (!id.trim()) return isEn ? 'ID is required.' : 'ID ist erforderlich.';
+    if (!isValidIoBrokerId(id)) return isEn ? 'Invalid ID format. Use only letters, digits, underscores, hyphens and dots (e.g. javascript.0.myValue).' : 'Ungültiges ID-Format. Nur Buchstaben, Ziffern, Unterstriche, Bindestriche und Punkte erlaubt (z.B. javascript.0.meinWert).';
     if (existingIds.has(id.trim())) return isEn ? `Datapoint "${id.trim()}" already exists.` : `Datenpunkt "${id.trim()}" existiert bereits.`;
     if (!name.trim()) return isEn ? 'Name is required.' : 'Name ist erforderlich.';
+    if (stateType === 'number' && min.trim() !== '' && max.trim() !== '') {
+      const minNum = Number(min);
+      const maxNum = Number(max);
+      if (!Number.isFinite(minNum)) return isEn ? 'Min must be a number.' : 'Min muss eine Zahl sein.';
+      if (!Number.isFinite(maxNum)) return isEn ? 'Max must be a number.' : 'Max muss eine Zahl sein.';
+      if (minNum >= maxNum) return isEn ? 'Min must be less than Max.' : 'Min muss kleiner als Max sein.';
+    }
     return '';
   }
 

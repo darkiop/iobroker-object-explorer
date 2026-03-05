@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { Sun, Moon, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Pencil, Loader2, AlertCircle, Check } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import LanguageDropdown from './LanguageDropdown';
+import { validatePort } from '../utils/validation';
 
 const LS_HOST_KEY = 'ioBrokerHost';
 
@@ -64,7 +65,9 @@ export default function Layout({
     const ip = hostIp.trim();
     const port = hostPort.trim();
     if (!ip) { setEditingHost(false); return; }
-    const val = port ? `${ip}:${port}` : ip;
+    const portError = validatePort(port);
+    if (portError) { setHostError(portError); return; }
+    const val = `${ip}:${port}`;
     if (val === currentHost) { setEditingHost(false); return; }
     setHostTesting(true);
     setHostError(null);

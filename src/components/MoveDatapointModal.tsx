@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, FolderInput, AlertTriangle } from 'lucide-react';
 import { useRenameDatapoint } from '../hooks/useStates';
 import type { IoBrokerObject, IoBrokerState } from '../types/iobroker';
+import { isValidIoBrokerId, isValidIdSegment } from '../utils/validation';
 
 interface Props {
   sourceId: string;
@@ -42,7 +43,9 @@ export default function MoveDatapointModal({ sourceId, sourceObj, sourceState, e
 
   function validate(): string {
     if (!name.trim()) return isEn ? 'Name is required.' : 'Name ist erforderlich.';
+    if (!isValidIdSegment(name)) return isEn ? 'Invalid name. Use only letters, digits, underscores and hyphens (no dots).' : 'Ungültiger Name. Nur Buchstaben, Ziffern, Unterstriche und Bindestriche erlaubt (keine Punkte).';
     if (!newPath.trim()) return isEn ? 'Path is required.' : 'Pfad ist erforderlich.';
+    if (!isValidIoBrokerId(newPath)) return isEn ? 'Invalid path format. Use only letters, digits, underscores, hyphens and dots.' : 'Ungültiges Pfad-Format. Nur Buchstaben, Ziffern, Unterstriche, Bindestriche und Punkte erlaubt.';
     if (newId === sourceId) return isEn ? 'New ID must differ from current ID.' : 'Neue ID muss sich von der aktuellen unterscheiden.';
     if (existingIds.has(newId)) return isEn ? `"${newId}" already exists.` : `„${newId}" existiert bereits.`;
     return '';

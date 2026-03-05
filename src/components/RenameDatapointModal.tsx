@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, PenLine, AlertTriangle } from 'lucide-react';
 import { useRenameDatapoint } from '../hooks/useStates';
 import type { IoBrokerObject, IoBrokerState } from '../types/iobroker';
+import { isValidIoBrokerId } from '../utils/validation';
 
 interface Props {
   sourceId: string;
@@ -41,6 +42,7 @@ export default function RenameDatapointModal({ sourceId, sourceObj, sourceState,
   function validate(): string {
     const id = newId.trim();
     if (!id) return isEn ? 'ID is required.' : 'ID ist erforderlich.';
+    if (!isValidIoBrokerId(id)) return isEn ? 'Invalid ID format. Use only letters, digits, underscores, hyphens and dots.' : 'Ungültiges ID-Format. Nur Buchstaben, Ziffern, Unterstriche, Bindestriche und Punkte erlaubt.';
     if (id === sourceId) return isEn ? 'New ID must differ from current ID.' : 'Neue ID muss sich von der aktuellen unterscheiden.';
     if (existingIds.has(id)) return isEn ? `"${id}" already exists.` : `„${id}" existiert bereits.`;
     return '';

@@ -10,12 +10,12 @@ Auth für REST API implementieren
 |---|---|---|---|---|---|
 | FE-001 | Type Safety verbessern: unsichere as-Casts entfernen, v.a. bei Enum-Name-Parsing und API-Responses. | Code Quality | hoch | M | umgesetzt |
 | FE-002 | React.memo() für StateList und StateTree einsetzen, da beide bei jedem App-Re-Render neu rendern trotz unveränderter Props. | Performance | hoch | M | umgesetzt |
-| FE-003 | Input-Validierung hinzufügen: Regex für Object-IDs, Min/Max für numerische Felder, XSS-Escaping für Namen-Eingaben. | Security | hoch | S | offen |
-| FE-004 | XSS-Schutz für JSON-Editor sicherstellen; keine Raw-HTML-Injection über Objektfelder möglich machen. | Security | hoch | S | offen |
+| FE-003 | Input-Validierung hinzufügen: Regex für Object-IDs, Min/Max für numerische Felder, XSS-Escaping für Namen-Eingaben. | Security | hoch | S | umgesetzt |
+| FE-004 | XSS-Schutz für JSON-Editor sicherstellen; keine Raw-HTML-Injection über Objektfelder möglich machen. | Security | hoch | S | umgesetzt |
 | FE-005 | Spalten-Sortierung in StateList: Klick auf Spaltenheader sortiert aufsteigend/absteigend (ID, Name, Rolle, Raum, Wert, Einheit). | Feature | hoch | M | umgesetzt |
 | FE-006 | Löschen-Button in Tabellenzeile: Löschen-Icon mit Confirmation Dialog; Mehrfachauswahl + Bulk-Delete. | Feature | hoch | M | umgesetzt |
-| FE-007 | Fehlerbehandlung verbessern: Aussagekräftige Fehlermeldungen, Toast-Notifications für Mutations-Erfolg/-Fehler. | Code Quality | hoch | M | offen |
-| FE-008 | Virtualisierung für StateList einsetzen: Bei 1000+ Einträgen werden alle DOM-Knoten gerendert. | Performance | hoch | L | offen |
+| FE-007 | Fehlerbehandlung verbessern: Aussagekräftige Fehlermeldungen, Toast-Notifications für Mutations-Erfolg/-Fehler. | Code Quality | hoch | M | umgesetzt |
+| FE-008 | Virtualisierung für StateList einsetzen: Bei 1000+ Einträgen werden alle DOM-Knoten gerendert. | Performance | hoch | L | umgesetzt |
 | FE-009 | Hardcodierte IP aus vite.config.ts in .env.local auslagern; Dev-Setup-Dokumentation aktualisieren. | DX | mittel | S | umgesetzt |
 | FE-010 | Spaltenreihenfolge in Tabelle anpassen: ID, Name, Typ, Rolle, Funktion, Wert, Einheit, ACK, Letztes Update. | UX | mittel | S | umgesetzt |
 | FE-011 | Typ-Spalte in Tabelle hinzufügen (folder/device/channel/state) mit entsprechendem Icon. | Feature | mittel | S | umgesetzt |
@@ -29,7 +29,7 @@ Auth für REST API implementieren
 | FE-019 | useStateValues()-Hook: Refetch pausieren wenn Tab/Window nicht sichtbar (Page Visibility API). | Performance | mittel | S | umgesetzt |
 | FE-020 | buildAliasReverseMap() in QueryClient cachen statt bei jedem Re-Render neu berechnen. | Performance | mittel | S | umgesetzt |
 | FE-021 | Keyboard-Navigation: Arrow Keys in Tabelle, Tab für Fokus, Enter zum Öffnen des Modals. | UX | mittel | M | offen |
-| FE-022 | Debouncing (300–500ms) für SearchBar und Column-Filter-Inputs statt sofortiger Filterung. | UX | mittel | S | offen |
+| FE-022 | Debouncing (300–500ms) für SearchBar und Column-Filter-Inputs statt sofortiger Filterung. | UX | mittel | S | umgesetzt |
 | FE-023 | E2E-Tests mit Playwright implementieren: Critical Paths Search→Select→Edit→Save abdecken. | Tooling | mittel | L | offen |
 | FE-024 | HistoryChart: Downsampling für >1000 Datenpunkte implementieren, da Recharts bei großen Mengen stockt. | Performance | mittel | M | offen |
 | FE-025 | Enum-Map-Parsing-Logik in gemeinsame Utility parseEnumName() zusammenführen. | Code Quality | niedrig | S | offen |

@@ -9,6 +9,7 @@ import CopyDatapointModal from './CopyDatapointModal';
 import RenameDatapointModal from './RenameDatapointModal';
 import MoveDatapointModal from './MoveDatapointModal';
 import type { IoBrokerObject, IoBrokerObjectCommon } from '../types/iobroker';
+import { useToast } from '../context/ToastContext';
 
 interface Props {
   id: string;
@@ -350,6 +351,7 @@ function CustomSettingRow({ fieldKey, value, onChange }: { fieldKey: string; val
 
 export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, language = 'en', dateFormat = 'de' }: Props) {
   const isEn = language === 'en';
+  const showToast = useToast();
   const [tab, setTab] = useState<Tab>('details');
   const [draft, setDraft] = useState(() => JSON.stringify(obj, null, 2));
   const [jsonError, setJsonError] = useState<string | null>(null);
@@ -448,11 +450,17 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
       return;
     }
     setJsonError(null);
-    putObject.mutate({ id, obj: parsed }, { onSuccess: onClose });
+    putObject.mutate({ id, obj: parsed }, {
+      onSuccess: onClose,
+      onError: (err) => setJsonError((isEn ? 'Save failed: ' : 'Speichern fehlgeschlagen: ') + String(err)),
+    });
   }
 
   function handleSaveCustom() {
-    putObject.mutate({ id, obj: { ...obj, common: { ...obj.common, custom: customDraft } } }, { onSuccess: onClose });
+    putObject.mutate({ id, obj: { ...obj, common: { ...obj.common, custom: customDraft } } }, {
+      onSuccess: onClose,
+      onError: (err) => showToast((isEn ? 'Save failed: ' : 'Speichern fehlgeschlagen: ') + String(err)),
+    });
   }
 
   function handleSaveAlias() {
@@ -467,7 +475,10 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
     } else {
       delete newCommon.alias;
     }
-    putObject.mutate({ id, obj: { ...obj, common: newCommon } }, { onSuccess: onClose });
+    putObject.mutate({ id, obj: { ...obj, common: newCommon } }, {
+      onSuccess: onClose,
+      onError: (err) => showToast((isEn ? 'Save failed: ' : 'Speichern fehlgeschlagen: ') + String(err)),
+    });
   }
 
   function handleSave() {

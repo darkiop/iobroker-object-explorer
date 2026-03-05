@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, Copy } from 'lucide-react';
 import { useCreateDatapoint } from '../hooks/useStates';
 import type { IoBrokerObject } from '../types/iobroker';
+import { isValidIoBrokerId } from '../utils/validation';
 
 interface Props {
   sourceId: string;
@@ -47,6 +48,7 @@ export default function CopyDatapointModal({ sourceId, sourceObj, existingIds, o
   function validate(): string {
     const id = newId.trim();
     if (!id) return isEn ? 'ID is required.' : 'ID ist erforderlich.';
+    if (!isValidIoBrokerId(id)) return isEn ? 'Invalid ID format. Use only letters, digits, underscores, hyphens and dots.' : 'Ungültiges ID-Format. Nur Buchstaben, Ziffern, Unterstriche, Bindestriche und Punkte erlaubt.';
     if (existingIds.has(id)) return isEn ? `"${id}" already exists.` : `„${id}" existiert bereits.`;
     if (!name.trim()) return isEn ? 'Name is required.' : 'Name ist erforderlich.';
     return '';

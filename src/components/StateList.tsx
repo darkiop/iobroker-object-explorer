@@ -18,6 +18,7 @@ import ValueEditModal from './ValueEditModal';
 import { hasHistory, isGlobPattern } from '../api/iobroker';
 import type { IoBrokerState, IoBrokerObject } from '../types/iobroker';
 import { copyText } from '../utils/clipboard';
+import { useToast } from '../context/ToastContext';
 
 interface StateListProps {
   ids: string[];
@@ -88,6 +89,7 @@ function resolveI18n(val: string | Record<string, string> | undefined): string |
 }
 
 const EditableNameCell = React.memo(function EditableNameCell({ id, name, desc }: { id: string; name: string; desc?: string }) {
+  const showToast = useToast();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(name);
   const extend = useExtendObject();
@@ -153,7 +155,7 @@ const EditableNameCell = React.memo(function EditableNameCell({ id, name, desc }
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
-              extend.mutate({ id, common: { name: draft } });
+              extend.mutate({ id, common: { name: draft } }, { onError: (err) => showToast('Speichern fehlgeschlagen: ' + String(err)) });
               setEditing(false);
             }
             if (e.key === 'Escape') setEditing(false);
@@ -164,7 +166,7 @@ const EditableNameCell = React.memo(function EditableNameCell({ id, name, desc }
         />
         <button
           onClick={() => {
-            extend.mutate({ id, common: { name: draft } });
+            extend.mutate({ id, common: { name: draft } }, { onError: (err) => showToast('Speichern fehlgeschlagen: ' + String(err)) });
             setEditing(false);
           }}
           disabled={extend.isPending}
@@ -193,6 +195,7 @@ const EditableRoleCell = React.memo(function EditableRoleCell({ id, role, sugges
   const cellRef = useRef<HTMLTableCellElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const extend = useExtendObject();
+  const showToast = useToast();
 
   const filtered = filter
     ? suggestions.filter((s) => s.toLowerCase().includes(filter.toLowerCase()))
@@ -215,7 +218,7 @@ const EditableRoleCell = React.memo(function EditableRoleCell({ id, role, sugges
   }
 
   function commit(val: string) {
-    extend.mutate({ id, common: { role: val } });
+    extend.mutate({ id, common: { role: val } }, { onError: (err) => showToast((isEn ? 'Save failed: ' : 'Speichern fehlgeschlagen: ') + String(err)) });
     close();
   }
 
@@ -305,6 +308,7 @@ const EditableUnitCell = React.memo(function EditableUnitCell({ id, unit, sugges
   const cellRef = useRef<HTMLTableCellElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const extend = useExtendObject();
+  const showToast = useToast();
 
   const filtered = filter
     ? suggestions.filter((s) => s.toLowerCase().includes(filter.toLowerCase()))
@@ -324,7 +328,7 @@ const EditableUnitCell = React.memo(function EditableUnitCell({ id, unit, sugges
   function close() { setEditing(false); setFilter(''); }
 
   function commit(val: string) {
-    extend.mutate({ id, common: { unit: val } });
+    extend.mutate({ id, common: { unit: val } }, { onError: (err) => showToast((isEn ? 'Save failed: ' : 'Speichern fehlgeschlagen: ') + String(err)) });
     close();
   }
 
@@ -415,6 +419,7 @@ const EditableTypeCell = React.memo(function EditableTypeCell({ id, typeValue, l
   const cellRef = useRef<HTMLTableCellElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const extend = useExtendObject();
+  const showToast = useToast();
 
   const filtered = filter
     ? TYPE_OPTIONS.filter((s) => s.toLowerCase().includes(filter.toLowerCase()))
@@ -438,7 +443,7 @@ const EditableTypeCell = React.memo(function EditableTypeCell({ id, typeValue, l
 
   function commit(val: string) {
     const trimmed = val.trim();
-    extend.mutate({ id, common: { type: trimmed || undefined } });
+    extend.mutate({ id, common: { type: trimmed || undefined } }, { onError: (err) => showToast((isEn ? 'Save failed: ' : 'Speichern fehlgeschlagen: ') + String(err)) });
     close();
   }
 
@@ -1654,6 +1659,10 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   const showToolbarLabels = toolbarLabels;
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [multiDeleteOpen, setMultiDeleteOpen] = useState(false);
+  const [colFiltersDraft, setColFiltersDraft] = useState<Partial<Record<SortKey, string>>>(colFilters);
+  const colFilterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const propagatingRef = useRef(false);
+  const showToast = useToast();
   const deleteObject = useDeleteObject();
   const extend = useExtendObject();
   const { data: roles = [] } = useAllRoles();
@@ -1832,6 +1841,12 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
     localStorage.setItem(LS_KEY, JSON.stringify(settingsVisibleCols));
   }, [settingsVisibleCols]);
 
+  // Sync external colFilters → draft (e.g. context menu, clear from App.tsx)
+  useEffect(() => {
+    if (propagatingRef.current) return;
+    setColFiltersDraft(colFilters);
+  }, [colFilters]);
+
   useEffect(() => {
     if (fulltextEnabled && pattern && !isGlobPattern(pattern) && pattern !== '*') {
       setSortKey('relevanz');
@@ -1841,6 +1856,25 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
       setSortDir('asc');
     }
   }, [pattern]);
+
+  function setDraftAndDebounce(draft: Partial<Record<SortKey, string>>) {
+    setColFiltersDraft(draft);
+    if (colFilterDebounceRef.current) clearTimeout(colFilterDebounceRef.current);
+    colFilterDebounceRef.current = setTimeout(() => {
+      colFilterDebounceRef.current = null;
+      propagatingRef.current = true;
+      onColFilterChange(draft);
+      setTimeout(() => { propagatingRef.current = false; }, 0);
+    }, 350);
+  }
+
+  function setDraftAndPropagate(draft: Partial<Record<SortKey, string>>) {
+    if (colFilterDebounceRef.current) { clearTimeout(colFilterDebounceRef.current); colFilterDebounceRef.current = null; }
+    setColFiltersDraft(draft);
+    propagatingRef.current = true;
+    onColFilterChange(draft);
+    setTimeout(() => { propagatingRef.current = false; }, 0);
+  }
 
   const show = (key: SortKey) => visibleCols.includes(key);
   const w = (key: SortKey) => colWidths[key];
@@ -1945,7 +1979,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
     });
   }, [sortedIds, valueFilter, tsFilterParsed, dateFormat, (valueFilter || tsFilterParsed.mode !== 'none') ? states : null]);
 
-  const hasColFilters = Object.values(colFilters).some((v) => v.trim() !== '');
+  const hasColFilters = Object.values(colFiltersDraft).some((v) => v.trim() !== '');
 
   const totalWidth = DEL_COL_WIDTH + visibleCols.reduce((sum, k) => sum + colWidths[k], 0);
 
@@ -1961,14 +1995,20 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   }
 
   function handleDeleteOne(id: string) {
-    deleteObject.mutate(id);
+    deleteObject.mutate(id, {
+      onSuccess: () => showToast(isEn ? `Deleted: ${id}` : `Gelöscht: ${id}`, 'success'),
+      onError: (err) => showToast((isEn ? 'Delete failed: ' : 'Löschen fehlgeschlagen: ') + String(err)),
+    });
     setCheckedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
   }
 
   function handleDeleteAll(ids: string[]) {
-    Promise.all(ids.map((id) => deleteObject.mutateAsync(id))).then(() => {
-      setCheckedIds((prev) => { const next = new Set(prev); ids.forEach((id) => next.delete(id)); return next; });
-    });
+    Promise.all(ids.map((id) => deleteObject.mutateAsync(id)))
+      .then(() => {
+        setCheckedIds((prev) => { const next = new Set(prev); ids.forEach((id) => next.delete(id)); return next; });
+        showToast(isEn ? `${ids.length} datapoints deleted` : `${ids.length} Datenpunkte gelöscht`, 'success');
+      })
+      .catch((err) => showToast((isEn ? 'Delete failed: ' : 'Löschen fehlgeschlagen: ') + String(err)));
   }
 
   const handleCheckRow = React.useCallback((id: string, checked: boolean) => {
@@ -2007,19 +2047,20 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
 
   function handleBatchApply() {
     const ids = [...checkedIds];
+    const onErr = (err: unknown) => showToast((isEn ? 'Save failed: ' : 'Speichern fehlgeschlagen: ') + String(err));
     if (batchRole.trim()) {
-      ids.forEach((id) => extend.mutate({ id, common: { role: batchRole.trim() } }));
+      ids.forEach((id) => extend.mutate({ id, common: { role: batchRole.trim() } }, { onError: onErr }));
     }
     if (batchUnit.trim()) {
-      ids.forEach((id) => extend.mutate({ id, common: { unit: batchUnit.trim() } }));
+      ids.forEach((id) => extend.mutate({ id, common: { unit: batchUnit.trim() } }, { onError: onErr }));
     }
     if (batchRoomEnumId !== '') {
       const newRoomEnumId = batchRoomEnumId === '__none__' ? null : batchRoomEnumId;
-      updateRoomBatch.mutate({ objectIds: ids, newRoomEnumId });
+      updateRoomBatch.mutate({ objectIds: ids, newRoomEnumId }, { onError: onErr });
     }
     if (batchFnEnumId !== '') {
       const newFnEnumId = batchFnEnumId === '__none__' ? null : batchFnEnumId;
-      updateFnBatch.mutate({ objectIds: ids, newFnEnumId });
+      updateFnBatch.mutate({ objectIds: ids, newFnEnumId }, { onError: onErr });
     }
     setBatchRole('');
     setBatchUnit('');
@@ -2180,7 +2221,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
         </button>
         {hasColFilters && (
           <button
-            onClick={() => onColFilterChange({})}
+            onClick={() => setDraftAndPropagate({})}
             title="Spaltenfilter löschen"
             className="p-2 rounded-lg transition-colors text-blue-500 hover:text-blue-700 hover:bg-blue-500/10 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-500/10"
           >
@@ -2353,7 +2394,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
             localStorage.removeItem(LS_WIDTHS_KEY);
             setVisibleCols(DEFAULT_COLS);
             setColWidths({ ...DEFAULT_WIDTHS });
-            onColFilterChange({});
+            setDraftAndPropagate({});
             setConfirmResetLs(false);
           }}
           onCancel={() => setConfirmResetLs(false)}
@@ -2434,7 +2475,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
           items.push({ icon: <History size={13} />, label: isEn ? 'Show history' : 'History anzeigen', onClick: () => setHistoryModalId(ctxId) });
           items.push({ separator: true } as const);
         }
-        items.push({ icon: <Search size={13} />, label: isEn ? 'Set as filter' : 'Als Filter setzen', onClick: () => onColFilterChange({ ...colFilters, id: ctxId }) });
+        items.push({ icon: <Search size={13} />, label: isEn ? 'Set as filter' : 'Als Filter setzen', onClick: () => setDraftAndPropagate({ ...colFiltersDraft, id: ctxId }) });
         items.push({ icon: <Home size={13} />, label: isEn ? 'Edit room' : 'Raum bearbeiten', onClick: () => setRoomEditId(ctxId) });
         items.push({ icon: <Zap size={13} />, label: isEn ? 'Edit function' : 'Funktion bearbeiten', onClick: () => setFnEditId(ctxId) });
         items.push({ icon: <FileEdit size={13} />, label: isEn ? 'Edit object' : 'Objekt bearbeiten', onClick: () => setEditObjId(ctxId) });
@@ -2491,7 +2532,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
               {(['write','history','smart','alias','id','name','room','function','type','role','value','unit','ack','ts'] as SortKey[]).filter(show).map((key) => {
                 const filterable = ['id','name','room','function','type','role','value','unit','ts'].includes(key);
                 const isIconToggle = ['write','history','smart','alias'].includes(key);
-                const isActive = colFilters[key] === '1';
+                const isActive = colFiltersDraft[key] === '1';
 
                 if (isIconToggle) {
                   const icon = key === 'write'
@@ -2518,7 +2559,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                   return (
                     <th key={key} style={{ width: w(key) }} className="py-1 text-center align-middle" onClick={(e) => e.stopPropagation()}>
                       <button
-                        onClick={() => onColFilterChange({ ...colFilters, [key]: isActive ? '' : '1' })}
+                        onClick={() => setDraftAndPropagate({ ...colFiltersDraft, [key]: isActive ? '' : '1' })}
                         title={title}
                         className={`p-0.5 rounded transition-colors ${isActive ? activeClass : 'text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400'}`}
                       >
@@ -2534,8 +2575,8 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                       <div className="relative flex items-center" onClick={(e) => e.stopPropagation()}>
                         {(key === 'role' || key === 'room' || key === 'function' || key === 'unit' || key === 'type') ? (
                           <BatchComboControl
-                            value={colFilters[key] || ''}
-                            onChange={(value) => onColFilterChange({ ...colFilters, [key]: value })}
+                            value={colFiltersDraft[key] || ''}
+                            onChange={(value) => setDraftAndDebounce({ ...colFiltersDraft, [key]: value })}
                             placeholder="Filter..."
                             options={
                               key === 'role'
@@ -2553,27 +2594,27 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                           />
                         ) : key === 'ts' ? (
                           <TsRangeFilterControl
-                            value={colFilters.ts || ''}
-                            onChange={(value) => onColFilterChange({ ...colFilters, ts: value })}
+                            value={colFiltersDraft.ts || ''}
+                            onChange={(value) => setDraftAndDebounce({ ...colFiltersDraft, ts: value })}
                             language={language}
                           />
                         ) : (
                           <>
                             <input
                               type="text"
-                              value={colFilters[key] || ''}
-                              onChange={(e) => onColFilterChange({ ...colFilters, [key]: e.target.value })}
-                              onKeyDown={(e) => { if (e.key === 'Escape' && colFilters[key]?.trim()) { e.stopPropagation(); onColFilterChange({ ...colFilters, [key]: '' }); } }}
+                              value={colFiltersDraft[key] || ''}
+                              onChange={(e) => setDraftAndDebounce({ ...colFiltersDraft, [key]: e.target.value })}
+                              onKeyDown={(e) => { if (e.key === 'Escape' && colFiltersDraft[key]?.trim()) { e.stopPropagation(); setDraftAndPropagate({ ...colFiltersDraft, [key]: '' }); } }}
                               placeholder="Filter..."
                               className={`w-full h-7 py-0 text-xs rounded border bg-gray-50/70 dark:bg-gray-800/70 text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500 ${
-                                colFilters[key]?.trim()
+                                colFiltersDraft[key]?.trim()
                                   ? 'pl-1.5 pr-5 border-blue-400 dark:border-blue-500'
                                   : 'px-1.5 border-gray-300 dark:border-gray-600'
                               }`}
                             />
-                            {colFilters[key]?.trim() && (
+                            {colFiltersDraft[key]?.trim() && (
                               <button
-                                onMouseDown={(e) => { e.preventDefault(); onColFilterChange({ ...colFilters, [key]: '' }); }}
+                                onMouseDown={(e) => { e.preventDefault(); setDraftAndPropagate({ ...colFiltersDraft, [key]: '' }); }}
                                 className="absolute right-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                               >
                                 <X size={12} />
