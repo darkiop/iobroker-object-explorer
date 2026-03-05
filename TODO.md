@@ -50,7 +50,7 @@ Auth für REST API implementieren
 | FE-040 | Chart-Export als PNG: Button im HistoryModal der den Chart als Bilddatei herunterlädt. | Chart | mittel | S | umgesetzt |
 | FE-041 | History-Adapter auswählbar: Aktuell hardcodiert auf sql.0; Unterstützung für influxdb.0 und history.0. | Feature | mittel | M | offen |
 | FE-042 | Batch-Bearbeitung: Mehrere selektierte Zeilen gleichzeitig editieren (Rolle, Einheit, Raum, Funktion). | Feature | mittel | M | umgesetzt |
-| FE-043 | Schwellwert-Highlighting: Min/Max-Schwellwerte pro Datenpunkt; Zeile leuchtet rot/gelb wenn Wert außerhalb liegt. | Feature | mittel | M | offen |
+| FE-043 | Schwellwert-Highlighting: Min/Max-Schwellwerte pro Datenpunkt; Zeile leuchtet rot/gelb wenn Wert außerhalb liegt. | Feature | mittel | M | umgesetzt |
 | FE-044 | Alias-Formel-Tester: Read/Write-Formeln im Alias-Tab direkt testbar machen. | Feature | mittel | S | offen |
 | FE-045 | Adapter-Gruppierung im Baum: Optionale Ansicht die Datenpunkte nach Adapter gruppiert statt nach Pfadhierarchie. | Feature | niedrig | L | offen |
 | FE-046 | Periodischer Vergleich im Chart: Aktuellen Zeitraum mit gleichem Zeitraum letzte Woche überlagern. | Chart | niedrig | M | umgesetzt |

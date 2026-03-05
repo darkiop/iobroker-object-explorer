@@ -76,6 +76,24 @@ function formatValue(val: unknown): string {
   }
 }
 
+function getThresholdStatus(
+  val: unknown,
+  min: number | undefined,
+  max: number | undefined,
+): 'exceeded' | 'warn' | null {
+  if (typeof val !== 'number' || !Number.isFinite(val)) return null;
+  if (min === undefined && max === undefined) return null;
+
+  if ((max !== undefined && val > max) || (min !== undefined && val < min)) return 'exceeded';
+
+  if (min !== undefined && max !== undefined && max > min) {
+    const warnZone = (max - min) * 0.1;
+    if (val <= min + warnZone || val >= max - warnZone) return 'warn';
+  }
+
+  return null;
+}
+
 function getObjectName(obj: IoBrokerObject | undefined): string {
   if (!obj?.common?.name) return '';
   if (typeof obj.common.name === 'string') return obj.common.name;
@@ -559,9 +577,15 @@ const EditableValueCell = React.memo(function EditableValueCell({
   const isSwitch = role === 'switch' || role.startsWith('switch.');
   const isButton = role === 'button' || role.startsWith('button.');
 
+  const thresholdStatus = isNumber
+    ? getThresholdStatus(val, obj?.common?.min, obj?.common?.max)
+    : null;
+
   let valueColor = 'text-gray-900 dark:text-white';
   if (isNull) valueColor = 'text-gray-300 dark:text-gray-600';
   else if (isBoolean) valueColor = val ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400';
+  else if (thresholdStatus === 'exceeded') valueColor = 'text-red-600 dark:text-red-400 font-semibold';
+  else if (thresholdStatus === 'warn') valueColor = 'text-yellow-600 dark:text-yellow-400';
 
   let trendIcon: React.ReactNode = null;
   const prev = prevValRef.current;
