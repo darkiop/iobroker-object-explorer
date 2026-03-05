@@ -1139,8 +1139,9 @@ function loadVisibleCols(): SortKey[] {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (raw) {
-      const parsed = JSON.parse(raw) as SortKey[];
-      const valid = parsed.filter((k) => ALL_COLUMNS.some((c) => c.key === k));
+      const parsedCols: unknown = JSON.parse(raw);
+      const parsed = Array.isArray(parsedCols) ? parsedCols as unknown[] : [];
+      const valid = parsed.filter((k): k is SortKey => typeof k === 'string' && ALL_COLUMNS.some((c) => c.key === k));
       if (valid.length > 0) return valid;
     }
   } catch { /* ignore */ }
@@ -1181,8 +1182,15 @@ function loadColWidths(): Record<SortKey, number> {
   try {
     const raw = localStorage.getItem(LS_WIDTHS_KEY);
     if (raw) {
-      const parsed = JSON.parse(raw) as Partial<Record<SortKey, number>>;
-      return clampColWidths({ ...DEFAULT_WIDTHS, ...parsed });
+      const parsedWidths: unknown = JSON.parse(raw);
+      if (typeof parsedWidths === 'object' && parsedWidths !== null && !Array.isArray(parsedWidths)) {
+        const validated = Object.fromEntries(
+          Object.entries(parsedWidths as Record<string, unknown>)
+            .filter(([k, v]) => ALL_COLUMNS.some((c) => c.key === k) && typeof v === 'number')
+            .map(([k, v]) => [k, v as number])
+        ) as Partial<Record<SortKey, number>>;
+        return clampColWidths({ ...DEFAULT_WIDTHS, ...validated });
+      }
     }
   } catch { /* ignore */ }
   return clampColWidths({ ...DEFAULT_WIDTHS });

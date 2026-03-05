@@ -23,6 +23,11 @@ export function isGlobPattern(pattern: string): boolean {
   return pattern.includes('*');
 }
 
+function parseLocalizedName(raw: string | Record<string, string>): string {
+  if (typeof raw === 'string') return raw;
+  return raw.de || raw.en || Object.values(raw)[0] || '';
+}
+
 function getNameString(name: string | Record<string, string> | undefined): string {
   if (!name) return '';
   if (typeof name === 'string') return name;
@@ -221,17 +226,7 @@ export async function getRoomMap(): Promise<Record<string, string>> {
     if (!obj.enums) continue;
     for (const [enumId, enumName] of Object.entries(obj.enums)) {
       if (enumId.startsWith('enum.rooms.')) {
-        const raw = enumName as unknown;
-        let name: string;
-        if (typeof raw === 'string') {
-          name = raw;
-        } else if (raw && typeof raw === 'object') {
-          const langs = raw as Record<string, string>;
-          name = langs.de || langs.en || Object.values(langs)[0] || '';
-        } else {
-          name = '';
-        }
-        map[id] = name;
+        map[id] = parseLocalizedName(enumName);
         break;
       }
     }
@@ -346,17 +341,7 @@ export async function getFunctionMap(): Promise<Record<string, string>> {
     if (!obj.enums) continue;
     for (const [enumId, enumName] of Object.entries(obj.enums)) {
       if (enumId.startsWith('enum.functions.')) {
-        const raw = enumName as unknown;
-        let name: string;
-        if (typeof raw === 'string') {
-          name = raw;
-        } else if (raw && typeof raw === 'object') {
-          const langs = raw as Record<string, string>;
-          name = langs.de || langs.en || Object.values(langs)[0] || '';
-        } else {
-          name = '';
-        }
-        map[id] = name;
+        map[id] = parseLocalizedName(enumName);
         break;
       }
     }
@@ -377,12 +362,7 @@ export async function getFunctionEnums(): Promise<Array<{ id: string; name: stri
   for (const [id, obj] of Object.entries(res)) {
     if (!id.startsWith('enum.functions.')) continue;
     const raw = obj.common?.name;
-    let name = '';
-    if (typeof raw === 'string') name = raw;
-    else if (raw && typeof raw === 'object') {
-      const langs = raw as Record<string, string>;
-      name = langs.de || langs.en || Object.values(langs)[0] || id;
-    }
+    const name = raw ? parseLocalizedName(raw) || id : id;
     fns.push({ id, name });
   }
   return fns.sort((a, b) => a.name.localeCompare(b.name));
@@ -434,12 +414,7 @@ export async function getRoomEnums(): Promise<Array<{ id: string; name: string }
   for (const [id, obj] of Object.entries(res)) {
     if (!id.startsWith('enum.rooms.')) continue;
     const raw = obj.common?.name;
-    let name = '';
-    if (typeof raw === 'string') name = raw;
-    else if (raw && typeof raw === 'object') {
-      const langs = raw as Record<string, string>;
-      name = langs.de || langs.en || Object.values(langs)[0] || id;
-    }
+    const name = raw ? parseLocalizedName(raw) || id : id;
     rooms.push({ id, name });
   }
   return rooms.sort((a, b) => a.name.localeCompare(b.name));

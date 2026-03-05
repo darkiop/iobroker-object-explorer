@@ -89,11 +89,17 @@ function loadAppSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(LS_APP_SETTINGS);
     if (!raw) return fallback;
-    const parsed = JSON.parse(raw) as Partial<AppSettings>;
+    const unknown: unknown = JSON.parse(raw);
+    if (typeof unknown !== 'object' || unknown === null) return fallback;
+    const parsed = unknown as Partial<AppSettings>;
     const validLanguage = parsed.language === 'de' || parsed.language === 'en' ? parsed.language : 'en';
-    const validCols = (parsed.visibleCols ?? []).filter((k): k is SortKey => ALL_COLUMNS.some((c) => c.key === k));
+    const validCols = Array.isArray(parsed.visibleCols)
+      ? parsed.visibleCols.filter((k): k is SortKey => ALL_COLUMNS.some((c) => c.key === k))
+      : [];
     const validDate = parsed.dateFormat === 'de' || parsed.dateFormat === 'us' || parsed.dateFormat === 'iso' ? parsed.dateFormat : 'de';
-    const validExtra = (parsed.extraQuickFilters ?? []).map(normalizeQuickPattern).filter(Boolean);
+    const validExtra = Array.isArray(parsed.extraQuickFilters)
+      ? parsed.extraQuickFilters.filter((x): x is string => typeof x === 'string').map(normalizeQuickPattern).filter(Boolean)
+      : [];
     const parsedPageSize = typeof parsed.pageSize === 'number' && PAGE_SIZE_OPTIONS.includes(parsed.pageSize) ? parsed.pageSize : 50;
     return {
       language: validLanguage,
@@ -383,8 +389,9 @@ function AppContent() {
     try {
       const rawCols = localStorage.getItem('iobroker-visible-cols');
       if (rawCols) {
-        const parsed = JSON.parse(rawCols) as SortKey[];
-        const valid = parsed.filter((k) => ALL_COLUMNS.some((c) => c.key === k));
+        const parsedCols: unknown = JSON.parse(rawCols);
+        const parsed = Array.isArray(parsedCols) ? parsedCols as unknown[] : [];
+        const valid = parsed.filter((k): k is SortKey => typeof k === 'string' && ALL_COLUMNS.some((c) => c.key === k));
         if (valid.length > 0) latest.visibleCols = valid;
       }
     } catch {

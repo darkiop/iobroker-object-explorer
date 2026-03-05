@@ -8,7 +8,7 @@ import ConfirmDialog from './ConfirmDialog';
 import CopyDatapointModal from './CopyDatapointModal';
 import RenameDatapointModal from './RenameDatapointModal';
 import MoveDatapointModal from './MoveDatapointModal';
-import type { IoBrokerObject } from '../types/iobroker';
+import type { IoBrokerObject, IoBrokerObjectCommon } from '../types/iobroker';
 
 interface Props {
   id: string;
@@ -360,11 +360,11 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
   const [showMove, setShowMove] = useState(false);
 
   // Custom Settings tab state
-  const [customDraft, setCustomDraft] = useState<Record<string, Record<string, unknown>>>(
-    () => (obj.common.custom as Record<string, Record<string, unknown>>) ?? {}
+  const [customDraft, setCustomDraft] = useState<NonNullable<IoBrokerObjectCommon['custom']>>(
+    () => obj.common.custom ?? {}
   );
   const [expandedAdapters, setExpandedAdapters] = useState<Set<string>>(
-    () => new Set(Object.keys((obj.common.custom as Record<string, Record<string, unknown>>) ?? {}))
+    () => new Set(Object.keys(obj.common.custom ?? {}))
   );
 
   function toggleAdapter(adapterId: string) {
