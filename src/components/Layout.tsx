@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Sun, Moon, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Pencil, Loader2, AlertCircle, Check } from 'lucide-react';
+import { Sun, Moon, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Pencil, Loader2, AlertCircle, Check, Maximize, Minimize } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import LanguageDropdown from './LanguageDropdown';
 import { validateHost, validatePort } from '../utils/validation';
@@ -42,6 +42,21 @@ export default function Layout({
   const startWidth = useRef(0);
   const sidebarWidthRef = useRef(sidebarWidth);
   const { dark, toggle } = useTheme();
+  const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
+
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
+
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      void document.documentElement.requestFullscreen();
+    } else {
+      void document.exitFullscreen();
+    }
+  }
 
   const currentHost = localStorage.getItem(LS_HOST_KEY) ?? window.__CONFIG__?.ioBrokerHost ?? '';
   const [editingHost, setEditingHost] = useState(false);
@@ -237,6 +252,13 @@ export default function Layout({
             title={language === 'en' ? 'Keyboard shortcuts' : 'Tastenkürzel'}
           >
             <CircleHelp size={16} />
+          </button>
+          <button
+            onClick={toggleFullscreen}
+            className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
+            title={isFullscreen ? (language === 'en' ? 'Exit fullscreen' : 'Vollbild beenden') : (language === 'en' ? 'Fullscreen' : 'Vollbild')}
+          >
+            {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
           </button>
         </div>
       </header>
