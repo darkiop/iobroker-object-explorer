@@ -24,7 +24,7 @@ export function isValidIdSegment(segment: string): boolean {
 const HOST_RE = /^((25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(25[0-5]|2[0-4]\d|[01]?\d\d?)$|^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/;
 
 export function validateHost(host: string): string | null {
-  if (!HOST_RE.test(host)) return 'Ungültige IP-Adresse oder Hostname.';
+  if (!HOST_RE.test(host)) return 'Invalid IP address or hostname.';
   return null;
 }
 
@@ -33,8 +33,8 @@ export function validateHost(host: string): string | null {
  */
 export function validatePort(port: string): string | null {
   const trimmed = port.trim();
-  if (!trimmed) return 'Port ist erforderlich.';
+  if (!trimmed) return 'Port is required.';
   const n = Number(trimmed);
-  if (!Number.isInteger(n) || n < 1 || n > 65535) return 'Port muss eine Zahl zwischen 1 und 65535 sein.';
+  if (!Number.isInteger(n) || n < 1 || n > 65535) return 'Port must be a number between 1 and 65535.';
   return null;
 }

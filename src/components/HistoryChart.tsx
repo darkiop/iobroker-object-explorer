@@ -357,7 +357,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
       setConfirmAction({ type: 'entry', ts: payload.ts, val: payload.val });
       return;
     }
-    // Fallback: über activeTooltipIndex
+    // Fallback: via activeTooltipIndex
     const idx = state.activeTooltipIndex;
     if (idx != null && chartData[idx]) {
       const point = chartData[idx];

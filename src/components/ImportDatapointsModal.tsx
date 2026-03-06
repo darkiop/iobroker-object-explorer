@@ -150,10 +150,10 @@ function validateImportData(json: string): { data: Record<string, IoBrokerObject
   try {
     parsed = JSON.parse(json);
   } catch (e) {
-    return { data: {}, error: e instanceof Error ? e.message : 'Ungültiges JSON' };
+    return { data: {}, error: e instanceof Error ? e.message : 'Invalid JSON' };
   }
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    return { data: {}, error: 'JSON muss ein Objekt sein (Record<id, object>)' };
+    return { data: {}, error: 'JSON must be an object (Record<id, object>)' };
   }
   return { data: parsed as Record<string, IoBrokerObject>, error: '' };
 }

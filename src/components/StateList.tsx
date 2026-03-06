@@ -1453,7 +1453,7 @@ const StateRow = React.memo(function StateRow({
         </td>
       )}
       {show('write') && (
-        <td style={{ width: colWidths['write'], minWidth: colWidths['write'] }} className="py-2 align-middle" title={obj?.common?.write === false ? 'Schreibgeschützt' : undefined}>
+        <td style={{ width: colWidths['write'], minWidth: colWidths['write'] }} className="py-2 align-middle" title={obj?.common?.write === false ? 'Read-only' : undefined}>
           <div className="flex items-center justify-center">
             {obj?.common?.write === false && <Lock size={13} className="text-red-500 dark:text-red-400" />}
           </div>
@@ -1619,7 +1619,7 @@ const StateRow = React.memo(function StateRow({
       <td style={{ width: DEL_COL_WIDTH, minWidth: DEL_COL_WIDTH }} className="py-1 pr-2 text-center" onClick={(e) => e.stopPropagation()}>
         <button
           onClick={() => onDeleteClick(id)}
-          title="Datenpunkt löschen"
+          title="Delete datapoint"
           className={`p-1 rounded transition-colors hover:bg-red-500/10 ${isChecked ? 'text-red-500 dark:text-red-400' : 'text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400'}`}
         ><Trash2 size={13} /></button>
       </td>
@@ -2258,7 +2258,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
         {hasColFilters && (
           <button
             onClick={() => setDraftAndPropagate({})}
-            title="Spaltenfilter löschen"
+            title="Clear column filters"
             className="p-2 rounded-lg transition-colors text-blue-500 hover:text-blue-700 hover:bg-blue-500/10 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-500/10"
           >
             <X size={17} />
