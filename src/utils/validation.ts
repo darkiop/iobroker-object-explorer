@@ -19,6 +19,16 @@ export function isValidIdSegment(segment: string): boolean {
 }
 
 /**
+ * Validates an IP address (v4) or hostname/FQDN. Returns an error message or null if valid.
+ */
+const HOST_RE = /^((25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(25[0-5]|2[0-4]\d|[01]?\d\d?)$|^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/;
+
+export function validateHost(host: string): string | null {
+  if (!HOST_RE.test(host)) return 'Ungültige IP-Adresse oder Hostname.';
+  return null;
+}
+
+/**
  * Validates a port string. Returns an error message or null if valid.
  */
 export function validatePort(port: string): string | null {

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 import { createPortal } from 'react-dom';
 import DOMPurify from 'dompurify';
 import { Check, X } from 'lucide-react';
@@ -158,13 +159,7 @@ export default function ValueEditModal({ id, state, obj, onClose, language = 'en
     setError('');
   }, [id, state?.val, state?.ack]);
 
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
-    }
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
+  useEscapeKey(onClose);
 
   const jsonText = useMemo(() => getJsonText(state?.val), [state?.val]);
   const jsonTokens = useMemo(() => (jsonText ? tokenizeJson(jsonText) : []), [jsonText]);

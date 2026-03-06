@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 import { createPortal } from 'react-dom';
 import { X, Check } from 'lucide-react';
 import { useCreateDatapoint, useAllRoles } from '../hooks/useStates';
@@ -45,13 +46,7 @@ export default function NewDatapointModal({ onClose, existingIds, initialId = ''
     idRef.current?.focus();
   }, []);
 
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
-    }
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
+  useEscapeKey(onClose);
 
   const filteredRoles = role.trim()
     ? roles.filter((r) => r.toLowerCase().includes(role.toLowerCase()))

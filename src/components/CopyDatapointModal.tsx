@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Copy } from 'lucide-react';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 import { useCreateDatapoint } from '../hooks/useStates';
 import type { IoBrokerObject } from '../types/iobroker';
 import { isValidIoBrokerId } from '../utils/validation';
@@ -37,13 +38,7 @@ export default function CopyDatapointModal({ sourceId, sourceObj, existingIds, o
     inputRef.current?.select();
   }, []);
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
-    }
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  useEscapeKey(onClose);
 
   function validate(): string {
     const id = newId.trim();

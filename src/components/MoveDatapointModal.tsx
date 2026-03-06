@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X, FolderInput, AlertTriangle } from 'lucide-react';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 import { useRenameDatapoint } from '../hooks/useStates';
 import type { IoBrokerObject, IoBrokerState } from '../types/iobroker';
 import { isValidIoBrokerId, isValidIdSegment } from '../utils/validation';
@@ -33,13 +34,7 @@ export default function MoveDatapointModal({ sourceId, sourceObj, sourceState, e
     inputRef.current?.select();
   }, []);
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
-    }
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  useEscapeKey(onClose);
 
   function validate(): string {
     if (!name.trim()) return isEn ? 'Name is required.' : 'Name ist erforderlich.';

@@ -53,11 +53,11 @@ export default function ContextMenu({ x, y, items, onClose }: ContextMenuProps) 
     >
       {items.map((item, i) => {
         if ('separator' in item) {
-          return <div key={i} className="my-1 border-t border-gray-200 dark:border-gray-700" />;
+          return <div key={`sep-${i}`} className="my-1 border-t border-gray-200 dark:border-gray-700" />;
         }
         return (
           <button
-            key={i}
+            key={item.label}
             onClick={() => { item.onClick(); onClose(); }}
             className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-left transition-colors ${
               item.danger

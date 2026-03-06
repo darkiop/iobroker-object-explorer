@@ -365,7 +365,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
             <Cpu size={15} className="text-sky-500/80 shrink-0" />
           ) : objectType === 'channel' ? (
             <Layers size={15} className="text-indigo-500/80 shrink-0" />
-          ) : depth === 1 ? (
+          ) : node.fullPath.split('.').length === 2 ? (
             <HardDrive size={15} className="text-amber-500/80 shrink-0" />
           ) : (
             isExpandableFolder && expanded

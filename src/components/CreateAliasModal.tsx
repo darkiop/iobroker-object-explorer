@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 import { createPortal } from 'react-dom';
 import { X, Link2, ArrowRight } from 'lucide-react';
 import { useCreateDatapoint } from '../hooks/useStates';
@@ -64,13 +65,7 @@ export default function CreateAliasModal({ sourceId, sourceObj, existingIds, onC
     inputRef.current?.select();
   }, []);
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
-    }
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  useEscapeKey(onClose);
 
   function validate(): string {
     const id = aliasId.trim();

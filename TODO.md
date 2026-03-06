@@ -66,14 +66,14 @@ Auth für REST API implementieren
 | FE-056 | JSON-Editor im Objekt-bearbeiten-Modal: prüfen ob vollständiges Objekt-JSON bearbeitbar und speicherbar. | Feature | mittel | S | offen |
 | FE-057 | CLAUDE.md aktualisieren: Architektur-Beschreibung, neue Komponenten und aktuelle Stack-Entscheidungen. | DX | niedrig | S | offen |
 | FE-058 | README.md aktualisieren: Features, Screenshots, Konfiguration und Entwicklungs-Setup dokumentieren. | DX | niedrig | M | offen |
-| FE-059 | Alias: Verschiedene IDs für Lesen und Schreiben (common.alias.read und common.alias.write als separate IDs). | Feature | mittel | M | offen |
+| FE-059 | Alias: Verschiedene IDs für Lesen und Schreiben (common.alias.read und common.alias.write als separate IDs). | Feature | mittel | M | umgesetzt |
 | FE-060 | MIT-Lizenzdatei erstellen: LICENSE-Datei mit aktuellem Jahr und Copyright-Inhaber anlegen. | DX | niedrig | S | offen |
-| FE-061 | Bug: Ordner-Symbol fehlt im Objekt-Baum — Folder-Knoten zeigen kein Icon mehr. | Bug | hoch | S | offen |
+| FE-061 | Bug: Ordner-Symbol fehlt im Objekt-Baum — Folder-Knoten zeigen kein Icon mehr. | Bug | hoch | S | umgesetzt |
 | FE-062 | XSS über dangerouslySetInnerHTML in ValueEditModal: HTML-Werte aus ioBroker-States werden ohne Sanitisierung gerendert (`<img onerror=...>` möglich). DOMPurify einsetzen oder HTML-Rendering deaktivieren. | Security | hoch | S | umgesetzt |
-| FE-063 | Host-URL ohne Format-Validierung: Custom-Host-Eingabe in Layout.tsx wird ohne IP/FQDN-Prüfung direkt als fetch-URL übernommen. Regex-Validierung vor Speicherung. | Security | mittel | S | offen |
+| FE-063 | Host-URL ohne Format-Validierung: Custom-Host-Eingabe in Layout.tsx wird ohne IP/FQDN-Prüfung direkt als fetch-URL übernommen. Regex-Validierung vor Speicherung. | Security | mittel | S | umgesetzt |
 | FE-064 | HTTP statt HTTPS für Custom-Host: Custom-Host-URLs werden immer als `http://` konstruiert, kein HTTPS-Support möglich. | Security | niedrig | S | offen |
 | FE-065 | CORS-Fehler nicht erkennbar: kein spezifisches Error-Handling für CORS-Preflight-Fehler; Nutzer sieht nur generischen Netzwerkfehler ohne Hinweis auf CORS-Konfiguration. | UX | niedrig | S | offen |
-| FE-066 | filterObjectIds.ts: 12 sequentielle `.filter()`-Aufrufe (je O(n)) zu einem einzigen Pass zusammenführen → O(n) statt O(12n) bei großen Objektmengen. | Performance | mittel | S | offen |
-| FE-067 | ContextMenu: Array-Index als React-`key` statt stabiler Label-basierter ID — verursacht fehlerhafte DOM-Wiederverwendung bei dynamisch generierten Menüs. | Performance | niedrig | S | offen |
+| FE-066 | filterObjectIds.ts: 12 sequentielle `.filter()`-Aufrufe (je O(n)) zu einem einzigen Pass zusammenführen → O(n) statt O(12n) bei großen Objektmengen. | Performance | mittel | S | umgesetzt |
+| FE-067 | ContextMenu: Array-Index als React-`key` statt stabiler Label-basierter ID — verursacht fehlerhafte DOM-Wiederverwendung bei dynamisch generierten Menüs. | Performance | niedrig | S | umgesetzt |
 | FE-068 | StateList Column-Resize: `localStorage.setItem` wird auf jedem `mousemove`-Event (~60/s) aufgerufen — Schreiben auf 500 ms debouncen. | Performance | mittel | S | umgesetzt |
-| FE-069 | Modals (ValueEditModal, ObjectEditModal u.a.): `onClose`-Referenz als Dependency im Escape-KeyDown-Effect führt zu unnötiger Listener-Neuregistrierung bei jedem Render. | Performance | niedrig | S | offen |
+| FE-069 | Modals (ValueEditModal, ObjectEditModal u.a.): `onClose`-Referenz als Dependency im Escape-KeyDown-Effect führt zu unnötiger Listener-Neuregistrierung bei jedem Render. | Performance | niedrig | S | umgesetzt |

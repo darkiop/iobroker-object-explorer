@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 import { createPortal } from 'react-dom';
 import { AlertTriangle, X, Trash2 } from 'lucide-react';
 
@@ -14,13 +15,7 @@ export default function MultiDeleteDialog({ ids, onDeleteOne, onDeleteAll, onClo
   const isEn = language === 'en';
   const [remaining, setRemaining] = useState<string[]>([...ids]);
 
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
-    }
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
+  useEscapeKey(onClose);
 
   function handleDeleteOne(id: string) {
     onDeleteOne(id);

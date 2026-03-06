@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 import { createPortal } from 'react-dom';
 import { X, Upload, CheckCircle, AlertTriangle, FileJson, FilePlus } from 'lucide-react';
 import { useImportDatapoints } from '../hooks/useStates';
@@ -203,13 +204,7 @@ export default function ImportDatapointsModal({ onClose, language = 'en' }: Prop
     if (file) handleFileLoad(file);
   }
 
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
-    }
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
+  useEscapeKey(onClose);
 
   function handleJsonChange(value: string) {
     setJson(value);

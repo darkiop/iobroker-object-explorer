@@ -46,64 +46,50 @@ export function filterObjectIds({
   patternRoomFilter,
   patternFunctionFilter,
 }: FilterObjectIdsParams): string[] {
-  let next = ids;
+  // Pre-compute filter values once before the single pass
+  const fId = colFilters.id?.trim().toLowerCase() || null;
+  const fName = colFilters.name?.trim().toLowerCase() || null;
+  const fRoom = colFilters.room?.trim().toLowerCase() || null;
+  const fFunction = colFilters.function?.trim().toLowerCase() || null;
+  const fType = colFilters.type?.trim().toLowerCase() || null;
+  const fRole = colFilters.role?.trim().toLowerCase() || null;
+  const fUnit = colFilters.unit?.trim().toLowerCase() || null;
+  const filterReadOnly = colFilters.write === '1';
+  const filterHistory = colFilters.history === '1';
+  const filterSmart = colFilters.smart === '1';
+  const filterAlias = colFilters.alias === '1';
+  const fPatternRoom = patternRoomFilter?.toLowerCase() ?? null;
+  const fPatternFunction = patternFunctionFilter?.toLowerCase() ?? null;
+  const quickRegexes = quickPatterns.size > 0 ? [...quickPatterns].map(quickPatternToRegex) : null;
 
-  if (colFilters.id?.trim()) {
-    const f = colFilters.id.trim().toLowerCase();
-    next = next.filter((id) => id.toLowerCase().includes(f));
-  }
+  return ids.filter((id) => {
+    if (fId && !id.toLowerCase().includes(fId)) return false;
 
-  if (colFilters.name?.trim()) {
-    const f = colFilters.name.trim().toLowerCase();
-    next = next.filter((id) => getNameLowerCase(objects[id]).includes(f));
-  }
+    const obj = objects[id];
 
-  if (colFilters.room?.trim()) {
-    const f = colFilters.room.trim().toLowerCase();
-    next = next.filter((id) => (roomMap[id] || '').toLowerCase().includes(f));
-  }
+    if (fName && !getNameLowerCase(obj).includes(fName)) return false;
 
-  if (colFilters.function?.trim()) {
-    const f = colFilters.function.trim().toLowerCase();
-    next = next.filter((id) => (functionMap[id] || '').toLowerCase().includes(f));
-  }
+    const room = roomMap[id] || '';
+    if (fRoom && !room.toLowerCase().includes(fRoom)) return false;
+    if (roomFilters.size > 0 && !roomFilters.has(roomMap[id])) return false;
+    if (fPatternRoom && !room.toLowerCase().includes(fPatternRoom)) return false;
 
-  if (colFilters.type?.trim()) {
-    const f = colFilters.type.trim().toLowerCase();
-    next = next.filter((id) => (objects[id]?.common?.type || objects[id]?.type || '').toLowerCase().includes(f));
-  }
+    const func = functionMap[id] || '';
+    if (fFunction && !func.toLowerCase().includes(fFunction)) return false;
+    if (functionFilters.size > 0 && !functionFilters.has(functionMap[id])) return false;
+    if (fPatternFunction && !func.toLowerCase().includes(fPatternFunction)) return false;
 
-  if (colFilters.role?.trim()) {
-    const f = colFilters.role.trim().toLowerCase();
-    next = next.filter((id) => (objects[id]?.common?.role || '').toLowerCase().includes(f));
-  }
+    if (fType && !(obj?.common?.type || obj?.type || '').toLowerCase().includes(fType)) return false;
+    if (fRole && !(obj?.common?.role || '').toLowerCase().includes(fRole)) return false;
+    if (fUnit && !(obj?.common?.unit || '').toLowerCase().includes(fUnit)) return false;
 
-  if (colFilters.unit?.trim()) {
-    const f = colFilters.unit.trim().toLowerCase();
-    next = next.filter((id) => (objects[id]?.common?.unit || '').toLowerCase().includes(f));
-  }
+    if (filterReadOnly && obj?.common?.write !== false) return false;
+    if (filterHistory && !historyIds.has(id)) return false;
+    if (filterSmart && !smartIds.has(id)) return false;
+    if (filterAlias && !aliasMap.has(id) && !obj?.common?.alias?.id) return false;
 
-  if (colFilters.write === '1') next = next.filter((id) => objects[id]?.common?.write === false);
-  if (colFilters.history === '1') next = next.filter((id) => historyIds.has(id));
-  if (colFilters.smart === '1') next = next.filter((id) => smartIds.has(id));
-  if (colFilters.alias === '1') next = next.filter((id) => aliasMap.has(id) || !!objects[id]?.common?.alias?.id);
+    if (quickRegexes && !quickRegexes.some((rx) => rx.test(id))) return false;
 
-  if (roomFilters.size > 0) next = next.filter((id) => roomFilters.has(roomMap[id]));
-  if (functionFilters.size > 0) next = next.filter((id) => functionFilters.has(functionMap[id]));
-
-  if (patternRoomFilter) {
-    const f = patternRoomFilter.toLowerCase();
-    next = next.filter((id) => (roomMap[id] || '').toLowerCase().includes(f));
-  }
-  if (patternFunctionFilter) {
-    const f = patternFunctionFilter.toLowerCase();
-    next = next.filter((id) => (functionMap[id] || '').toLowerCase().includes(f));
-  }
-
-  if (quickPatterns.size > 0) {
-    const quickRegexes = [...quickPatterns].map(quickPatternToRegex);
-    next = next.filter((id) => quickRegexes.some((rx) => rx.test(id)));
-  }
-
-  return next;
+    return true;
+  });
 }

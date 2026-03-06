@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 import { createPortal } from 'react-dom';
 import { X, Keyboard } from 'lucide-react';
 
@@ -24,11 +24,7 @@ const SHORTCUTS: Shortcut[] = [
 export default function KeyboardShortcutsModal({ onClose, language = 'en' }: Props) {
   const isEn = language === 'en';
 
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
+  useEscapeKey(onClose);
 
   return createPortal(
     <div
