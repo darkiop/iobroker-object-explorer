@@ -1,5 +1,7 @@
 # ioBroker Object Explorer
 
+![alt text](image.png)
+
 A React dashboard for browsing, managing, and monitoring ioBroker datapoints via the REST API. Light/dark theme, EN/DE UI language.
 
 **Stack:** React 18 · TypeScript · TanStack React Query · Recharts · Tailwind CSS · Vite
