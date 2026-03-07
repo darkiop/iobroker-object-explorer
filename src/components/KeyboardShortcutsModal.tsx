@@ -19,6 +19,9 @@ const SHORTCUTS: Shortcut[] = [
   { keys: [isMac ? '⌘ B' : 'Ctrl B'], descEn: 'Toggle sidebar', descDe: 'Seitenleiste ein-/ausblenden' },
   { keys: ['?'], descEn: 'Show keyboard shortcuts', descDe: 'Tastenkürzel anzeigen' },
   { keys: ['Esc'], descEn: 'Close modal / deselect', descDe: 'Modal schließen / Auswahl aufheben' },
+  { keys: ['↑', '↓'], descEn: 'Navigate rows in table', descDe: 'Zeilen in Tabelle navigieren' },
+  { keys: ['←', '→'], descEn: 'Previous / next page', descDe: 'Vorherige / nächste Seite' },
+  { keys: ['Enter'], descEn: 'Open focused row', descDe: 'Fokussierte Zeile öffnen' },
 ];
 
 export default function KeyboardShortcutsModal({ onClose, language = 'en' }: Props) {

@@ -14,7 +14,7 @@ import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
 import LanguageDropdown from './components/LanguageDropdown';
 import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunctionMap, useRoomEnums, useFunctionEnums, useAliasMap } from './hooks/useStates';
 import { hasHistory, hasSmartName } from './api/iobroker';
-import type { SortKey, DateFormatSetting } from './components/StateList';
+import type { SortKey, DateFormatSetting, StateListHandle } from './components/StateList';
 import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel } from './components/StateList';
 import type { IoBrokerObject, IoBrokerState } from './types/iobroker';
 import { filterObjectIds } from './utils/filterObjectIds';
@@ -195,6 +195,7 @@ function DateFormatDropdown({ value, onChange }: { value: DateFormatSetting; onC
 }
 
 function AppContent() {
+  const stateListRef = useRef<StateListHandle>(null);
   const [pattern, setPattern] = useState('*');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [page, setPage] = useState(0);
@@ -325,16 +326,25 @@ function AppContent() {
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key !== 'Escape') return;
-      if (settingsOpen) {
-        setSettingsOpen(false);
+      if (e.key === 'Escape') {
+        if (settingsOpen) { setSettingsOpen(false); return; }
+        setSelectedId(null);
         return;
       }
-      setSelectedId(null);
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        const tag = (document.activeElement as HTMLElement)?.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+        if (settingsOpen || selectedId) return;
+        if (totalPages <= 1) return;
+        e.preventDefault();
+        stateListRef.current?.fitToContainer();
+        if (e.key === 'ArrowLeft') setPage((p) => Math.max(0, p - 1));
+        else setPage((p) => Math.min(totalPages - 1, p + 1));
+      }
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [settingsOpen]);
+  }, [settingsOpen, selectedId, totalPages]);
 
   const handleSearch = useCallback((newPattern: string) => {
     setPattern(newPattern);
@@ -1004,6 +1014,7 @@ function AppContent() {
 
         <div className="flex-1 min-h-0 flex flex-col">
           <StateList
+            ref={stateListRef}
             ids={pageIds}
             states={stateValues ?? EMPTY_STATES}
             objects={stateObjects}

@@ -20,7 +20,7 @@
 | FE-018 | Increase API batch size in getStatesBatch() from 20 to 50+ and make it configurable. | Performance | medium | S | done |
 | FE-019 | useStateValues() hook: pause refetch when tab/window is not visible (Page Visibility API). | Performance | medium | S | done |
 | FE-020 | Cache buildAliasReverseMap() in QueryClient instead of recalculating on every re-render. | Performance | medium | S | done |
-| FE-021 | Keyboard navigation: arrow keys in table, tab for focus, enter to open modal. | UX | medium | M | open |
+| FE-021 | Keyboard navigation: arrow keys in table, tab for focus, enter to open modal. | UX | medium | M | done |
 | FE-022 | Debouncing (300–500ms) for SearchBar and column filter inputs instead of immediate filtering. | UX | medium | S | done |
 | FE-023 | Implement E2E tests with Playwright: cover critical paths Search→Select→Edit→Save. | Tooling | medium | L | open |
 | FE-024 | HistoryChart: implement downsampling for >1000 data points, as Recharts stutters with large datasets. | Performance | medium | M | open |

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
 import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Lock, Search, Link2, FileEdit, Download, ChevronDown, RefreshCw, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw } from 'lucide-react';
 import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch } from '../hooks/useStates';
@@ -19,6 +19,10 @@ import { hasHistory, isGlobPattern } from '../api/iobroker';
 import type { IoBrokerState, IoBrokerObject } from '../types/iobroker';
 import { copyText } from '../utils/clipboard';
 import { useToast } from '../context/ToastContext';
+
+export interface StateListHandle {
+  fitToContainer: () => void;
+}
 
 interface StateListProps {
   ids: string[];
@@ -1392,6 +1396,7 @@ interface StateRowProps {
   dateFormat: DateFormatSetting;
   language: 'en' | 'de';
   expertMode: boolean;
+  isFocused: boolean;
 }
 
 function aliasIdsEqual(a?: string[], b?: string[]): boolean {
@@ -1409,7 +1414,7 @@ const StateRow = React.memo(function StateRow({
   onSelect, onCheck, onContextMenu, onHistoryClick, onNavigateTo, onDeleteClick,
   onSelectRoom, onSelectFunction, onOpenValueModal,
   roomEditForced, fnEditForced, onRoomEditEnd, onFnEditEnd,
-  dateFormat, language, expertMode,
+  dateFormat, language, expertMode, isFocused,
 }: StateRowProps) {
   const isEn = language === 'en';
   const show = (key: SortKey) => visibleCols.includes(key);
@@ -1438,9 +1443,11 @@ const StateRow = React.memo(function StateRow({
       className={`border-b border-gray-200 dark:border-gray-800 cursor-pointer transition-colors ${
         isSelected
           ? 'bg-blue-600/20 text-blue-700 dark:text-blue-200'
-          : isChecked
-            ? 'bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
-          : 'hover:bg-gray-100/80 text-gray-700 dark:hover:bg-gray-800/50 dark:text-gray-300'
+          : isFocused
+            ? 'bg-blue-100/60 text-blue-800 dark:bg-blue-900/40 dark:text-blue-100 outline outline-1 -outline-offset-1 outline-blue-400 dark:outline-blue-500'
+            : isChecked
+              ? 'bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
+              : 'hover:bg-gray-100/80 text-gray-700 dark:hover:bg-gray-800/50 dark:text-gray-300'
       }`}
     >
       {show('checkbox') && (
@@ -1658,11 +1665,12 @@ const StateRow = React.memo(function StateRow({
     prev.onNavigateTo === next.onNavigateTo &&
     prev.onSelectRoom === next.onSelectRoom &&
     prev.onSelectFunction === next.onSelectFunction &&
-    prev.onOpenValueModal === next.onOpenValueModal
+    prev.onOpenValueModal === next.onOpenValueModal &&
+    prev.isFocused === next.isFocused
   );
 });
 
-function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, allObjectIds, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en', expertMode = false, onToggleExpertMode, toolbarLabels = true }: StateListProps) {
+function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, allObjectIds, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en', expertMode = false, onToggleExpertMode, toolbarLabels = true }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
   const isEn = language === 'en';
   const [sortKey, setSortKey] = useState<SortKey>('id');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
@@ -1684,6 +1692,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   const [confirmResetLs, setConfirmResetLs] = useState(false);
   const showToolbarLabels = toolbarLabels;
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const [focusedId, setFocusedId] = useState<string | null>(null);
   const [multiDeleteOpen, setMultiDeleteOpen] = useState(false);
   const [colFiltersDraft, setColFiltersDraft] = useState<Partial<Record<SortKey, string>>>(colFilters);
   const colFilterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1834,6 +1843,8 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
     setColWidths(next);
     localStorage.setItem(LS_WIDTHS_KEY, JSON.stringify(next));
   }
+
+  useImperativeHandle(ref, () => ({ fitToContainer }), []);
 
   useEffect(() => {
     if (!autoFitRef.current || ids.length === 0) return;
@@ -2320,6 +2331,42 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
     });
   }
 
+  function scrollRowIntoView(index: number) {
+    const container = containerRef.current;
+    if (!container) return;
+    const rowTop = headerHeight + index * VIRTUAL_ROW_HEIGHT;
+    const rowBottom = rowTop + VIRTUAL_ROW_HEIGHT;
+    if (rowTop < container.scrollTop) {
+      container.scrollTop = rowTop;
+    } else if (rowBottom > container.scrollTop + container.clientHeight) {
+      container.scrollTop = rowBottom - container.clientHeight;
+    }
+  }
+
+  function handleContainerKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    const tag = (e.target as HTMLElement).tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const currentIndex = focusedId !== null ? filteredIds.indexOf(focusedId) : -1;
+      const nextIndex = e.key === 'ArrowDown'
+        ? Math.min(filteredIds.length - 1, currentIndex + 1)
+        : Math.max(0, currentIndex > 0 ? currentIndex - 1 : 0);
+      const nextId = filteredIds[nextIndex];
+      if (nextId !== undefined) {
+        setFocusedId(nextId);
+        scrollRowIntoView(nextIndex);
+      }
+    } else if (e.key === 'Enter') {
+      if (focusedId !== null && filteredIds.includes(focusedId)) {
+        e.preventDefault();
+        onSelect(focusedId);
+      }
+    } else if (e.key === 'Escape') {
+      setFocusedId(null);
+    }
+  }
+
   return (
     <div className="flex flex-col h-full">
       {toolbar}
@@ -2534,7 +2581,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
         return <ContextMenu x={x} y={y} items={items} onClose={() => setCtxMenu(null)} />;
       })()}
 
-      <div ref={containerRef} onScroll={handleBodyScroll} className="overflow-x-auto overflow-y-auto flex-1">
+      <div ref={containerRef} onScroll={handleBodyScroll} onKeyDown={handleContainerKeyDown} tabIndex={0} className="overflow-x-auto overflow-y-auto flex-1 outline-none">
         <table className="text-xs text-left table-fixed" style={{ width: totalWidth }}>
           <thead ref={theadRef} className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-100 dark:bg-gray-800 sticky top-0 z-10">
             <tr>
@@ -2716,6 +2763,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                 dateFormat={dateFormat}
                 language={language}
                 expertMode={expertMode}
+                isFocused={focusedId === id && selectedId !== id}
               />
             ))}
             {bottomSpacer > 0 && (
@@ -2730,4 +2778,4 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   );
 }
 
-export default React.memo(StateList);
+export default React.memo(React.forwardRef(StateList));

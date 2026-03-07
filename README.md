@@ -363,6 +363,9 @@ Press **`?`** to open the keyboard shortcuts overview.
 | `Ctrl B` / `Cmd B` | Toggle sidebar |
 | `?` | Show keyboard shortcuts |
 | `Esc` | Close modal / deselect |
+| `↑` / `↓` | Navigate rows in table (click table area first) |
+| `←` / `→` | Previous / next page |
+| `Enter` | Open focused row (ObjectEditModal) |
 
 ---
 
