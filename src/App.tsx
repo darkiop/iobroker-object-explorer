@@ -11,6 +11,7 @@ import ObjectEditModal from './components/ObjectEditModal';
 import HistoryModal from './components/HistoryModal';
 import NewDatapointModal from './components/NewDatapointModal';
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
+import EnumManagerModal from './components/EnumManagerModal';
 import LanguageDropdown from './components/LanguageDropdown';
 import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunctionMap, useRoomEnums, useFunctionEnums, useAliasMap } from './hooks/useStates';
 import { hasHistory, hasSmartName } from './api/iobroker';
@@ -275,6 +276,7 @@ function AppContent() {
   const [exactEnabled, setExactEnabled] = useState(false);
   const [historyModalId, setHistoryModalId] = useState<string | null>(null);
   const [newDatapointInitialId, setNewDatapointInitialId] = useState<string | null>(null);
+  const [enumManagerOpen, setEnumManagerOpen] = useState(false);
   const [expertMode, setExpertMode] = useState<boolean>(() => localStorage.getItem(LS_EXPERT_MODE) === 'true');
   const [savedFiltersList, setSavedFiltersList] = useState<SavedFilter[]>(() => loadSavedFilters());
   const [savedFiltersOpen, setSavedFiltersOpen] = useState(false);
@@ -963,6 +965,13 @@ function AppContent() {
             onClose={() => setHistoryModalId(null)}
           />
         )}
+        {enumManagerOpen && (
+          <EnumManagerModal
+            allObjects={allObjects}
+            language={appSettings.language}
+            onClose={() => setEnumManagerOpen(false)}
+          />
+        )}
         {shortcutsOpen && (
           <KeyboardShortcutsModal
             language={appSettings.language}
@@ -1247,6 +1256,7 @@ function AppContent() {
             onToggleExpertMode={handleToggleExpertMode}
             toolbarLabels={appSettings.toolbarLabels}
             onToggleToolbarLabels={handleToggleToolbarLabels}
+            onOpenEnumManager={() => setEnumManagerOpen(true)}
           />
         </div>
 

@@ -66,8 +66,9 @@ export async function getAllObjects(): Promise<Record<string, IoBrokerObject>> {
     fetchApi<Record<string, IoBrokerObject>>('/objects?type=device'),
     fetchApi<Record<string, IoBrokerObject>>('/objects?type=channel'),
     fetchApi<Record<string, IoBrokerObject>>('/objects?type=folder'),
-  ]).then(([states, devices, channels, folders]) => {
-    objectsCache = { ...states, ...devices, ...channels, ...folders };
+    fetchApi<Record<string, IoBrokerObject>>('/objects?type=enum'),
+  ]).then(([states, devices, channels, folders, enums]) => {
+    objectsCache = { ...states, ...devices, ...channels, ...folders, ...enums };
     objectsCachePromise = null;
     return objectsCache;
   });
@@ -471,6 +472,22 @@ export async function updateRoomMembershipBatch(objectIds: string[], newRoomEnum
     await putFullObject(newRoomEnumId, { ...obj, common: { ...obj.common, members } });
   }
   objectsCache = null;
+}
+
+export async function createEnumObject(enumId: string, name: string): Promise<void> {
+  await putFullObject(enumId, {
+    _id: enumId,
+    type: 'enum',
+    common: { name, members: [] },
+    native: {},
+  } as IoBrokerObject);
+}
+
+export async function renameEnumObject(enumId: string, newName: string): Promise<void> {
+  const all = await getAllObjects();
+  const obj = all[enumId];
+  if (!obj) throw new Error(`Enum not found: ${enumId}`);
+  await putFullObject(enumId, { ...obj, common: { ...obj.common, name: newName } });
 }
 
 export async function setState(id: string, val: unknown, ack?: boolean): Promise<void> {

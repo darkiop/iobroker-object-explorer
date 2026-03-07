@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Lock, Search, Link2, FileEdit, Download, ChevronDown, RefreshCw, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw } from 'lucide-react';
+import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Lock, Search, Link2, FileEdit, Download, ChevronDown, RefreshCw, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw, Tag } from 'lucide-react';
 import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
@@ -51,6 +51,7 @@ interface StateListProps {
   onToggleExpertMode?: () => void;
   toolbarLabels?: boolean;
   onToggleToolbarLabels?: () => void;
+  onOpenEnumManager?: () => void;
 }
 
 function formatTimestamp(ts: number, dateFormat: DateFormatSetting): string {
@@ -1670,7 +1671,7 @@ const StateRow = React.memo(function StateRow({
   );
 });
 
-function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, allObjectIds, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en', expertMode = false, onToggleExpertMode, toolbarLabels = true }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
+function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, allObjectIds, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en', expertMode = false, onToggleExpertMode, toolbarLabels = true, onOpenEnumManager }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
   const isEn = language === 'en';
   const [sortKey, setSortKey] = useState<SortKey>('id');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
@@ -2221,6 +2222,14 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
         >
           <RefreshCw size={15} />
           {showToolbarLabels && <span>{isEn ? 'Refresh API' : 'API aktualisieren'}</span>}
+        </button>
+        <button
+          onClick={() => onOpenEnumManager?.()}
+          title={isEn ? 'Manage enums (rooms & functions)' : 'Enums verwalten (Räume & Funktionen)'}
+          className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-amber-600 hover:bg-amber-500/10 dark:text-gray-400 dark:hover:text-amber-400 dark:hover:bg-amber-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
+        >
+          <Tag size={15} />
+          {showToolbarLabels && <span>{isEn ? 'Enums' : 'Enums'}</span>}
         </button>
         {checkedIds.size > 0 && (
           <button

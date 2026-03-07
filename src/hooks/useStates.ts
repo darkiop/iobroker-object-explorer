@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
-import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, putFullObject, createObject, deleteObject, renameDatapoint, getAllRoles, getAllUnits, setState, getRoomMap, getAllObjects, getRoomEnums, updateRoomMembership, updateRoomMembershipBatch, getFunctionMap, getFunctionEnums, updateFunctionMembership, updateFunctionMembershipBatch, buildAliasReverseMap, importDatapoints, getSqlInstances } from '../api/iobroker';
+import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, putFullObject, createObject, deleteObject, renameDatapoint, getAllRoles, getAllUnits, setState, getRoomMap, getAllObjects, getRoomEnums, updateRoomMembership, updateRoomMembershipBatch, getFunctionMap, getFunctionEnums, updateFunctionMembership, updateFunctionMembershipBatch, buildAliasReverseMap, importDatapoints, getSqlInstances, createEnumObject, renameEnumObject } from '../api/iobroker';
 import type { IoBrokerObject, IoBrokerObjectCommon, IoBrokerState, HistoryOptions } from '../types/iobroker';
 
 const queryKeys = {
@@ -475,6 +475,46 @@ export function useSqlInstances() {
     queryKey: ['metadata', 'sqlInstances'] as const,
     queryFn: getSqlInstances,
     staleTime: 60_000,
+  });
+}
+
+export function useCreateEnum() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ enumId, name }: { enumId: string; name: string }) => createEnumObject(enumId, name),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.metadata.roomEnums });
+      queryClient.invalidateQueries({ queryKey: queryKeys.metadata.functionEnums });
+      queryClient.invalidateQueries({ queryKey: queryKeys.objects.all });
+    },
+  });
+}
+
+export function useRenameEnum() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ enumId, newName }: { enumId: string; newName: string }) => renameEnumObject(enumId, newName),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.metadata.roomEnums });
+      queryClient.invalidateQueries({ queryKey: queryKeys.metadata.functionEnums });
+      queryClient.invalidateQueries({ queryKey: queryKeys.metadata.roomMap });
+      queryClient.invalidateQueries({ queryKey: queryKeys.metadata.functionMap });
+      queryClient.invalidateQueries({ queryKey: queryKeys.objects.all });
+    },
+  });
+}
+
+export function useDeleteEnum() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (enumId: string) => deleteObject(enumId),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.metadata.roomEnums });
+      queryClient.invalidateQueries({ queryKey: queryKeys.metadata.functionEnums });
+      queryClient.invalidateQueries({ queryKey: queryKeys.metadata.roomMap });
+      queryClient.invalidateQueries({ queryKey: queryKeys.metadata.functionMap });
+      queryClient.invalidateQueries({ queryKey: queryKeys.objects.all });
+    },
   });
 }
 
