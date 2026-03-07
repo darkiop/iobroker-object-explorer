@@ -56,8 +56,8 @@
 | FE-054 | Rename datapoint in context menu: dialog for new ID; POST to new ID + DELETE old ID. | Feature | medium | M | done |
 | FE-055 | Move datapoint in context menu: path change with path validation. | Feature | medium | M | done |
 | FE-056 | JSON editor in edit object modal: check if full object JSON is editable and saveable. | Feature | medium | S | open |
-| FE-057 | Update CLAUDE.md: architecture description, new components, and current stack decisions. | DX | low | S | open |
-| FE-058 | Update README.md: features, screenshots, configuration, and development setup documentation. | DX | low | M | open |
+| FE-057 | Update CLAUDE.md: architecture description, new components, and current stack decisions. | DX | low | S | done |
+| FE-058 | Update README.md: features, screenshots, configuration, and development setup documentation. | DX | low | M | done |
 | FE-059 | Alias: separate IDs for read and write (common.alias.read and common.alias.write as separate IDs). | Feature | medium | M | done |
 | FE-060 | Create MIT license file: LICENSE file with current year and copyright holder. | DX | low | S | open |
 | FE-061 | Bug: folder icon missing in object tree — folder nodes no longer show an icon. | Bug | high | S | done |

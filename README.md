@@ -136,7 +136,7 @@ The app is then reachable at `http://localhost:8080`.
 | Room | Derived from `enum.rooms.*`; editable on click (dropdown with all available rooms) |
 | Function | Derived from `enum.functions.*`; editable on click (dropdown with all available functions) |
 | Role | Inline-editable with autocomplete (portal dropdown) |
-| Value | Right-aligned; truncated to 16 chars (tooltip shows full value) |
+| Value | Right-aligned; truncated to 16 chars (tooltip shows full value); yellow/red highlight when value is outside `min`/`max` range |
 | Unit | Unit of the value |
 | Ack | Green (acknowledged) / yellow (unacknowledged) dot |
 | Last Update | Timestamp `DD.MM.YYYY HH:MM:SS` |
@@ -161,7 +161,7 @@ All data columns (except + and Delete) can be toggled via the **column picker dr
 
 #### Row Actions
 
-- **Click row**: opens the StateDetail panel with live value and object metadata
+- **Click row**: opens ObjectEditModal with live value, object metadata, and edit controls
 - **Right-click row**: opens context menu (see below)
 - **History icon**: opens the History modal directly
 - **Delete icon** (far right): shows confirmation dialog before irreversible deletion
@@ -194,6 +194,10 @@ All data columns (except + and Delete) can be toggled via the **column picker dr
 - **Count display**: centered — shows total number of filtered datapoints
 - **Stretch 100%**, **Clear filters**, **Reset settings**, **Column picker**: right-aligned
 
+#### Batch Editing
+
+When one or more rows are checked via the checkbox column, a batch bar appears below the toolbar with combo controls for **Role**, **Unit**, **Room**, and **Function**. Selecting a value applies it to all checked datapoints at once.
+
 #### Pagination
 
 - Configurable page size: 25 / 50 / 100 / 200 / 500 entries (saved in settings)
@@ -201,44 +205,16 @@ All data columns (except + and Delete) can be toggled via the **column picker dr
 
 ---
 
-### Datapoint Detail (StateDetail)
-
-Opens as a panel on row click; close with ESC or the × button.
-
-**Details tab**
-
-- Object metadata (partially inline-editable): name, type, role, unit, description, min/max, read/write permissions
-- Live values with 5 s polling: current value, ack status, quality, timestamp, last change, source
-- **Value controls** (based on type and role):
-  - Switch: toggle for `switch.*` roles or boolean types
-  - Button: trigger button for `button.*` roles
-  - Number: input field with unit display
-  - Text: text input with send button
-  - Boolean: dropdown (true / false)
-- **Expert mode** (wrench icon): free input field with automatic type conversion (write-enabled datapoints only)
-- Inline mini history chart (when history is active for the datapoint)
-
-**Object tab**
-
-- Full JSON view of object metadata; read-only, scrollable, monospace
-
-**Alias tab**
-
-- Target datapoint (`alias.id`): ID of the source datapoint this alias points to
-- Read formula (`alias.read`): optional JavaScript expression for value conversion on read (`val`)
-- Write formula (`alias.write`): optional JavaScript expression for value conversion on write (`val`)
-- Displays the currently saved alias object
-- Alias is removed when `alias.id` is left empty
-
 ---
 
 ### Edit Object (ObjectEditModal)
 
-Opened via **right-click → "Edit object"** in the table and tree.
+Opened via **row click** or **right-click → "Edit object"** in the table and tree.
 
-- **Details tab**: same editable fields and value controls as StateDetail; includes expert mode and mini history
+- **Details tab**: editable fields (name, type, role, unit, description, min/max, read/write); live value with controls (switch/button/number/boolean/text based on type and role); expert mode (wrench icon) for free-form value input; inline mini history chart when history is active
 - **JSON tab**: raw JSON editor with syntax error display; save directly via `PUT`
-- **Alias tab**: set or remove alias target, read formula, and write formula
+- **Alias tab**: set or remove alias target; supports **separate read/write IDs** (`alias.id` as `{read, write}`); read/write JS conversion formulas (`alias.read`, `alias.write`) with inline formula tester
+- **Custom Settings tab**: edit `common.custom` adapter-specific settings as JSON
 - **Header buttons**: expert mode toggle (wrench), delete datapoint (trash)
 
 ---
@@ -307,6 +283,23 @@ Opened via the **Import button** in the toolbar.
 **Display options**
 - Toggle data points on/off
 - Aggregation: None / Average / Min+Max / Min / Max
+
+**Multi-series comparison**
+- Up to 4 additional history-enabled datapoints overlaid on the same time axis
+- Each extra series shown in a distinct color with its own legend entry
+
+**Periodic comparison**
+- Overlay the same datapoint's values from **1 week ago** or **1 month ago** on the same chart
+
+**Statistics panel**
+- Min / Max / Average / Last value shown as badges above the chart
+
+**Zoom & pan**
+- **Mouse wheel** zooms the visible time range (centered on cursor)
+- **Drag** pans the visible window along the time axis
+
+**Export**
+- **PNG export** button downloads the chart as an image file
 
 **Interaction**
 - Responsive (fills available width/height)
@@ -382,12 +375,11 @@ SearchBar (pattern input)
   → StateList               — paginated, sorted, filtered
   → StateTree               — hierarchical navigation
 
-Row click
-  → StateDetail             — 5 s polling single value + object metadata
-  → HistoryChart            — history via sendTo sql.0 (immutable cache)
+Row click / Right-click → Edit object
+  → ObjectEditModal         — Details / JSON / Alias / Custom Settings tabs
 
-Right-click → Edit object
-  → ObjectEditModal         — Details / JSON / Alias tabs
+History icon / menu entry
+  → HistoryModal            — multi-series chart with zoom, pan, export, comparison
 
 Right-click → Create alias
   → CreateAliasModal        — creates alias.0.* object
@@ -445,11 +437,10 @@ Import button
 | `src/components/Layout.tsx` | App shell: header, collapsible sidebar, drag-resize |
 | `src/components/SearchBar.tsx` | Pattern search input with wildcard support |
 | `src/components/StateTree.tsx` | Hierarchical object tree with context menu |
-| `src/components/StateList.tsx` | Main table: columns, sorting, filters, context menu, pagination |
-| `src/components/StateDetail.tsx` | Detail panel (Details / Object / Alias tabs) |
-| `src/components/ObjectEditModal.tsx` | Edit modal (Details / JSON / Alias tabs) |
-| `src/components/HistoryChart.tsx` | Recharts chart with time range, aggregation, delete functions |
-| `src/components/HistoryModal.tsx` | Full-size history modal |
+| `src/components/StateList.tsx` | Main table: columns, sorting, filters, context menu, pagination, batch edit bar, threshold highlighting |
+| `src/components/ObjectEditModal.tsx` | Edit modal (Details / JSON / Alias / Custom Settings tabs); opened on row click and via context menu |
+| `src/components/HistoryChart.tsx` | Recharts chart with time range, aggregation, multi-series, zoom/pan, periodic comparison, stats, export PNG, delete functions |
+| `src/components/HistoryModal.tsx` | Full-size history modal with extra series management (up to 4 additional datapoints) |
 | `src/components/NewDatapointModal.tsx` | Form for creating new datapoints |
 | `src/components/CreateAliasModal.tsx` | Dialog for creating alias datapoints |
 | `src/components/CopyDatapointModal.tsx` | Dialog for copying datapoints |
