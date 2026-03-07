@@ -18,7 +18,7 @@ import type { SortKey, DateFormatSetting, StateListHandle } from './components/S
 import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel } from './components/StateList';
 import type { IoBrokerObject, IoBrokerState } from './types/iobroker';
 import { filterObjectIds } from './utils/filterObjectIds';
-import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RotateCcw, Layers, X, Trash2, Check, Loader2, AlertCircle } from 'lucide-react';
+import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RotateCcw, Layers, X, Trash2, Check, Loader2, AlertCircle, Bookmark } from 'lucide-react';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -32,6 +32,8 @@ const queryClient = new QueryClient({
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200, 500];
 const LS_APP_SETTINGS = 'iobroker-app-settings';
 const LS_EXPERT_MODE = 'iobroker-expert-mode';
+const LS_FILTER_STATE = 'iobroker-filter-state';
+const LS_SAVED_FILTERS = 'iobroker-saved-filters';
 const DEFAULT_QUICK_PATTERNS = ['alias.0.*', 'javascript.0.*', '0_userdata.0.*'] as const;
 const EMPTY_OBJECTS: Record<string, IoBrokerObject> = {};
 const EMPTY_STATES: Record<string, IoBrokerState> = {};
@@ -194,22 +196,70 @@ function DateFormatDropdown({ value, onChange }: { value: DateFormatSetting; onC
   );
 }
 
+interface FilterState {
+  pattern: string;
+  page: number;
+  historyOnly: boolean;
+  smartOnly: boolean;
+  colFilters: Partial<Record<SortKey, string>>;
+  roomFilters: string[];
+  functionFilters: string[];
+  quickPatterns: string[];
+}
+
+interface SavedFilter {
+  id: string;
+  name: string;
+  pattern: string;
+  historyOnly: boolean;
+  smartOnly: boolean;
+  roomFilters: string[];
+  functionFilters: string[];
+  quickPatterns: string[];
+  colFilters: Partial<Record<SortKey, string>>;
+}
+
+function loadSavedFilters(): SavedFilter[] {
+  try {
+    const raw = localStorage.getItem(LS_SAVED_FILTERS);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed as SavedFilter[];
+  } catch {
+    return [];
+  }
+}
+
+function loadFilterState(): Partial<FilterState> {
+  try {
+    const raw = localStorage.getItem(LS_FILTER_STATE);
+    if (!raw) return {};
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null) return {};
+    return parsed as Partial<FilterState>;
+  } catch {
+    return {};
+  }
+}
+
 function AppContent() {
   const stateListRef = useRef<StateListHandle>(null);
-  const [pattern, setPattern] = useState('*');
+  const savedFilters = useRef<Partial<FilterState>>(loadFilterState());
+  const [pattern, setPattern] = useState(() => savedFilters.current.pattern ?? '*');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [page, setPage] = useState(0);
-  const [historyOnly, setHistoryOnly] = useState(false);
-  const [smartOnly, setSmartOnly] = useState(false);
-  const [colFilters, setColFilters] = useState<Partial<Record<SortKey, string>>>({});
+  const [page, setPage] = useState(() => savedFilters.current.page ?? 0);
+  const [historyOnly, setHistoryOnly] = useState(() => savedFilters.current.historyOnly ?? false);
+  const [smartOnly, setSmartOnly] = useState(() => savedFilters.current.smartOnly ?? false);
+  const [colFilters, setColFilters] = useState<Partial<Record<SortKey, string>>>(() => savedFilters.current.colFilters ?? {});
   const [treeExpandSignal, setTreeExpandSignal] = useState<{ depth: number; seq: number } | undefined>(undefined);
   const [sidebarToggleSeq, setSidebarToggleSeq] = useState(0);
   const [treeFilter, setTreeFilter] = useState<string | null>(null);
-  const [roomFilters, setRoomFilters] = useState<Set<string>>(new Set());
+  const [roomFilters, setRoomFilters] = useState<Set<string>>(() => new Set(savedFilters.current.roomFilters ?? []));
   const [roomsOpen, setRoomsOpen] = useState(false);
-  const [functionFilters, setFunctionFilters] = useState<Set<string>>(new Set());
+  const [functionFilters, setFunctionFilters] = useState<Set<string>>(() => new Set(savedFilters.current.functionFilters ?? []));
   const [functionsOpen, setFunctionsOpen] = useState(false);
-  const [quickPatterns, setQuickPatterns] = useState<Set<string>>(new Set());
+  const [quickPatterns, setQuickPatterns] = useState<Set<string>>(() => new Set(savedFilters.current.quickPatterns ?? []));
   const [quickOpen, setQuickOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<'connection' | 'display' | 'columns' | 'filters'>('connection');
@@ -226,6 +276,10 @@ function AppContent() {
   const [historyModalId, setHistoryModalId] = useState<string | null>(null);
   const [newDatapointInitialId, setNewDatapointInitialId] = useState<string | null>(null);
   const [expertMode, setExpertMode] = useState<boolean>(() => localStorage.getItem(LS_EXPERT_MODE) === 'true');
+  const [savedFiltersList, setSavedFiltersList] = useState<SavedFilter[]>(() => loadSavedFilters());
+  const [savedFiltersOpen, setSavedFiltersOpen] = useState(false);
+  const [saveFilterPromptOpen, setSaveFilterPromptOpen] = useState(false);
+  const [saveFilterName, setSaveFilterName] = useState('');
   const prevTreeFilterRef = useRef<string | null>(null);
 
   const { basePattern, roomFilter, functionFilter } = useMemo(() => parseEnumFilters(pattern), [pattern]);
@@ -345,6 +399,24 @@ function AppContent() {
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [settingsOpen, selectedId, totalPages]);
+
+  useEffect(() => {
+    try {
+      const state: FilterState = {
+        pattern,
+        page,
+        historyOnly,
+        smartOnly,
+        colFilters,
+        roomFilters: [...roomFilters],
+        functionFilters: [...functionFilters],
+        quickPatterns: [...quickPatterns],
+      };
+      localStorage.setItem(LS_FILTER_STATE, JSON.stringify(state));
+    } catch {
+      // ignore quota errors
+    }
+  }, [pattern, page, historyOnly, smartOnly, colFilters, roomFilters, functionFilters, quickPatterns]);
 
   const handleSearch = useCallback((newPattern: string) => {
     setPattern(newPattern);
@@ -549,6 +621,51 @@ function AppContent() {
     setSettingsDraft((prev) => ({ ...prev, toolbarLabels: !prev.toolbarLabels }));
   }, []);
 
+  const handleSaveCurrentFilter = useCallback(() => {
+    const name = saveFilterName.trim();
+    if (!name) return;
+    const newFilter: SavedFilter = {
+      id: String(Date.now()),
+      name,
+      pattern,
+      historyOnly,
+      smartOnly,
+      roomFilters: [...roomFilters],
+      functionFilters: [...functionFilters],
+      quickPatterns: [...quickPatterns],
+      colFilters,
+    };
+    setSavedFiltersList((prev) => {
+      const next = [...prev, newFilter];
+      localStorage.setItem(LS_SAVED_FILTERS, JSON.stringify(next));
+      return next;
+    });
+    setSaveFilterName('');
+    setSaveFilterPromptOpen(false);
+  }, [saveFilterName, pattern, historyOnly, smartOnly, roomFilters, functionFilters, quickPatterns, colFilters]);
+
+  const handleLoadSavedFilter = useCallback((f: SavedFilter) => {
+    setPattern(f.pattern);
+    setHistoryOnly(f.historyOnly);
+    setSmartOnly(f.smartOnly);
+    setRoomFilters(new Set(f.roomFilters));
+    setFunctionFilters(new Set(f.functionFilters));
+    setQuickPatterns(new Set(f.quickPatterns));
+    setColFilters(f.colFilters);
+    setPage(0);
+    setSelectedId(null);
+    setTreeFilter(null);
+    setExactEnabled(false);
+  }, []);
+
+  const handleDeleteSavedFilter = useCallback((id: string) => {
+    setSavedFiltersList((prev) => {
+      const next = prev.filter((f) => f.id !== id);
+      localStorage.setItem(LS_SAVED_FILTERS, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   useEffect(() => {
     const prev = prevTreeFilterRef.current;
     if (prev && !treeFilter) {
@@ -579,14 +696,56 @@ function AppContent() {
               language={appSettings.language}
             />
             {hasAnyFilter && (
-              <button
-                onClick={resetAllFilters}
-                className="flex items-center justify-center gap-1.5 w-full px-2 py-1 text-xs rounded text-red-500 hover:text-red-700 hover:bg-red-500/10 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-500/10 transition-colors"
-                title={isEn ? 'Reset all filters' : 'Alle Filter zurücksetzen'}
-              >
-                <RotateCcw size={11} />
-                {isEn ? 'Reset filters' : 'Filter zurücksetzen'}
-              </button>
+              <div className="flex gap-1">
+                <button
+                  onClick={resetAllFilters}
+                  className="flex items-center justify-center gap-1.5 flex-1 px-2 py-1 text-xs rounded text-red-500 hover:text-red-700 hover:bg-red-500/10 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-500/10 transition-colors"
+                  title={isEn ? 'Reset all filters' : 'Alle Filter zurücksetzen'}
+                >
+                  <RotateCcw size={11} />
+                  {isEn ? 'Reset filters' : 'Filter zurücksetzen'}
+                </button>
+                {!saveFilterPromptOpen && (
+                  <button
+                    onClick={() => { setSaveFilterPromptOpen(true); setSaveFilterName(''); }}
+                    className="flex items-center justify-center gap-1 px-2 py-1 text-xs rounded text-blue-500 hover:text-blue-700 hover:bg-blue-500/10 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-500/10 transition-colors"
+                    title={isEn ? 'Save current filter' : 'Filter speichern'}
+                  >
+                    <Bookmark size={11} />
+                    {isEn ? 'Save' : 'Speichern'}
+                  </button>
+                )}
+              </div>
+            )}
+            {saveFilterPromptOpen && (
+              <div className="flex items-center gap-1">
+                <input
+                  autoFocus
+                  value={saveFilterName}
+                  onChange={(e) => setSaveFilterName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSaveCurrentFilter();
+                    if (e.key === 'Escape') setSaveFilterPromptOpen(false);
+                  }}
+                  placeholder={isEn ? 'Filter name…' : 'Filtername…'}
+                  className="flex-1 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                />
+                <button
+                  onClick={handleSaveCurrentFilter}
+                  disabled={!saveFilterName.trim()}
+                  className="p-1 rounded text-green-600 hover:bg-green-500/10 dark:text-green-400 disabled:opacity-40 transition-colors"
+                  title={isEn ? 'Save' : 'Speichern'}
+                >
+                  <Check size={13} />
+                </button>
+                <button
+                  onClick={() => setSaveFilterPromptOpen(false)}
+                  className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  title={isEn ? 'Cancel' : 'Abbrechen'}
+                >
+                  <X size={13} />
+                </button>
+              </div>
             )}
           </div>
           <div className="border-b border-gray-200 dark:border-gray-700">
@@ -606,39 +765,43 @@ function AppContent() {
               {quickOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
             </button>
             {quickOpen && (
-              <div className="px-3 pt-1.5 pb-3 flex flex-wrap gap-1.5 justify-center">
-                {quickPatternOptions.map((q) => (
-                  <button
-                    key={q}
-                    onClick={() => handleSearch(q)}
-                    className={`px-2 py-0.5 rounded text-xs font-mono transition-colors ${
-                      pattern === q
-                        ? `bg-gray-200 dark:bg-gray-700 ${(QUICK_COLORS[q] ?? 'text-blue-600 dark:text-blue-400')} hover:bg-gray-300 dark:hover:bg-gray-600`
-                        : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                    }`}
-                  >
-                    {q}
-                  </button>
-                ))}
+              <div className="pt-0.5 pb-1 flex flex-col">
+                {quickPatternOptions.map((q) => {
+                  const active = pattern === q;
+                  const color = QUICK_COLORS[q] ?? 'text-blue-600 dark:text-blue-400';
+                  return (
+                    <button
+                      key={q}
+                      onClick={() => handleSearch(q)}
+                      className={`px-3 py-1 text-left text-xs font-mono transition-colors ${color} ${
+                        active
+                          ? 'bg-gray-100 dark:bg-gray-700/70 hover:bg-gray-200 dark:hover:bg-gray-700'
+                          : 'opacity-50 hover:opacity-100 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                      }`}
+                    >
+                      {q}
+                    </button>
+                  );
+                })}
                 <button
                   onClick={() => { setHistoryOnly(!historyOnly); setPage(0); }}
-                  className={`px-2 py-0.5 rounded text-xs transition-colors flex items-center gap-1 ${
+                  className={`px-3 py-1 text-left text-xs transition-colors flex items-center gap-1.5 text-purple-600 dark:text-purple-400 ${
                     historyOnly
-                      ? 'bg-gray-200 dark:bg-gray-700 text-purple-600 dark:text-purple-400 hover:bg-gray-300 dark:hover:bg-gray-600'
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                      ? 'bg-gray-100 dark:bg-gray-700/70 hover:bg-gray-200 dark:hover:bg-gray-700'
+                      : 'opacity-50 hover:opacity-100 hover:bg-gray-100 dark:hover:bg-gray-700/50'
                   }`}
                 >
-                  <Database size={11} /> History {historyIds.size}
+                  <Database size={11} /> History <span className="opacity-70">{historyIds.size}</span>
                 </button>
                 <button
                   onClick={() => { setSmartOnly(!smartOnly); setPage(0); }}
-                  className={`px-2 py-0.5 rounded text-xs transition-colors flex items-center gap-1 ${
+                  className={`px-3 py-1 text-left text-xs transition-colors flex items-center gap-1.5 text-orange-600 dark:text-orange-400 ${
                     smartOnly
-                      ? 'bg-gray-200 dark:bg-gray-700 text-orange-600 dark:text-orange-400 hover:bg-gray-300 dark:hover:bg-gray-600'
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                      ? 'bg-gray-100 dark:bg-gray-700/70 hover:bg-gray-200 dark:hover:bg-gray-700'
+                      : 'opacity-50 hover:opacity-100 hover:bg-gray-100 dark:hover:bg-gray-700/50'
                   }`}
                 >
-                  <Mic2 size={11} /> SmartName {smartIds.size}
+                  <Mic2 size={11} /> SmartName <span className="opacity-70">{smartIds.size}</span>
                 </button>
               </div>
             )}
@@ -657,20 +820,23 @@ function AppContent() {
                 {roomsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
               </button>
               {roomsOpen && (
-                <div className="px-3 pt-1.5 pb-3 flex flex-wrap gap-1.5 justify-center">
-                  {roomEnums.map(({ name }, i) => (
-                    <button
-                      key={name}
-                      onClick={() => handleRoomToggle(name)}
-                      className={`px-2 py-0.5 rounded text-xs transition-colors ${
-                        roomFilter?.toLowerCase() === name.toLowerCase()
-                          ? `bg-gray-200 dark:bg-gray-700 ${ENUM_COLORS[i % ENUM_COLORS.length]} hover:bg-gray-300 dark:hover:bg-gray-600`
-                          : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                      }`}
-                    >
-                      {name}
-                    </button>
-                  ))}
+                <div className="pt-0.5 pb-1 flex flex-col">
+                  {roomEnums.map(({ name }, i) => {
+                    const active = roomFilter?.toLowerCase() === name.toLowerCase();
+                    return (
+                      <button
+                        key={name}
+                        onClick={() => handleRoomToggle(name)}
+                        className={`px-3 py-1 text-left text-xs transition-colors ${ENUM_COLORS[i % ENUM_COLORS.length]} ${
+                          active
+                            ? 'bg-gray-100 dark:bg-gray-700/70 hover:bg-gray-200 dark:hover:bg-gray-700'
+                            : 'opacity-50 hover:opacity-100 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                        }`}
+                      >
+                        {name}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -689,21 +855,61 @@ function AppContent() {
                 {functionsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
               </button>
               {functionsOpen && (
-                <div className="px-3 pt-1.5 pb-3 flex flex-wrap gap-1.5 justify-center">
-                  {functionEnums.map(({ name }, i) => (
-                    <button
-                      key={name}
-                      onClick={() => handleFunctionToggle(name)}
-                      className={`px-2 py-0.5 rounded text-xs transition-colors ${
-                        functionFilter?.toLowerCase() === name.toLowerCase()
-                          ? `bg-gray-200 dark:bg-gray-700 ${ENUM_COLORS[i % ENUM_COLORS.length]} hover:bg-gray-300 dark:hover:bg-gray-600`
-                          : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                      }`}
-                    >
-                      {name}
-                    </button>
-                  ))}
+                <div className="pt-0.5 pb-1 flex flex-col">
+                  {functionEnums.map(({ name }, i) => {
+                    const active = functionFilter?.toLowerCase() === name.toLowerCase();
+                    return (
+                      <button
+                        key={name}
+                        onClick={() => handleFunctionToggle(name)}
+                        className={`px-3 py-1 text-left text-xs transition-colors ${ENUM_COLORS[i % ENUM_COLORS.length]} ${
+                          active
+                            ? 'bg-gray-100 dark:bg-gray-700/70 hover:bg-gray-200 dark:hover:bg-gray-700'
+                            : 'opacity-50 hover:opacity-100 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                        }`}
+                      >
+                        {name}
+                      </button>
+                    );
+                  })}
                 </div>
+              )}
+            </div>
+          )}
+          {savedFiltersList.length > 0 && (
+            <div className="border-b border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => setSavedFiltersOpen((v) => !v)}
+                className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
+              >
+                <span className="flex items-center gap-1.5 font-medium">
+                  <Bookmark size={12} />
+                  {isEn ? 'Saved filters' : 'Gespeicherte Filter'}
+                  <span className="px-1.5 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-[10px] text-gray-600 dark:text-gray-300">{savedFiltersList.length}</span>
+                </span>
+                {savedFiltersOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+              </button>
+              {savedFiltersOpen && (
+                <ul className="divide-y divide-gray-100 dark:divide-gray-700/60">
+                  {savedFiltersList.map((f) => (
+                    <li key={f.id} className="flex items-center gap-1 px-3 py-1.5">
+                      <button
+                        onClick={() => handleLoadSavedFilter(f)}
+                        className="flex-1 text-left text-xs text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 truncate transition-colors"
+                        title={f.pattern}
+                      >
+                        {f.name}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteSavedFilter(f.id)}
+                        className="shrink-0 p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-500/10 dark:hover:text-red-400 transition-colors"
+                        title={isEn ? 'Delete' : 'Löschen'}
+                      >
+                        <X size={11} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               )}
             </div>
           )}
