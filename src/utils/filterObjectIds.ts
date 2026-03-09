@@ -105,6 +105,7 @@ export function filterObjectIds({
 
     if (danglingAliases) {
       if (!id.startsWith('alias.0.')) return false;
+      if (obj?.type === 'folder' || obj?.type === 'channel' || obj?.type === 'device') return false;
       const rawId = obj?.common?.alias?.id;
       const targets: string[] = typeof rawId === 'object'
         ? [rawId?.read, rawId?.write].filter((t): t is string => !!t)

@@ -376,6 +376,7 @@ function AppContent() {
     let count = 0;
     for (const [id, obj] of Object.entries(allObjects)) {
       if (!id.startsWith('alias.0.')) continue;
+      if (obj?.type === 'folder' || obj?.type === 'channel' || obj?.type === 'device') continue;
       const rawId = obj?.common?.alias?.id;
       const targets: string[] = typeof rawId === 'object'
         ? [rawId?.read, rawId?.write].filter((t): t is string => !!t)
