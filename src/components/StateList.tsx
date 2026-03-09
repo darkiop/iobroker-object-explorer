@@ -2464,6 +2464,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
         <ImportDatapointsModal
           onClose={() => setImportOpen(false)}
           language={language}
+          existingIds={allObjectIds}
         />
       )}
       {historyModalId && (

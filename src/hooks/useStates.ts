@@ -266,7 +266,7 @@ export function useCreateDatapoint() {
 export function useImportDatapoints() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: Record<string, IoBrokerObject>) => importDatapoints(data),
+    mutationFn: ({ data, existingIds }: { data: Record<string, IoBrokerObject>; existingIds?: Set<string> }) => importDatapoints(data, existingIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.objects.root });
     },

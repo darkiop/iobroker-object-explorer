@@ -310,23 +310,32 @@ export async function putFullObject(id: string, obj: IoBrokerObject): Promise<vo
   objectsCache = null;
 }
 
-export async function importDatapoints(data: Record<string, IoBrokerObject>): Promise<{ imported: number; errors: string[] }> {
-  const errors: string[] = [];
-  let imported = 0;
+export type ImportItemResult = { id: string; status: 'created' | 'updated' | 'skipped' | 'error'; error?: string };
+export type ImportResult = { items: ImportItemResult[]; created: number; updated: number; skipped: number; errors: number };
+
+export async function importDatapoints(data: Record<string, IoBrokerObject>, existingIds?: Set<string>): Promise<ImportResult> {
+  const items: ImportItemResult[] = [];
   for (const [id, obj] of Object.entries(data)) {
+    const isExisting = existingIds ? existingIds.has(id) : false;
     try {
       await fetch(`${getBaseUrl()}/object/${encodeURIComponent(id)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...obj, _id: id }),
       }).then((res) => { if (!res.ok) throw new Error(`${res.status} ${res.statusText}`); });
-      imported++;
+      items.push({ id, status: isExisting ? 'updated' : 'created' });
     } catch (e) {
-      errors.push(`${id}: ${e instanceof Error ? e.message : String(e)}`);
+      items.push({ id, status: 'error', error: e instanceof Error ? e.message : String(e) });
     }
   }
   objectsCache = null;
-  return { imported, errors };
+  return {
+    items,
+    created: items.filter((i) => i.status === 'created').length,
+    updated: items.filter((i) => i.status === 'updated').length,
+    skipped: 0,
+    errors:  items.filter((i) => i.status === 'error').length,
+  };
 }
 
 export async function extendObject(id: string, obj: { common: Partial<IoBrokerObject['common']> }): Promise<void> {
