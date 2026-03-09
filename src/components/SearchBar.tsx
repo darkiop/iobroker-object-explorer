@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Check } from 'lucide-react';
 
 const SEARCH_ALL = '*';
+const ID_SUGGEST_MIN_LEN = 2;
+const ID_SUGGEST_MAX = 20;
 
 const OBJECT_TYPES = ['state', 'channel', 'device', 'folder', 'enum', 'script', 'schedule', 'host', 'adapter', 'instance', 'meta', 'config', 'group', 'user'];
 
@@ -13,16 +15,36 @@ interface SearchBarProps {
   onFulltextChange?: (enabled: boolean) => void;
   exactEnabled?: boolean;
   onExactChange?: (enabled: boolean) => void;
+  idSuggestEnabled?: boolean;
+  onIdSuggestChange?: (enabled: boolean) => void;
   language?: 'en' | 'de';
   roomNames?: string[];
   functionNames?: string[];
   roleNames?: string[];
+  allObjectIds?: string[];
 }
 
 interface Suggestion {
-  display: string;   // shown in dropdown
-  insert: string;    // inserted into input
-  keepOpen?: boolean; // keep dropdown open after insert (for keyword completions)
+  display: string;
+  insert: string;
+  keepOpen?: boolean;
+  autoSubmit?: boolean; // for ID suggestions: submit immediately on select
+}
+
+type CommandDef = { prefix: string; label: string; color: string };
+const COMMANDS: CommandDef[] = [
+  { prefix: 'room:',     label: 'room',  color: 'bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300' },
+  { prefix: 'function:', label: 'fn',    color: 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300' },
+  { prefix: 'type:',     label: 'type',  color: 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300' },
+  { prefix: 'role:',     label: 'role',  color: 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300' },
+];
+const ID_COLOR = 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400';
+
+function cmdColor(insert: string): string {
+  return COMMANDS.find((c) => insert.startsWith(c.prefix))?.color ?? ID_COLOR;
+}
+function cmdLabel(insert: string): string {
+  return COMMANDS.find((c) => insert.startsWith(c.prefix))?.label ?? 'id';
 }
 
 function getTokenAtCursor(value: string, cursor: number): { token: string; start: number; end: number } {
@@ -34,23 +56,13 @@ function getTokenAtCursor(value: string, cursor: number): { token: string; start
   return { token: value.slice(start, end), start, end };
 }
 
-type CommandDef = { prefix: string; label: string; color: string };
-const COMMANDS: CommandDef[] = [
-  { prefix: 'room:',     label: 'room',  color: 'bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300' },
-  { prefix: 'function:', label: 'fn',    color: 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300' },
-  { prefix: 'type:',     label: 'type',  color: 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300' },
-  { prefix: 'role:',     label: 'role',  color: 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300' },
-];
-
-function cmdColor(insert: string): string {
-  return COMMANDS.find((c) => insert.startsWith(c.prefix))?.color ?? '';
-}
-
-function cmdLabel(insert: string): string {
-  return COMMANDS.find((c) => insert.startsWith(c.prefix))?.label ?? '⌨';
-}
-
-function buildSuggestions(token: string, roomNames: string[], functionNames: string[], roleNames: string[]): Suggestion[] {
+function buildSuggestions(
+  token: string,
+  roomNames: string[],
+  functionNames: string[],
+  roleNames: string[],
+  allObjectIds: string[],
+): Suggestion[] {
   const lower = token.toLowerCase();
 
   if (lower.startsWith('room:')) {
@@ -76,9 +88,42 @@ function buildSuggestions(token: string, roomNames: string[], functionNames: str
 
   if (lower.length === 0) return [];
 
-  return COMMANDS
+  // Keyword suggestions
+  const kwSuggestions = COMMANDS
     .filter((c) => c.prefix.startsWith(lower))
     .map((c) => ({ display: c.prefix, insert: c.prefix, keepOpen: true }));
+  if (kwSuggestions.length > 0) return kwSuggestions;
+
+  // ID suggestions (only when no command keyword detected)
+  if (allObjectIds.length > 0 && lower.length >= ID_SUGGEST_MIN_LEN) {
+    const startsWith: string[] = [];
+    const contains: string[] = [];
+    for (const id of allObjectIds) {
+      const idLower = id.toLowerCase();
+      if (idLower === lower) continue; // exact = no need to suggest
+      if (idLower.startsWith(lower)) startsWith.push(id);
+      else if (idLower.includes(lower)) contains.push(id);
+      if (startsWith.length + contains.length >= ID_SUGGEST_MAX * 2) break;
+    }
+    return [...startsWith, ...contains].slice(0, ID_SUGGEST_MAX)
+      .map((id) => ({ display: id, insert: id, autoSubmit: true }));
+  }
+
+  return [];
+}
+
+function CheckToggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+  return (
+    <label className="inline-flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 cursor-pointer select-none px-0.5 w-fit">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="sr-only peer" />
+      <span className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+        checked ? 'bg-blue-500 border-blue-500' : 'bg-gray-100 dark:bg-gray-700 border-gray-400 dark:border-gray-500'
+      }`}>
+        {checked && <Check size={11} className="text-white" strokeWidth={3} />}
+      </span>
+      {label}
+    </label>
+  );
 }
 
 export default function SearchBar({
@@ -89,10 +134,13 @@ export default function SearchBar({
   onFulltextChange,
   exactEnabled = false,
   onExactChange,
+  idSuggestEnabled = false,
+  onIdSuggestChange,
   language = 'en',
   roomNames = [],
   functionNames = [],
   roleNames = [],
+  allObjectIds = [],
 }: SearchBarProps) {
   const [value, setValue] = useState('');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -117,10 +165,11 @@ export default function SearchBar({
   const recompute = useCallback((val: string, cursor: number) => {
     if (fulltextEnabled) { closeSuggestions(); return; }
     const { token } = getTokenAtCursor(val, cursor);
-    const next = buildSuggestions(token, roomNames, functionNames, roleNames);
+    const ids = idSuggestEnabled ? allObjectIds : [];
+    const next = buildSuggestions(token, roomNames, functionNames, roleNames, ids);
     setSuggestions(next);
     setActiveIndex(-1);
-  }, [fulltextEnabled, roomNames, functionNames, roleNames, closeSuggestions]);
+  }, [fulltextEnabled, idSuggestEnabled, allObjectIds, roomNames, functionNames, roleNames, closeSuggestions]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -132,10 +181,15 @@ export default function SearchBar({
     const cursor = inputRef.current?.selectionStart ?? value.length;
     const { start, end } = getTokenAtCursor(value, cursor);
     const newValue = value.slice(0, start) + s.insert + value.slice(end) + (s.keepOpen ? '' : ' ');
-    setValue(newValue);
+    const trimmed = newValue.trim();
+    setValue(trimmed);
     closeSuggestions();
 
-    // After inserting, focus input and recompute if keepOpen (e.g. "room:" inserted)
+    if (s.autoSubmit) {
+      onSearch(trimmed || SEARCH_ALL);
+      return;
+    }
+
     requestAnimationFrame(() => {
       if (!inputRef.current) return;
       const pos = start + s.insert.length + (s.keepOpen ? 0 : 1);
@@ -145,11 +199,10 @@ export default function SearchBar({
         recompute(newValue, start + s.insert.length);
       }
     });
-  }, [value, closeSuggestions, recompute]);
+  }, [value, closeSuggestions, onSearch, recompute]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (suggestions.length === 0) return;
-
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       setActiveIndex((i) => (i + 1) % suggestions.length);
@@ -177,11 +230,7 @@ export default function SearchBar({
   const handleClear = () => {
     setValue('');
     closeSuggestions();
-    if (onReset) {
-      onReset();
-    } else {
-      onSearch(SEARCH_ALL);
-    }
+    if (onReset) { onReset(); } else { onSearch(SEARCH_ALL); }
   };
 
   return (
@@ -199,18 +248,13 @@ export default function SearchBar({
               recompute(e.target.value, e.target.selectionStart ?? e.target.value.length);
             }}
             onBlur={(e) => {
-              // delay so click on suggestion fires first
-              if (!dropdownRef.current?.contains(e.relatedTarget as Node)) {
-                closeSuggestions();
-              }
+              if (!dropdownRef.current?.contains(e.relatedTarget as Node)) closeSuggestions();
             }}
             placeholder={fulltextEnabled ? (isEn ? 'Full text' : 'Freitext') : (isEn ? 'ID (use * wildcard)' : 'ID (mit * als Wildcard)')}
             className="w-full px-3 py-2 pr-8 bg-white border border-gray-300 rounded-l-md text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-500"
           />
           {value !== '' && (
-            <button
-              type="button"
-              onClick={handleClear}
+            <button type="button" onClick={handleClear}
               className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
               title={isEn ? 'Reset filters' : 'Filter zurücksetzen'}
             >
@@ -220,9 +264,8 @@ export default function SearchBar({
 
           {/* Autocomplete dropdown */}
           {suggestions.length > 0 && (
-            <div
-              ref={dropdownRef}
-              className="absolute left-0 right-0 top-full mt-0.5 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md shadow-lg overflow-hidden max-h-52 overflow-y-auto"
+            <div ref={dropdownRef}
+              className="absolute left-0 right-0 top-full mt-0.5 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md shadow-lg overflow-hidden max-h-60 overflow-y-auto"
             >
               {suggestions.map((s, i) => (
                 <button
@@ -230,61 +273,31 @@ export default function SearchBar({
                   type="button"
                   tabIndex={-1}
                   onMouseDown={(e) => { e.preventDefault(); applySuggestion(s); }}
-                  className={`w-full text-left px-3 py-1.5 text-sm font-mono flex items-center gap-2 transition-colors ${
+                  className={`w-full text-left px-3 py-1.5 text-xs font-mono flex items-center gap-2 transition-colors ${
                     i === activeIndex
                       ? 'bg-blue-500 text-white'
                       : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                   }`}
                 >
-                  <span className={`text-xs px-1 py-0.5 rounded font-sans ${i === activeIndex ? 'bg-blue-400 text-white' : cmdColor(s.insert)}`}>
+                  <span className={`shrink-0 text-xs px-1 py-0.5 rounded font-sans ${i === activeIndex ? 'bg-blue-400 text-white' : cmdColor(s.insert)}`}>
                     {cmdLabel(s.insert)}
                   </span>
-                  {s.display}
+                  <span className="truncate">{s.display}</span>
                 </button>
               ))}
             </div>
           )}
         </div>
-        <button
-          type="submit"
+        <button type="submit"
           className="px-4 py-2 bg-gray-200/50 text-gray-500 border border-gray-300/50 border-l-0 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600/50 dark:hover:bg-gray-700 rounded-r-md transition-colors text-sm font-medium"
         >
           {isEn ? 'Search' : 'Suchen'}
         </button>
       </div>
-      <div className="flex items-center gap-3">
-        <label className="inline-flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 cursor-pointer select-none px-0.5 w-fit">
-          <input
-            type="checkbox"
-            checked={fulltextEnabled}
-            onChange={(e) => onFulltextChange?.(e.target.checked)}
-            className="sr-only peer"
-          />
-          <span className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-            fulltextEnabled
-              ? 'bg-blue-500 border-blue-500'
-              : 'bg-gray-100 dark:bg-gray-700 border-gray-400 dark:border-gray-500'
-          }`}>
-            {fulltextEnabled && <Check size={11} className="text-white" strokeWidth={3} />}
-          </span>
-          {isEn ? 'Full text search' : 'Volltext-Suche'}
-        </label>
-        <label className="inline-flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 cursor-pointer select-none px-0.5 w-fit">
-          <input
-            type="checkbox"
-            checked={exactEnabled}
-            onChange={(e) => onExactChange?.(e.target.checked)}
-            className="sr-only peer"
-          />
-          <span className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-            exactEnabled
-              ? 'bg-blue-500 border-blue-500'
-              : 'bg-gray-100 dark:bg-gray-700 border-gray-400 dark:border-gray-500'
-          }`}>
-            {exactEnabled && <Check size={11} className="text-white" strokeWidth={3} />}
-          </span>
-          {isEn ? 'Exact search' : 'Exakte Suche'}
-        </label>
+      <div className="flex items-center gap-3 flex-wrap">
+        <CheckToggle checked={fulltextEnabled} onChange={(v) => onFulltextChange?.(v)} label={isEn ? 'Full text search' : 'Volltext-Suche'} />
+        <CheckToggle checked={exactEnabled} onChange={(v) => onExactChange?.(v)} label={isEn ? 'Exact search' : 'Exakte Suche'} />
+        <CheckToggle checked={idSuggestEnabled} onChange={(v) => onIdSuggestChange?.(v)} label={isEn ? 'ID suggestions' : 'ID-Vorschläge'} />
       </div>
     </form>
   );

@@ -289,6 +289,7 @@ function AppContent() {
   const [settingsDraft, setSettingsDraft] = useState<AppSettings>(() => loadAppSettings());
   const [fulltextEnabled, setFulltextEnabled] = useState(false);
   const [exactEnabled, setExactEnabled] = useState(false);
+  const [idSuggestEnabled, setIdSuggestEnabled] = useState(false);
   const [historyModalId, setHistoryModalId] = useState<string | null>(null);
   const [newDatapointInitialId, setNewDatapointInitialId] = useState<string | null>(null);
   const [enumManagerOpen, setEnumManagerOpen] = useState(false);
@@ -753,6 +754,9 @@ function AppContent() {
               roomNames={roomEnums.map((r) => r.name)}
               functionNames={functionEnums.map((f) => f.name)}
               roleNames={allRoleNames}
+              idSuggestEnabled={idSuggestEnabled}
+              onIdSuggestChange={setIdSuggestEnabled}
+              allObjectIds={idSuggestEnabled ? Object.keys(allObjects) : undefined}
             />
             {hasAnyFilter && (
               <div className="flex gap-1">
