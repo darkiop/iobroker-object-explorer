@@ -1,3 +1,42 @@
+autvervollständigung im suchfeld
+datenpunkte
+such befhele wie: room: function: role (prüfen welche es aktuell gibt)
+---
+animationen in der UI, z.b. bei den modals
+--
+die schriftgrößen der tabelle und des objeakt tree on der konfiguration einstellbar machen
+--
+Feature B — Find & Replace in Alias-Targets -> aktuellen pfad (bei klick) übernehmen
+---
+
+https://github.com/iobroker-community-adapters/ioBroker.alias-manager
+
+Alle 4 Features implementiert, TypeScript und Lint sauber. Zusammenfassung:
+
+Feature C — Verwaiste Aliases (Dangling Cleanup)
+
+filterObjectIds.ts: neues danglingAliases-Flag + allObjectIds-Parameter
+App.tsx: danglingAliasCount (aus allObjects), Button in Quick-Filter-Sidebar, resetAllFilters und hasAnyFilter erweitert
+Wenn aktiv: Tabelle zeigt nur alias.0.*-Objekte ohne gültiges Ziel (aus dem gesamten allObjects, nicht nur pattern-gefiltert)
+
+Feature D — Alias duplizieren mit Ziel-Ersatz
+
+CopyDatapointModal.tsx: neuer Abschnitt "Alias-Ziel ersetzen" erscheint automatisch bei alias.0.*-Quellen — replaceFrom/replaceTo-Inputs + Live-Preview des neuen Ziels
+
+Feature B — Find & Replace in Alias-Targets
+
+AliasReplaceModal.tsx: neues Modal mit old/new-Eingabe, Preview-Tabelle (rot → grün), Batch-Update mit Live-Fortschritt
+Trigger 1: Rechtsklick auf alias.*-Knoten im Tree
+Trigger 2: über onOpenAliasReplace (kann auch von StateList-Toolbar aufgerufen werden)
+
+Feature A — Auto-Create Aliases aus Gerät
+
+AutoCreateAliasModal.tsx: neues Modal — Basispfad eingeben, alle Kind-States als Checkboxen, optionaler Raum/Funktion-Selektor, Batch-Create mit Fortschritt
+Trigger: Rechtsklick auf Device/Channel-Knoten im Tree → "Aliases auto-erstellen…"
+
+---
+
+
 <table>
 <thead>
 <tr><th>ID</th><th>Description</th><th>Category</th><th>Priority</th><th>Effort</th><th>Status</th></tr>
@@ -29,7 +68,7 @@
 <tr><td>FE-024</td><td>HistoryChart: implement downsampling for &gt;1000 data points, as Recharts stutters with large datasets.</td><td>Performance</td><td>medium</td><td>M</td><td>open</td></tr>
 <tr><td>FE-025</td><td>Merge enum map parsing logic into a shared utility parseEnumName().</td><td>Code Quality</td><td>low</td><td>S</td><td>open</td></tr>
 <tr><td>FE-026</td><td>Skeleton screens / loading states in StateList while datapoint values are being loaded.</td><td>UX</td><td>low</td><td>M</td><td>open</td></tr>
-<tr><td>FE-027</td><td>State persistence in localStorage: retain active filters and page navigation across sessions.</td><td>UX</td><td>low</td><td>S</td><td>open</td></tr>
+<tr style="background-color:#1a3a1f"><td>FE-027</td><td>State persistence in localStorage: retain active filters and page navigation across sessions.</td><td>UX</td><td>low</td><td>S</td><td>done</td></tr>
 <tr style="background-color:#1a3a1f"><td>FE-028</td><td>Persist sidebar width and collapsed state in localStorage.</td><td>UX</td><td>low</td><td>S</td><td>done</td></tr>
 <tr style="background-color:#1a3a1f"><td>FE-029</td><td>Color coding for state values: boolean green/red, numbers with trend arrows, highlight null values.</td><td>UX</td><td>low</td><td>S</td><td>done</td></tr>
 <tr style="background-color:#1a3a1f"><td>FE-030</td><td>Export function: export filtered datapoint list as JSON or CSV.</td><td>Feature</td><td>low</td><td>M</td><td>done</td></tr>

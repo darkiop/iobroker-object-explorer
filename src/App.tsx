@@ -12,6 +12,8 @@ import HistoryModal from './components/HistoryModal';
 import NewDatapointModal from './components/NewDatapointModal';
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
 import EnumManagerModal from './components/EnumManagerModal';
+import AliasReplaceModal from './components/AliasReplaceModal';
+import AutoCreateAliasModal from './components/AutoCreateAliasModal';
 import LanguageDropdown from './components/LanguageDropdown';
 import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunctionMap, useRoomEnums, useFunctionEnums, useAliasMap } from './hooks/useStates';
 import { hasHistory, hasSmartName } from './api/iobroker';
@@ -19,7 +21,7 @@ import type { SortKey, DateFormatSetting, StateListHandle } from './components/S
 import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel } from './components/StateList';
 import type { IoBrokerObject, IoBrokerState } from './types/iobroker';
 import { filterObjectIds } from './utils/filterObjectIds';
-import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RotateCcw, Layers, X, Trash2, Check, Loader2, AlertCircle, Bookmark } from 'lucide-react';
+import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RotateCcw, Layers, X, Trash2, Check, Loader2, AlertCircle, Bookmark, AlertTriangle } from 'lucide-react';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -278,6 +280,9 @@ function AppContent() {
   const [newDatapointInitialId, setNewDatapointInitialId] = useState<string | null>(null);
   const [enumManagerOpen, setEnumManagerOpen] = useState(false);
   const [expertMode, setExpertMode] = useState<boolean>(() => localStorage.getItem(LS_EXPERT_MODE) === 'true');
+  const [danglingAliasFilter, setDanglingAliasFilter] = useState(false);
+  const [aliasReplaceInitialStr, setAliasReplaceInitialStr] = useState<string | null>(null);
+  const [autoAliasDeviceId, setAutoAliasDeviceId] = useState<string | null>(null);
   const [savedFiltersList, setSavedFiltersList] = useState<SavedFilter[]>(() => loadSavedFilters());
   const [savedFiltersOpen, setSavedFiltersOpen] = useState(false);
   const [saveFilterPromptOpen, setSaveFilterPromptOpen] = useState(false);
@@ -344,13 +349,32 @@ function AppContent() {
   );
   const isEn = appSettings.language === 'en';
 
+  const danglingAliasCount = useMemo(() => {
+    let count = 0;
+    for (const [id, obj] of Object.entries(allObjects)) {
+      if (!id.startsWith('alias.0.')) continue;
+      const rawId = obj?.common?.alias?.id;
+      const targets: string[] = typeof rawId === 'object'
+        ? [rawId?.read, rawId?.write].filter((t): t is string => !!t)
+        : rawId ? [rawId] : [];
+      if (targets.length === 0 || targets.every((t) => !existingIds.has(t))) count++;
+    }
+    return count;
+  }, [allObjects, existingIds]);
+
   const objectIds = useMemo(() => {
-    let ids = Object.keys(stateObjects).sort();
-    if (historyOnly) ids = ids.filter((id) => historyIds.has(id));
-    if (smartOnly) ids = ids.filter((id) => smartIds.has(id));
+    // When dangling alias filter is active, source from full allObjects (not pattern-filtered stateObjects)
+    const sourceObjects = danglingAliasFilter ? allObjects : stateObjects;
+    let ids = danglingAliasFilter
+      ? Object.keys(allObjects).filter((id) => id.startsWith('alias.0.')).sort()
+      : Object.keys(stateObjects).sort();
+    if (!danglingAliasFilter) {
+      if (historyOnly) ids = ids.filter((id) => historyIds.has(id));
+      if (smartOnly) ids = ids.filter((id) => smartIds.has(id));
+    }
     return filterObjectIds({
       ids,
-      objects: stateObjects,
+      objects: sourceObjects,
       roomMap,
       functionMap,
       historyIds,
@@ -362,8 +386,10 @@ function AppContent() {
       quickPatterns,
       patternRoomFilter: roomFilter,
       patternFunctionFilter: functionFilter,
+      danglingAliases: danglingAliasFilter,
+      allObjectIds: existingIds,
     });
-  }, [stateObjects, historyOnly, historyIds, smartOnly, smartIds, colFilters, roomMap, functionMap, aliasMap, roomFilters, functionFilters, quickPatterns, roomFilter, functionFilter]);
+  }, [stateObjects, allObjects, historyOnly, historyIds, smartOnly, smartIds, colFilters, roomMap, functionMap, aliasMap, roomFilters, functionFilters, quickPatterns, roomFilter, functionFilter, danglingAliasFilter, existingIds]);
 
   const tableIds = useMemo(
     () => treeFilter ? objectIds.filter((id) => id.startsWith(treeFilter)) : objectIds,
@@ -551,13 +577,14 @@ function AppContent() {
       pattern !== '*' ||
       historyOnly ||
       smartOnly ||
+      danglingAliasFilter ||
       roomFilters.size > 0 ||
       functionFilters.size > 0 ||
       quickPatterns.size > 0 ||
       !!treeFilter ||
       exactEnabled ||
       Object.values(colFilters).some((v) => v.trim() !== ''),
-    [pattern, historyOnly, smartOnly, roomFilters, functionFilters, quickPatterns, treeFilter, exactEnabled, colFilters]
+    [pattern, historyOnly, smartOnly, danglingAliasFilter, roomFilters, functionFilters, quickPatterns, treeFilter, exactEnabled, colFilters]
   );
 
   const resetAllFilters = useCallback(() => {
@@ -566,6 +593,7 @@ function AppContent() {
     setSelectedId(null);
     setHistoryOnly(false);
     setSmartOnly(false);
+    setDanglingAliasFilter(false);
     setRoomFilters(new Set());
     setFunctionFilters(new Set());
     setQuickPatterns(new Set());
@@ -805,6 +833,18 @@ function AppContent() {
                 >
                   <Mic2 size={11} /> SmartName <span className="opacity-70">{smartIds.size}</span>
                 </button>
+                {danglingAliasCount > 0 && (
+                  <button
+                    onClick={() => { setDanglingAliasFilter((v) => !v); setPage(0); }}
+                    className={`px-3 py-1 text-left text-xs transition-colors flex items-center gap-1.5 text-amber-600 dark:text-amber-400 ${
+                      danglingAliasFilter
+                        ? 'bg-gray-100 dark:bg-gray-700/70 hover:bg-gray-200 dark:hover:bg-gray-700'
+                        : 'opacity-50 hover:opacity-100 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                    }`}
+                  >
+                    <AlertTriangle size={11} /> {isEn ? 'Dangling Aliases' : 'Verwaiste Aliase'} <span className="opacity-70">{danglingAliasCount}</span>
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -933,6 +973,8 @@ function AppContent() {
               onClearTreeFilter={handleClearTreeFilter}
               pattern={pattern}
               language={appSettings.language}
+              onOpenAliasReplace={() => setAliasReplaceInitialStr('')}
+              onAutoCreateAlias={setAutoAliasDeviceId}
             />
           </div>
         </div>
@@ -970,6 +1012,24 @@ function AppContent() {
             allObjects={allObjects}
             language={appSettings.language}
             onClose={() => setEnumManagerOpen(false)}
+          />
+        )}
+        {aliasReplaceInitialStr !== null && (
+          <AliasReplaceModal
+            allObjects={allObjects}
+            language={appSettings.language}
+            initialOldStr={aliasReplaceInitialStr}
+            onClose={() => setAliasReplaceInitialStr(null)}
+          />
+        )}
+        {autoAliasDeviceId && (
+          <AutoCreateAliasModal
+            deviceId={autoAliasDeviceId}
+            allObjects={allObjects}
+            existingIds={existingIds}
+            language={appSettings.language}
+            onClose={() => setAutoAliasDeviceId(null)}
+            onCreated={(ids) => { handleNavigateTo(ids.length === 1 ? ids : ['alias.0.*']); }}
           />
         )}
         {shortcutsOpen && (
@@ -1257,6 +1317,7 @@ function AppContent() {
             toolbarLabels={appSettings.toolbarLabels}
             onToggleToolbarLabels={handleToggleToolbarLabels}
             onOpenEnumManager={() => setEnumManagerOpen(true)}
+            onOpenAliasReplace={(initialStr) => setAliasReplaceInitialStr(initialStr ?? '')}
           />
         </div>
 

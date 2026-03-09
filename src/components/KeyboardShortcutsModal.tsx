@@ -1,6 +1,6 @@
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { createPortal } from 'react-dom';
-import { X, Keyboard } from 'lucide-react';
+import { X, Keyboard, Search } from 'lucide-react';
 
 interface Props {
   onClose: () => void;
@@ -15,6 +15,12 @@ interface Shortcut {
   descDe: string;
 }
 
+interface SearchCommand {
+  example: string;
+  descEn: string;
+  descDe: string;
+}
+
 const SHORTCUTS: Shortcut[] = [
   { keys: [isMac ? '⌘ B' : 'Ctrl B'], descEn: 'Toggle sidebar', descDe: 'Seitenleiste ein-/ausblenden' },
   { keys: ['?'], descEn: 'Show keyboard shortcuts', descDe: 'Tastenkürzel anzeigen' },
@@ -22,6 +28,14 @@ const SHORTCUTS: Shortcut[] = [
   { keys: ['↑', '↓'], descEn: 'Navigate rows in table', descDe: 'Zeilen in Tabelle navigieren' },
   { keys: ['←', '→'], descEn: 'Previous / next page', descDe: 'Vorherige / nächste Seite' },
   { keys: ['Enter'], descEn: 'Open focused row', descDe: 'Fokussierte Zeile öffnen' },
+];
+
+const SEARCH_COMMANDS: SearchCommand[] = [
+  { example: 'hm-rpc.*', descEn: 'Wildcard ID pattern', descDe: 'Wildcard-ID-Muster' },
+  { example: 'room:Wohnzimmer', descEn: 'Filter by room name', descDe: 'Nach Raum filtern' },
+  { example: 'room:"Living Room"', descEn: 'Room with spaces (quoted)', descDe: 'Raum mit Leerzeichen (in Anführungszeichen)' },
+  { example: 'function:Licht', descEn: 'Filter by function name', descDe: 'Nach Funktion filtern' },
+  { example: 'room:Bad function:Licht', descEn: 'Combine room + function', descDe: 'Raum + Funktion kombinieren' },
 ];
 
 export default function KeyboardShortcutsModal({ onClose, language = 'en' }: Props) {
@@ -35,7 +49,7 @@ export default function KeyboardShortcutsModal({ onClose, language = 'en' }: Pro
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-sm"
+        className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -53,13 +67,13 @@ export default function KeyboardShortcutsModal({ onClose, language = 'en' }: Pro
         </div>
 
         {/* Shortcuts list */}
-        <div className="px-5 py-4 space-y-2">
+        <div className="px-5 pt-4 pb-2 space-y-2">
           {SHORTCUTS.map((s) => (
-            <div key={s.descEn} className="flex items-center justify-between gap-4">
+            <div key={s.descEn} className="grid grid-cols-[1fr_200px] items-center gap-4">
               <span className="text-sm text-gray-600 dark:text-gray-300">
                 {isEn ? s.descEn : s.descDe}
               </span>
-              <div className="flex items-center gap-1 shrink-0">
+              <div className="flex items-center gap-1">
                 {s.keys.map((k) => (
                   <kbd
                     key={k}
@@ -71,6 +85,29 @@ export default function KeyboardShortcutsModal({ onClose, language = 'en' }: Pro
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Divider */}
+        <div className="mx-5 my-3 border-t border-gray-200 dark:border-gray-700" />
+
+        {/* Search commands */}
+        <div className="px-5 pb-4">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+            <Search size={11} />
+            {isEn ? 'Search commands' : 'Suchbefehle'}
+          </div>
+          <div className="space-y-1.5">
+            {SEARCH_COMMANDS.map((c) => (
+              <div key={c.example} className="grid grid-cols-[1fr_200px] items-center gap-4">
+                <span className="text-sm text-gray-600 dark:text-gray-300">
+                  {isEn ? c.descEn : c.descDe}
+                </span>
+                <code className="text-xs font-mono bg-gray-100 dark:bg-gray-800 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded border border-gray-200 dark:border-gray-700 whitespace-nowrap">
+                  {c.example}
+                </code>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>,

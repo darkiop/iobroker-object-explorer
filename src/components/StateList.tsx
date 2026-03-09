@@ -52,6 +52,7 @@ interface StateListProps {
   toolbarLabels?: boolean;
   onToggleToolbarLabels?: () => void;
   onOpenEnumManager?: () => void;
+  onOpenAliasReplace?: (initialStr?: string) => void;
 }
 
 function formatTimestamp(ts: number, dateFormat: DateFormatSetting): string {
@@ -1671,7 +1672,7 @@ const StateRow = React.memo(function StateRow({
   );
 });
 
-function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, allObjectIds, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en', expertMode = false, onToggleExpertMode, toolbarLabels = true, onOpenEnumManager }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
+function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, allObjectIds, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en', expertMode = false, onToggleExpertMode, toolbarLabels = true, onOpenEnumManager, onOpenAliasReplace }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
   const isEn = language === 'en';
   const [sortKey, setSortKey] = useState<SortKey>('id');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
@@ -2231,6 +2232,21 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
           <Tag size={15} />
           {showToolbarLabels && <span>{isEn ? 'Enums' : 'Enums'}</span>}
         </button>
+        {[...checkedIds].some((id) => id.startsWith('alias.')) && (
+          <button
+            onClick={() => {
+              const firstAliasId = [...checkedIds].find((id) => id.startsWith('alias.'));
+              const rawTarget = firstAliasId ? objects[firstAliasId]?.common?.alias?.id : undefined;
+              const initialStr = typeof rawTarget === 'string' ? rawTarget : (rawTarget?.read ?? rawTarget?.write ?? '');
+              onOpenAliasReplace?.(initialStr);
+            }}
+            title={isEn ? 'Find & Replace in alias targets' : 'Alias-Ziele suchen & ersetzen'}
+            className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
+          >
+            <Link2 size={15} />
+            {showToolbarLabels && <span>{isEn ? 'Alias Replace' : 'Alias Ersetzen'}</span>}
+          </button>
+        )}
         {checkedIds.size > 0 && (
           <button
             onClick={() => setMultiDeleteOpen(true)}

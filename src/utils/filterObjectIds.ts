@@ -17,6 +17,8 @@ interface FilterObjectIdsParams {
   quickPatterns: Set<string>;
   patternRoomFilter?: string | null;
   patternFunctionFilter?: string | null;
+  danglingAliases?: boolean;
+  allObjectIds?: Set<string>;
 }
 
 function quickPatternToRegex(pattern: string): RegExp {
@@ -45,6 +47,8 @@ export function filterObjectIds({
   quickPatterns,
   patternRoomFilter,
   patternFunctionFilter,
+  danglingAliases,
+  allObjectIds,
 }: FilterObjectIdsParams): string[] {
   // Pre-compute filter values once before the single pass
   const fId = colFilters.id?.trim().toLowerCase() || null;
@@ -87,6 +91,17 @@ export function filterObjectIds({
     if (filterHistory && !historyIds.has(id)) return false;
     if (filterSmart && !smartIds.has(id)) return false;
     if (filterAlias && !aliasMap.has(id) && !obj?.common?.alias?.id) return false;
+
+    if (danglingAliases) {
+      if (!id.startsWith('alias.0.')) return false;
+      const rawId = obj?.common?.alias?.id;
+      const targets: string[] = typeof rawId === 'object'
+        ? [rawId?.read, rawId?.write].filter((t): t is string => !!t)
+        : rawId ? [rawId] : [];
+      if (targets.length === 0) return true; // alias without any target defined = dangling
+      if (allObjectIds) return targets.every((t) => !allObjectIds.has(t)); // all targets missing = dangling
+      return false;
+    }
 
     if (quickRegexes && !quickRegexes.some((rx) => rx.test(id))) return false;
 

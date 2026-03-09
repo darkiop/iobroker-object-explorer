@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Copy } from 'lucide-react';
+import { X, Copy, Link2 } from 'lucide-react';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { useCreateDatapoint } from '../hooks/useStates';
 import type { IoBrokerObject } from '../types/iobroker';
@@ -21,6 +21,25 @@ function getObjectName(obj: IoBrokerObject | undefined): string {
   return obj.common.name.de || obj.common.name.en || Object.values(obj.common.name)[0] || '';
 }
 
+function getAliasTargetString(rawId: string | { read?: string; write?: string } | undefined): string {
+  if (!rawId) return '';
+  if (typeof rawId === 'string') return rawId;
+  return rawId.read || rawId.write || '';
+}
+
+function replaceAliasTarget(
+  rawId: string | { read?: string; write?: string } | undefined,
+  from: string,
+  to: string,
+): string | { read?: string; write?: string } | undefined {
+  if (!rawId || !from) return rawId;
+  if (typeof rawId === 'string') return rawId.replace(from, to);
+  return {
+    ...(rawId.read  ? { read:  rawId.read.replace(from, to)  } : {}),
+    ...(rawId.write ? { write: rawId.write.replace(from, to) } : {}),
+  };
+}
+
 export default function CopyDatapointModal({ sourceId, sourceObj, existingIds, onClose, onCreated, language = 'en' }: Props) {
   const isEn = language === 'en';
   const [newId, setNewId] = useState(sourceId + '_copy');
@@ -33,6 +52,14 @@ export default function CopyDatapointModal({ sourceId, sourceObj, existingIds, o
   const create = useCreateDatapoint();
 
   const srcCommon = sourceObj?.common;
+  const isAlias = sourceId.startsWith('alias.0.') && !!srcCommon?.alias?.id;
+  const originalAliasId = isAlias ? srcCommon?.alias?.id : undefined;
+  const [replaceFrom, setReplaceFrom] = useState(() => getAliasTargetString(originalAliasId));
+  const [replaceTo, setReplaceTo] = useState('');
+
+  const newAliasTarget = isAlias && replaceFrom && replaceTo
+    ? replaceAliasTarget(originalAliasId, replaceFrom, replaceTo)
+    : originalAliasId;
 
   useEffect(() => {
     inputRef.current?.select();
@@ -68,6 +95,12 @@ export default function CopyDatapointModal({ sourceId, sourceObj, existingIds, o
       if (srcCommon.max   !== undefined) common.max   = srcCommon.max;
       if (srcCommon.desc)  common.desc  = srcCommon.desc;
       if (srcCommon.states) common.states = srcCommon.states;
+      if (isAlias && srcCommon.alias) {
+        common.alias = {
+          ...srcCommon.alias,
+          id: newAliasTarget,
+        };
+      }
     }
 
     create.mutate(
@@ -151,6 +184,47 @@ export default function CopyDatapointModal({ sourceId, sourceObj, existingIds, o
               placeholder={isEn ? 'Display name' : 'Anzeigename'}
             />
           </div>
+
+          {/* Alias target replace (only for alias.0.* objects) */}
+          {isAlias && (
+            <div className="flex flex-col gap-2 rounded-lg border border-amber-200 dark:border-amber-800/50 bg-amber-50/60 dark:bg-amber-900/10 px-3 py-3">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                <Link2 size={12} />
+                {isEn ? 'Replace alias target' : 'Alias-Ziel ersetzen'}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <div className="flex flex-col gap-1">
+                  <label className={labelCls}>{isEn ? 'Replace (in target ID)' : 'Ersetzen (in Ziel-ID)'}</label>
+                  <input
+                    type="text"
+                    value={replaceFrom}
+                    onChange={(e) => setReplaceFrom(e.target.value)}
+                    className={`${inputCls} font-mono text-xs`}
+                    placeholder={isEn ? 'old string…' : 'alter String…'}
+                    spellCheck={false}
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className={labelCls}>{isEn ? 'With' : 'Mit'}</label>
+                  <input
+                    type="text"
+                    value={replaceTo}
+                    onChange={(e) => setReplaceTo(e.target.value)}
+                    className={`${inputCls} font-mono text-xs`}
+                    placeholder={isEn ? 'new string…' : 'neuer String…'}
+                    spellCheck={false}
+                  />
+                </div>
+              </div>
+              {/* Preview */}
+              <div className="text-[10px] text-gray-500 dark:text-gray-400 font-mono bg-white/60 dark:bg-gray-800/50 rounded px-2 py-1.5 break-all">
+                <span className="text-gray-400 dark:text-gray-500">{isEn ? 'Target → ' : 'Ziel → '}</span>
+                {typeof newAliasTarget === 'object'
+                  ? [newAliasTarget?.read && `read: ${newAliasTarget.read}`, newAliasTarget?.write && `write: ${newAliasTarget.write}`].filter(Boolean).join(' / ')
+                  : (newAliasTarget ?? '—')}
+              </div>
+            </div>
+          )}
 
           {/* Error */}
           {error && (

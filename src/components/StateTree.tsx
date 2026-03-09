@@ -23,6 +23,8 @@ interface StateTreeProps {
   onClearTreeFilter?: () => void;
   pattern?: string;
   language?: 'en' | 'de';
+  onOpenAliasReplace?: (initialStr?: string) => void;
+  onAutoCreateAlias?: (deviceId: string) => void;
 }
 
 function buildTree(ids: string[], structureIds: string[] = []): TreeNode {
@@ -179,6 +181,8 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   treeFilter,
   pattern,
   language,
+  onOpenAliasReplace,
+  onAutoCreateAlias,
 }: {
   node: TreeNode;
   depth: number;
@@ -197,6 +201,8 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   treeFilter: string | null;
   pattern?: string;
   language: 'en' | 'de';
+  onOpenAliasReplace?: (initialStr?: string) => void;
+  onAutoCreateAlias?: (deviceId: string) => void;
 }) {
   const isEn = language === 'en';
   const [expanded, setExpanded] = useState(false);
@@ -318,6 +324,20 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
           items.push({ icon: <Copy size={13} />, label: isEn ? 'Copy pattern' : 'Muster kopieren', onClick: () => copyText(`${node.fullPath}.*`) });
           items.push({ separator: true } as const);
           items.push({ icon: <Pencil size={13} />, label: isEn ? 'Edit object' : 'Objekt bearbeiten', onClick: () => setEditOpen(true) });
+          // Auto-create aliases for device/channel nodes
+          if (onAutoCreateAlias && (objectType === 'device' || objectType === 'channel')) {
+            items.push({ separator: true } as const);
+            items.push({ icon: <Link2 size={13} />, label: isEn ? 'Auto-create aliases…' : 'Aliases auto-erstellen…', onClick: () => onAutoCreateAlias(node.fullPath) });
+          }
+          // Find & Replace for alias.0.* nodes
+          if (onOpenAliasReplace && node.fullPath.startsWith('alias.')) {
+            items.push({ separator: true } as const);
+            items.push({ icon: <Link2 size={13} />, label: isEn ? 'Find & Replace in targets…' : 'Ziele suchen & ersetzen…', onClick: () => {
+              const rawTarget = allObjects[node.fullPath]?.common?.alias?.id;
+              const initialStr = typeof rawTarget === 'string' ? rawTarget : (rawTarget?.read ?? rawTarget?.write ?? '');
+              onOpenAliasReplace(initialStr);
+            } });
+          }
           items.push({ separator: true } as const);
           items.push({ icon: <Download size={13} />, label: isEn ? 'Export subtree (JSON)' : 'Unterstruktur exportieren (JSON)', onClick: exportSubtree });
         }
@@ -474,6 +494,8 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
             treeFilter={treeFilter}
             pattern={pattern}
             language={language}
+            onOpenAliasReplace={onOpenAliasReplace}
+            onAutoCreateAlias={onAutoCreateAlias}
           />
         ))}
     </div>
@@ -481,7 +503,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
 });
 
 
-function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeScope, onCreateAtPath, historyOnly, smartOnly, historyIds, smartIds, expandToDepth, treeFilter = null, pattern, language = 'en' }: StateTreeProps) {
+function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeScope, onCreateAtPath, historyOnly, smartOnly, historyIds, smartIds, expandToDepth, treeFilter = null, pattern, language = 'en', onOpenAliasReplace, onAutoCreateAlias }: StateTreeProps) {
   const isEn = language === 'en';
   const [expandSignal, setExpandSignal] = useState<{ depth: number; seq: number }>({ depth: 0, seq: 0 });
   const [showFolders,  setShowFolders]  = useState(true);
@@ -625,6 +647,8 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
               treeFilter={treeFilter}
               pattern={pattern}
               language={language}
+              onOpenAliasReplace={onOpenAliasReplace}
+              onAutoCreateAlias={onAutoCreateAlias}
             />
           ))
         )}

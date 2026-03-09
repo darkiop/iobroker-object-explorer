@@ -102,7 +102,8 @@ The app is then reachable at `http://localhost:8080`.
 - Empty input matches all objects (`*`)
 - **History filter**: shows only datapoints with active history recording (badge with match count)
 - **SmartName filter**: shows only datapoints with a configured SmartHome name (badge with match count)
-- Both filters can be combined
+- **Dangling Aliases filter**: shows only `alias.0.*` objects whose target datapoint no longer exists; count badge shows total affected — combine with bulk delete to clean up stale aliases
+- Filters can be combined
 
 ---
 
@@ -115,7 +116,7 @@ The app is then reachable at `http://localhost:8080`.
 - **Copy icon**: copies the ID or pattern (e.g. `folder.*`) to clipboard with visual feedback
 - **Expand / Collapse all**: buttons in the sidebar toolbar
 - Responds live to history and SmartName filters
-- **Right-click context menu**: copy ID, set as filter, edit object, rename, move, delete datapoint
+- **Right-click context menu**: copy ID, set as filter, edit object, rename, move, delete datapoint; on device/channel nodes: **"Auto-create aliases…"**; on `alias.*` nodes: **"Find & Replace in targets…"**
 
 ---
 
@@ -191,6 +192,7 @@ All data columns (except + and Delete) can be toggled via the **column picker dr
 - **+ button** (left): opens the new datapoint form; ID pre-filled from the current search pattern
 - **Import button**: opens ImportDatapointsModal to import datapoints from JSON
 - **Export button**: exports current filtered datapoints as JSON
+- **Alias Replace button** (Link icon): appears as soon as at least one checked row has an ID starting with `alias.`; opens the Find & Replace in Alias Targets modal pre-filled with the target of the first selected alias
 - **Count display**: centered — shows total number of filtered datapoints
 - **Stretch 100%**, **Clear filters**, **Reset settings**, **Column picker**: right-aligned
 
@@ -230,12 +232,37 @@ Opened via **right-click → "Create alias"** (non-`alias.0.*` datapoints only).
 
 ---
 
+### Auto-Create Aliases from Device
+
+Opened via **right-click on a device or channel node → "Auto-create aliases…"** in the tree.
+
+- Enter a **base path** (e.g. `alias.0.Wohnzimmer.Heizung`) — all child state datapoints are listed below it with their suggested alias IDs
+- Each row is pre-filled with the source name, type, role, and unit
+- Check/uncheck individual datapoints; **All** / **None** buttons for quick selection
+- Optionally assign a **Room** and **Function** enum to all created aliases at once
+- Creates all selected aliases in sequence; live progress counter; cache invalidated once after all creates
+
+---
+
+### Find & Replace in Alias Targets
+
+Opened via **right-click on an `alias.*` tree node → "Find & Replace in targets…"** or from the header of that context menu.
+
+- Enter an **old string** and a **new string** — all `alias.0.*` objects whose `common.alias.id` contains the old string are shown in a preview table
+- Supports both simple string targets (`alias.id`) and dual read/write targets (`alias.id.read` / `alias.id.write`)
+- Preview rows show old target in red, new target in green
+- **Apply** button updates all affected aliases in sequence with live progress counter
+- Useful when replacing a device (e.g. after a HomeMatic device swap: replace `hm-rpc.0.JEQ0698034` → `hm-rpc.0.NEWDEVICE`)
+
+---
+
 ### Copy Datapoint
 
 Opened via **right-click → "Copy datapoint"**.
 
 - New ID pre-filled as `<source-id>_copy`; name as `<name> (Copy)`
 - Copies: type, role, unit, read/write, min/max, description, states mapping
+- **Alias target replacement** (shown automatically for `alias.0.*` sources): enter a find/replace string to rewrite the `common.alias.id` of the copy — live preview of the resulting target ID
 
 ---
 
@@ -387,8 +414,14 @@ History icon / menu entry
 Right-click → Create alias
   → CreateAliasModal        — creates alias.0.* object
 
+Right-click (device/channel) → Auto-create aliases
+  → AutoCreateAliasModal    — batch-creates alias.0.* objects for all child states
+
+Right-click (alias.* node) → Find & Replace in targets
+  → AliasReplaceModal       — bulk-replaces strings in alias.id across all aliases
+
 Right-click → Copy datapoint
-  → CopyDatapointModal      — duplicates datapoint with new ID
+  → CopyDatapointModal      — duplicates datapoint with new ID; alias.0.* sources get optional target path replacement
 
 Right-click → Rename datapoint
   → RenameDatapointModal    — renames object + state to new ID
@@ -445,8 +478,10 @@ Import button
 | `src/components/HistoryChart.tsx` | Recharts chart with time range, aggregation, multi-series, zoom/pan, periodic comparison, stats, export PNG, delete functions |
 | `src/components/HistoryModal.tsx` | Full-size history modal with extra series management (up to 4 additional datapoints) |
 | `src/components/NewDatapointModal.tsx` | Form for creating new datapoints |
-| `src/components/CreateAliasModal.tsx` | Dialog for creating alias datapoints |
-| `src/components/CopyDatapointModal.tsx` | Dialog for copying datapoints |
+| `src/components/CreateAliasModal.tsx` | Dialog for creating a single alias datapoint |
+| `src/components/AutoCreateAliasModal.tsx` | Batch-create aliases for all child states of a device/channel |
+| `src/components/AliasReplaceModal.tsx` | Find & Replace in alias target IDs across all `alias.0.*` objects |
+| `src/components/CopyDatapointModal.tsx` | Dialog for copying datapoints; includes alias target replacement for `alias.0.*` sources |
 | `src/components/RenameDatapointModal.tsx` | Dialog for renaming a datapoint ID |
 | `src/components/MoveDatapointModal.tsx` | Dialog for moving a datapoint to a new path |
 | `src/components/ImportDatapointsModal.tsx` | Dialog for importing datapoints from JSON |
