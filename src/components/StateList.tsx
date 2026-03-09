@@ -1680,7 +1680,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   const [colWidths, setColWidths] = useState<Record<SortKey, number>>(loadColWidths);
   const containerRef = useRef<HTMLDivElement>(null);
   const theadRef = useRef<HTMLTableSectionElement>(null);
-  const autoFitRef = useRef(!localStorage.getItem(LS_WIDTHS_KEY));
+  const autoFitRef = useRef(true);
   const saveWidthsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollRafRef = useRef<number | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
