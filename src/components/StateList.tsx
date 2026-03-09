@@ -53,6 +53,7 @@ interface StateListProps {
   onToggleToolbarLabels?: () => void;
   onOpenEnumManager?: () => void;
   onOpenAliasReplace?: (initialStr?: string) => void;
+  tableFontSize?: 'small' | 'normal' | 'large';
 }
 
 function formatTimestamp(ts: number, dateFormat: DateFormatSetting): string {
@@ -1672,7 +1673,7 @@ const StateRow = React.memo(function StateRow({
   );
 });
 
-function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, allObjectIds, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en', expertMode = false, onToggleExpertMode, toolbarLabels = true, onOpenEnumManager, onOpenAliasReplace }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
+function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, allObjectIds, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en', expertMode = false, onToggleExpertMode, toolbarLabels = true, onOpenEnumManager, onOpenAliasReplace, tableFontSize = 'normal' }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
   const isEn = language === 'en';
   const [sortKey, setSortKey] = useState<SortKey>('id');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
@@ -2606,7 +2607,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
         return <ContextMenu x={x} y={y} items={items} onClose={() => setCtxMenu(null)} />;
       })()}
 
-      <div ref={containerRef} onScroll={handleBodyScroll} onKeyDown={handleContainerKeyDown} tabIndex={0} className="overflow-x-auto overflow-y-auto flex-1 outline-none">
+      <div ref={containerRef} onScroll={handleBodyScroll} onKeyDown={handleContainerKeyDown} tabIndex={0} className="overflow-x-auto overflow-y-auto flex-1 outline-none" data-table-fontsize={tableFontSize}>
         <table className="text-xs text-left table-fixed" style={{ width: totalWidth }}>
           <thead ref={theadRef} className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-100 dark:bg-gray-800 sticky top-0 z-10">
             <tr>

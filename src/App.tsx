@@ -43,6 +43,8 @@ const EMPTY_STATES: Record<string, IoBrokerState> = {};
 const EMPTY_STRING_MAP: Record<string, string> = {};
 const EMPTY_ALIAS_MAP = new Map<string, string[]>();
 
+type UiFontSize = 'small' | 'normal' | 'large';
+
 interface AppSettings {
   language: 'en' | 'de';
   dateFormat: DateFormatSetting;
@@ -50,6 +52,8 @@ interface AppSettings {
   extraQuickFilters: string[];
   toolbarLabels: boolean;
   pageSize: number;
+  tableFontSize: UiFontSize;
+  treeFontSize: UiFontSize;
 }
 
 function getDefaultAppSettings(): AppSettings {
@@ -60,6 +64,8 @@ function getDefaultAppSettings(): AppSettings {
     extraQuickFilters: [],
     toolbarLabels: true,
     pageSize: 50,
+    tableFontSize: 'normal',
+    treeFontSize: 'normal',
   };
 }
 
@@ -108,6 +114,9 @@ function loadAppSettings(): AppSettings {
       ? parsed.extraQuickFilters.filter((x): x is string => typeof x === 'string').map(normalizeQuickPattern).filter(Boolean)
       : [];
     const parsedPageSize = typeof parsed.pageSize === 'number' && PAGE_SIZE_OPTIONS.includes(parsed.pageSize) ? parsed.pageSize : 50;
+    const validFontSizes = ['small', 'normal', 'large'] as const;
+    const tableFontSize = validFontSizes.includes(parsed.tableFontSize as UiFontSize) ? parsed.tableFontSize as UiFontSize : 'normal';
+    const treeFontSize  = validFontSizes.includes(parsed.treeFontSize  as UiFontSize) ? parsed.treeFontSize  as UiFontSize : 'normal';
     return {
       language: validLanguage,
       dateFormat: validDate,
@@ -115,6 +124,8 @@ function loadAppSettings(): AppSettings {
       extraQuickFilters: [...new Set(validExtra.filter((p) => !DEFAULT_QUICK_PATTERNS.includes(p as typeof DEFAULT_QUICK_PATTERNS[number])))],
       toolbarLabels: parsed.toolbarLabels !== false,
       pageSize: parsedPageSize,
+      tableFontSize,
+      treeFontSize,
     };
   } catch {
     return fallback;
@@ -526,6 +537,8 @@ function AppContent() {
       extraQuickFilters: normalizedExtra,
       toolbarLabels: settingsDraft.toolbarLabels,
       pageSize: validPageSize,
+      tableFontSize: settingsDraft.tableFontSize,
+      treeFontSize: settingsDraft.treeFontSize,
     };
     setAppSettings(next);
     setPage(0);
@@ -975,6 +988,7 @@ function AppContent() {
               language={appSettings.language}
               onOpenAliasReplace={() => setAliasReplaceInitialStr('')}
               onAutoCreateAlias={setAutoAliasDeviceId}
+              treeFontSize={appSettings.treeFontSize}
             />
           </div>
         </div>
@@ -1188,6 +1202,44 @@ function AppContent() {
                         {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
                       </select>
                     </div>
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Table font size' : 'Schriftgröße Tabelle'}</span>
+                      <div className="flex gap-1.5">
+                        {(['small', 'normal', 'large'] as UiFontSize[]).map((s) => (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => setSettingsDraft((prev) => ({ ...prev, tableFontSize: s }))}
+                            className={`px-3 py-1 text-xs rounded border transition-colors ${
+                              settingsDraft.tableFontSize === s
+                                ? 'bg-blue-500 border-blue-500 text-white'
+                                : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                            }`}
+                          >
+                            {s === 'small' ? (isEn ? 'Small' : 'Klein') : s === 'large' ? (isEn ? 'Large' : 'Groß') : (isEn ? 'Normal' : 'Normal')}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Tree font size' : 'Schriftgröße Objektbaum'}</span>
+                      <div className="flex gap-1.5">
+                        {(['small', 'normal', 'large'] as UiFontSize[]).map((s) => (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => setSettingsDraft((prev) => ({ ...prev, treeFontSize: s }))}
+                            className={`px-3 py-1 text-xs rounded border transition-colors ${
+                              settingsDraft.treeFontSize === s
+                                ? 'bg-blue-500 border-blue-500 text-white'
+                                : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                            }`}
+                          >
+                            {s === 'small' ? (isEn ? 'Small' : 'Klein') : s === 'large' ? (isEn ? 'Large' : 'Groß') : (isEn ? 'Normal' : 'Normal')}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 )}
                 {/* Tab: Spalten */}
@@ -1318,6 +1370,7 @@ function AppContent() {
             onToggleToolbarLabels={handleToggleToolbarLabels}
             onOpenEnumManager={() => setEnumManagerOpen(true)}
             onOpenAliasReplace={(initialStr) => setAliasReplaceInitialStr(initialStr ?? '')}
+            tableFontSize={appSettings.tableFontSize}
           />
         </div>
 

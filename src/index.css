@@ -41,3 +41,9 @@ html:not(.dark) ::-webkit-scrollbar-thumb:hover {
 html:not(.dark) * {
   scrollbar-color: #d1d5db transparent;
 }
+
+/* Table font size overrides */
+[data-table-fontsize="small"] td,
+[data-table-fontsize="small"] th { font-size: 0.65rem !important; }
+[data-table-fontsize="large"] td,
+[data-table-fontsize="large"] th { font-size: 0.875rem !important; }

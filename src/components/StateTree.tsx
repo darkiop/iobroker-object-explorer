@@ -25,6 +25,7 @@ interface StateTreeProps {
   language?: 'en' | 'de';
   onOpenAliasReplace?: (initialStr?: string) => void;
   onAutoCreateAlias?: (deviceId: string) => void;
+  treeFontSize?: 'small' | 'normal' | 'large';
 }
 
 function buildTree(ids: string[], structureIds: string[] = []): TreeNode {
@@ -183,6 +184,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   language,
   onOpenAliasReplace,
   onAutoCreateAlias,
+  nodeFontClass = 'text-sm',
 }: {
   node: TreeNode;
   depth: number;
@@ -203,6 +205,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   language: 'en' | 'de';
   onOpenAliasReplace?: (initialStr?: string) => void;
   onAutoCreateAlias?: (deviceId: string) => void;
+  nodeFontClass?: string;
 }) {
   const isEn = language === 'en';
   const [expanded, setExpanded] = useState(false);
@@ -291,6 +294,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
             treeFilter={treeFilter}
             pattern={pattern}
             language={language}
+            nodeFontClass={nodeFontClass}
           />
         ))}
       </>
@@ -345,7 +349,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
       })()}
 
       <div
-        className={`group/row flex items-center gap-1.5 px-2 py-1 cursor-pointer rounded text-sm ${
+        className={`group/row flex items-center gap-1.5 px-2 py-1 cursor-pointer rounded ${nodeFontClass} ${
           selectedId === node.fullPath
             ? 'bg-blue-600/30 text-blue-600 dark:text-blue-300 hover:bg-blue-600/35'
             : `hover:bg-gray-200/50 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-300 ${namespaceRowClass}`
@@ -496,6 +500,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
             language={language}
             onOpenAliasReplace={onOpenAliasReplace}
             onAutoCreateAlias={onAutoCreateAlias}
+            nodeFontClass={nodeFontClass}
           />
         ))}
     </div>
@@ -503,8 +508,9 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
 });
 
 
-function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeScope, onCreateAtPath, historyOnly, smartOnly, historyIds, smartIds, expandToDepth, treeFilter = null, pattern, language = 'en', onOpenAliasReplace, onAutoCreateAlias }: StateTreeProps) {
+function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeScope, onCreateAtPath, historyOnly, smartOnly, historyIds, smartIds, expandToDepth, treeFilter = null, pattern, language = 'en', onOpenAliasReplace, onAutoCreateAlias, treeFontSize = 'normal' }: StateTreeProps) {
   const isEn = language === 'en';
+  const nodeFontClass = treeFontSize === 'small' ? 'text-xs' : treeFontSize === 'large' ? 'text-base' : 'text-sm';
   const [expandSignal, setExpandSignal] = useState<{ depth: number; seq: number }>({ depth: 0, seq: 0 });
   const [showFolders,  setShowFolders]  = useState(true);
   const [showDevices,  setShowDevices]  = useState(true);
@@ -649,6 +655,7 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
               language={language}
               onOpenAliasReplace={onOpenAliasReplace}
               onAutoCreateAlias={onAutoCreateAlias}
+              nodeFontClass={nodeFontClass}
             />
           ))
         )}
