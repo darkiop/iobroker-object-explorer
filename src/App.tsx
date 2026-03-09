@@ -737,6 +737,8 @@ function AppContent() {
               exactEnabled={exactEnabled}
               onExactChange={setExactEnabled}
               language={appSettings.language}
+              roomNames={roomEnums.map((r) => r.name)}
+              functionNames={functionEnums.map((f) => f.name)}
             />
             {hasAnyFilter && (
               <div className="flex gap-1">
