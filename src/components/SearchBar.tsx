@@ -3,6 +3,8 @@ import { X, Check } from 'lucide-react';
 
 const SEARCH_ALL = '*';
 
+const OBJECT_TYPES = ['state', 'channel', 'device', 'folder', 'enum', 'script', 'schedule', 'host', 'adapter', 'instance', 'meta', 'config', 'group', 'user'];
+
 interface SearchBarProps {
   onSearch: (pattern: string) => void;
   initialPattern?: string;
@@ -14,6 +16,7 @@ interface SearchBarProps {
   language?: 'en' | 'de';
   roomNames?: string[];
   functionNames?: string[];
+  roleNames?: string[];
 }
 
 interface Suggestion {
@@ -31,35 +34,51 @@ function getTokenAtCursor(value: string, cursor: number): { token: string; start
   return { token: value.slice(start, end), start, end };
 }
 
-function buildSuggestions(token: string, roomNames: string[], functionNames: string[]): Suggestion[] {
+type CommandDef = { prefix: string; label: string; color: string };
+const COMMANDS: CommandDef[] = [
+  { prefix: 'room:',     label: 'room',  color: 'bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300' },
+  { prefix: 'function:', label: 'fn',    color: 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300' },
+  { prefix: 'type:',     label: 'type',  color: 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300' },
+  { prefix: 'role:',     label: 'role',  color: 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300' },
+];
+
+function cmdColor(insert: string): string {
+  return COMMANDS.find((c) => insert.startsWith(c.prefix))?.color ?? '';
+}
+
+function cmdLabel(insert: string): string {
+  return COMMANDS.find((c) => insert.startsWith(c.prefix))?.label ?? '⌨';
+}
+
+function buildSuggestions(token: string, roomNames: string[], functionNames: string[], roleNames: string[]): Suggestion[] {
   const lower = token.toLowerCase();
 
   if (lower.startsWith('room:')) {
     const query = token.slice(5).toLowerCase();
-    return roomNames
-      .filter((n) => n.toLowerCase().includes(query))
-      .map((n) => ({
-        display: n,
-        insert: n.includes(' ') ? `room:"${n}"` : `room:${n}`,
-      }));
+    return roomNames.filter((n) => n.toLowerCase().includes(query))
+      .map((n) => ({ display: n, insert: n.includes(' ') ? `room:"${n}"` : `room:${n}` }));
   }
-
   if (lower.startsWith('function:')) {
     const query = token.slice(9).toLowerCase();
-    return functionNames
-      .filter((n) => n.toLowerCase().includes(query))
-      .map((n) => ({
-        display: n,
-        insert: n.includes(' ') ? `function:"${n}"` : `function:${n}`,
-      }));
+    return functionNames.filter((n) => n.toLowerCase().includes(query))
+      .map((n) => ({ display: n, insert: n.includes(' ') ? `function:"${n}"` : `function:${n}` }));
+  }
+  if (lower.startsWith('type:')) {
+    const query = token.slice(5).toLowerCase();
+    return OBJECT_TYPES.filter((t) => t.includes(query))
+      .map((t) => ({ display: t, insert: `type:${t}` }));
+  }
+  if (lower.startsWith('role:')) {
+    const query = token.slice(5).toLowerCase();
+    return roleNames.filter((r) => r.toLowerCase().includes(query)).slice(0, 30)
+      .map((r) => ({ display: r, insert: r.includes(' ') ? `role:"${r}"` : `role:${r}` }));
   }
 
   if (lower.length === 0) return [];
 
-  const suggestions: Suggestion[] = [];
-  if ('room:'.startsWith(lower)) suggestions.push({ display: 'room:', insert: 'room:', keepOpen: true });
-  if ('function:'.startsWith(lower)) suggestions.push({ display: 'function:', insert: 'function:', keepOpen: true });
-  return suggestions;
+  return COMMANDS
+    .filter((c) => c.prefix.startsWith(lower))
+    .map((c) => ({ display: c.prefix, insert: c.prefix, keepOpen: true }));
 }
 
 export default function SearchBar({
@@ -73,6 +92,7 @@ export default function SearchBar({
   language = 'en',
   roomNames = [],
   functionNames = [],
+  roleNames = [],
 }: SearchBarProps) {
   const [value, setValue] = useState('');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -97,10 +117,10 @@ export default function SearchBar({
   const recompute = useCallback((val: string, cursor: number) => {
     if (fulltextEnabled) { closeSuggestions(); return; }
     const { token } = getTokenAtCursor(val, cursor);
-    const next = buildSuggestions(token, roomNames, functionNames);
+    const next = buildSuggestions(token, roomNames, functionNames, roleNames);
     setSuggestions(next);
     setActiveIndex(-1);
-  }, [fulltextEnabled, roomNames, functionNames, closeSuggestions]);
+  }, [fulltextEnabled, roomNames, functionNames, roleNames, closeSuggestions]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -216,14 +236,8 @@ export default function SearchBar({
                       : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                   }`}
                 >
-                  <span className={`text-xs px-1 py-0.5 rounded font-sans ${
-                    i === activeIndex
-                      ? 'bg-blue-400 text-white'
-                      : s.insert.startsWith('room:')
-                        ? 'bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300'
-                        : 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300'
-                  }`}>
-                    {s.insert.startsWith('room:') ? 'room' : s.insert.startsWith('function:') ? 'fn' : '⌨'}
+                  <span className={`text-xs px-1 py-0.5 rounded font-sans ${i === activeIndex ? 'bg-blue-400 text-white' : cmdColor(s.insert)}`}>
+                    {cmdLabel(s.insert)}
                   </span>
                   {s.display}
                 </button>

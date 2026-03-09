@@ -69,24 +69,26 @@ function getDefaultAppSettings(): AppSettings {
   };
 }
 
-function parseEnumFilters(pattern: string): { basePattern: string; roomFilter: string | null; functionFilter: string | null } {
+function parseEnumFilters(pattern: string): { basePattern: string; roomFilter: string | null; functionFilter: string | null; typeFilter: string | null; roleFilter: string | null } {
   let base = pattern;
   let roomFilter: string | null = null;
   let functionFilter: string | null = null;
+  let typeFilter: string | null = null;
+  let roleFilter: string | null = null;
 
   const roomMatch = base.match(/\broom:"([^"]+)"/i) || base.match(/\broom:(\S+)/i);
-  if (roomMatch) {
-    roomFilter = roomMatch[1];
-    base = base.replace(roomMatch[0], '').trim();
-  }
+  if (roomMatch) { roomFilter = roomMatch[1]; base = base.replace(roomMatch[0], '').trim(); }
 
   const funcMatch = base.match(/\bfunction:"([^"]+)"/i) || base.match(/\bfunction:(\S+)/i);
-  if (funcMatch) {
-    functionFilter = funcMatch[1];
-    base = base.replace(funcMatch[0], '').trim();
-  }
+  if (funcMatch) { functionFilter = funcMatch[1]; base = base.replace(funcMatch[0], '').trim(); }
 
-  return { basePattern: base || '*', roomFilter, functionFilter };
+  const typeMatch = base.match(/\btype:"([^"]+)"/i) || base.match(/\btype:(\S+)/i);
+  if (typeMatch) { typeFilter = typeMatch[1]; base = base.replace(typeMatch[0], '').trim(); }
+
+  const roleMatch = base.match(/\brole:"([^"]+)"/i) || base.match(/\brole:(\S+)/i);
+  if (roleMatch) { roleFilter = roleMatch[1]; base = base.replace(roleMatch[0], '').trim(); }
+
+  return { basePattern: base || '*', roomFilter, functionFilter, typeFilter, roleFilter };
 }
 
 function normalizeQuickPattern(input: string): string {
@@ -300,7 +302,7 @@ function AppContent() {
   const [saveFilterName, setSaveFilterName] = useState('');
   const prevTreeFilterRef = useRef<string | null>(null);
 
-  const { basePattern, roomFilter, functionFilter } = useMemo(() => parseEnumFilters(pattern), [pattern]);
+  const { basePattern, roomFilter, functionFilter, typeFilter, roleFilter } = useMemo(() => parseEnumFilters(pattern), [pattern]);
 
   const { data: stateObjectsData, error: objectsError, refetch: refetchFilteredObjects } = useFilteredObjects(basePattern, fulltextEnabled, exactEnabled);
   const { data: allObjectsData, refetch: refetchAllObjects } = useAllObjects();
@@ -347,6 +349,15 @@ function AppContent() {
       if (hasSmartName(obj)) set.add(id);
     }
     return set;
+  }, [allObjects]);
+
+  const allRoleNames = useMemo(() => {
+    const set = new Set<string>();
+    for (const obj of Object.values(allObjects)) {
+      const role = obj?.common?.role;
+      if (role) set.add(role);
+    }
+    return [...set].sort();
   }, [allObjects]);
 
   // Reverse alias map: non-alias data point ID → [alias.0.* IDs that point to it]
@@ -397,10 +408,12 @@ function AppContent() {
       quickPatterns,
       patternRoomFilter: roomFilter,
       patternFunctionFilter: functionFilter,
+      patternTypeFilter: typeFilter,
+      patternRoleFilter: roleFilter,
       danglingAliases: danglingAliasFilter,
       allObjectIds: existingIds,
     });
-  }, [stateObjects, allObjects, historyOnly, historyIds, smartOnly, smartIds, colFilters, roomMap, functionMap, aliasMap, roomFilters, functionFilters, quickPatterns, roomFilter, functionFilter, danglingAliasFilter, existingIds]);
+  }, [stateObjects, allObjects, historyOnly, historyIds, smartOnly, smartIds, colFilters, roomMap, functionMap, aliasMap, roomFilters, functionFilters, quickPatterns, roomFilter, functionFilter, typeFilter, roleFilter, danglingAliasFilter, existingIds]);
 
   const tableIds = useMemo(
     () => treeFilter ? objectIds.filter((id) => id.startsWith(treeFilter)) : objectIds,
@@ -739,6 +752,7 @@ function AppContent() {
               language={appSettings.language}
               roomNames={roomEnums.map((r) => r.name)}
               functionNames={functionEnums.map((f) => f.name)}
+              roleNames={allRoleNames}
             />
             {hasAnyFilter && (
               <div className="flex gap-1">

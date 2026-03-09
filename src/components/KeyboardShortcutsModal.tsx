@@ -32,10 +32,11 @@ const SHORTCUTS: Shortcut[] = [
 
 const SEARCH_COMMANDS: SearchCommand[] = [
   { example: 'hm-rpc.*', descEn: 'Wildcard ID pattern', descDe: 'Wildcard-ID-Muster' },
-  { example: 'room:Wohnzimmer', descEn: 'Filter by room name', descDe: 'Nach Raum filtern' },
-  { example: 'room:"Living Room"', descEn: 'Room with spaces (quoted)', descDe: 'Raum mit Leerzeichen (in Anführungszeichen)' },
-  { example: 'function:Licht', descEn: 'Filter by function name', descDe: 'Nach Funktion filtern' },
-  { example: 'room:Bad function:Licht', descEn: 'Combine room + function', descDe: 'Raum + Funktion kombinieren' },
+  { example: 'room:Wohnzimmer', descEn: 'Filter by room', descDe: 'Nach Raum filtern' },
+  { example: 'function:Licht', descEn: 'Filter by function', descDe: 'Nach Funktion filtern' },
+  { example: 'type:state', descEn: 'Filter by object type', descDe: 'Nach Objekttyp filtern' },
+  { example: 'role:value.temperature', descEn: 'Filter by role', descDe: 'Nach Rolle filtern' },
+  { example: 'room:Bad function:Licht', descEn: 'Combine commands', descDe: 'Befehle kombinieren' },
 ];
 
 export default function KeyboardShortcutsModal({ onClose, language = 'en' }: Props) {

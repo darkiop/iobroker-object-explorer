@@ -17,6 +17,8 @@ interface FilterObjectIdsParams {
   quickPatterns: Set<string>;
   patternRoomFilter?: string | null;
   patternFunctionFilter?: string | null;
+  patternTypeFilter?: string | null;
+  patternRoleFilter?: string | null;
   danglingAliases?: boolean;
   allObjectIds?: Set<string>;
 }
@@ -47,6 +49,8 @@ export function filterObjectIds({
   quickPatterns,
   patternRoomFilter,
   patternFunctionFilter,
+  patternTypeFilter,
+  patternRoleFilter,
   danglingAliases,
   allObjectIds,
 }: FilterObjectIdsParams): string[] {
@@ -64,6 +68,8 @@ export function filterObjectIds({
   const filterAlias = colFilters.alias === '1';
   const fPatternRoom = patternRoomFilter?.toLowerCase() ?? null;
   const fPatternFunction = patternFunctionFilter?.toLowerCase() ?? null;
+  const fPatternType = patternTypeFilter?.toLowerCase() ?? null;
+  const fPatternRole = patternRoleFilter?.toLowerCase() ?? null;
   const quickRegexes = quickPatterns.size > 0 ? [...quickPatterns].map(quickPatternToRegex) : null;
 
   return ids.filter((id) => {
@@ -83,8 +89,13 @@ export function filterObjectIds({
     if (functionFilters.size > 0 && !functionFilters.has(functionMap[id])) return false;
     if (fPatternFunction && !func.toLowerCase().includes(fPatternFunction)) return false;
 
-    if (fType && !(obj?.common?.type || obj?.type || '').toLowerCase().includes(fType)) return false;
-    if (fRole && !(obj?.common?.role || '').toLowerCase().includes(fRole)) return false;
+    const objType = (obj?.common?.type || obj?.type || '').toLowerCase();
+    if (fType && !objType.includes(fType)) return false;
+    if (fPatternType && !objType.includes(fPatternType)) return false;
+
+    const objRole = (obj?.common?.role || '').toLowerCase();
+    if (fRole && !objRole.includes(fRole)) return false;
+    if (fPatternRole && !objRole.includes(fPatternRole)) return false;
     if (fUnit && !(obj?.common?.unit || '').toLowerCase().includes(fUnit)) return false;
 
     if (filterReadOnly && obj?.common?.write !== false) return false;
