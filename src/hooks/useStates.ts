@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
-import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, putFullObject, createObject, deleteObject, renameDatapoint, getAllRoles, getAllUnits, setState, getRoomMap, getAllObjects, getRoomEnums, updateRoomMembership, updateRoomMembershipBatch, getFunctionMap, getFunctionEnums, updateFunctionMembership, updateFunctionMembershipBatch, buildAliasReverseMap, importDatapoints, getSqlInstances, createEnumObject, renameEnumObject } from '../api/iobroker';
+import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, putFullObject, createObject, deleteObject, deleteObjectsMany, renameDatapoint, getAllRoles, getAllUnits, setState, getRoomMap, getAllObjects, getRoomEnums, updateRoomMembership, updateRoomMembershipBatch, getFunctionMap, getFunctionEnums, updateFunctionMembership, updateFunctionMembershipBatch, buildAliasReverseMap, importDatapoints, getSqlInstances, createEnumObject, renameEnumObject } from '../api/iobroker';
 import type { IoBrokerObject, IoBrokerObjectCommon, IoBrokerState, HistoryOptions } from '../types/iobroker';
 
 const queryKeys = {
@@ -284,6 +284,31 @@ export function useDeleteObject() {
           if (!old || !(id in old)) return old;
           const next = { ...old };
           delete next[id];
+          return next;
+        }
+      );
+    },
+  });
+}
+
+export function useDeleteSubtree() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, allObjects }: { id: string; allObjects: Record<string, IoBrokerObject> }) => {
+      const prefix = id + '.';
+      const ids = Object.keys(allObjects).filter(k => k === id || k.startsWith(prefix));
+      return deleteObjectsMany(ids.length > 0 ? ids : [id]);
+    },
+    onSuccess: (_data, { id, allObjects }) => {
+      const prefix = id + '.';
+      const idsToRemove = new Set(Object.keys(allObjects).filter(k => k === id || k.startsWith(prefix)));
+      idsToRemove.add(id);
+      queryClient.setQueriesData(
+        { queryKey: queryKeys.objects.root },
+        (old: Record<string, IoBrokerObject> | undefined) => {
+          if (!old) return old;
+          const next = { ...old };
+          for (const k of idsToRemove) delete next[k];
           return next;
         }
       );

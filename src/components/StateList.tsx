@@ -673,6 +673,25 @@ const EditableValueCell = React.memo(function EditableValueCell({
   );
 });
 
+function ColoredId({ id }: { id: string }) {
+  const parts = id.split('.');
+  return (
+    <span className="truncate" title={id}>
+      {parts.map((part, i) => (
+        <span key={i}>
+          {i > 0 && <span className="text-gray-400/60 dark:text-gray-600 select-none">.</span>}
+          <span className={
+            i === 0 ? 'text-amber-600 dark:text-amber-400' :
+            i === 1 ? 'text-sky-600 dark:text-sky-400' :
+            i === parts.length - 1 ? 'text-gray-800 dark:text-gray-200' :
+            'text-gray-500 dark:text-gray-400'
+          }>{part}</span>
+        </span>
+      ))}
+    </span>
+  );
+}
+
 function CopyIdButton({ id }: { id: string }) {
   const [copied, setCopied] = useState(false);
 
@@ -1543,7 +1562,7 @@ const StateRow = React.memo(function StateRow({
         <td data-col="id" className="px-3 py-2 font-mono text-xs text-gray-500 dark:text-gray-400 overflow-hidden group/id">
           <div className="flex flex-col gap-0.5 min-w-0">
             <div className="flex items-center gap-1.5 min-w-0">
-              <span className="truncate" title={id}>{id}</span>
+              <ColoredId id={id} />
               <CopyIdButton id={id} />
             </div>
             {!!onNavigateTo && (ownTarget || (aliasIds && aliasIds.length > 0)) && (

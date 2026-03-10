@@ -292,6 +292,13 @@ export async function deleteObject(id: string): Promise<void> {
   objectsCache = null;
 }
 
+export async function deleteObjectsMany(ids: string[]): Promise<void> {
+  await Promise.all(ids.map(id =>
+    fetch(`${getBaseUrl()}/object/${encodeURIComponent(id)}`, { method: 'DELETE' })
+  ));
+  objectsCache = null;
+}
+
 export async function renameDatapoint(oldId: string, newId: string, obj: IoBrokerObject, currentVal?: { val: unknown; ack?: boolean }): Promise<void> {
   await putFullObject(newId, { ...obj, _id: newId });
   if (currentVal !== undefined && currentVal.val !== null) {

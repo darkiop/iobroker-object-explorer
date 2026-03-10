@@ -1,9 +1,11 @@
 import { useState, useMemo, useEffect, memo } from 'react';
-import { ChevronRight, ChevronDown, ChevronsUpDown, ChevronsDownUp, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil, LayoutList, LayoutGrid, Plus, FileCode2, Link2, UserRound, ShieldAlert, Download } from 'lucide-react';
+import { ChevronRight, ChevronDown, ChevronsUpDown, ChevronsDownUp, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil, LayoutList, LayoutGrid, Plus, FileCode2, Link2, UserRound, ShieldAlert, Download, Trash2 } from 'lucide-react';
 import type { TreeNode, IoBrokerObject } from '../types/iobroker';
 import ObjectEditModal from './ObjectEditModal';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
+import ConfirmDialog from './ConfirmDialog';
+import { useDeleteSubtree } from '../hooks/useStates';
 import { copyText } from '../utils/clipboard';
 
 interface StateTreeProps {
@@ -212,6 +214,8 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   const [copied, setCopied] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const deleteSubtree = useDeleteSubtree();
 
   function exportSubtree() {
     const prefix = node.fullPath + '.';
@@ -311,6 +315,15 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
           onClose={() => setEditOpen(false)}
         />
       )}
+      {confirmDelete && (
+        <ConfirmDialog
+          title={isEn ? 'Delete object' : 'Objekt löschen'}
+          message={node.fullPath}
+          onConfirm={() => { deleteSubtree.mutate({ id: node.fullPath, allObjects }); setConfirmDelete(false); }}
+          onCancel={() => setConfirmDelete(false)}
+          language={language}
+        />
+      )}
       {ctxMenu && (() => {
         const items: ContextMenuEntry[] = [];
         if (node.isLeaf) {
@@ -321,6 +334,8 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
           items.push({ icon: <Copy size={13} />, label: isEn ? 'Copy ID' : 'ID kopieren', onClick: () => copyText(node.fullPath) });
           items.push({ separator: true } as const);
           items.push({ icon: <Download size={13} />, label: isEn ? 'Export (JSON)' : 'Exportieren (JSON)', onClick: exportSubtree });
+          items.push({ separator: true } as const);
+          items.push({ icon: <Trash2 size={13} />, label: isEn ? 'Delete object' : 'Objekt löschen', onClick: () => setConfirmDelete(true), danger: true });
         } else {
           items.push({ icon: <Search size={13} />, label: isEn ? `Show in table: ${node.fullPath}` : `In Tabelle anzeigen: ${node.fullPath}`, onClick: () => onTreeScope(`${node.fullPath}.`) });
           items.push({ separator: true } as const);
@@ -344,6 +359,8 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
           }
           items.push({ separator: true } as const);
           items.push({ icon: <Download size={13} />, label: isEn ? 'Export subtree (JSON)' : 'Unterstruktur exportieren (JSON)', onClick: exportSubtree });
+          items.push({ separator: true } as const);
+          items.push({ icon: <Trash2 size={13} />, label: isEn ? 'Delete object' : 'Objekt löschen', onClick: () => setConfirmDelete(true), danger: true });
         }
         return <ContextMenu x={ctxMenu.x} y={ctxMenu.y} items={items} onClose={() => setCtxMenu(null)} />;
       })()}
