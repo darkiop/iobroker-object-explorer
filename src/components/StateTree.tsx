@@ -101,10 +101,11 @@ function buildAdapterTree(ids: string[], structureIds: string[] = []): TreeNode 
       const childPath = `${current.fullPath}.${seg}`;
       if (!current.children.has(seg)) {
         current.children.set(seg, {
-          name: seg, fullPath: childPath, children: new Map(), isLeaf: i === remaining.length - 1,
+          name: seg, fullPath: childPath, children: new Map(), isLeaf: i === remaining.length - 1, count: 0,
         });
       }
       current = current.children.get(seg)!;
+      current.count = (current.count ?? 0) + 1;
       if (i === remaining.length - 1) current.isLeaf = true;
     }
   }
@@ -421,7 +422,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
         <span className={`truncate ${node.isLeaf ? (isHistoryEnabled ? 'text-blue-500 dark:text-blue-400' : 'text-green-600 dark:text-green-400') : (isHighlightedNamespace ? 'font-semibold' : 'text-gray-600 font-medium dark:text-gray-400')}`}>
           {node.name}
         </span>
-        {node.count !== undefined && node.count > 0 && (
+        {!node.isLeaf && node.count !== undefined && node.count > 0 && (
           <span className="shrink-0 text-[10px] text-gray-400 dark:text-gray-500">({node.count})</span>
         )}
         {isFolder && objectType && (
@@ -493,6 +494,13 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
             <Search size={14} />
           </button>
         )}
+        <button
+          onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
+          className="shrink-0 opacity-0 group-hover/row:opacity-100 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-opacity"
+          title={isEn ? 'Delete object' : 'Objekt löschen'}
+        >
+          <Trash2 size={12} />
+        </button>
       </div>
       {isExpandableFolder && expanded &&
         sortedChildren.map((child) => (
