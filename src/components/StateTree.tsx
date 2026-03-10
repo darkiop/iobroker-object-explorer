@@ -28,6 +28,7 @@ interface StateTreeProps {
   onOpenAliasReplace?: (initialStr?: string) => void;
   onAutoCreateAlias?: (deviceId: string) => void;
   treeFontSize?: 'small' | 'normal' | 'large';
+  treeShowCount?: boolean;
 }
 
 function buildTree(ids: string[], structureIds: string[] = []): TreeNode {
@@ -188,6 +189,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   onOpenAliasReplace,
   onAutoCreateAlias,
   nodeFontClass = 'text-sm',
+  treeShowCount = true,
 }: {
   node: TreeNode;
   depth: number;
@@ -209,6 +211,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   onOpenAliasReplace?: (initialStr?: string) => void;
   onAutoCreateAlias?: (deviceId: string) => void;
   nodeFontClass?: string;
+  treeShowCount?: boolean;
 }) {
   const isEn = language === 'en';
   const [expanded, setExpanded] = useState(false);
@@ -300,6 +303,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
             pattern={pattern}
             language={language}
             nodeFontClass={nodeFontClass}
+            treeShowCount={treeShowCount}
           />
         ))}
       </>
@@ -422,7 +426,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
         <span className={`truncate ${node.isLeaf ? (isHistoryEnabled ? 'text-blue-500 dark:text-blue-400' : 'text-green-600 dark:text-green-400') : (isHighlightedNamespace ? 'font-semibold' : 'text-gray-600 font-medium dark:text-gray-400')}`}>
           {node.name}
         </span>
-        {!node.isLeaf && node.count !== undefined && node.count > 0 && (
+        {treeShowCount && !node.isLeaf && node.count !== undefined && node.count > 0 && (
           <span className="shrink-0 text-[10px] text-gray-400 dark:text-gray-500">({node.count})</span>
         )}
         {isFolder && objectType && (
@@ -526,6 +530,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
             onOpenAliasReplace={onOpenAliasReplace}
             onAutoCreateAlias={onAutoCreateAlias}
             nodeFontClass={nodeFontClass}
+            treeShowCount={treeShowCount}
           />
         ))}
     </div>
@@ -533,7 +538,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
 });
 
 
-function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeScope, onCreateAtPath, historyOnly, smartOnly, historyIds, smartIds, expandToDepth, treeFilter = null, pattern, language = 'en', onOpenAliasReplace, onAutoCreateAlias, treeFontSize = 'normal' }: StateTreeProps) {
+function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeScope, onCreateAtPath, historyOnly, smartOnly, historyIds, smartIds, expandToDepth, treeFilter = null, pattern, language = 'en', onOpenAliasReplace, onAutoCreateAlias, treeFontSize = 'normal', treeShowCount = true }: StateTreeProps) {
   const isEn = language === 'en';
   const nodeFontClass = treeFontSize === 'small' ? 'text-xs' : treeFontSize === 'large' ? 'text-base' : 'text-sm';
   const [expandSignal, setExpandSignal] = useState<{ depth: number; seq: number }>({ depth: 0, seq: 0 });
@@ -717,6 +722,7 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
               onOpenAliasReplace={onOpenAliasReplace}
               onAutoCreateAlias={onAutoCreateAlias}
               nodeFontClass={nodeFontClass}
+              treeShowCount={treeShowCount}
             />
           ))
         )}

@@ -54,6 +54,7 @@ interface StateListProps {
   onOpenEnumManager?: () => void;
   onOpenAliasReplace?: (initialStr?: string) => void;
   tableFontSize?: 'small' | 'normal' | 'large';
+  showDesc?: boolean;
 }
 
 function formatTimestamp(ts: number, dateFormat: DateFormatSetting): string {
@@ -113,7 +114,7 @@ function resolveI18n(val: string | Record<string, string> | undefined): string |
   return val.de || val.en || Object.values(val)[0] || undefined;
 }
 
-const EditableNameCell = React.memo(function EditableNameCell({ id, name, desc }: { id: string; name: string; desc?: string }) {
+const EditableNameCell = React.memo(function EditableNameCell({ id, name, desc, showDesc = true }: { id: string; name: string; desc?: string; showDesc?: boolean }) {
   const showToast = useToast();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(name);
@@ -127,7 +128,7 @@ const EditableNameCell = React.memo(function EditableNameCell({ id, name, desc }
         <div className="flex items-start gap-1.5">
           <div className="min-w-0 flex-1 overflow-hidden">
             <div className="truncate" title={name}>{name}</div>
-            {desc && <div className="truncate text-[10px] italic text-gray-400 dark:text-gray-500 leading-tight" title={desc}>{desc}</div>}
+            {showDesc && desc && <div className="truncate text-[10px] italic text-gray-400 dark:text-gray-500 leading-tight" title={desc}>{desc}</div>}
           </div>
           <button
             onClick={(e) => {
@@ -1602,7 +1603,7 @@ const StateRow = React.memo(function StateRow({
           </div>
         </td>
       )}
-      {show('name') && <EditableNameCell id={id} name={name} desc={resolveI18n(obj?.common?.desc)} />}
+      {show('name') && <EditableNameCell id={id} name={name} desc={resolveI18n(obj?.common?.desc)} showDesc={showDesc} />}
       {show('room') && (
         <EditableRoomCell
           id={id}
@@ -1692,7 +1693,7 @@ const StateRow = React.memo(function StateRow({
   );
 });
 
-function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, allObjectIds, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en', expertMode = false, onToggleExpertMode, toolbarLabels = true, onOpenEnumManager, onOpenAliasReplace, tableFontSize = 'normal' }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
+function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, allObjectIds, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en', expertMode = false, onToggleExpertMode, toolbarLabels = true, onOpenEnumManager, onOpenAliasReplace, tableFontSize = 'normal', showDesc = true }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
   const isEn = language === 'en';
   const [sortKey, setSortKey] = useState<SortKey>('id');
   const [sortDir, setSortDir] = useState<SortDir>('asc');

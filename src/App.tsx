@@ -54,6 +54,8 @@ interface AppSettings {
   pageSize: number;
   tableFontSize: UiFontSize;
   treeFontSize: UiFontSize;
+  treeShowCount: boolean;
+  showDesc: boolean;
 }
 
 function getDefaultAppSettings(): AppSettings {
@@ -66,6 +68,8 @@ function getDefaultAppSettings(): AppSettings {
     pageSize: 50,
     tableFontSize: 'normal',
     treeFontSize: 'normal',
+    treeShowCount: true,
+    showDesc: true,
   };
 }
 
@@ -128,6 +132,8 @@ function loadAppSettings(): AppSettings {
       pageSize: parsedPageSize,
       tableFontSize,
       treeFontSize,
+      treeShowCount: parsed.treeShowCount !== false,
+      showDesc: parsed.showDesc !== false,
     };
   } catch {
     return fallback;
@@ -554,6 +560,8 @@ function AppContent() {
       pageSize: validPageSize,
       tableFontSize: settingsDraft.tableFontSize,
       treeFontSize: settingsDraft.treeFontSize,
+      treeShowCount: settingsDraft.treeShowCount,
+      showDesc: settingsDraft.showDesc,
     };
     setAppSettings(next);
     setPage(0);
@@ -1010,6 +1018,7 @@ function AppContent() {
               onOpenAliasReplace={() => setAliasReplaceInitialStr('')}
               onAutoCreateAlias={setAutoAliasDeviceId}
               treeFontSize={appSettings.treeFontSize}
+              treeShowCount={appSettings.treeShowCount}
             />
           </div>
         </div>
@@ -1186,33 +1195,46 @@ function AppContent() {
                 {/* Tab: Anzeige */}
                 {settingsTab === 'display' && (
                   <div className="flex flex-col gap-4">
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Language' : 'Sprache'}</span>
-                      <LanguageDropdown value={settingsDraft.language} onChange={(language) => setSettingsDraft((prev) => ({ ...prev, language }))} />
+                    {/* Language + Date format nebeneinander */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Language' : 'Sprache'}</span>
+                        <LanguageDropdown value={settingsDraft.language} onChange={(language) => setSettingsDraft((prev) => ({ ...prev, language }))} />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Date format' : 'Datumsformat'}</span>
+                        <DateFormatDropdown
+                          value={settingsDraft.dateFormat}
+                          onChange={(dateFormat) => setSettingsDraft((prev) => ({ ...prev, dateFormat }))}
+                        />
+                      </div>
                     </div>
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Date format' : 'Datumsformat'}</span>
-                      <DateFormatDropdown
-                        value={settingsDraft.dateFormat}
-                        onChange={(dateFormat) => setSettingsDraft((prev) => ({ ...prev, dateFormat }))}
-                      />
+                    {/* Table font size + Tree font size nebeneinander */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Table font size' : 'Schriftgröße Tabelle'}</span>
+                        <div className="flex gap-1.5">
+                          {(['small', 'normal', 'large'] as UiFontSize[]).map((s) => (
+                            <button key={s} type="button" onClick={() => setSettingsDraft((prev) => ({ ...prev, tableFontSize: s }))}
+                              className={`flex-1 py-1 text-xs rounded border transition-colors ${settingsDraft.tableFontSize === s ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
+                              {s === 'small' ? (isEn ? 'S' : 'K') : s === 'large' ? (isEn ? 'L' : 'G') : 'M'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Tree font size' : 'Schriftgröße Baum'}</span>
+                        <div className="flex gap-1.5">
+                          {(['small', 'normal', 'large'] as UiFontSize[]).map((s) => (
+                            <button key={s} type="button" onClick={() => setSettingsDraft((prev) => ({ ...prev, treeFontSize: s }))}
+                              className={`flex-1 py-1 text-xs rounded border transition-colors ${settingsDraft.treeFontSize === s ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
+                              {s === 'small' ? (isEn ? 'S' : 'K') : s === 'large' ? (isEn ? 'L' : 'G') : 'M'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Toolbar button labels' : 'Beschriftungen in der Toolbar'}</span>
-                      <button
-                        type="button"
-                        onClick={() => setSettingsDraft((prev) => ({ ...prev, toolbarLabels: !prev.toolbarLabels }))}
-                        className={`relative w-10 h-6 rounded-full border transition-colors ${
-                          settingsDraft.toolbarLabels
-                            ? 'bg-blue-500/30 border-blue-400/70'
-                            : 'bg-gray-200 dark:bg-gray-700 border-gray-300 dark:border-gray-600'
-                        }`}
-                      >
-                        <span className={`absolute top-0.5 w-4 h-4 rounded-full transition-all ${
-                          settingsDraft.toolbarLabels ? 'left-5 bg-blue-500' : 'left-0.5 bg-white dark:bg-gray-300'
-                        }`} />
-                      </button>
-                    </div>
+                    {/* Rows per page */}
                     <div className="flex flex-col gap-1.5">
                       <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Rows per page' : 'Zeilen pro Seite'}</span>
                       <select
@@ -1223,44 +1245,23 @@ function AppContent() {
                         {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
                       </select>
                     </div>
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Table font size' : 'Schriftgröße Tabelle'}</span>
-                      <div className="flex gap-1.5">
-                        {(['small', 'normal', 'large'] as UiFontSize[]).map((s) => (
-                          <button
-                            key={s}
-                            type="button"
-                            onClick={() => setSettingsDraft((prev) => ({ ...prev, tableFontSize: s }))}
-                            className={`px-3 py-1 text-xs rounded border transition-colors ${
-                              settingsDraft.tableFontSize === s
-                                ? 'bg-blue-500 border-blue-500 text-white'
-                                : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                            }`}
-                          >
-                            {s === 'small' ? (isEn ? 'Small' : 'Klein') : s === 'large' ? (isEn ? 'Large' : 'Groß') : (isEn ? 'Normal' : 'Normal')}
-                          </button>
-                        ))}
+                    {/* Toggles */}
+                    {([
+                      { key: 'toolbarLabels', labelEn: 'Toolbar button labels', labelDe: 'Beschriftungen in der Toolbar' },
+                      { key: 'treeShowCount', labelEn: 'Datapoint count in tree', labelDe: 'Datenpunkt-Anzahl im Baum' },
+                      { key: 'showDesc',      labelEn: 'Description below name',  labelDe: 'Beschreibung unter Name' },
+                    ] as const).map(({ key, labelEn, labelDe }) => (
+                      <div key={key} className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? labelEn : labelDe}</span>
+                        <button
+                          type="button"
+                          onClick={() => setSettingsDraft((prev) => ({ ...prev, [key]: !prev[key] }))}
+                          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${settingsDraft[key] ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'}`}
+                        >
+                          <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${settingsDraft[key] ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
+                        </button>
                       </div>
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Tree font size' : 'Schriftgröße Objektbaum'}</span>
-                      <div className="flex gap-1.5">
-                        {(['small', 'normal', 'large'] as UiFontSize[]).map((s) => (
-                          <button
-                            key={s}
-                            type="button"
-                            onClick={() => setSettingsDraft((prev) => ({ ...prev, treeFontSize: s }))}
-                            className={`px-3 py-1 text-xs rounded border transition-colors ${
-                              settingsDraft.treeFontSize === s
-                                ? 'bg-blue-500 border-blue-500 text-white'
-                                : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                            }`}
-                          >
-                            {s === 'small' ? (isEn ? 'Small' : 'Klein') : s === 'large' ? (isEn ? 'Large' : 'Groß') : (isEn ? 'Normal' : 'Normal')}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 )}
                 {/* Tab: Spalten */}
@@ -1392,6 +1393,7 @@ function AppContent() {
             onOpenEnumManager={() => setEnumManagerOpen(true)}
             onOpenAliasReplace={(initialStr) => setAliasReplaceInitialStr(initialStr ?? '')}
             tableFontSize={appSettings.tableFontSize}
+            showDesc={appSettings.showDesc}
           />
         </div>
 
