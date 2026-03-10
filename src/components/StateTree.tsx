@@ -517,6 +517,7 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
   const [showChannels, setShowChannels] = useState(true);
   const [typesOpen,    setTypesOpen]    = useState(false);
   const [treeViewMode, setTreeViewMode] = useState<'path' | 'adapter'>('adapter');
+  const [treeSearch,   setTreeSearch]   = useState('');
 
   useEffect(() => {
     if (!expandToDepth) return;
@@ -524,19 +525,34 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
   }, [expandToDepth]);
 
   const filteredIds = useMemo(() => {
+    const lower = treeSearch.toLowerCase();
     return stateIds.filter((id) =>
       (!historyOnly || historyIds.has(id)) &&
-      (!smartOnly || smartIds.has(id))
+      (!smartOnly || smartIds.has(id)) &&
+      (!lower || (() => {
+        const parts = id.split('.');
+        const topLevel = treeViewMode === 'adapter'
+          ? (parts.length >= 2 ? `${parts[0]}.${parts[1]}` : parts[0])
+          : parts[0];
+        return topLevel.toLowerCase().includes(lower);
+      })())
     );
-  }, [stateIds, historyOnly, historyIds, smartOnly, smartIds]);
+  }, [stateIds, historyOnly, historyIds, smartOnly, smartIds, treeSearch, treeViewMode]);
 
-  const structureIds = useMemo(
-    () => Object.keys(allObjects).filter(id => {
+
+  const structureIds = useMemo(() => {
+    const lower = treeSearch.toLowerCase();
+    return Object.keys(allObjects).filter(id => {
       const t = allObjects[id]?.type;
-      return t === 'folder' || t === 'device' || t === 'channel' || t === 'instance';
-    }),
-    [allObjects]
-  );
+      if (!(t === 'folder' || t === 'device' || t === 'channel' || t === 'instance')) return false;
+      if (!lower) return true;
+      const parts = id.split('.');
+      const topLevel = treeViewMode === 'adapter'
+        ? (parts.length >= 2 ? `${parts[0]}.${parts[1]}` : parts[0])
+        : parts[0];
+      return topLevel.toLowerCase().includes(lower);
+    });
+  }, [allObjects, treeSearch, treeViewMode]);
 
   const tree = useMemo(
     () => treeViewMode === 'adapter' ? buildAdapterTree(filteredIds, structureIds) : buildTree(filteredIds, structureIds),
@@ -624,6 +640,26 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
         >
           {treeViewMode === 'adapter' ? <LayoutList size={13} /> : <LayoutGrid size={13} />}
         </button>
+      </div>
+      <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 shrink-0">
+        <div className="relative">
+          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none" />
+          <input
+            type="text"
+            value={treeSearch}
+            onChange={(e) => setTreeSearch(e.target.value)}
+            placeholder={isEn ? 'Filter tree…' : 'Baum filtern…'}
+            className="w-full pl-7 pr-6 py-1 text-xs rounded bg-gray-100 dark:bg-gray-800 border border-gray-300/60 dark:border-gray-600/60 text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500"
+          />
+          {treeSearch && (
+            <button
+              onClick={() => setTreeSearch('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              ×
+            </button>
+          )}
+        </div>
       </div>
       <div className="overflow-y-auto px-2 flex-1">
         {filteredIds.length === 0 ? (
