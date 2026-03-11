@@ -16,7 +16,7 @@ import AliasReplaceModal from './components/AliasReplaceModal';
 import AutoCreateAliasModal from './components/AutoCreateAliasModal';
 import LanguageDropdown from './components/LanguageDropdown';
 import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunctionMap, useRoomEnums, useFunctionEnums, useAliasMap } from './hooks/useStates';
-import { hasHistory, hasSmartName } from './api/iobroker';
+import { hasHistory, hasSmartName, clearObjectsCache } from './api/iobroker';
 import type { StateListHandle } from './components/StateList';
 import type { SortKey, DateFormatSetting } from './components/stateListColumns';
 import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel, CONFIGURABLE_WIDTH_COLS, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MAX_WIDTHS } from './components/stateListColumns';
@@ -59,6 +59,7 @@ interface AppSettings {
   treeShowCount: boolean;
   showDesc: boolean;
   groupByPath: boolean;
+  adminPort: number;
   customDefaultWidths: Partial<Record<SortKey, number>>;
   customMaxWidths: Partial<Record<SortKey, number>>;
 }
@@ -76,6 +77,7 @@ function getDefaultAppSettings(): AppSettings {
     treeShowCount: true,
     showDesc: true,
     groupByPath: true,
+    adminPort: 8081,
     customDefaultWidths: {},
     customMaxWidths: {},
   };
@@ -152,6 +154,7 @@ function loadAppSettings(): AppSettings {
       treeShowCount: parsed.treeShowCount !== false,
       showDesc: parsed.showDesc !== false,
       groupByPath: parsed.groupByPath !== false,
+      adminPort: typeof parsed.adminPort === 'number' && parsed.adminPort > 0 && parsed.adminPort <= 65535 ? parsed.adminPort : 8081,
       customDefaultWidths: parseColWidthMap(parsed.customDefaultWidths),
       customMaxWidths: parseColWidthMap(parsed.customMaxWidths),
     };
@@ -603,6 +606,7 @@ function AppContent() {
       customDefaultWidths: settingsDraft.customDefaultWidths,
       customMaxWidths: settingsDraft.customMaxWidths,
       groupByPath: settingsDraft.groupByPath,
+      adminPort: settingsDraft.adminPort,
     };
     setAppSettings(next);
     setPage(0);
@@ -702,6 +706,7 @@ function AppContent() {
   }, []);
   const handleSidebarToggle = useCallback(() => setSidebarToggleSeq((s) => s + 1), []);
   const handleManualRefresh = useCallback(() => {
+    clearObjectsCache();
     void Promise.all([
       refetchFilteredObjects(),
       refetchAllObjects(),
@@ -801,6 +806,7 @@ function AppContent() {
       language={appSettings.language}
       apiConnected={!objectsError}
       lastUpdated={statesUpdatedAt > 0 ? statesUpdatedAt : undefined}
+      adminPort={appSettings.adminPort}
       sidebar={
         <div className="flex flex-col h-full">
           <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex flex-col gap-2">
@@ -1219,65 +1225,78 @@ function AppContent() {
                 {settingsTab === 'connection' && (
                   <div className="flex flex-col gap-3">
                     <div className="flex flex-col gap-1.5">
-                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'ioBroker REST API host' : 'ioBroker REST API Host'}</span>
-                      <div className="flex items-center gap-2">
-                        <input
-                          value={settingsHostIp}
-                          onChange={(e) => { setSettingsHostIp(e.target.value); setSettingsHostError(null); }}
-                          disabled={settingsHostTesting}
-                          placeholder="10.4.0.33"
-                          className={`flex-1 px-2 py-1.5 text-xs rounded border font-mono bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none transition-colors ${
-                            settingsHostTesting ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20' : settingsHostError ? 'border-red-400' : 'border-gray-300 dark:border-gray-600 focus:ring-1 focus:ring-blue-400'
-                          }`}
-                        />
-                        <span className="text-gray-400 dark:text-gray-500 text-xs">:</span>
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{'ioBroker IP address'}</span>
+                      <input
+                        value={settingsHostIp}
+                        onChange={(e) => { setSettingsHostIp(e.target.value); setSettingsHostError(null); }}
+                        disabled={settingsHostTesting}
+                        placeholder="10.4.0.33"
+                        className={`px-2 py-1.5 text-xs rounded border font-mono bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none transition-colors ${
+                          settingsHostTesting ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20' : settingsHostError ? 'border-red-400' : 'border-gray-300 dark:border-gray-600 focus:ring-1 focus:ring-blue-400'
+                        }`}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{'ioBroker.rest-api Port'}</span>
                         <input
                           value={settingsHostPort}
                           onChange={(e) => { setSettingsHostPort(e.target.value); setSettingsHostError(null); }}
                           disabled={settingsHostTesting}
                           placeholder="8093"
-                          className={`w-20 px-2 py-1.5 text-xs rounded border font-mono bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none transition-colors ${
+                          className={`w-full px-2 py-1.5 text-xs rounded border font-mono bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none transition-colors ${
                             settingsHostTesting ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20' : settingsHostError ? 'border-red-400' : 'border-gray-300 dark:border-gray-600 focus:ring-1 focus:ring-blue-400'
                           }`}
                         />
-                        <button
-                          disabled={settingsHostTesting}
-                          onClick={async () => {
-                            const ip = settingsHostIp.trim();
-                            const port = settingsHostPort.trim();
-                            if (!ip) return;
-                            const val = port ? `${ip}:${port}` : ip;
-                            setSettingsHostTesting(true);
-                            setSettingsHostError(null);
-                            try {
-                              const res = await fetch(`http://${val}/v1/objects?limit=1`);
-                              if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                              localStorage.setItem('ioBrokerHost', val);
-                              window.location.reload();
-                            } catch {
-                              setSettingsHostError(isEn ? 'Host not reachable' : 'Host nicht erreichbar');
-                              setSettingsHostTesting(false);
-                            }
-                          }}
-                          className="px-2.5 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 transition-colors flex items-center gap-1.5"
-                        >
-                          {settingsHostTesting
-                            ? <><Loader2 size={12} className="animate-spin" />{isEn ? 'Testing…' : 'Teste…'}</>
-                            : isEn ? 'Test & Connect' : 'Test & Verbinden'
-                          }
-                        </button>
                       </div>
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{'ioBroker Admin Port'}</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={65535}
+                          value={settingsDraft.adminPort}
+                          onChange={(e) => {
+                            const v = parseInt(e.target.value, 10);
+                            if (!isNaN(v)) setSettingsDraft((prev) => ({ ...prev, adminPort: v }));
+                          }}
+                          className="w-full px-2 py-1.5 text-xs rounded border font-mono bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none border-gray-300 dark:border-gray-600 focus:ring-1 focus:ring-blue-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        disabled={settingsHostTesting}
+                        onClick={async () => {
+                          const ip = settingsHostIp.trim();
+                          const port = settingsHostPort.trim();
+                          if (!ip) return;
+                          const val = port ? `${ip}:${port}` : ip;
+                          setSettingsHostTesting(true);
+                          setSettingsHostError(null);
+                          try {
+                            const res = await fetch(`http://${val}/v1/objects?limit=1`);
+                            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                            localStorage.setItem('ioBrokerHost', val);
+                            window.location.reload();
+                          } catch {
+                            setSettingsHostError(isEn ? 'Host not reachable' : 'Host nicht erreichbar');
+                            setSettingsHostTesting(false);
+                          }
+                        }}
+                        className="px-2.5 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 transition-colors flex items-center gap-1.5"
+                      >
+                        {settingsHostTesting
+                          ? <><Loader2 size={12} className="animate-spin" />{isEn ? 'Testing…' : 'Teste…'}</>
+                          : isEn ? 'Test & Connect' : 'Test & Verbinden'
+                        }
+                      </button>
                       {settingsHostError && (
                         <span className="flex items-center gap-1 text-xs text-red-500">
                           <AlertCircle size={12} /> {settingsHostError}
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-gray-400 dark:text-gray-500">
-                      {isEn
-                        ? 'The browser connects directly to the ioBroker REST API. CORS must be enabled on the adapter. The host is stored in localStorage and takes precedence over the server configuration.'
-                        : 'Der Browser verbindet sich direkt mit der ioBroker REST API. CORS muss im Adapter aktiviert sein. Der Host wird im localStorage gespeichert und hat Vorrang vor der Serverkonfiguration.'}
-                    </p>
                   </div>
                 )}
                 {/* Tab: Anzeige */}

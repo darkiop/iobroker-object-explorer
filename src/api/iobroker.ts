@@ -53,15 +53,18 @@ function scoreObject(id: string, obj: IoBrokerObject, query: string): number {
   return 0;
 }
 
-// Exclude purely system/management objects that are not useful in the table
-const EXCLUDED_SYSTEM_TYPES = new Set(['enum', 'instance', 'adapter', 'host', 'config', 'user', 'group', 'design']);
 function isDisplayable(obj: IoBrokerObject | undefined): boolean {
-  return !!obj && !EXCLUDED_SYSTEM_TYPES.has(obj.type);
+  return !!obj;
 }
 
 // Objects: einmalig laden und cachen (Baum-Struktur + Metadaten)
 let objectsCache: Record<string, IoBrokerObject> | null = null;
 let objectsCachePromise: Promise<Record<string, IoBrokerObject>> | null = null;
+
+export function clearObjectsCache(): void {
+  objectsCache = null;
+  objectsCachePromise = null;
+}
 
 export async function getAllObjects(): Promise<Record<string, IoBrokerObject>> {
   if (objectsCache) return objectsCache;
