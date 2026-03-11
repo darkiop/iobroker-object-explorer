@@ -53,9 +53,10 @@ function scoreObject(id: string, obj: IoBrokerObject, query: string): number {
   return 0;
 }
 
-const DISPLAYABLE_TYPES = new Set(['state', 'folder', 'device', 'channel']);
+// Exclude purely system/management objects that are not useful in the table
+const EXCLUDED_SYSTEM_TYPES = new Set(['enum', 'instance', 'adapter', 'host', 'config', 'user', 'group', 'design']);
 function isDisplayable(obj: IoBrokerObject | undefined): boolean {
-  return !!obj && DISPLAYABLE_TYPES.has(obj.type);
+  return !!obj && !EXCLUDED_SYSTEM_TYPES.has(obj.type);
 }
 
 // Objects: einmalig laden und cachen (Baum-Struktur + Metadaten)
