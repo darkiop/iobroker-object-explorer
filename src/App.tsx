@@ -19,7 +19,7 @@ import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunct
 import { hasHistory, hasSmartName } from './api/iobroker';
 import type { StateListHandle } from './components/StateList';
 import type { SortKey, DateFormatSetting } from './components/stateListColumns';
-import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel } from './components/stateListColumns';
+import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel, CONFIGURABLE_WIDTH_COLS, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MAX_WIDTHS } from './components/stateListColumns';
 import type { IoBrokerObject, IoBrokerState } from './types/iobroker';
 import { filterObjectIds } from './utils/filterObjectIds';
 import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RotateCcw, Layers, X, Trash2, Check, Loader2, AlertCircle, Bookmark, AlertTriangle } from 'lucide-react';
@@ -57,6 +57,8 @@ interface AppSettings {
   treeFontSize: UiFontSize;
   treeShowCount: boolean;
   showDesc: boolean;
+  customDefaultWidths: Partial<Record<SortKey, number>>;
+  customMaxWidths: Partial<Record<SortKey, number>>;
 }
 
 function getDefaultAppSettings(): AppSettings {
@@ -71,6 +73,8 @@ function getDefaultAppSettings(): AppSettings {
     treeFontSize: 'normal',
     treeShowCount: true,
     showDesc: true,
+    customDefaultWidths: {},
+    customMaxWidths: {},
   };
 }
 
@@ -104,6 +108,15 @@ function normalizeQuickPattern(input: string): string {
   return v;
 }
 
+function parseColWidthMap(raw: unknown): Partial<Record<SortKey, number>> {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return {};
+  return Object.fromEntries(
+    Object.entries(raw as Record<string, unknown>)
+      .filter(([k, v]) => ALL_COLUMNS.some((c) => c.key === k) && typeof v === 'number' && (v as number) > 0)
+      .map(([k, v]) => [k, v as number])
+  ) as Partial<Record<SortKey, number>>;
+}
+
 function loadAppSettings(): AppSettings {
   const fallback: AppSettings = getDefaultAppSettings();
   try {
@@ -135,6 +148,8 @@ function loadAppSettings(): AppSettings {
       treeFontSize,
       treeShowCount: parsed.treeShowCount !== false,
       showDesc: parsed.showDesc !== false,
+      customDefaultWidths: parseColWidthMap(parsed.customDefaultWidths),
+      customMaxWidths: parseColWidthMap(parsed.customMaxWidths),
     };
   } catch {
     return fallback;
@@ -563,6 +578,8 @@ function AppContent() {
       treeFontSize: settingsDraft.treeFontSize,
       treeShowCount: settingsDraft.treeShowCount,
       showDesc: settingsDraft.showDesc,
+      customDefaultWidths: settingsDraft.customDefaultWidths,
+      customMaxWidths: settingsDraft.customMaxWidths,
     };
     setAppSettings(next);
     setPage(0);
@@ -1263,6 +1280,75 @@ function AppContent() {
                         </button>
                       </div>
                     ))}
+                    {/* Column widths */}
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Column widths (px)' : 'Spaltenbreiten (px)'}</span>
+                        <button
+                          type="button"
+                          onClick={() => setSettingsDraft((prev) => ({ ...prev, customDefaultWidths: {}, customMaxWidths: {} }))}
+                          className="text-[10px] text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                        >
+                          {isEn ? 'Reset all' : 'Alle zurücksetzen'}
+                        </button>
+                      </div>
+                      <div className="border border-gray-200 dark:border-gray-700 rounded overflow-hidden">
+                        <table className="w-full text-xs border-collapse">
+                          <thead>
+                            <tr className="bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                              <th className="text-left px-2 py-1 font-medium">{isEn ? 'Column' : 'Spalte'}</th>
+                              <th className="text-center px-1 py-1 font-medium w-16">{isEn ? 'Default' : 'Standard'}</th>
+                              <th className="text-center px-1 py-1 font-medium w-16">Max</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {CONFIGURABLE_WIDTH_COLS.map((col) => {
+                              const builtinDefault = BUILTIN_DEFAULT_WIDTHS[col];
+                              const builtinMax = BUILTIN_MAX_WIDTHS[col];
+                              const currentDefault = settingsDraft.customDefaultWidths[col] ?? builtinDefault;
+                              const currentMax = settingsDraft.customMaxWidths[col] ?? builtinMax ?? '';
+                              const inputCls = '[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none w-14 text-center px-1 py-0.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400';
+                              return (
+                                <tr key={col} className="border-t border-gray-100 dark:border-gray-800">
+                                  <td className="px-2 py-0.5 text-gray-600 dark:text-gray-400">{getColumnLabel(col, isEn ? 'en' : 'de')}</td>
+                                  <td className="px-1 py-0.5 text-center">
+                                    <input
+                                      type="number"
+                                      value={currentDefault}
+                                      onChange={(e) => {
+                                        const v = parseInt(e.target.value, 10);
+                                        if (!isNaN(v) && v > 0)
+                                          setSettingsDraft((prev) => ({ ...prev, customDefaultWidths: { ...prev.customDefaultWidths, [col]: v } }));
+                                      }}
+                                      onBlur={(e) => {
+                                        const v = parseInt(e.target.value, 10);
+                                        setSettingsDraft((prev) => ({ ...prev, customDefaultWidths: { ...prev.customDefaultWidths, [col]: isNaN(v) || v < 1 ? builtinDefault : v } }));
+                                      }}
+                                      className={inputCls}
+                                    />
+                                  </td>
+                                  <td className="px-1 py-0.5 text-center">
+                                    <input
+                                      type="number"
+                                      placeholder="∞"
+                                      value={currentMax}
+                                      onChange={(e) => {
+                                        const v = parseInt(e.target.value, 10);
+                                        if (!isNaN(v) && v > 0)
+                                          setSettingsDraft((prev) => ({ ...prev, customMaxWidths: { ...prev.customMaxWidths, [col]: v } }));
+                                        else if (e.target.value === '')
+                                          setSettingsDraft((prev) => { const next = { ...prev.customMaxWidths }; delete next[col]; return { ...prev, customMaxWidths: next }; });
+                                      }}
+                                      className={inputCls}
+                                    />
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   </div>
                 )}
                 {/* Tab: Spalten */}
@@ -1395,6 +1481,8 @@ function AppContent() {
             onOpenAliasReplace={(initialStr) => setAliasReplaceInitialStr(initialStr ?? '')}
             tableFontSize={appSettings.tableFontSize}
             showDesc={appSettings.showDesc}
+            customDefaultWidths={appSettings.customDefaultWidths}
+            customMaxWidths={appSettings.customMaxWidths}
           />
         </div>
 
