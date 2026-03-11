@@ -5,6 +5,9 @@ import DOMPurify from 'dompurify';
 import { Check, X } from 'lucide-react';
 import type { IoBrokerObject, IoBrokerState } from '../types/iobroker';
 import { useSetState } from '../hooks/useStates';
+import { ColoredId } from '../utils/coloredId';
+import { getTypeColor } from '../utils/typeColor';
+import { getRoleColor } from '../utils/roleColor';
 
 interface ValueEditModalProps {
   id: string;
@@ -197,10 +200,10 @@ export default function ValueEditModal({ id, state, obj, onClose, language = 'en
         <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-700 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
           <div className="min-w-0">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{isEn ? 'Edit value' : 'Wert ändern'}</h3>
-            <p className="text-xs font-mono text-gray-500 dark:text-gray-400 truncate">{id}</p>
+            <ColoredId id={id} className="text-xs font-mono" />
             <p className="text-[11px] text-gray-500 dark:text-gray-400">
-              {isEn ? 'Type' : 'Typ'}: <span className="font-mono text-gray-700 dark:text-gray-200">{valType || '—'}</span>
-              {obj?.common?.role && <span className="ml-2">· {isEn ? 'Role' : 'Rolle'}: <span className="font-mono text-gray-700 dark:text-gray-200">{obj.common.role}</span></span>}
+              {isEn ? 'Type' : 'Typ'}: <span className={`font-mono font-semibold ${getTypeColor(valType || '')}`}>{valType || '—'}</span>
+              {obj?.common?.role && <span className="ml-2">· {isEn ? 'Role' : 'Rolle'}: <span className={`font-mono font-semibold ${getRoleColor(obj.common.role)}`}>{obj.common.role}</span></span>}
             </p>
           </div>
           <div className="flex flex-col items-center gap-1.5">

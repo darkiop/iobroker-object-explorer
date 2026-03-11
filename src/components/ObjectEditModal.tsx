@@ -11,6 +11,8 @@ import RenameDatapointModal from './RenameDatapointModal';
 import MoveDatapointModal from './MoveDatapointModal';
 import type { IoBrokerObject, IoBrokerObjectCommon } from '../types/iobroker';
 import { useToast } from '../context/ToastContext';
+import { ColoredId } from '../utils/coloredId';
+import { getRoleColor } from '../utils/roleColor';
 
 interface Props {
   id: string;
@@ -629,7 +631,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                 <Lock size={13} className="text-red-500 dark:text-red-400 shrink-0" />
               )}
               {isEn ? 'Edit object:' : 'Objekt bearbeiten:'}{' '}
-              <span className="font-mono text-xs text-gray-500 dark:text-gray-400">{id}</span>
+              <ColoredId id={id} className="font-mono text-xs" />
             </span>
             <div className="flex items-center gap-1 shrink-0">
               {isWritable && (
@@ -700,7 +702,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                       value={obj.common?.role || ''}
                       onChange={(e) => saveField('role', e.target.value)}
                       disabled={extend.isPending}
-                      className="w-full appearance-none [color-scheme:light] dark:[color-scheme:dark] [&>option]:bg-white [&>option]:text-gray-900 dark:[&>option]:bg-gray-800 dark:[&>option]:text-gray-200 bg-gray-50/70 text-gray-700 text-sm rounded-md pl-2.5 pr-8 py-1.5 border border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300/70 disabled:opacity-50 dark:bg-gray-800/70 dark:text-gray-200 dark:border-gray-700 dark:focus:border-gray-600 dark:focus:ring-gray-600/60 transition-colors"
+                      className={`w-full appearance-none [color-scheme:light] dark:[color-scheme:dark] [&>option]:bg-white [&>option]:text-gray-900 dark:[&>option]:bg-gray-800 dark:[&>option]:text-gray-200 bg-gray-50/70 text-sm rounded-md pl-2.5 pr-8 py-1.5 border border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300/70 disabled:opacity-50 dark:bg-gray-800/70 dark:border-gray-700 dark:focus:border-gray-600 dark:focus:ring-gray-600/60 transition-colors font-semibold ${obj.common?.role ? getRoleColor(obj.common.role) : 'text-gray-700 dark:text-gray-200'}`}
                     >
                       <option value="">{isEn ? 'No role' : 'Keine Rolle'}</option>
                       {(roles ?? []).map((roleEntry) => (

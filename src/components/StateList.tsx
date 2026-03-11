@@ -18,6 +18,9 @@ import ValueEditModal from './ValueEditModal';
 import { hasHistory, isGlobPattern } from '../api/iobroker';
 import type { IoBrokerState, IoBrokerObject } from '../types/iobroker';
 import { copyText } from '../utils/clipboard';
+import { ColoredId } from '../utils/coloredId';
+import { getTypeColor } from '../utils/typeColor';
+import { getRoleColor } from '../utils/roleColor';
 import { useToast } from '../context/ToastContext';
 
 export interface StateListHandle {
@@ -260,7 +263,7 @@ const EditableRoleCell = React.memo(function EditableRoleCell({ id, role, sugges
       <div className="flex items-center gap-1.5">
         {role ? (
           <>
-            <span className="truncate" title={role}>{role}</span>
+            <span className={`truncate font-semibold ${getRoleColor(role)}`} title={role}>{role}</span>
             <Pencil size={12} className="opacity-0 group-hover/role:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity" />
           </>
         ) : (
@@ -438,17 +441,6 @@ const EditableUnitCell = React.memo(function EditableUnitCell({ id, unit, sugges
   );
 });
 
-function getTypeColor(type: string): string {
-  switch (type) {
-    case 'boolean': return 'text-orange-500 dark:text-orange-400';
-    case 'number':  return 'text-blue-500 dark:text-blue-400';
-    case 'string':  return 'text-green-600 dark:text-green-400';
-    case 'object':  return 'text-purple-500 dark:text-purple-400';
-    case 'array':   return 'text-pink-500 dark:text-pink-400';
-    case 'mixed':   return 'text-yellow-600 dark:text-yellow-400';
-    default:        return 'text-gray-500 dark:text-gray-400';
-  }
-}
 
 const EditableTypeCell = React.memo(function EditableTypeCell({ id, typeValue, language = 'en' }: { id: string; typeValue: string; language?: 'en' | 'de' }) {
   const isEn = language === 'en';
@@ -688,24 +680,6 @@ const EditableValueCell = React.memo(function EditableValueCell({
   );
 });
 
-function ColoredId({ id }: { id: string }) {
-  const parts = id.split('.');
-  return (
-    <span className="truncate" title={id}>
-      {parts.map((part, i) => (
-        <span key={i}>
-          {i > 0 && <span className="text-gray-400/60 dark:text-gray-600 select-none">.</span>}
-          <span className={
-            i === 0 ? 'text-amber-600 dark:text-amber-400' :
-            i === 1 ? 'text-sky-600 dark:text-sky-400' :
-            i === parts.length - 1 ? 'text-gray-800 dark:text-gray-200' :
-            'text-gray-500 dark:text-gray-400'
-          }>{part}</span>
-        </span>
-      ))}
-    </span>
-  );
-}
 
 function CopyIdButton({ id }: { id: string }) {
   const [copied, setCopied] = useState(false);
