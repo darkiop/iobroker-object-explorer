@@ -177,7 +177,7 @@ export default function Layout({
           <img src="/favicon.svg" alt="" className="w-6 h-6 shrink-0" />
           <h1 className="text-lg font-semibold text-gray-900 dark:text-white">ioBroker Object Explorer</h1>
         </div>
-        <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center gap-0.5">
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1">
           {editingHost ? (
             <form onSubmit={(e) => { e.preventDefault(); void testAndSave(); }} className="flex flex-col items-center gap-0.5">
               <div className="flex items-center gap-1">
@@ -231,14 +231,14 @@ export default function Layout({
               <Pencil size={11} className="opacity-50" />
             </button>
           )}
+        </div>
+        <div className="flex items-center gap-3">
           {lastUpdated && (
             <div className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 font-mono">
               <RefreshCw size={10} />
               {new Date(lastUpdated).toLocaleTimeString()}
             </div>
           )}
-        </div>
-        <div className="flex items-center gap-3">
           <LanguageDropdown value={language} onChange={(next) => onLanguageChange?.(next)} compact />
           <button
             onClick={toggle}
