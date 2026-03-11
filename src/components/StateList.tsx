@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, RefreshCw, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen } from 'lucide-react';
+import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, RefreshCw, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Cpu, Layers } from 'lucide-react';
 import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
@@ -131,11 +131,11 @@ const EditableNameCell = React.memo(function EditableNameCell({ id, name, desc, 
 
   if (!editing) {
     return (
-      <td data-col="name" className="px-3 py-2 overflow-hidden group/name">
+      <td data-col="name" className="px-3 py-2 overflow-hidden group/name align-middle">
         <div className="flex items-center gap-1.5">
           <div className="min-w-0 flex-1 overflow-hidden">
             <div className="truncate" title={name}>{name}</div>
-            {showDesc && <div className={`truncate text-[10px] italic text-gray-400 dark:text-gray-500 leading-tight ${desc ? 'mt-1' : 'h-0 overflow-hidden'}`} title={desc}>{desc || '.'}</div>}
+            {showDesc && desc && <div className="truncate text-[10px] italic text-gray-400 dark:text-gray-500 leading-tight mt-1" title={desc}>{desc}</div>}
           </div>
           <button
             onClick={(e) => {
@@ -1677,6 +1677,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   }, [isFilterActive]);
   const [headerHeight, setHeaderHeight] = useState(0);
   const [newDatapointOpen, setNewDatapointOpen] = useState(false);
+  const [newDatapointPrefix, setNewDatapointPrefix] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [historyModalId, setHistoryModalId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -1706,6 +1707,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   const [batchRoomEnumId, setBatchRoomEnumId] = useState('');
   const [batchFnEnumId, setBatchFnEnumId] = useState('');
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; id: string } | null>(null);
+  const [sepCtxMenu, setSepCtxMenu] = useState<{ x: number; y: number; prefix: string } | null>(null);
   const [roomEditId, setRoomEditId] = useState<string | null>(null);
   const [fnEditId, setFnEditId] = useState<string | null>(null);
   const [aliasSourceId, setAliasSourceId] = useState<string | null>(null);
@@ -2491,9 +2493,9 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
       )}
       {newDatapointOpen && (
         <NewDatapointModal
-          onClose={() => setNewDatapointOpen(false)}
+          onClose={() => { setNewDatapointOpen(false); setNewDatapointPrefix(null); }}
           existingIds={existingIds}
-          initialId={patternToInitialId(pattern)}
+          initialId={newDatapointPrefix !== null ? newDatapointPrefix + '.' : patternToInitialId(pattern)}
           language={language}
         />
       )}
@@ -2658,6 +2660,51 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
         items.push({ separator: true } as const);
         items.push({ icon: <Trash2 size={13} />, label: isEn ? 'Delete datapoint' : 'Datenpunkt löschen', onClick: () => setDeletingId(ctxId), danger: true });
         return <ContextMenu x={x} y={y} items={items} onClose={() => setCtxMenu(null)} />;
+      })()}
+
+      {sepCtxMenu && (() => {
+        const { x, y, prefix } = sepCtxMenu;
+        const groupIds = filteredIds.filter((id) => {
+          const p = id.split('.');
+          return (p.length > 1 ? p.slice(0, -1).join('.') : '') === prefix;
+        });
+        const isCollapsed = collapsedPrefixes === null || collapsedPrefixes.has(prefix);
+        const allChecked = groupIds.length > 0 && groupIds.every((id) => checkedIds.has(id));
+        const sepItems: ContextMenuEntry[] = [];
+        if (prefix) {
+          sepItems.push({ icon: <Copy size={13} />, label: isEn ? 'Copy path' : 'Pfad kopieren', onClick: () => copyText(prefix) });
+          sepItems.push({ icon: <Search size={13} />, label: isEn ? 'Set as filter' : 'Als Filter setzen', onClick: () => setDraftAndPropagate({ ...colFiltersDraft, id: prefix }) });
+          sepItems.push({ separator: true } as const);
+        }
+        sepItems.push({
+          icon: isCollapsed ? <ChevronDown size={13} /> : <ChevronRight size={13} />,
+          label: isCollapsed ? (isEn ? 'Expand group' : 'Gruppe aufklappen') : (isEn ? 'Collapse group' : 'Gruppe einklappen'),
+          onClick: () => setCollapsedPrefixes((prev) => {
+            const allPfx = [...new Set(filteredIds.map((id) => { const p = id.split('.'); return p.length > 1 ? p.slice(0, -1).join('.') : ''; }))];
+            const base = prev === null ? new Set(allPfx) : new Set(prev);
+            isCollapsed ? base.delete(prefix) : base.add(prefix);
+            return base;
+          }),
+        });
+        sepItems.push({
+          icon: allChecked ? <X size={13} /> : <Check size={13} />,
+          label: allChecked
+            ? (isEn ? `Deselect all (${groupIds.length})` : `Alle abwählen (${groupIds.length})`)
+            : (isEn ? `Select all (${groupIds.length})` : `Alle auswählen (${groupIds.length})`),
+          onClick: () => setCheckedIds((prev) => {
+            const next = new Set(prev);
+            allChecked ? groupIds.forEach((id) => next.delete(id)) : groupIds.forEach((id) => next.add(id));
+            return next;
+          }),
+        });
+        sepItems.push({ separator: true } as const);
+        sepItems.push({
+          icon: <Trash2 size={13} />,
+          label: isEn ? `Delete all datapoints (${groupIds.length})` : `Alle Datenpunkte löschen (${groupIds.length})`,
+          onClick: () => setDeletingGroupPrefix(prefix),
+          danger: true,
+        });
+        return <ContextMenu x={x} y={y} items={sepItems} onClose={() => setSepCtxMenu(null)} />;
       })()}
 
       <div ref={containerRef} onScroll={handleBodyScroll} onKeyDown={handleContainerKeyDown} tabIndex={0} className="overflow-x-auto overflow-y-auto flex-1 outline-none" data-table-fontsize={tableFontSize}>
@@ -2827,7 +2874,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
             {visibleItems.map((item, idx) => {
               if (item.kind === 'sep') {
                 return (
-                  <tr key={`sep_${item.prefix}_${idx}`} className="group/sep cursor-pointer select-none" onClick={() => setCollapsedPrefixes((prev) => {
+                  <tr key={`sep_${item.prefix}_${idx}`} className="group/sep cursor-pointer select-none" onContextMenu={(e) => { e.preventDefault(); setSepCtxMenu({ x: e.clientX, y: e.clientY, prefix: item.prefix }); }} onClick={() => setCollapsedPrefixes((prev) => {
                       const allPfx = [...new Set(filteredIds.map((id) => { const p = id.split('.'); return p.length > 1 ? p.slice(0, -1).join('.') : ''; }))];
                       const base = prev === null ? new Set(allPfx) : new Set(prev);
                       base.has(item.prefix) ? base.delete(item.prefix) : base.add(item.prefix);
@@ -2839,15 +2886,36 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                           ? <ChevronRight size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
                           : <ChevronDown size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
                         }
-                        <FolderOpen size={14} className="text-yellow-500/80 shrink-0" />
+                        {objects[item.prefix]?.type === 'device'
+                          ? <Cpu size={14} className="text-sky-500/80 shrink-0" />
+                          : objects[item.prefix]?.type === 'channel'
+                            ? <Layers size={14} className="text-indigo-500/80 shrink-0" />
+                            : <FolderOpen size={14} className="text-yellow-500/80 shrink-0" />
+                        }
                         {item.prefix
                           ? <ColoredId id={item.prefix} className="text-sm font-mono font-bold" />
                           : <span className="text-sm text-gray-400 dark:text-gray-500 font-mono font-bold italic">root</span>
                         }
+                        {item.prefix && objects[item.prefix] && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setEditObjId(item.prefix); }}
+                            className="ml-1 opacity-0 group-hover/sep:opacity-100 transition-opacity text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400"
+                            title={isEn ? 'Edit object' : 'Objekt bearbeiten'}
+                          >
+                            <Pencil size={12} />
+                          </button>
+                        )}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setNewDatapointPrefix(item.prefix || null); setNewDatapointOpen(true); }}
+                          className="opacity-0 group-hover/sep:opacity-100 transition-opacity text-gray-400 hover:text-green-500 dark:text-gray-500 dark:hover:text-green-400"
+                          title={isEn ? 'New datapoint in this group' : 'Neuer Datenpunkt in dieser Gruppe'}
+                        >
+                          <Plus size={13} />
+                        </button>
                         {item.prefix && (
                           <button
                             onClick={(e) => { e.stopPropagation(); copyText(item.prefix); }}
-                            className="ml-1 opacity-0 group-hover/sep:opacity-100 transition-opacity text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                            className="opacity-0 group-hover/sep:opacity-100 transition-opacity text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
                             title={item.prefix}
                           >
                             <Copy size={12} />

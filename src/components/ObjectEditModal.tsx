@@ -702,7 +702,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                       value={obj.common?.role || ''}
                       onChange={(e) => saveField('role', e.target.value)}
                       disabled={extend.isPending}
-                      className={`w-full appearance-none [color-scheme:light] dark:[color-scheme:dark] [&>option]:bg-white [&>option]:text-gray-900 dark:[&>option]:bg-gray-800 dark:[&>option]:text-gray-200 bg-gray-50/70 text-sm rounded-md pl-2.5 pr-8 py-1.5 border border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300/70 disabled:opacity-50 dark:bg-gray-800/70 dark:border-gray-700 dark:focus:border-gray-600 dark:focus:ring-gray-600/60 transition-colors font-semibold ${obj.common?.role ? getRoleColor(obj.common.role) : 'text-gray-700 dark:text-gray-200'}`}
+                      className={`w-full appearance-none [color-scheme:light] dark:[color-scheme:dark] [&>option]:bg-white [&>option]:text-gray-900 dark:[&>option]:bg-gray-800 dark:[&>option]:text-gray-200 bg-gray-50/70 text-sm rounded-md pl-2.5 pr-8 py-1.5 border border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300/70 disabled:opacity-50 dark:bg-gray-800/70 dark:border-gray-700 dark:focus:border-gray-600 dark:focus:ring-gray-600/60 transition-colors ${obj.common?.role ? getRoleColor(obj.common.role) : 'text-gray-700 dark:text-gray-200'}`}
                     >
                       <option value="">{isEn ? 'No role' : 'Keine Rolle'}</option>
                       {(roles ?? []).map((roleEntry) => (
