@@ -29,7 +29,7 @@ interface StateTreeProps {
   language?: 'en' | 'de';
   onOpenAliasReplace?: (initialStr?: string) => void;
   onAutoCreateAlias?: (deviceId: string) => void;
-  treeFontSize?: 'small' | 'normal' | 'large';
+  treeFontSize?: 'small' | 'normal' | 'large' | 'xl';
   treeShowCount?: boolean;
 }
 
@@ -548,7 +548,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
 
 function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeScope, onCreateAtPath, historyOnly, smartOnly, historyIds, smartIds, expandToDepth, treeFilter = null, treeSearch: treeSearchProp = '', onTreeSearchChange, pattern, language = 'en', onOpenAliasReplace, onAutoCreateAlias, treeFontSize = 'normal', treeShowCount = true }: StateTreeProps) {
   const isEn = language === 'en';
-  const nodeFontClass = treeFontSize === 'small' ? 'text-xs' : treeFontSize === 'large' ? 'text-base' : 'text-sm';
+  const nodeFontClass = treeFontSize === 'small' ? 'text-xs' : treeFontSize === 'large' ? 'text-base' : treeFontSize === 'xl' ? 'text-lg' : 'text-sm';
   const [expandSignal, setExpandSignal] = useState<{ depth: number; seq: number }>({ depth: 0, seq: 0 });
   const [showFolders,  setShowFolders]  = useState(true);
   const [showDevices,  setShowDevices]  = useState(true);

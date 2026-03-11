@@ -47,3 +47,5 @@ html:not(.dark) * {
 [data-table-fontsize="small"] th { font-size: 0.65rem !important; }
 [data-table-fontsize="large"] td,
 [data-table-fontsize="large"] th { font-size: 0.875rem !important; }
+[data-table-fontsize="xl"] td,
+[data-table-fontsize="xl"] th { font-size: 1.05rem !important; }

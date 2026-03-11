@@ -56,7 +56,7 @@ interface StateListProps {
   onToggleToolbarLabels?: () => void;
   onOpenEnumManager?: () => void;
   onOpenAliasReplace?: (initialStr?: string) => void;
-  tableFontSize?: 'small' | 'normal' | 'large';
+  tableFontSize?: 'small' | 'normal' | 'large' | 'xl';
   showDesc?: boolean;
   customDefaultWidths?: Partial<Record<SortKey, number>>;
   customMaxWidths?: Partial<Record<SortKey, number>>;
