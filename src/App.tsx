@@ -735,6 +735,7 @@ function AppContent() {
       localStorage.setItem(LS_APP_SETTINGS, JSON.stringify(next));
       return next;
     });
+    setSettingsDraft((prev) => ({ ...prev, groupByPath: !prev.groupByPath }));
   }, []);
 
   const handleSaveCurrentFilter = useCallback(() => {
