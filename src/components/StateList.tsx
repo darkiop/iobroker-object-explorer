@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, RefreshCw, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen } from 'lucide-react';
+import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, RefreshCw, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen } from 'lucide-react';
 import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
@@ -1669,6 +1669,8 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   const scrollRafRef = useRef<number | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(0);
+  // null = "all collapsed" (default). Once the user interacts, switches to an explicit Set.
+  const [collapsedPrefixes, setCollapsedPrefixes] = useState<Set<string> | null>(null);
   const [headerHeight, setHeaderHeight] = useState(0);
   const [newDatapointOpen, setNewDatapointOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -2024,19 +2026,30 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   type DisplayItem = { kind: 'row'; id: string } | { kind: 'sep'; prefix: string };
   const displayItems = useMemo((): DisplayItem[] => {
     if (!groupByPath) return filteredIds.map((id) => ({ kind: 'row' as const, id }));
-    const items: DisplayItem[] = [];
-    let lastPrefix: string | undefined;
+    // Group IDs by prefix, preserving filteredIds order within each group
+    const groups = new Map<string, string[]>();
     for (const id of filteredIds) {
       const parts = id.split('.');
       const prefix = parts.length > 1 ? parts.slice(0, -1).join('.') : '';
-      if (prefix !== lastPrefix) {
-        items.push({ kind: 'sep', prefix });
-        lastPrefix = prefix;
+      if (!groups.has(prefix)) groups.set(prefix, []);
+      groups.get(prefix)!.push(id);
+    }
+    // Sort prefixes alphabetically (case-insensitive) so groups always appear in A-Z order
+    const sortedPrefixes = [...groups.keys()].sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: 'base' })
+    );
+    const items: DisplayItem[] = [];
+    for (const prefix of sortedPrefixes) {
+      items.push({ kind: 'sep', prefix });
+      const isCollapsed = collapsedPrefixes === null || collapsedPrefixes.has(prefix);
+      if (!isCollapsed) {
+        for (const id of groups.get(prefix)!) {
+          items.push({ kind: 'row', id });
+        }
       }
-      items.push({ kind: 'row', id });
     }
     return items;
-  }, [filteredIds, groupByPath]);
+  }, [filteredIds, groupByPath, collapsedPrefixes]);
 
   const hasColFilters = Object.values(colFiltersDraft).some((v) => v.trim() !== '');
 
@@ -2631,7 +2644,23 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
         <table className="text-xs text-left table-fixed" style={{ width: totalWidth }}>
           <thead ref={theadRef} className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-100 dark:bg-gray-800 sticky top-0 z-10">
             <tr>
-              {show('checkbox') && <th style={{ width: w('checkbox'), minWidth: w('checkbox') }} />}
+              {show('checkbox') && (
+                <th style={{ width: w('checkbox'), minWidth: w('checkbox') }} className="text-center align-middle">
+                  {groupByPath && (() => {
+                    const allPrefixes = [...new Set(filteredIds.map((id) => { const p = id.split('.'); return p.length > 1 ? p.slice(0, -1).join('.') : ''; }))];
+                    const allCollapsed = collapsedPrefixes === null || (allPrefixes.length > 0 && allPrefixes.every((p) => collapsedPrefixes.has(p)));
+                    return (
+                      <button
+                        onClick={() => setCollapsedPrefixes(allCollapsed ? new Set() : null)}
+                        title={allCollapsed ? (isEn ? 'Expand all groups' : 'Alle Gruppen aufklappen') : (isEn ? 'Collapse all groups' : 'Alle Gruppen einklappen')}
+                        className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-200 dark:text-gray-500 dark:hover:text-gray-300 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        {allCollapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
+                      </button>
+                    );
+                  })()}
+                </th>
+              )}
               {show('write')   && <th style={{ width: colWidths['write'],   minWidth: colWidths['write']   }} />}
               {show('history') && <th style={{ width: colWidths['history'], minWidth: colWidths['history'] }} />}
               {show('smart')   && <th style={{ width: colWidths['smart'],   minWidth: colWidths['smart']   }} />}
@@ -2778,9 +2807,18 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
             {visibleItems.map((item, idx) => {
               if (item.kind === 'sep') {
                 return (
-                  <tr key={`sep_${item.prefix}_${idx}`} aria-hidden="true" className="group/sep">
-                    <td colSpan={rowColSpan + 1} className="px-3 py-1.5 bg-gray-100/80 dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60">
+                  <tr key={`sep_${item.prefix}_${idx}`} className="group/sep cursor-pointer select-none" onClick={() => setCollapsedPrefixes((prev) => {
+                      const allPfx = [...new Set(filteredIds.map((id) => { const p = id.split('.'); return p.length > 1 ? p.slice(0, -1).join('.') : ''; }))];
+                      const base = prev === null ? new Set(allPfx) : new Set(prev);
+                      base.has(item.prefix) ? base.delete(item.prefix) : base.add(item.prefix);
+                      return base;
+                    })}>
+                    <td colSpan={rowColSpan + 1} className="px-3 py-1.5 bg-gray-100/80 dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 hover:bg-gray-200/80 dark:hover:bg-gray-700/60 transition-colors">
                       <div className="flex items-center gap-2">
+                        {(collapsedPrefixes === null || collapsedPrefixes.has(item.prefix))
+                          ? <ChevronRight size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
+                          : <ChevronDown size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
+                        }
                         <FolderOpen size={14} className="text-yellow-500/80 shrink-0" />
                         {item.prefix
                           ? <ColoredId id={item.prefix} className="text-sm font-mono font-bold" />
@@ -2788,7 +2826,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                         }
                         {item.prefix && (
                           <button
-                            onClick={() => copyText(item.prefix)}
+                            onClick={(e) => { e.stopPropagation(); copyText(item.prefix); }}
                             className="ml-1 opacity-0 group-hover/sep:opacity-100 transition-opacity text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
                             title={item.prefix}
                           >
