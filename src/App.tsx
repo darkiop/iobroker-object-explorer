@@ -293,6 +293,7 @@ function AppContent() {
   const [treeExpandSignal, setTreeExpandSignal] = useState<{ depth: number; seq: number } | undefined>(undefined);
   const [sidebarToggleSeq, setSidebarToggleSeq] = useState(0);
   const [treeFilter, setTreeFilter] = useState<string | null>(null);
+  const [treeSearch, setTreeSearch] = useState('');
   const [roomFilters, setRoomFilters] = useState<Set<string>>(() => new Set(savedFilters.current.roomFilters ?? []));
   const [roomsOpen, setRoomsOpen] = useState(false);
   const [functionFilters, setFunctionFilters] = useState<Set<string>>(() => new Set(savedFilters.current.functionFilters ?? []));
@@ -636,9 +637,10 @@ function AppContent() {
       functionFilters.size > 0 ||
       quickPatterns.size > 0 ||
       !!treeFilter ||
+      !!treeSearch ||
       exactEnabled ||
       Object.values(colFilters).some((v) => v.trim() !== ''),
-    [pattern, historyOnly, smartOnly, danglingAliasFilter, roomFilters, functionFilters, quickPatterns, treeFilter, exactEnabled, colFilters]
+    [pattern, historyOnly, smartOnly, danglingAliasFilter, roomFilters, functionFilters, quickPatterns, treeFilter, treeSearch, exactEnabled, colFilters]
   );
 
   const resetAllFilters = useCallback(() => {
@@ -652,6 +654,7 @@ function AppContent() {
     setFunctionFilters(new Set());
     setQuickPatterns(new Set());
     setTreeFilter(null);
+    setTreeSearch('');
     setExactEnabled(false);
     setColFilters({});
     setTreeExpandSignal((s) => ({ depth: 0, seq: (s?.seq ?? 0) + 1 }));
@@ -1031,6 +1034,8 @@ function AppContent() {
               expandToDepth={treeExpandSignal}
               treeFilter={treeFilter}
               onClearTreeFilter={handleClearTreeFilter}
+              treeSearch={treeSearch}
+              onTreeSearchChange={setTreeSearch}
               pattern={pattern}
               language={appSettings.language}
               onOpenAliasReplace={() => setAliasReplaceInitialStr('')}

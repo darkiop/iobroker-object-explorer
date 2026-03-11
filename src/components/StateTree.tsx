@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, memo } from 'react';
-import { ChevronRight, ChevronDown, ChevronsUpDown, ChevronsDownUp, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil, LayoutList, LayoutGrid, Plus, FileCode2, Link2, UserRound, ShieldAlert, Download, Trash2 } from 'lucide-react';
+import { ChevronRight, ChevronDown, ChevronsUpDown, ChevronsDownUp, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil, LayoutList, LayoutGrid, Plus, FileCode2, Link2, UserRound, ShieldAlert, Download, Trash2, Filter } from 'lucide-react';
 import type { TreeNode, IoBrokerObject } from '../types/iobroker';
 import ObjectEditModal from './ObjectEditModal';
 import ContextMenu from './ContextMenu';
@@ -23,6 +23,8 @@ interface StateTreeProps {
   expandToDepth?: { depth: number; seq: number };
   treeFilter?: string | null;
   onClearTreeFilter?: () => void;
+  treeSearch?: string;
+  onTreeSearchChange?: (v: string) => void;
   pattern?: string;
   language?: 'en' | 'de';
   onOpenAliasReplace?: (initialStr?: string) => void;
@@ -188,6 +190,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   language,
   onOpenAliasReplace,
   onAutoCreateAlias,
+  onAddToTreeFilter,
   nodeFontClass = 'text-sm',
   treeShowCount = true,
 }: {
@@ -210,6 +213,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   language: 'en' | 'de';
   onOpenAliasReplace?: (initialStr?: string) => void;
   onAutoCreateAlias?: (deviceId: string) => void;
+  onAddToTreeFilter: (path: string) => void;
   nodeFontClass?: string;
   treeShowCount?: boolean;
 }) {
@@ -302,6 +306,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
             treeFilter={treeFilter}
             pattern={pattern}
             language={language}
+            onAddToTreeFilter={onAddToTreeFilter}
             nodeFontClass={nodeFontClass}
             treeShowCount={treeShowCount}
           />
@@ -333,6 +338,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
         const items: ContextMenuEntry[] = [];
         if (node.isLeaf) {
           items.push({ icon: <Search size={13} />, label: isEn ? 'Set as filter' : 'Als Filter setzen', onClick: () => onSearch(node.fullPath) });
+          items.push({ icon: <Filter size={13} />, label: isEn ? 'Add path to tree filter' : 'Pfad zum Baum-Filter hinzufügen', onClick: () => onAddToTreeFilter(node.fullPath) });
           items.push({ separator: true } as const);
           items.push({ icon: <Check size={13} />, label: isEn ? 'Select' : 'Auswählen', onClick: () => onSelect(node.fullPath) });
           items.push({ separator: true } as const);
@@ -343,6 +349,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
           items.push({ icon: <Trash2 size={13} />, label: isEn ? 'Delete object' : 'Objekt löschen', onClick: () => setConfirmDelete(true), danger: true });
         } else {
           items.push({ icon: <Search size={13} />, label: isEn ? `Show in table: ${node.fullPath}` : `In Tabelle anzeigen: ${node.fullPath}`, onClick: () => onTreeScope(`${node.fullPath}.`) });
+          items.push({ icon: <Filter size={13} />, label: isEn ? 'Add path to tree filter' : 'Pfad zum Baum-Filter hinzufügen', onClick: () => onAddToTreeFilter(node.fullPath) });
           items.push({ separator: true } as const);
           items.push({ icon: <Copy size={13} />, label: isEn ? 'Copy ID' : 'ID kopieren', onClick: () => copyText(node.fullPath) });
           items.push({ icon: <Copy size={13} />, label: isEn ? 'Copy pattern' : 'Muster kopieren', onClick: () => copyText(`${node.fullPath}.*`) });
@@ -529,6 +536,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
             language={language}
             onOpenAliasReplace={onOpenAliasReplace}
             onAutoCreateAlias={onAutoCreateAlias}
+            onAddToTreeFilter={onAddToTreeFilter}
             nodeFontClass={nodeFontClass}
             treeShowCount={treeShowCount}
           />
@@ -538,7 +546,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
 });
 
 
-function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeScope, onCreateAtPath, historyOnly, smartOnly, historyIds, smartIds, expandToDepth, treeFilter = null, pattern, language = 'en', onOpenAliasReplace, onAutoCreateAlias, treeFontSize = 'normal', treeShowCount = true }: StateTreeProps) {
+function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeScope, onCreateAtPath, historyOnly, smartOnly, historyIds, smartIds, expandToDepth, treeFilter = null, treeSearch: treeSearchProp = '', onTreeSearchChange, pattern, language = 'en', onOpenAliasReplace, onAutoCreateAlias, treeFontSize = 'normal', treeShowCount = true }: StateTreeProps) {
   const isEn = language === 'en';
   const nodeFontClass = treeFontSize === 'small' ? 'text-xs' : treeFontSize === 'large' ? 'text-base' : 'text-sm';
   const [expandSignal, setExpandSignal] = useState<{ depth: number; seq: number }>({ depth: 0, seq: 0 });
@@ -547,26 +555,37 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
   const [showChannels, setShowChannels] = useState(true);
   const [typesOpen,    setTypesOpen]    = useState(false);
   const [treeViewMode, setTreeViewMode] = useState<'path' | 'adapter'>('adapter');
-  const [treeSearch,   setTreeSearch]   = useState('');
+  const treeSearch = treeSearchProp;
+  const setTreeSearch = onTreeSearchChange ?? (() => {});
 
   useEffect(() => {
     if (!expandToDepth) return;
     setExpandSignal(s => ({ depth: expandToDepth.depth, seq: s.seq + 1 }));
   }, [expandToDepth]);
 
+  function matchesTreeSearch(id: string, lower: string): boolean {
+    if (!lower) return true;
+    const idLower = id.toLowerCase();
+    // Dot in search → treat as full path prefix (e.g. from context menu)
+    if (lower.includes('.')) {
+      return idLower === lower || idLower.startsWith(lower + '.');
+    }
+    // No dot → partial match on top-level segment (adapter.instance or first segment)
+    const parts = id.split('.');
+    const topLevel = treeViewMode === 'adapter'
+      ? (parts.length >= 2 ? `${parts[0]}.${parts[1]}` : parts[0])
+      : parts[0];
+    return topLevel.toLowerCase().includes(lower);
+  }
+
   const filteredIds = useMemo(() => {
     const lower = treeSearch.toLowerCase();
     return stateIds.filter((id) =>
       (!historyOnly || historyIds.has(id)) &&
       (!smartOnly || smartIds.has(id)) &&
-      (!lower || (() => {
-        const parts = id.split('.');
-        const topLevel = treeViewMode === 'adapter'
-          ? (parts.length >= 2 ? `${parts[0]}.${parts[1]}` : parts[0])
-          : parts[0];
-        return topLevel.toLowerCase().includes(lower);
-      })())
+      matchesTreeSearch(id, lower)
     );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stateIds, historyOnly, historyIds, smartOnly, smartIds, treeSearch, treeViewMode]);
 
 
@@ -575,13 +594,9 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
     return Object.keys(allObjects).filter(id => {
       const t = allObjects[id]?.type;
       if (!(t === 'folder' || t === 'device' || t === 'channel' || t === 'instance')) return false;
-      if (!lower) return true;
-      const parts = id.split('.');
-      const topLevel = treeViewMode === 'adapter'
-        ? (parts.length >= 2 ? `${parts[0]}.${parts[1]}` : parts[0])
-        : parts[0];
-      return topLevel.toLowerCase().includes(lower);
+      return matchesTreeSearch(id, lower);
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allObjects, treeSearch, treeViewMode]);
 
   const tree = useMemo(
@@ -673,7 +688,7 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
       </div>
       <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 shrink-0">
         <div className="relative">
-          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none" />
+          <Filter size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none" />
           <input
             type="text"
             value={treeSearch}
@@ -721,6 +736,7 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
               language={language}
               onOpenAliasReplace={onOpenAliasReplace}
               onAutoCreateAlias={onAutoCreateAlias}
+              onAddToTreeFilter={setTreeSearch}
               nodeFontClass={nodeFontClass}
               treeShowCount={treeShowCount}
             />
