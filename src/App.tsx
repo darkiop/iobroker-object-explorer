@@ -151,6 +151,7 @@ function loadAppSettings(): AppSettings {
       treeFontSize,
       treeShowCount: parsed.treeShowCount !== false,
       showDesc: parsed.showDesc !== false,
+      groupByPath: parsed.groupByPath !== false,
       customDefaultWidths: parseColWidthMap(parsed.customDefaultWidths),
       customMaxWidths: parseColWidthMap(parsed.customMaxWidths),
     };
