@@ -2778,7 +2778,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
             {visibleItems.map((item, idx) => {
               if (item.kind === 'sep') {
                 return (
-                  <tr key={`sep_${item.prefix}_${idx}`} aria-hidden="true">
+                  <tr key={`sep_${item.prefix}_${idx}`} aria-hidden="true" className="group/sep">
                     <td colSpan={rowColSpan + 1} className="px-3 py-1.5 bg-gray-100/80 dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60">
                       <div className="flex items-center gap-2">
                         <FolderOpen size={14} className="text-yellow-500/80 shrink-0" />
@@ -2786,6 +2786,15 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                           ? <ColoredId id={item.prefix} className="text-sm font-mono font-bold" />
                           : <span className="text-sm text-gray-400 dark:text-gray-500 font-mono font-bold italic">root</span>
                         }
+                        {item.prefix && (
+                          <button
+                            onClick={() => copyText(item.prefix)}
+                            className="ml-1 opacity-0 group-hover/sep:opacity-100 transition-opacity text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                            title={item.prefix}
+                          >
+                            <Copy size={12} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
