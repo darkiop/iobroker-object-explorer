@@ -1669,8 +1669,12 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   const scrollRafRef = useRef<number | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(0);
-  // null = "all collapsed" (default). Once the user interacts, switches to an explicit Set.
-  const [collapsedPrefixes, setCollapsedPrefixes] = useState<Set<string> | null>(null);
+  const isFilterActive = !!(pattern && pattern !== '*') || !!treeFilter;
+  // null = "all collapsed". new Set() = all expanded.
+  const [collapsedPrefixes, setCollapsedPrefixes] = useState<Set<string> | null>(() => isFilterActive ? null : new Set());
+  useEffect(() => {
+    setCollapsedPrefixes(isFilterActive ? null : new Set());
+  }, [isFilterActive]);
   const [headerHeight, setHeaderHeight] = useState(0);
   const [newDatapointOpen, setNewDatapointOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
