@@ -878,7 +878,7 @@ function AppContent() {
             {quickOpen && (
               <div className="pt-0.5 pb-1 flex flex-col">
                 {quickPatternOptions.map((q) => {
-                  const active = pattern === q;
+                  const active = basePattern === q;
                   const color = QUICK_COLORS[q] ?? 'text-blue-600 dark:text-blue-400';
                   return (
                     <button
