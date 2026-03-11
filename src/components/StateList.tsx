@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, RefreshCw, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw, Tag } from 'lucide-react';
+import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, RefreshCw, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen } from 'lucide-react';
 import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
@@ -58,6 +58,8 @@ interface StateListProps {
   onOpenAliasReplace?: (initialStr?: string) => void;
   tableFontSize?: 'small' | 'normal' | 'large' | 'xl';
   showDesc?: boolean;
+  groupByPath?: boolean;
+  onToggleGroupByPath?: () => void;
   customDefaultWidths?: Partial<Record<SortKey, number>>;
   customMaxWidths?: Partial<Record<SortKey, number>>;
 }
@@ -1650,7 +1652,7 @@ const StateRow = React.memo(function StateRow({
   );
 });
 
-function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, allObjectIds, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en', expertMode = false, onToggleExpertMode, toolbarLabels = true, onOpenEnumManager, onOpenAliasReplace, tableFontSize = 'normal', showDesc = true, customDefaultWidths, customMaxWidths }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
+function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, allObjectIds, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en', expertMode = false, onToggleExpertMode, toolbarLabels = true, onOpenEnumManager, onOpenAliasReplace, tableFontSize = 'normal', showDesc = true, groupByPath = false, onToggleGroupByPath, customDefaultWidths, customMaxWidths }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
   const effectiveDefaults: Record<SortKey, number> = { ...BUILTIN_DEFAULT_WIDTHS, ...(customDefaultWidths ?? {}) };
   const effectiveMax: Partial<Record<SortKey, number>> = { ...BUILTIN_MAX_WIDTHS, ...(customMaxWidths ?? {}) };
   const effectiveMaxRef = useRef(effectiveMax);
@@ -2019,6 +2021,23 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
     });
   }, [sortedIds, valueFilter, tsFilterParsed, dateFormat, (valueFilter || tsFilterParsed.mode !== 'none') ? states : null]);
 
+  type DisplayItem = { kind: 'row'; id: string } | { kind: 'sep'; prefix: string };
+  const displayItems = useMemo((): DisplayItem[] => {
+    if (!groupByPath) return filteredIds.map((id) => ({ kind: 'row' as const, id }));
+    const items: DisplayItem[] = [];
+    let lastPrefix: string | undefined;
+    for (const id of filteredIds) {
+      const parts = id.split('.');
+      const prefix = parts.length > 1 ? parts.slice(0, -1).join('.') : '';
+      if (prefix !== lastPrefix) {
+        items.push({ kind: 'sep', prefix });
+        lastPrefix = prefix;
+      }
+      items.push({ kind: 'row', id });
+    }
+    return items;
+  }, [filteredIds, groupByPath]);
+
   const hasColFilters = Object.values(colFiltersDraft).some((v) => v.trim() !== '');
 
   const totalWidth = DEL_COL_WIDTH + visibleCols.reduce((sum, k) => sum + colWidths[k], 0);
@@ -2265,6 +2284,17 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
       </div>
       <div className="flex items-center gap-1">
         <button
+          onClick={() => onToggleGroupByPath?.()}
+          title={groupByPath ? (isEn ? 'Disable path grouping' : 'Pfad-Gruppierung deaktivieren') : (isEn ? 'Group rows by path' : 'Zeilen nach Pfad gruppieren')}
+          className={`p-2 rounded-lg transition-colors ${
+            groupByPath
+              ? 'text-blue-600 bg-blue-500/15 hover:bg-blue-500/25 dark:text-blue-400 dark:hover:bg-blue-500/20'
+              : 'text-gray-400 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-500 dark:hover:text-blue-400 dark:hover:bg-blue-500/10'
+          }`}
+        >
+          <FolderOpen size={17} />
+        </button>
+        <button
           onClick={() => onToggleExpertMode?.()}
           title={expertMode ? (isEn ? 'Disable expert mode' : 'Expertenmodus deaktivieren') : (isEn ? 'Enable expert mode' : 'Expertenmodus aktivieren')}
           className={`p-2 rounded-lg transition-colors ${
@@ -2321,20 +2351,20 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
 
   const batchCanApply = batchRole.trim() !== '' || batchUnit.trim() !== '' || batchRoomEnumId !== '' || batchFnEnumId !== '';
   const bodyViewportHeight = Math.max(0, viewportHeight - headerHeight);
-  const virtualEnabled = filteredIds.length > VIRTUALIZE_THRESHOLD && bodyViewportHeight > 0;
+  const virtualEnabled = displayItems.length > VIRTUALIZE_THRESHOLD && bodyViewportHeight > 0;
   const bodyScrollTop = Math.max(0, scrollTop - headerHeight);
   const virtualStart = virtualEnabled
     ? Math.max(0, Math.floor(bodyScrollTop / VIRTUAL_ROW_HEIGHT) - VIRTUAL_OVERSCAN)
     : 0;
   const virtualVisibleCount = virtualEnabled
     ? Math.ceil(bodyViewportHeight / VIRTUAL_ROW_HEIGHT) + VIRTUAL_OVERSCAN * 2
-    : filteredIds.length;
+    : displayItems.length;
   const virtualEnd = virtualEnabled
-    ? Math.min(filteredIds.length, virtualStart + virtualVisibleCount)
-    : filteredIds.length;
-  const visibleRowIds = virtualEnabled ? filteredIds.slice(virtualStart, virtualEnd) : filteredIds;
+    ? Math.min(displayItems.length, virtualStart + virtualVisibleCount)
+    : displayItems.length;
+  const visibleItems = virtualEnabled ? displayItems.slice(virtualStart, virtualEnd) : displayItems;
   const topSpacer = virtualEnabled ? virtualStart * VIRTUAL_ROW_HEIGHT : 0;
-  const bottomSpacer = virtualEnabled ? (filteredIds.length - virtualEnd) * VIRTUAL_ROW_HEIGHT : 0;
+  const bottomSpacer = virtualEnabled ? (displayItems.length - virtualEnd) * VIRTUAL_ROW_HEIGHT : 0;
   const rowColSpan = visibleCols.length + 1;
 
   function handleBodyScroll(e: React.UIEvent<HTMLDivElement>) {
@@ -2745,44 +2775,62 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                 <td colSpan={rowColSpan} style={{ height: topSpacer, padding: 0, border: 0 }} />
               </tr>
             )}
-            {visibleRowIds.map((id) => (
-              <StateRow
-                key={id}
-                id={id}
-                state={states[id]}
-                obj={objects[id]}
-                roomName={roomMap[id] || ''}
-                fnName={functionMap[id] || ''}
-                isSelected={selectedId === id}
-                isChecked={checkedIds.has(id)}
-                aliasIds={aliasMap?.get(id)}
-                ownTargetExists={!objects[id]?.common?.alias?.id || (allObjectIds ? allObjectIds.has(objects[id]!.common!.alias!.id as string) : !!objects[objects[id]!.common!.alias!.id as string])}
-                visibleCols={visibleCols}
-                colWidths={colWidths}
-                roles={roles}
-                units={units}
-                roomEnums={roomEnums}
-                fnEnums={fnEnums}
-                onSelect={onSelect}
-                onCheck={handleCheckRow}
-                onContextMenu={handleRowContextMenu}
-                onHistoryClick={handleRowHistoryClick}
-                onNavigateTo={onNavigateTo}
-                onDeleteClick={handleRowDeleteClick}
-                onSelectRoom={handleSelectRoom}
-                onSelectFunction={handleSelectFunction}
-                onOpenValueModal={handleOpenValueModal}
-                roomEditForced={roomEditId === id}
-                fnEditForced={fnEditId === id}
-                onRoomEditEnd={handleRoomEditEnd}
-                onFnEditEnd={handleFnEditEnd}
-                dateFormat={dateFormat}
-                language={language}
-                expertMode={expertMode}
-                isFocused={focusedId === id && selectedId !== id}
-                showDesc={showDesc}
-              />
-            ))}
+            {visibleItems.map((item, idx) => {
+              if (item.kind === 'sep') {
+                return (
+                  <tr key={`sep_${item.prefix}_${idx}`} aria-hidden="true">
+                    <td colSpan={rowColSpan + 1} className="px-3 py-0.5 bg-gray-100/80 dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60">
+                      <div className="flex items-center gap-1.5">
+                        <FolderOpen size={12} className="text-yellow-500/80 shrink-0" />
+                        {item.prefix
+                          ? <ColoredId id={item.prefix} className="text-xs font-mono" />
+                          : <span className="text-xs text-gray-400 dark:text-gray-500 font-mono italic">root</span>
+                        }
+                      </div>
+                    </td>
+                  </tr>
+                );
+              }
+              const id = item.id;
+              return (
+                <StateRow
+                  key={id}
+                  id={id}
+                  state={states[id]}
+                  obj={objects[id]}
+                  roomName={roomMap[id] || ''}
+                  fnName={functionMap[id] || ''}
+                  isSelected={selectedId === id}
+                  isChecked={checkedIds.has(id)}
+                  aliasIds={aliasMap?.get(id)}
+                  ownTargetExists={!objects[id]?.common?.alias?.id || (allObjectIds ? allObjectIds.has(objects[id]!.common!.alias!.id as string) : !!objects[objects[id]!.common!.alias!.id as string])}
+                  visibleCols={visibleCols}
+                  colWidths={colWidths}
+                  roles={roles}
+                  units={units}
+                  roomEnums={roomEnums}
+                  fnEnums={fnEnums}
+                  onSelect={onSelect}
+                  onCheck={handleCheckRow}
+                  onContextMenu={handleRowContextMenu}
+                  onHistoryClick={handleRowHistoryClick}
+                  onNavigateTo={onNavigateTo}
+                  onDeleteClick={handleRowDeleteClick}
+                  onSelectRoom={handleSelectRoom}
+                  onSelectFunction={handleSelectFunction}
+                  onOpenValueModal={handleOpenValueModal}
+                  roomEditForced={roomEditId === id}
+                  fnEditForced={fnEditId === id}
+                  onRoomEditEnd={handleRoomEditEnd}
+                  onFnEditEnd={handleFnEditEnd}
+                  dateFormat={dateFormat}
+                  language={language}
+                  expertMode={expertMode}
+                  isFocused={focusedId === id && selectedId !== id}
+                  showDesc={showDesc}
+                />
+              );
+            })}
             {bottomSpacer > 0 && (
               <tr aria-hidden="true">
                 <td colSpan={rowColSpan} style={{ height: bottomSpacer, padding: 0, border: 0 }} />

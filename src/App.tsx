@@ -58,6 +58,7 @@ interface AppSettings {
   treeFontSize: UiFontSize;
   treeShowCount: boolean;
   showDesc: boolean;
+  groupByPath: boolean;
   customDefaultWidths: Partial<Record<SortKey, number>>;
   customMaxWidths: Partial<Record<SortKey, number>>;
 }
@@ -74,6 +75,7 @@ function getDefaultAppSettings(): AppSettings {
     treeFontSize: 'normal',
     treeShowCount: true,
     showDesc: true,
+    groupByPath: false,
     customDefaultWidths: {},
     customMaxWidths: {},
   };
@@ -724,6 +726,14 @@ function AppContent() {
       return next;
     });
     setSettingsDraft((prev) => ({ ...prev, toolbarLabels: !prev.toolbarLabels }));
+  }, []);
+
+  const handleToggleGroupByPath = useCallback(() => {
+    setAppSettings((prev) => {
+      const next = { ...prev, groupByPath: !prev.groupByPath };
+      localStorage.setItem(LS_APP_SETTINGS, JSON.stringify(next));
+      return next;
+    });
   }, []);
 
   const handleSaveCurrentFilter = useCallback(() => {
@@ -1537,6 +1547,8 @@ function AppContent() {
             onOpenAliasReplace={(initialStr) => setAliasReplaceInitialStr(initialStr ?? '')}
             tableFontSize={appSettings.tableFontSize}
             showDesc={appSettings.showDesc}
+            groupByPath={appSettings.groupByPath}
+            onToggleGroupByPath={handleToggleGroupByPath}
             customDefaultWidths={appSettings.customDefaultWidths}
             customMaxWidths={appSettings.customMaxWidths}
           />
