@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Lock, Search, Link2, FileEdit, Download, ChevronDown, RefreshCw, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw, Tag } from 'lucide-react';
+import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, RefreshCw, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw, Tag } from 'lucide-react';
 import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
@@ -1285,7 +1285,7 @@ function StyledCheckbox({ checked, indeterminate, onChange, title }: {
 
 type SortDir = 'asc' | 'desc';
 
-function SortHeader({ label, sortKey, activeKey, dir, onSort, width, onResizeStart, onAutoFit, className }: {
+function SortHeader({ label, sortKey, activeKey, dir, onSort, width, onResizeStart, onAutoFit, onHide, className }: {
   label: string;
   sortKey: SortKey;
   activeKey: SortKey;
@@ -1294,6 +1294,7 @@ function SortHeader({ label, sortKey, activeKey, dir, onSort, width, onResizeSta
   width: number;
   onResizeStart: (e: React.MouseEvent, key: SortKey) => void;
   onAutoFit: (key: SortKey) => void;
+  onHide?: (key: SortKey) => void;
   className?: string;
 }) {
   const active = sortKey === activeKey;
@@ -1301,12 +1302,22 @@ function SortHeader({ label, sortKey, activeKey, dir, onSort, width, onResizeSta
     <th
       data-col={sortKey}
       style={{ width, minWidth: 40 }}
-      className={`relative px-3 py-2 cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200 overflow-hidden ${className || ''}`}
+      className={`group/hdr relative px-3 py-2 cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200 overflow-hidden ${className || ''}`}
       onClick={() => onSort(sortKey)}
     >
       <div className={`flex items-center gap-1 ${className?.includes('text-right') ? 'justify-end' : ''}`}>
         <span className="truncate">{label}</span>
         {active && (dir === 'asc' ? <ArrowUp size={12} className="shrink-0" /> : <ArrowDown size={12} className="shrink-0" />)}
+        {onHide && (
+          <button
+            className="ml-auto shrink-0 opacity-0 group-hover/hdr:opacity-100 transition-opacity text-gray-400 hover:text-red-400 dark:hover:text-red-400"
+            onClick={(e) => { e.stopPropagation(); onHide(sortKey); }}
+            title="Hide column"
+            tabIndex={-1}
+          >
+            <Minus size={10} />
+          </button>
+        )}
       </div>
       {/* Resize handle */}
       <div
@@ -1707,6 +1718,10 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   function handleColChange(cols: SortKey[]) {
     setVisibleCols(cols);
     localStorage.setItem(LS_KEY, JSON.stringify(cols));
+  }
+
+  function handleHideCol(key: SortKey) {
+    handleColChange(visibleCols.filter((k) => k !== key));
   }
 
   function handleResizeStart(e: React.MouseEvent, key: SortKey) {
@@ -2591,16 +2606,16 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
               {show('history') && <th style={{ width: colWidths['history'], minWidth: colWidths['history'] }} />}
               {show('smart')   && <th style={{ width: colWidths['smart'],   minWidth: colWidths['smart']   }} />}
               {show('alias')   && <th style={{ width: w('alias'),           minWidth: w('alias')           }} />}
-              {show('id')      && <SortHeader label="ID" sortKey="id" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('id')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
-              {show('name')    && <SortHeader label={isEn ? 'Name' : 'Name'} sortKey="name" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('name')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
-              {show('room')     && <SortHeader label={isEn ? 'Room' : 'Raum'} sortKey="room" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('room')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
-              {show('function') && <SortHeader label={isEn ? 'Function' : 'Funktion'} sortKey="function" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('function')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
-              {show('type')    && <SortHeader label={isEn ? 'Type' : 'Typ'} sortKey="type" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('type')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
-              {show('role')    && <SortHeader label={isEn ? 'Role' : 'Rolle'} sortKey="role" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('role')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
-              {show('value')   && <SortHeader label={isEn ? 'Value' : 'Wert'} sortKey="value" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('value')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} className="text-left" />}
-              {show('unit')    && <SortHeader label={isEn ? 'Unit' : 'Einheit'} sortKey="unit" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('unit')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
-              {show('ack')     && <SortHeader label="ACK" sortKey="ack" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('ack')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
-              {show('ts')      && <SortHeader label={isEn ? 'Last Update' : 'Letztes Update'} sortKey="ts" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('ts')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} />}
+              {show('id')      && <SortHeader label="ID" sortKey="id" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('id')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
+              {show('name')    && <SortHeader label={isEn ? 'Name' : 'Name'} sortKey="name" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('name')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
+              {show('room')     && <SortHeader label={isEn ? 'Room' : 'Raum'} sortKey="room" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('room')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
+              {show('function') && <SortHeader label={isEn ? 'Function' : 'Funktion'} sortKey="function" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('function')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
+              {show('type')    && <SortHeader label={isEn ? 'Type' : 'Typ'} sortKey="type" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('type')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
+              {show('role')    && <SortHeader label={isEn ? 'Role' : 'Rolle'} sortKey="role" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('role')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
+              {show('value')   && <SortHeader label={isEn ? 'Value' : 'Wert'} sortKey="value" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('value')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} className="text-left" />}
+              {show('unit')    && <SortHeader label={isEn ? 'Unit' : 'Einheit'} sortKey="unit" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('unit')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
+              {show('ack')     && <SortHeader label="ACK" sortKey="ack" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('ack')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
+              {show('ts')      && <SortHeader label={isEn ? 'Last Update' : 'Letztes Update'} sortKey="ts" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('ts')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
               <th style={{ width: DEL_COL_WIDTH, minWidth: DEL_COL_WIDTH }} />
             </tr>
             <tr className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
