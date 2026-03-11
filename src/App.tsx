@@ -17,8 +17,9 @@ import AutoCreateAliasModal from './components/AutoCreateAliasModal';
 import LanguageDropdown from './components/LanguageDropdown';
 import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunctionMap, useRoomEnums, useFunctionEnums, useAliasMap } from './hooks/useStates';
 import { hasHistory, hasSmartName } from './api/iobroker';
-import type { SortKey, DateFormatSetting, StateListHandle } from './components/StateList';
-import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel } from './components/StateList';
+import type { StateListHandle } from './components/StateList';
+import type { SortKey, DateFormatSetting } from './components/stateListColumns';
+import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel } from './components/stateListColumns';
 import type { IoBrokerObject, IoBrokerState } from './types/iobroker';
 import { filterObjectIds } from './utils/filterObjectIds';
 import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RotateCcw, Layers, X, Trash2, Check, Loader2, AlertCircle, Bookmark, AlertTriangle } from 'lucide-react';
@@ -1258,7 +1259,7 @@ function AppContent() {
                           onClick={() => setSettingsDraft((prev) => ({ ...prev, [key]: !prev[key] }))}
                           className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${settingsDraft[key] ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'}`}
                         >
-                          <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${settingsDraft[key] ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
+                          <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${settingsDraft[key] ? 'translate-x-5' : 'translate-x-0.5'}`} />
                         </button>
                       </div>
                     ))}

@@ -1144,51 +1144,11 @@ function TsRangeFilterControl({
   );
 }
 
-export type SortKey = 'checkbox' | 'write' | 'alias' | 'id' | 'name' | 'room' | 'function' | 'type' | 'role' | 'value' | 'unit' | 'ack' | 'ts' | 'history' | 'smart' | 'relevanz';
-export type DateFormatSetting = 'de' | 'us' | 'iso';
-
-export const ALL_COLUMNS: { key: SortKey; label: string }[] = [
-  { key: 'checkbox', label: 'Auswahl' },
-  { key: 'write',   label: 'Schreibschutz' },
-  { key: 'history', label: 'History' },
-  { key: 'smart',   label: 'SmartName' },
-  { key: 'alias',   label: 'Alias' },
-  { key: 'id',      label: 'ID' },
-  { key: 'name',    label: 'Name' },
-  { key: 'room',      label: 'Raum' },
-  { key: 'function',  label: 'Funktion' },
-  { key: 'type',    label: 'Typ' },
-  { key: 'role',    label: 'Rolle' },
-  { key: 'value',   label: 'Wert' },
-  { key: 'unit',    label: 'Einheit' },
-  { key: 'ack',     label: 'Ack' },
-  { key: 'ts',      label: 'Letztes Update' },
-];
-
-export function getColumnLabel(key: SortKey, language: 'en' | 'de' = 'de'): string {
-  const isEn = language === 'en';
-  switch (key) {
-    case 'checkbox': return isEn ? 'Selection' : 'Auswahl';
-    case 'write': return isEn ? 'Read only' : 'Schreibschutz';
-    case 'history': return 'History';
-    case 'smart': return 'SmartName';
-    case 'alias': return 'Alias';
-    case 'id': return 'ID';
-    case 'name': return 'Name';
-    case 'room': return isEn ? 'Room' : 'Raum';
-    case 'function': return isEn ? 'Function' : 'Funktion';
-    case 'role': return isEn ? 'Role' : 'Rolle';
-    case 'value': return isEn ? 'Value' : 'Wert';
-    case 'unit': return isEn ? 'Unit' : 'Einheit';
-    case 'ack': return 'ACK';
-    case 'ts': return isEn ? 'Last Update' : 'Letztes Update';
-    case 'type': return isEn ? 'Type' : 'Typ';
-    case 'relevanz': return isEn ? 'Relevance' : 'Relevanz';
-    default: return key;
-  }
-}
-
-export const DEFAULT_COLS: SortKey[] = ['checkbox', 'write', 'history', 'smart', 'alias', 'id', 'name', 'room', 'function', 'type', 'role', 'value', 'unit', 'ack', 'ts'];
+export type { SortKey, DateFormatSetting } from './stateListColumns';
+export { ALL_COLUMNS, getColumnLabel, DEFAULT_COLS } from './stateListColumns';
+import type { SortKey, DateFormatSetting } from './stateListColumns';
+import { DEFAULT_COLS, getColumnLabel as _getColumnLabel } from './stateListColumns';
+const getColumnLabel = _getColumnLabel;
 const LS_KEY = 'iobroker-visible-cols';
 
 function loadVisibleCols(): SortKey[] {
@@ -1420,6 +1380,7 @@ interface StateRowProps {
   language: 'en' | 'de';
   expertMode: boolean;
   isFocused: boolean;
+  showDesc?: boolean;
 }
 
 function aliasIdsEqual(a?: string[], b?: string[]): boolean {
@@ -1437,7 +1398,7 @@ const StateRow = React.memo(function StateRow({
   onSelect, onCheck, onContextMenu, onHistoryClick, onNavigateTo, onDeleteClick,
   onSelectRoom, onSelectFunction, onOpenValueModal,
   roomEditForced, fnEditForced, onRoomEditEnd, onFnEditEnd,
-  dateFormat, language, expertMode, isFocused,
+  dateFormat, language, expertMode, isFocused, showDesc = true,
 }: StateRowProps) {
   const isEn = language === 'en';
   const show = (key: SortKey) => visibleCols.includes(key);
@@ -2811,6 +2772,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                 language={language}
                 expertMode={expertMode}
                 isFocused={focusedId === id && selectedId !== id}
+                showDesc={showDesc}
               />
             ))}
             {bottomSpacer > 0 && (
