@@ -458,7 +458,7 @@ function AppContent() {
   );
   const totalPages = Math.ceil(totalCount / appSettings.pageSize);
 
-  const { data: stateValues, refetch: refetchStateValues } = useStateValues(pageIds);
+  const { data: stateValues, refetch: refetchStateValues, dataUpdatedAt: statesUpdatedAt } = useStateValues(pageIds);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -800,6 +800,7 @@ function AppContent() {
       onLanguageChange={handleLanguageChange}
       language={appSettings.language}
       apiConnected={!objectsError}
+      lastUpdated={statesUpdatedAt > 0 ? statesUpdatedAt : undefined}
       sidebar={
         <div className="flex flex-col h-full">
           <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex flex-col gap-2">

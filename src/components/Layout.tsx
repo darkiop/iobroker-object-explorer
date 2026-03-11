@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Sun, Moon, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Pencil, Loader2, AlertCircle, Check, Maximize, Minimize } from 'lucide-react';
+import { Sun, Moon, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Pencil, Loader2, AlertCircle, Check, Maximize, Minimize, RefreshCw } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import LanguageDropdown from './LanguageDropdown';
 import { validateHost, validatePort } from '../utils/validation';
@@ -15,6 +15,7 @@ interface LayoutProps {
   language?: 'en' | 'de';
   apiConnected?: boolean;
   onShowShortcuts?: () => void;
+  lastUpdated?: number;
 }
 
 const LS_SIDEBAR_WIDTH = 'iobroker-explorer-sidebar-width';
@@ -29,6 +30,7 @@ export default function Layout({
   language = 'en',
   apiConnected = true,
   onShowShortcuts,
+  lastUpdated,
 }: LayoutProps) {
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const stored = parseInt(localStorage.getItem(LS_SIDEBAR_WIDTH) ?? '', 10);
@@ -175,7 +177,7 @@ export default function Layout({
           <img src="/favicon.svg" alt="" className="w-6 h-6 shrink-0" />
           <h1 className="text-lg font-semibold text-gray-900 dark:text-white">ioBroker Object Explorer</h1>
         </div>
-        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1">
+        <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center gap-0.5">
           {editingHost ? (
             <form onSubmit={(e) => { e.preventDefault(); void testAndSave(); }} className="flex flex-col items-center gap-0.5">
               <div className="flex items-center gap-1">
@@ -228,6 +230,12 @@ export default function Layout({
               }: {currentHost || '—'}
               <Pencil size={11} className="opacity-50" />
             </button>
+          )}
+          {lastUpdated && (
+            <div className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 font-mono">
+              <RefreshCw size={10} />
+              {new Date(lastUpdated).toLocaleTimeString()}
+            </div>
           )}
         </div>
         <div className="flex items-center gap-3">
