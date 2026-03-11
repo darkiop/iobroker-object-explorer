@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Sun, Moon, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Pencil, Loader2, AlertCircle, Check, Maximize, Minimize, RefreshCw } from 'lucide-react';
+import { Sun, Moon, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Pencil, Loader2, AlertCircle, Check, Maximize, Minimize, RefreshCw, ExternalLink } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import LanguageDropdown from './LanguageDropdown';
 import { validateHost, validatePort } from '../utils/validation';
@@ -16,6 +16,7 @@ interface LayoutProps {
   apiConnected?: boolean;
   onShowShortcuts?: () => void;
   lastUpdated?: number;
+  adminPort?: number;
 }
 
 const LS_SIDEBAR_WIDTH = 'iobroker-explorer-sidebar-width';
@@ -31,6 +32,7 @@ export default function Layout({
   apiConnected = true,
   onShowShortcuts,
   lastUpdated,
+  adminPort = 8081,
 }: LayoutProps) {
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const stored = parseInt(localStorage.getItem(LS_SIDEBAR_WIDTH) ?? '', 10);
@@ -240,6 +242,17 @@ export default function Layout({
             </div>
           )}
           <LanguageDropdown value={language} onChange={(next) => onLanguageChange?.(next)} compact />
+          {currentHost && (
+            <a
+              href={`http://${currentHost.split(':')[0]}:${adminPort}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
+              title={language === 'en' ? 'Open ioBroker Admin' : 'ioBroker Admin öffnen'}
+            >
+              <ExternalLink size={16} />
+            </a>
+          )}
           <button
             onClick={toggle}
             className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
