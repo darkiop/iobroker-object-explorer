@@ -132,10 +132,10 @@ const EditableNameCell = React.memo(function EditableNameCell({ id, name, desc, 
   if (!editing) {
     return (
       <td data-col="name" className="px-3 py-2 overflow-hidden group/name">
-        <div className="flex items-start gap-1.5">
+        <div className="flex items-center gap-1.5">
           <div className="min-w-0 flex-1 overflow-hidden">
             <div className="truncate" title={name}>{name}</div>
-            {showDesc && <div className={`truncate text-[10px] italic text-gray-400 dark:text-gray-500 leading-tight mt-1 ${desc ? '' : 'invisible'}`} title={desc}>{desc || '.'}</div>}
+            {showDesc && <div className={`truncate text-[10px] italic text-gray-400 dark:text-gray-500 leading-tight ${desc ? 'mt-1' : 'h-0 overflow-hidden'}`} title={desc}>{desc || '.'}</div>}
           </div>
           <button
             onClick={(e) => {
@@ -2779,12 +2779,12 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
               if (item.kind === 'sep') {
                 return (
                   <tr key={`sep_${item.prefix}_${idx}`} aria-hidden="true">
-                    <td colSpan={rowColSpan + 1} className="px-3 py-0.5 bg-gray-100/80 dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60">
-                      <div className="flex items-center gap-1.5">
-                        <FolderOpen size={12} className="text-yellow-500/80 shrink-0" />
+                    <td colSpan={rowColSpan + 1} className="px-3 py-1.5 bg-gray-100/80 dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60">
+                      <div className="flex items-center gap-2">
+                        <FolderOpen size={14} className="text-yellow-500/80 shrink-0" />
                         {item.prefix
-                          ? <ColoredId id={item.prefix} className="text-xs font-mono" />
-                          : <span className="text-xs text-gray-400 dark:text-gray-500 font-mono italic">root</span>
+                          ? <ColoredId id={item.prefix} className="text-sm font-mono font-bold" />
+                          : <span className="text-sm text-gray-400 dark:text-gray-500 font-mono font-bold italic">root</span>
                         }
                       </div>
                     </td>
