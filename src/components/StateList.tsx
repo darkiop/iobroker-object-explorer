@@ -1680,6 +1680,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   const [importOpen, setImportOpen] = useState(false);
   const [historyModalId, setHistoryModalId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingGroupPrefix, setDeletingGroupPrefix] = useState<string | null>(null);
   const [valueEditId, setValueEditId] = useState<string | null>(null);
   const [confirmResetLs, setConfirmResetLs] = useState(false);
   const showToolbarLabels = toolbarLabels;
@@ -2530,6 +2531,21 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
           language={language}
         />
       )}
+      {deletingGroupPrefix !== null && (() => {
+        const groupIds = filteredIds.filter((id) => {
+          const p = id.split('.');
+          return (p.length > 1 ? p.slice(0, -1).join('.') : '') === deletingGroupPrefix;
+        });
+        return (
+          <ConfirmDialog
+            title={isEn ? `Delete group (${groupIds.length})` : `Gruppe löschen (${groupIds.length})`}
+            message={deletingGroupPrefix || 'root'}
+            onConfirm={() => { handleDeleteAll(groupIds); setDeletingGroupPrefix(null); }}
+            onCancel={() => setDeletingGroupPrefix(null)}
+            language={language}
+          />
+        );
+      })()}
       {confirmResetLs && (
         <ConfirmDialog
           title={isEn ? 'Reset local settings' : 'Lokale Einstellungen zurücksetzen'}
@@ -2837,6 +2853,13 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                             <Copy size={12} />
                           </button>
                         )}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setDeletingGroupPrefix(item.prefix); }}
+                          className="ml-auto opacity-0 group-hover/sep:opacity-100 transition-opacity text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400"
+                          title={isEn ? 'Delete all datapoints in this group' : 'Alle Datenpunkte dieser Gruppe löschen'}
+                        >
+                          <Trash2 size={13} />
+                        </button>
                       </div>
                     </td>
                   </tr>
