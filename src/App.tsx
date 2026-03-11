@@ -602,6 +602,7 @@ function AppContent() {
       showDesc: settingsDraft.showDesc,
       customDefaultWidths: settingsDraft.customDefaultWidths,
       customMaxWidths: settingsDraft.customMaxWidths,
+      groupByPath: settingsDraft.groupByPath,
     };
     setAppSettings(next);
     setPage(0);
