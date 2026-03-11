@@ -55,6 +55,8 @@ interface StateListProps {
   onOpenAliasReplace?: (initialStr?: string) => void;
   tableFontSize?: 'small' | 'normal' | 'large';
   showDesc?: boolean;
+  customDefaultWidths?: Partial<Record<SortKey, number>>;
+  customMaxWidths?: Partial<Record<SortKey, number>>;
 }
 
 function formatTimestamp(ts: number, dateFormat: DateFormatSetting): string {
@@ -128,7 +130,7 @@ const EditableNameCell = React.memo(function EditableNameCell({ id, name, desc, 
         <div className="flex items-start gap-1.5">
           <div className="min-w-0 flex-1 overflow-hidden">
             <div className="truncate" title={name}>{name}</div>
-            {showDesc && desc && <div className="truncate text-[10px] italic text-gray-400 dark:text-gray-500 leading-tight" title={desc}>{desc}</div>}
+            {showDesc && <div className={`truncate text-[10px] italic text-gray-400 dark:text-gray-500 leading-tight ${desc ? '' : 'invisible'}`} title={desc}>{desc || '.'}</div>}
           </div>
           <button
             onClick={(e) => {
@@ -436,6 +438,18 @@ const EditableUnitCell = React.memo(function EditableUnitCell({ id, unit, sugges
   );
 });
 
+function getTypeColor(type: string): string {
+  switch (type) {
+    case 'boolean': return 'text-orange-500 dark:text-orange-400';
+    case 'number':  return 'text-blue-500 dark:text-blue-400';
+    case 'string':  return 'text-green-600 dark:text-green-400';
+    case 'object':  return 'text-purple-500 dark:text-purple-400';
+    case 'array':   return 'text-pink-500 dark:text-pink-400';
+    case 'mixed':   return 'text-yellow-600 dark:text-yellow-400';
+    default:        return 'text-gray-500 dark:text-gray-400';
+  }
+}
+
 const EditableTypeCell = React.memo(function EditableTypeCell({ id, typeValue, language = 'en' }: { id: string; typeValue: string; language?: 'en' | 'de' }) {
   const isEn = language === 'en';
   const [editing, setEditing] = useState(false);
@@ -483,7 +497,7 @@ const EditableTypeCell = React.memo(function EditableTypeCell({ id, typeValue, l
       <div className="flex items-center gap-1.5">
         {typeValue ? (
           <>
-            <span className="truncate" title={typeValue}>{typeValue}</span>
+            <span className={`truncate font-semibold ${getTypeColor(typeValue)}`} title={typeValue}>{typeValue}</span>
             <Pencil size={12} className="opacity-0 group-hover/type:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity" />
           </>
         ) : (
@@ -1147,7 +1161,7 @@ function TsRangeFilterControl({
 export type { SortKey, DateFormatSetting } from './stateListColumns';
 export { ALL_COLUMNS, getColumnLabel, DEFAULT_COLS } from './stateListColumns';
 import type { SortKey, DateFormatSetting } from './stateListColumns';
-import { DEFAULT_COLS, getColumnLabel as _getColumnLabel } from './stateListColumns';
+import { DEFAULT_COLS, getColumnLabel as _getColumnLabel, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MAX_WIDTHS } from './stateListColumns';
 const getColumnLabel = _getColumnLabel;
 const LS_KEY = 'iobroker-visible-cols';
 
@@ -1172,29 +1186,26 @@ const VIRTUALIZE_THRESHOLD = 120;
 const TYPE_OPTIONS = ['number', 'string', 'boolean', 'array', 'object', 'mixed'] as const;
 const TS_RANGE_PREFIX = 'range:';
 const TS_RANGE_SEP = '|~|';
-const DEFAULT_WIDTHS: Record<SortKey, number> = {
-  checkbox: CHK_COL_WIDTH,
-  write: 22, history: 22, smart: 22, alias: 30,
-  id: 350, name: 220, room: 110, function: 110, type: 70, role: 130, value: 100,
-  unit: 70, ack: 50, ts: 155, relevanz: 100,
-};
 const MIN_COL_WIDTHS: Partial<Record<SortKey, number>> = { id: 150, name: 120 };
-const MAX_COL_WIDTHS: Partial<Record<SortKey, number>> = {
-  id: 600, name: 400, room: 200, function: 200, type: 100, role: 220,
-  value: 180, unit: 120, ack: 50, ts: 180, relevanz: 200,
-};
 function minColWidth(key: SortKey) { return MIN_COL_WIDTHS[key] ?? 40; }
-function maxColWidth(key: SortKey) { return MAX_COL_WIDTHS[key] ?? Infinity; }
 const LS_WIDTHS_KEY = 'iobroker-col-widths';
 
-function clampColWidths(widths: Record<SortKey, number>): Record<SortKey, number> {
+function clampColWidthsWith(
+  widths: Record<SortKey, number>,
+  effectiveMax: Partial<Record<SortKey, number>>,
+): Record<SortKey, number> {
   const result = { ...widths };
   for (const k of Object.keys(result) as SortKey[]) {
-    result[k] = Math.min(maxColWidth(k), Math.max(minColWidth(k), result[k]));
+    const mx = effectiveMax[k] ?? Infinity;
+    result[k] = Math.min(mx, Math.max(minColWidth(k), result[k]));
   }
   return result;
 }
-function loadColWidths(): Record<SortKey, number> {
+
+function loadColWidths(
+  effectiveDefaults: Record<SortKey, number>,
+  effectiveMax: Partial<Record<SortKey, number>>,
+): Record<SortKey, number> {
   try {
     const raw = localStorage.getItem(LS_WIDTHS_KEY);
     if (raw) {
@@ -1205,11 +1216,11 @@ function loadColWidths(): Record<SortKey, number> {
             .filter(([k, v]) => ALL_COLUMNS.some((c) => c.key === k) && typeof v === 'number')
             .map(([k, v]) => [k, v as number])
         ) as Partial<Record<SortKey, number>>;
-        return clampColWidths({ ...DEFAULT_WIDTHS, ...validated });
+        return clampColWidthsWith({ ...effectiveDefaults, ...validated }, effectiveMax);
       }
     }
   } catch { /* ignore */ }
-  return clampColWidths({ ...DEFAULT_WIDTHS });
+  return clampColWidthsWith({ ...effectiveDefaults }, effectiveMax);
 }
 
 function hasSmartName(obj: IoBrokerObject | undefined): boolean {
@@ -1527,8 +1538,8 @@ const StateRow = React.memo(function StateRow({
               <ColoredId id={id} />
               <CopyIdButton id={id} />
             </div>
-            {!!onNavigateTo && (ownTarget || (aliasIds && aliasIds.length > 0)) && (
-              <div className="text-[10px] leading-4 text-gray-400 dark:text-gray-500 truncate">
+            {!!onNavigateTo && (
+              <div className={`text-[10px] leading-4 text-gray-400 dark:text-gray-500 truncate ${!(ownTarget || (aliasIds && aliasIds.length > 0)) ? 'invisible' : ''}`}>
                 {ownTarget && (
                   <>
                     <span className="mr-1">{isEn ? 'Source:' : 'Quelle:'}</span>
@@ -1654,12 +1665,16 @@ const StateRow = React.memo(function StateRow({
   );
 });
 
-function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, allObjectIds, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en', expertMode = false, onToggleExpertMode, toolbarLabels = true, onOpenEnumManager, onOpenAliasReplace, tableFontSize = 'normal', showDesc = true }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
+function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, allObjectIds, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en', expertMode = false, onToggleExpertMode, toolbarLabels = true, onOpenEnumManager, onOpenAliasReplace, tableFontSize = 'normal', showDesc = true, customDefaultWidths, customMaxWidths }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
+  const effectiveDefaults: Record<SortKey, number> = { ...BUILTIN_DEFAULT_WIDTHS, ...(customDefaultWidths ?? {}) };
+  const effectiveMax: Partial<Record<SortKey, number>> = { ...BUILTIN_MAX_WIDTHS, ...(customMaxWidths ?? {}) };
+  const effectiveMaxRef = useRef(effectiveMax);
+  effectiveMaxRef.current = effectiveMax;
   const isEn = language === 'en';
   const [sortKey, setSortKey] = useState<SortKey>('id');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [visibleCols, setVisibleCols] = useState<SortKey[]>(loadVisibleCols);
-  const [colWidths, setColWidths] = useState<Record<SortKey, number>>(loadColWidths);
+  const [colWidths, setColWidths] = useState<Record<SortKey, number>>(() => loadColWidths(effectiveDefaults, effectiveMax));
   const containerRef = useRef<HTMLDivElement>(null);
   const theadRef = useRef<HTMLTableSectionElement>(null);
   const autoFitRef = useRef(true);
@@ -1725,8 +1740,12 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
     const startWidth = colWidths[key];
     let latestWidths: Record<SortKey, number> = colWidths;
 
+    function clampWidth(w: number) {
+      return Math.min(effectiveMaxRef.current[key] ?? Infinity, Math.max(minColWidth(key), w));
+    }
+
     function onMouseMove(ev: MouseEvent) {
-      const newWidth = Math.max(minColWidth(key), startWidth + ev.clientX - startX);
+      const newWidth = clampWidth(startWidth + ev.clientX - startX);
       setColWidths((prev) => {
         latestWidths = { ...prev, [key]: newWidth };
         return latestWidths;
@@ -1743,7 +1762,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
         clearTimeout(saveWidthsTimerRef.current);
         saveWidthsTimerRef.current = null;
       }
-      const newWidth = Math.max(minColWidth(key), startWidth + ev.clientX - startX);
+      const newWidth = clampWidth(startWidth + ev.clientX - startX);
       const finalWidths = { ...latestWidths, [key]: newWidth };
       setColWidths(finalWidths);
       localStorage.setItem(LS_WIDTHS_KEY, JSON.stringify(finalWidths));
@@ -1793,7 +1812,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
       if (freeTotal === 0) break;
       const scale = remaining / freeTotal;
       for (const k of free) {
-        const max = maxColWidth(k);
+        const max = effectiveMax[k] ?? Infinity;
         if (max !== Infinity && colWidths[k] * scale >= max) {
           next[k] = max;
           capped.add(k);
@@ -1822,7 +1841,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
 
     // Icon cols stay at their fixed default width — never modified by fitToContainer
     for (const k of ICON_COLS) {
-      next[k] = DEFAULT_WIDTHS[k];
+      next[k] = effectiveDefaults[k];
     }
     setColWidths(next);
     localStorage.setItem(LS_WIDTHS_KEY, JSON.stringify(next));
@@ -2485,7 +2504,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
             localStorage.removeItem(LS_KEY);
             localStorage.removeItem(LS_WIDTHS_KEY);
             setVisibleCols(DEFAULT_COLS);
-            setColWidths({ ...DEFAULT_WIDTHS });
+            setColWidths({ ...effectiveDefaults });
             setDraftAndPropagate({});
             setConfirmResetLs(false);
           }}

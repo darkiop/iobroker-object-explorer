@@ -43,3 +43,17 @@ export function getColumnLabel(key: SortKey, language: 'en' | 'de' = 'de'): stri
 }
 
 export const DEFAULT_COLS: SortKey[] = ['checkbox', 'write', 'history', 'smart', 'alias', 'id', 'name', 'room', 'function', 'type', 'role', 'value', 'unit', 'ack', 'ts'];
+
+/** Columns whose width is user-configurable (excludes fixed icon columns) */
+export const CONFIGURABLE_WIDTH_COLS: SortKey[] = ['id', 'name', 'room', 'function', 'type', 'role', 'value', 'unit', 'ack', 'ts', 'relevanz'];
+
+export const BUILTIN_DEFAULT_WIDTHS: Record<SortKey, number> = {
+  checkbox: 28, write: 22, history: 22, smart: 22, alias: 30,
+  id: 350, name: 220, room: 110, function: 110, type: 70, role: 130, value: 100,
+  unit: 70, ack: 50, ts: 155, relevanz: 100,
+};
+
+export const BUILTIN_MAX_WIDTHS: Partial<Record<SortKey, number>> = {
+  id: 600, name: 400, room: 200, function: 200, type: 100, role: 220,
+  value: 180, unit: 120, ack: 50, ts: 180, relevanz: 200,
+};

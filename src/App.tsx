@@ -1018,7 +1018,7 @@ function AppContent() {
               )}
             </div>
           )}
-          <div className="flex-1 overflow-y-auto py-1">
+          <div className="flex-1 overflow-y-auto py-1 mt-3 mx-1 rounded-t border-t-4 border-blue-400/40 dark:border-blue-500/30 bg-gray-50/40 dark:bg-gray-800/20">
             <StateTree
               stateIds={allStateIds}
               allObjects={allObjects}
