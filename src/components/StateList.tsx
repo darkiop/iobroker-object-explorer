@@ -2395,7 +2395,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
             onChange={setBatchRole}
             placeholder={isEn ? 'Role…' : 'Rolle…'}
             options={roles}
-            className="w-28"
+            className="w-32"
             language={language}
           />
           <BatchComboControl
@@ -2403,7 +2403,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
             onChange={setBatchUnit}
             placeholder={isEn ? 'Unit…' : 'Einheit…'}
             options={units}
-            className="w-20"
+            className="w-32"
             language={language}
           />
           <BatchComboControl
@@ -2416,7 +2416,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
             }}
             placeholder={isEn ? 'Room…' : 'Raum…'}
             options={roomNameOptions}
-            className="w-36"
+            className="w-32"
             language={language}
           />
           <BatchComboControl
@@ -2429,7 +2429,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
             }}
             placeholder={isEn ? 'Function…' : 'Funktion…'}
             options={fnNameOptions}
-            className="w-36"
+            className="w-32"
             language={language}
           />
           <button
