@@ -22,7 +22,8 @@ import type { SortKey, DateFormatSetting } from './components/stateListColumns';
 import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel, CONFIGURABLE_WIDTH_COLS, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MAX_WIDTHS } from './components/stateListColumns';
 import type { IoBrokerObject, IoBrokerState } from './types/iobroker';
 import { filterObjectIds } from './utils/filterObjectIds';
-import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RotateCcw, Layers, X, Trash2, Check, Loader2, AlertCircle, Bookmark, AlertTriangle } from 'lucide-react';
+import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RotateCcw, Layers, X, Trash2, Check, Loader2, AlertCircle, Bookmark, AlertTriangle, Tag } from 'lucide-react';
+import { getTypeColor } from './utils/typeColor';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -298,6 +299,7 @@ function AppContent() {
   const [roomsOpen, setRoomsOpen] = useState(false);
   const [functionFilters, setFunctionFilters] = useState<Set<string>>(() => new Set(savedFilters.current.functionFilters ?? []));
   const [functionsOpen, setFunctionsOpen] = useState(false);
+  const [typesOpen, setTypesOpen] = useState(false);
   const [quickPatterns, setQuickPatterns] = useState<Set<string>>(() => new Set(savedFilters.current.quickPatterns ?? []));
   const [quickOpen, setQuickOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -529,6 +531,22 @@ function AppContent() {
       const roomPart = currentRoom ? `room:${currentRoom.includes(' ') ? `"${currentRoom}"` : currentRoom}` : '';
       const funcPart = isActive ? '' : `function:${encoded}`;
       return [roomPart, funcPart, basePart].filter(Boolean).join(' ') || '*';
+    });
+    setPage(0);
+    setSelectedId(null);
+  }, []);
+
+  const handleTypeToggle = useCallback((typeName: string) => {
+    setPattern(prev => {
+      const parsed = parseEnumFilters(prev);
+      const isActive = parsed.typeFilter?.toLowerCase() === typeName.toLowerCase();
+      const base = parsed.basePattern;
+      const basePart = base === '*' ? '' : base;
+      const roomPart = parsed.roomFilter ? `room:${parsed.roomFilter.includes(' ') ? `"${parsed.roomFilter}"` : parsed.roomFilter}` : '';
+      const funcPart = parsed.functionFilter ? `function:${parsed.functionFilter.includes(' ') ? `"${parsed.functionFilter}"` : parsed.functionFilter}` : '';
+      const rolePart = parsed.roleFilter ? `role:${parsed.roleFilter.includes(' ') ? `"${parsed.roleFilter}"` : parsed.roleFilter}` : '';
+      const typePart = isActive ? '' : `type:${typeName}`;
+      return [roomPart, funcPart, typePart, rolePart, basePart].filter(Boolean).join(' ') || '*';
     });
     setPage(0);
     setSelectedId(null);
@@ -981,6 +999,39 @@ function AppContent() {
               )}
             </div>
           )}
+          <div className="border-b border-gray-200 dark:border-gray-700">
+            <button
+              onClick={() => setTypesOpen((v) => !v)}
+              className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
+            >
+              <span className="flex items-center gap-1.5 font-medium">
+                <Tag size={12} />
+                {isEn ? 'Type' : 'Typ'}
+                {typeFilter && <span className="px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 text-[10px]">{typeFilter}</span>}
+              </span>
+              {typesOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+            </button>
+            {typesOpen && (
+              <div className="pt-0.5 pb-1 flex flex-col">
+                {(['boolean', 'number', 'string', 'object', 'array', 'mixed'] as const).map((t) => {
+                  const active = typeFilter?.toLowerCase() === t;
+                  return (
+                    <button
+                      key={t}
+                      onClick={() => handleTypeToggle(t)}
+                      className={`px-3 py-1 text-left text-xs transition-colors font-semibold ${getTypeColor(t)} ${
+                        active
+                          ? 'bg-gray-100 dark:bg-gray-700/70 hover:bg-gray-200 dark:hover:bg-gray-700'
+                          : 'opacity-50 hover:opacity-100 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
           {savedFiltersList.length > 0 && (
             <div className="border-b border-gray-200 dark:border-gray-700">
               <button

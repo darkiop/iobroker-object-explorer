@@ -553,7 +553,6 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
   const [showFolders,  setShowFolders]  = useState(true);
   const [showDevices,  setShowDevices]  = useState(true);
   const [showChannels, setShowChannels] = useState(true);
-  const [typesOpen,    setTypesOpen]    = useState(false);
   const [treeViewMode, setTreeViewMode] = useState<'path' | 'adapter'>('adapter');
   const treeSearch = treeSearchProp;
   const setTreeSearch = onTreeSearchChange ?? (() => {});
@@ -613,48 +612,8 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
     { key: 'devices',  label: 'Device',  active: showDevices,  set: setShowDevices,  icon: <Cpu      size={11} />, color: 'text-sky-600 dark:text-sky-400'       },
     { key: 'channels', label: 'Channel', active: showChannels, set: setShowChannels, icon: <Layers   size={11} />, color: 'text-indigo-600 dark:text-indigo-400' },
   ] as const;
-  const hiddenCount = typeItems.filter((t) => !t.active).length;
-
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Objekt-Baum Filter (collapsible) */}
-      <div className="border-b border-gray-200 dark:border-gray-700 shrink-0">
-        <button
-          onClick={() => setTypesOpen((v) => !v)}
-          className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
-        >
-          <span className="flex items-center gap-1.5 font-medium">
-            <Layers size={12} />
-            {isEn ? 'Object tree filter' : 'Objekt-Baum Filter'}
-            {hiddenCount > 0 && (
-              <span className="px-1.5 py-0.5 rounded-full bg-orange-500/15 text-orange-600 dark:text-orange-400 text-[10px]">
-                {typeItems.length - hiddenCount}/{typeItems.length}
-              </span>
-            )}
-          </span>
-          {typesOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-        </button>
-        {typesOpen && (
-          <div className="px-3 pt-1.5 pb-3 flex flex-wrap gap-1.5 justify-center">
-            {typeItems.map(({ key, label, active, set, icon, color }) => (
-              <button
-                key={key}
-                onClick={() => set((v) => !v)}
-                title={active ? (isEn ? `Hide ${label}s` : `${label}s ausblenden`) : (isEn ? `Show ${label}s` : `${label}s einblenden`)}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs transition-colors ${
-                  active
-                    ? `bg-gray-200 dark:bg-gray-700 ${color} hover:bg-gray-300 dark:hover:bg-gray-600`
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}
-              >
-                {icon}
-                <span>{label}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
       <div className="flex gap-1.5 px-3 py-2 border-b border-gray-200 dark:border-gray-700 shrink-0">
         <button
           onClick={() => setExpandSignal(s => ({ depth: 9999, seq: s.seq + 1 }))}
@@ -704,6 +663,23 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
               ×
             </button>
           )}
+        </div>
+        <div className="flex gap-1 mt-2">
+          {typeItems.map(({ key, label, active, set, icon, color }) => (
+            <button
+              key={key}
+              onClick={() => set((v) => !v)}
+              title={active ? (isEn ? `Hide ${label}s` : `${label}s ausblenden`) : (isEn ? `Show ${label}s` : `${label}s einblenden`)}
+              className={`flex items-center justify-center gap-1 flex-1 py-0.5 rounded text-xs transition-colors ${
+                active
+                  ? `bg-gray-200 dark:bg-gray-700 ${color} hover:bg-gray-300 dark:hover:bg-gray-600`
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 line-through hover:bg-gray-300 dark:hover:bg-gray-600'
+              }`}
+            >
+              {icon}
+              <span>{label}</span>
+            </button>
+          ))}
         </div>
       </div>
       <div className="overflow-y-auto px-2 flex-1">
