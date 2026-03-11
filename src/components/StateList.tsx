@@ -130,7 +130,7 @@ const EditableNameCell = React.memo(function EditableNameCell({ id, name, desc, 
         <div className="flex items-start gap-1.5">
           <div className="min-w-0 flex-1 overflow-hidden">
             <div className="truncate" title={name}>{name}</div>
-            {showDesc && <div className={`truncate text-[10px] italic text-gray-400 dark:text-gray-500 leading-tight ${desc ? '' : 'invisible'}`} title={desc}>{desc || '.'}</div>}
+            {showDesc && <div className={`truncate text-[10px] italic text-gray-400 dark:text-gray-500 leading-tight mt-1 ${desc ? '' : 'invisible'}`} title={desc}>{desc || '.'}</div>}
           </div>
           <button
             onClick={(e) => {
