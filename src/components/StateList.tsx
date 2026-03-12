@@ -2859,10 +2859,38 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
           <tbody>
             {filteredIds.length === 0 && (
               <tr>
-                <td colSpan={visibleCols.length + 3} className="px-4 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
-                  {ids.length === 0
-                    ? (isEn ? 'No datapoints found. Use search to load datapoints.' : 'Keine Datenpunkte gefunden. Verwende die Suche um Datenpunkte zu laden.')
-                    : (isEn ? 'No entries match the active filters.' : 'Keine Einträge entsprechen den gesetzten Filtern.')}
+                <td colSpan={visibleCols.length + 3} className="px-4 py-10 text-center">
+                  {ids.length === 0 ? (
+                    <span className="text-sm text-gray-400 dark:text-gray-500">
+                      {isEn ? 'No datapoints found. Use search to load datapoints.' : 'Keine Datenpunkte gefunden. Verwende die Suche um Datenpunkte zu laden.'}
+                    </span>
+                  ) : (
+                    <div className="flex flex-col items-center gap-3">
+                      <span className="text-sm text-gray-400 dark:text-gray-500">
+                        {isEn ? 'No entries match the active filters.' : 'Keine Einträge entsprechen den gesetzten Filtern.'}
+                      </span>
+                      <div className="flex flex-wrap justify-center gap-2">
+                        {hasColFilters && (
+                          <button
+                            onClick={() => setDraftAndPropagate({})}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:hover:bg-blue-800/60 transition-colors"
+                          >
+                            <X size={12} />
+                            {isEn ? 'Clear column filters' : 'Spaltenfilter leeren'}
+                          </button>
+                        )}
+                        {treeFilter && onClearTreeFilter && (
+                          <button
+                            onClick={onClearTreeFilter}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:hover:bg-blue-800/60 transition-colors"
+                          >
+                            <X size={12} />
+                            {isEn ? 'Clear tree filter' : 'Baumfilter leeren'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </td>
               </tr>
             )}

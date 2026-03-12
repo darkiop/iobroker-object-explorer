@@ -1,53 +1,58 @@
-# Projektkennzahlen — ioBroker Object Explorer
+# Project Metrics — ioBroker Object Explorer
 
 ## Codebase
 
-| Metrik | Wert |
+| Metric | Value |
 |---|---|
-| Quelldateien (`.ts` / `.tsx`) | 31 |
-| Gesamte Codezeilen | ~10 900 |
-| Komponenten (`src/components/`) | 20 |
-| React-Query-Hooks (`useStates.ts`) | 28 Exporte |
-| API-Funktionen (`src/api/iobroker.ts`) | 30 Exporte |
-| TypeScript-Interfaces/Types | 6 (in `src/types/iobroker.ts`) |
+| Source files (`.ts` / `.tsx`) | 40 |
+| Lines of code — TypeScript/TSX | ~13 300 |
+| Lines of code — all sources (incl. CSS/HTML/JSON) | ~18 000 |
+| Components (`src/components/`) | 27 |
+| React Query hooks (`useStates.ts`) | 32 exports |
+| API functions (`src/api/iobroker.ts`) | 34 exports |
+| TypeScript interfaces / types | 6 (in `src/types/iobroker.ts`) |
 
-## Größte Dateien
+> Line counts exclude `node_modules/`, `dist/`, and `.git/`.
 
-| Datei | Zeilen |
+## Largest Files
+
+| File | Lines |
 |---|---|
-| `StateList.tsx` | 2 732 |
-| `ObjectEditModal.tsx` | 1 218 |
-| `App.tsx` | 1 086 |
+| `StateList.tsx` | 2 878 |
+| `App.tsx` | 1 610 |
+| `ObjectEditModal.tsx` | 1 220 |
 | `HistoryChart.tsx` | 978 |
-| `StateTree.tsx` | 636 |
-| `api/iobroker.ts` | 485 |
-| `hooks/useStates.ts` | 482 |
+| `StateTree.tsx` | 726 |
+| `hooks/useStates.ts` | 547 |
+| `api/iobroker.ts` | 518 |
+| `ImportDatapointsModal.tsx` | 497 |
+| `AutoCreateAliasModal.tsx` | 363 |
+| `ValueEditModal.tsx` | 349 |
 
-## Git-Historie
+## Git History
 
-| Metrik | Wert |
+| Metric | Value |
 |---|---|
-| Commits gesamt | 236 |
-| Projektzeitraum | 20. Feb 2026 – 5. März 2026 (~2 Wochen) |
-| Beitragender | 1 (darkiop) |
-| `feat`-Commits | 98 |
-| `fix`-Commits | 58 |
-| `refactor`-Commits | 8 |
-| `chore`-Commits | 6 |
-| Referenzierte FE-Tickets | 18 |
+| Total commits | 283 |
+| Project period | 20 Feb 2026 – 11 Mar 2026 (~3 weeks) |
+| Contributors | 1 (darkiop) |
+| `feat` commits | 125 |
+| `fix` commits | 67 |
+| `refactor` commits | 8 |
+| `chore` commits | 8 |
 
-## Abhängigkeiten
+## Dependencies
 
 **Runtime (5):** `react`, `react-dom`, `recharts`, `lucide-react`, `dompurify`
 
-**Dev (11):** `vite`, `typescript`, `tailwindcss`, `@tanstack/react-query`, `eslint` + Plugins, `postcss`, `autoprefixer`
+**Dev (11):** `vite`, `typescript`, `tailwindcss`, `@tanstack/react-query`, `eslint` + plugins, `postcss`, `autoprefixer`
 
-## API-Abdeckung
+## API Coverage
 
-30 Funktionen in `src/api/iobroker.ts` decken ab:
+34 functions in `src/api/iobroker.ts` cover:
 
-- Objekte lesen / schreiben / löschen / umbenennen / importieren
-- States lesen / schreiben (Einzel + Batch)
-- History abfragen / Einträge löschen (sql.0)
-- Enums: Räume & Funktionen lesen/bearbeiten (Einzel + Batch)
-- Hilfsfunktionen: Units, Roles, Alias-Reverse-Map, SQL-Instanzen
+- Read / write / delete / rename / import objects
+- Read / write states (single + batch)
+- Query history / delete entries (sql.0)
+- Enums: read and edit rooms & functions (single + batch)
+- Utilities: units, roles, alias reverse map, SQL instances

@@ -1,3 +1,11 @@
+Export: Plain JSON (Zwischenablage)
+
+Markieren des Sidebar ein- ausblenden buttons
+
+bei der fitt to column aktion. ignoriere die max spalten breite
+
+edit modal -> role bei folder, channel, device
+
 <table>
 <thead>
 <tr><th>ID</th><th>Description</th><th>Category</th><th>Priority</th><th>Effort</th><th>Status</th></tr>
@@ -62,7 +70,7 @@
 <tr style="background-color:#1a3a1f"><td>FE-057</td><td>Update CLAUDE.md: architecture description, new components, and current stack decisions.</td><td>DX</td><td>low</td><td>S</td><td>done</td></tr>
 <tr style="background-color:#1a3a1f"><td>FE-058</td><td>Update README.md: features, screenshots, configuration, and development setup documentation.</td><td>DX</td><td>low</td><td>M</td><td>done</td></tr>
 <tr style="background-color:#1a3a1f"><td>FE-059</td><td>Alias: separate IDs for read and write (common.alias.read and common.alias.write as separate IDs).</td><td>Feature</td><td>medium</td><td>M</td><td>done</td></tr>
-<tr><td>FE-060</td><td>Create MIT license file: LICENSE file with current year and copyright holder.</td><td>DX</td><td>low</td><td>S</td><td>open</td></tr>
+<tr style="background-color:#1a3a1f"><td>FE-060</td><td>Create MIT license file: LICENSE file with current year and copyright holder.</td><td>DX</td><td>low</td><td>S</td><td>done</td></tr>
 <tr style="background-color:#1a3a1f"><td>FE-061</td><td>Bug: folder icon missing in object tree — folder nodes no longer show an icon.</td><td>Bug</td><td>high</td><td>S</td><td>done</td></tr>
 <tr style="background-color:#1a3a1f"><td>FE-062</td><td>XSS via dangerouslySetInnerHTML in ValueEditModal: HTML values from ioBroker states rendered without sanitization (`&lt;img onerror=...&gt;` possible). Use DOMPurify or disable HTML rendering.</td><td>Security</td><td>high</td><td>S</td><td>done</td></tr>
 <tr style="background-color:#1a3a1f"><td>FE-063</td><td>Host URL without format validation: custom host input in Layout.tsx accepted directly as fetch URL without IP/FQDN check. Regex validation before saving.</td><td>Security</td><td>medium</td><td>S</td><td>done</td></tr>
@@ -81,5 +89,21 @@
 <tr style="background-color:#1a3a1f"><td>FE-080</td><td>Saved filters with persistent colors: save/load named filter presets; sidebar filter lists with colored badges.</td><td>Feature</td><td>medium</td><td>M</td><td>done</td></tr>
 <tr style="background-color:#1a3a1f"><td>FE-081</td><td>Enum manager modal: CRUD for room and function enums (enum.rooms.*, enum.functions.*) with member management.</td><td>Feature</td><td>medium</td><td>M</td><td>done</td></tr>
 <tr style="background-color:#1a3a1f"><td>FE-082</td><td>Bug: dangling aliases filter showed folder/channel/device nodes — exclude non-state object types from count and filter.</td><td>Bug</td><td>medium</td><td>S</td><td>done</td></tr>
+<tr><td>FE-083</td><td>API fetch() calls have no timeout: if the ioBroker REST API hangs, requests wait indefinitely. Wrap all fetch() calls with AbortController and a configurable timeout (e.g. 30s).</td><td>Code Quality</td><td>medium</td><td>S</td><td>open</td></tr>
+<tr><td>FE-084</td><td>Batch delete uses Promise.all(): if one deletion fails the rest are silently skipped. Switch to Promise.allSettled() and report per-item errors in the confirmation result.</td><td>Bug</td><td>medium</td><td>S</td><td>open</td></tr>
+<tr><td>FE-085</td><td>HistoryChart: add CSV export button alongside the existing PNG export — downloads raw history data as a CSV file for analysis in external tools.</td><td>Chart</td><td>medium</td><td>S</td><td>open</td></tr>
+<tr><td>FE-086</td><td>Duplicate formatTimestamp() and getObjectName() helper functions exist independently in StateList, ObjectEditModal, and HistoryModal. Extract into src/utils/formatting.ts.</td><td>Code Quality</td><td>low</td><td>S</td><td>open</td></tr>
+<tr><td>FE-087</td><td>ContextMenu lacks ARIA semantics: the portal-rendered menu has no role="menu" on the container and no role="menuitem" on items, making it inaccessible to screen readers.</td><td>UX</td><td>medium</td><td>S</td><td>open</td></tr>
+<tr><td>FE-088</td><td>Icon-only buttons throughout the UI (theme toggle, sidebar collapse, column picker, etc.) lack aria-label attributes, making them unusable for screen-reader users.</td><td>UX</td><td>medium</td><td>S</td><td>open</td></tr>
+<tr><td>FE-089</td><td>AppSettings: add defaultHistoryRange ('1h' | '6h' | '24h' | '7d' | '30d') so the history chart opens with the user's preferred time range instead of always defaulting to 24h.</td><td>Feature</td><td>low</td><td>S</td><td>open</td></tr>
+<tr><td>FE-090</td><td>AppSettings: add defaultHistoryAggregation ('none' | 'average' | 'minmax') so the preferred chart aggregation method persists across sessions.</td><td>Feature</td><td>low</td><td>S</td><td>open</td></tr>
+<tr style="background-color:#1a3a1f"><td>FE-091</td><td>StateList empty state: when the active filters/search pattern yield zero results, show an explanatory message with a "Clear filters" action instead of an empty table.</td><td>UX</td><td>low</td><td>S</td><td>done</td></tr>
+<tr><td>FE-092</td><td>Threshold highlighting is color-only (yellow/red): add an icon (⚠ / ✕) or tooltip to convey threshold status without relying on color alone, improving accessibility for colorblind users.</td><td>UX</td><td>low</td><td>S</td><td>open</td></tr>
+<tr><td>FE-093</td><td>Batch edit bar: add read/write permission checkboxes so users can toggle common.read and common.write for all selected datapoints at once, matching the existing role/unit/room/function batch controls.</td><td>Feature</td><td>medium</td><td>S</td><td>open</td></tr>
+<tr><td>FE-094</td><td>Custom Settings tab in ObjectEditModal is hardcoded to sql.0 schema. Add support for history.0 and influxdb.0 adapter custom configs, or show a generic key/value editor for unknown adapters.</td><td>Feature</td><td>medium</td><td>M</td><td>open</td></tr>
+<tr><td>FE-095</td><td>CopyDatapointModal does not copy common.smartName from the source object. Ensure all relevant common fields (smartName, icon, states map) are transferred during copy.</td><td>Bug</td><td>low</td><td>S</td><td>open</td></tr>
+<tr><td>FE-096</td><td>Add a React error boundary at the app root so an unhandled render error in one component (e.g. StateList, HistoryChart) shows an error card instead of crashing the entire application.</td><td>Code Quality</td><td>medium</td><td>S</td><td>open</td></tr>
+<tr><td>FE-097</td><td>dangerouslySetInnerHTML used for JSON syntax highlighting in ImportDatapointsModal relies on a hand-rolled escaping function. Replace with a lightweight library (e.g. highlight.js or prism-react-renderer) for correctness and safety.</td><td>Security</td><td>medium</td><td>S</td><td>open</td></tr>
+<tr><td>FE-098</td><td>KeyboardShortcutsModal uses the deprecated navigator.platform to detect macOS for Cmd vs Ctrl display. Replace with navigator.userAgentData.platform or a UA string check.</td><td>Code Quality</td><td>low</td><td>S</td><td>open</td></tr>
 </tbody>
 </table>
