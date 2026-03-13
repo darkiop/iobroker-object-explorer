@@ -21,6 +21,7 @@ interface Props {
   onOpenHistory?: () => void;
   language?: 'en' | 'de';
   dateFormat?: 'de' | 'us' | 'iso';
+  initialTab?: 'details' | 'json' | 'alias' | 'custom';
 }
 
 type Tab = 'details' | 'json' | 'alias' | 'custom';
@@ -377,10 +378,10 @@ function CustomSettingRow({ fieldKey, value, onChange }: { fieldKey: string; val
 
 // ── main component ─────────────────────────────────────────────────────────
 
-export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, language = 'en', dateFormat = 'de' }: Props) {
+export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, language = 'en', dateFormat = 'de', initialTab }: Props) {
   const isEn = language === 'en';
   const showToast = useToast();
-  const [tab, setTab] = useState<Tab>('details');
+  const [tab, setTab] = useState<Tab>(initialTab ?? 'details');
   const [draft, setDraft] = useState(() => JSON.stringify(obj, null, 2));
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [expertMode, setExpertMode] = useState(false);

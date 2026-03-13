@@ -1367,6 +1367,7 @@ interface StateRowProps {
   onHistoryClick: (id: string) => void;
   onNavigateTo?: (ids: string[]) => void;
   onDeleteClick: (id: string) => void;
+  onEditJson: (id: string) => void;
   onSelectRoom: (objectId: string, oldRoomEnumId: string | null, newRoomEnumId: string | null) => void;
   onSelectFunction: (objectId: string, oldFnEnumId: string | null, newFnEnumId: string | null) => void;
   onOpenValueModal: (id: string) => void;
@@ -1393,7 +1394,7 @@ const StateRow = React.memo(function StateRow({
   id, state, obj, roomName, fnName,
   isSelected, isChecked, aliasIds, ownTargetExists,
   visibleCols, colWidths, roles, units, roomEnums, fnEnums,
-  onSelect, onCheck, onContextMenu, onHistoryClick, onNavigateTo, onDeleteClick,
+  onSelect, onCheck, onContextMenu, onHistoryClick, onNavigateTo, onDeleteClick, onEditJson,
   onSelectRoom, onSelectFunction, onOpenValueModal,
   roomEditForced, fnEditForced, onRoomEditEnd, onFnEditEnd,
   dateFormat, language, expertMode, isFocused, showDesc = true,
@@ -1422,7 +1423,7 @@ const StateRow = React.memo(function StateRow({
     <tr
       onClick={() => onSelect(id)}
       onContextMenu={(e) => { e.preventDefault(); onContextMenu(e.clientX, e.clientY, id); }}
-      className={`border-b border-gray-200 dark:border-gray-800 cursor-pointer transition-colors ${
+      className={`group border-b border-gray-200 dark:border-gray-800 cursor-pointer transition-colors ${
         isSelected
           ? 'bg-blue-600/20 text-blue-700 dark:text-blue-200'
           : isFocused
@@ -1524,6 +1525,13 @@ const StateRow = React.memo(function StateRow({
             <div className="flex items-center gap-1.5 min-w-0">
               <ColoredId id={id} />
               <CopyIdButton id={id} />
+              <button
+                onClick={(e) => { e.stopPropagation(); onEditJson(id); }}
+                className="opacity-0 group-hover/id:opacity-100 text-gray-400 hover:text-violet-500 dark:text-gray-500 dark:hover:text-violet-400 shrink-0 transition-opacity"
+                title="JSON"
+              >
+                <Wrench size={12} />
+              </button>
             </div>
             {!!onNavigateTo && (
               <div className={`text-[10px] leading-4 text-gray-400 dark:text-gray-500 truncate ${!(ownTarget || (aliasIds && aliasIds.length > 0)) ? 'invisible' : ''}`}>
@@ -1715,6 +1723,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   const [renameId, setRenameId] = useState<string | null>(null);
   const [moveId, setMoveId] = useState<string | null>(null);
   const [editObjId, setEditObjId] = useState<string | null>(null);
+  const [editObjInitialTab, setEditObjInitialTab] = useState<'details' | 'json' | 'alias' | 'custom'>('details');
   const updateRoomMutateRef = useRef(updateRoom.mutate);
   const updateFnMutateRef = useRef(updateFn.mutate);
 
@@ -2108,6 +2117,10 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
 
   const handleRowDeleteClick = React.useCallback((id: string) => {
     setDeletingId(id);
+  }, []);
+  const handleRowEditJsonClick = React.useCallback((id: string) => {
+    setEditObjInitialTab('json');
+    setEditObjId(id);
   }, []);
   const handleOpenValueModal = React.useCallback((id: string) => {
     setValueEditId(id);
@@ -2647,7 +2660,8 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
           id={editObjId}
           obj={objects[editObjId]}
           language={language}
-          onClose={() => setEditObjId(null)}
+          initialTab={editObjInitialTab}
+          onClose={() => { setEditObjId(null); setEditObjInitialTab('details'); }}
           onOpenHistory={hasHistory(objects[editObjId]) ? () => setHistoryModalId(editObjId) : undefined}
         />
       )}
@@ -3025,6 +3039,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                   onHistoryClick={handleRowHistoryClick}
                   onNavigateTo={onNavigateTo}
                   onDeleteClick={handleRowDeleteClick}
+                  onEditJson={handleRowEditJsonClick}
                   onSelectRoom={handleSelectRoom}
                   onSelectFunction={handleSelectFunction}
                   onOpenValueModal={handleOpenValueModal}
