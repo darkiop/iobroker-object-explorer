@@ -62,6 +62,7 @@ interface AppSettings {
   adminPort: number;
   customDefaultWidths: Partial<Record<SortKey, number>>;
   customMaxWidths: Partial<Record<SortKey, number>>;
+  noPaginationOnFilter: boolean;
 }
 
 function getDefaultAppSettings(): AppSettings {
@@ -80,6 +81,7 @@ function getDefaultAppSettings(): AppSettings {
     adminPort: 8081,
     customDefaultWidths: {},
     customMaxWidths: {},
+    noPaginationOnFilter: true,
   };
 }
 
@@ -157,6 +159,7 @@ function loadAppSettings(): AppSettings {
       adminPort: typeof parsed.adminPort === 'number' && parsed.adminPort > 0 && parsed.adminPort <= 65535 ? parsed.adminPort : 8081,
       customDefaultWidths: parseColWidthMap(parsed.customDefaultWidths),
       customMaxWidths: parseColWidthMap(parsed.customMaxWidths),
+      noPaginationOnFilter: parsed.noPaginationOnFilter !== false,
     };
   } catch {
     return fallback;
@@ -453,13 +456,20 @@ function AppContent() {
     [objectIds, treeFilter]
   );
 
+  const isFilterActive = pattern !== '*' || historyOnly || smartOnly ||
+    Object.keys(colFilters).length > 0 || roomFilters.size > 0 ||
+    functionFilters.size > 0 || quickPatterns.size > 0 ||
+    treeFilter !== null || danglingAliasFilter;
+
+  const paginationDisabled = appSettings.noPaginationOnFilter && isFilterActive;
+
   const totalCount = tableIds.length;
-  const pageStart = page * appSettings.pageSize;
+  const pageStart = paginationDisabled ? 0 : page * appSettings.pageSize;
   const pageIds = useMemo(
-    () => tableIds.slice(pageStart, pageStart + appSettings.pageSize),
-    [tableIds, pageStart, appSettings.pageSize]
+    () => paginationDisabled ? tableIds : tableIds.slice(pageStart, pageStart + appSettings.pageSize),
+    [tableIds, pageStart, appSettings.pageSize, paginationDisabled]
   );
-  const totalPages = Math.ceil(totalCount / appSettings.pageSize);
+  const totalPages = paginationDisabled ? 1 : Math.ceil(totalCount / appSettings.pageSize);
 
   const { data: stateValues, refetch: refetchStateValues, dataUpdatedAt: statesUpdatedAt } = useStateValues(pageIds);
 
@@ -607,6 +617,7 @@ function AppContent() {
       customMaxWidths: settingsDraft.customMaxWidths,
       groupByPath: settingsDraft.groupByPath,
       adminPort: settingsDraft.adminPort,
+      noPaginationOnFilter: settingsDraft.noPaginationOnFilter,
     };
     setAppSettings(next);
     setPage(0);
@@ -1354,10 +1365,11 @@ function AppContent() {
                     </div>
                     {/* Toggles */}
                     {([
-                      { key: 'toolbarLabels', labelEn: 'Toolbar button labels',   labelDe: 'Beschriftungen in der Toolbar' },
-                      { key: 'treeShowCount', labelEn: 'Datapoint count in tree', labelDe: 'Datenpunkt-Anzahl im Baum' },
-                      { key: 'showDesc',      labelEn: 'Description below name',  labelDe: 'Beschreibung unter Name' },
-                      { key: 'groupByPath',   labelEn: 'Group table by path',     labelDe: 'Tabelle nach Pfad gruppieren' },
+                      { key: 'toolbarLabels',        labelEn: 'Toolbar button labels',             labelDe: 'Beschriftungen in der Toolbar' },
+                      { key: 'treeShowCount',        labelEn: 'Datapoint count in tree',           labelDe: 'Datenpunkt-Anzahl im Baum' },
+                      { key: 'showDesc',             labelEn: 'Description below name',            labelDe: 'Beschreibung unter Name' },
+                      { key: 'groupByPath',          labelEn: 'Group table by path',               labelDe: 'Tabelle nach Pfad gruppieren' },
+                      { key: 'noPaginationOnFilter', labelEn: 'No pagination when filter active',  labelDe: 'Keine Paginierung bei aktivem Filter' },
                     ] as const).map(({ key, labelEn, labelDe }) => (
                       <div key={key} className="flex items-center justify-between">
                         <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? labelEn : labelDe}</span>
