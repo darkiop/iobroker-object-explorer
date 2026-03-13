@@ -1,11 +1,3 @@
-Export: Plain JSON (Zwischenablage)
-
-Markieren des Sidebar ein- ausblenden buttons
-
-bei der fitt to column aktion. ignoriere die max spalten breite
-
-edit modal -> role bei folder, channel, device
-
 <table>
 <thead>
 <tr><th>ID</th><th>Description</th><th>Category</th><th>Priority</th><th>Effort</th><th>Status</th></tr>
@@ -105,5 +97,21 @@ edit modal -> role bei folder, channel, device
 <tr><td>FE-096</td><td>Add a React error boundary at the app root so an unhandled render error in one component (e.g. StateList, HistoryChart) shows an error card instead of crashing the entire application.</td><td>Code Quality</td><td>medium</td><td>S</td><td>open</td></tr>
 <tr><td>FE-097</td><td>dangerouslySetInnerHTML used for JSON syntax highlighting in ImportDatapointsModal relies on a hand-rolled escaping function. Replace with a lightweight library (e.g. highlight.js or prism-react-renderer) for correctness and safety.</td><td>Security</td><td>medium</td><td>S</td><td>open</td></tr>
 <tr><td>FE-098</td><td>KeyboardShortcutsModal uses the deprecated navigator.platform to detect macOS for Cmd vs Ctrl display. Replace with navigator.userAgentData.platform or a UA string check.</td><td>Code Quality</td><td>low</td><td>S</td><td>open</td></tr>
+<tr><td>FE-099</td><td>Editable table cells (Name, Role, Unit) show no hover background — only the pencil icon appears on hover. Add a subtle background tint on cell hover to signal interactivity before the icon is visible.</td><td>UX</td><td>low</td><td>S</td><td>open</td></tr>
+<tr><td>FE-100</td><td>Pagination lacks a "go to page" input: with 100+ pages, clicking prev/next is slow. Add a small number input between the page buttons so users can jump directly to any page.</td><td>UX</td><td>low</td><td>S</td><td>open</td></tr>
+<tr><td>FE-101</td><td>No single "Clear all filters" action in the sidebar: users must clear pattern, room, function, quick-filters, and column filters individually. Add a prominent "Clear all" button that resets all active filters at once.</td><td>UX</td><td>medium</td><td>S</td><td>open</td></tr>
+<tr><td>FE-102</td><td>Active filter count is not visible at a glance: add a badge (e.g. "3 active") on the filter/search area showing the total number of currently applied filters (pattern + col filters + room/function/tree filter).</td><td>UX</td><td>low</td><td>S</td><td>open</td></tr>
+<tr><td>FE-103</td><td>StateTree has no expand-all / collapse-all controls. Add two icon buttons in the tree toolbar to expand or collapse the entire tree in one click, useful for large adapter hierarchies.</td><td>UX</td><td>low</td><td>S</td><td>open</td></tr>
+<tr><td>FE-104</td><td>Icon-only toolbar buttons show a plain title tooltip but no keyboard shortcut hint. Update tooltip text to include the shortcut where one exists (e.g. "Toggle sidebar (Ctrl+B)", "Refresh (F5)") so users discover shortcuts through the UI.</td><td>UX</td><td>low</td><td>S</td><td>open</td></tr>
+<tr><td>FE-105</td><td>Page-size selector lives in Settings only; users switching between compact and detailed views must open the modal. Expose a small "per page" dropdown directly next to the pagination row count (e.g. "50 / page ▾").</td><td>UX</td><td>medium</td><td>S</td><td>open</td></tr>
+<tr><td>FE-106</td><td>SearchBar autocomplete shows nothing when no suggestions match — the dropdown silently disappears. Display a "No suggestions found" hint row so users know their input was evaluated and no matches exist.</td><td>UX</td><td>low</td><td>S</td><td>open</td></tr>
+<tr style="background-color:#1a3a1f"><td>FE-107</td><td>HistoryChart time-range preset buttons (1h / 6h / 24h / 7d / 30d / 1y) have no visual active state — the selected range is indistinguishable from unselected ones. Highlight the active preset with a filled/accent style.</td><td>Chart</td><td>medium</td><td>S</td><td>done</td></tr>
+<tr><td>FE-108</td><td>ObjectEditModal shows no unsaved-changes indicator when switching tabs: users who edit the Details tab and switch to JSON may lose changes without realising it. Add a dot or asterisk on the tab label when the tab has uncommitted edits.</td><td>UX</td><td>medium</td><td>S</td><td>open</td></tr>
+<tr><td>FE-109</td><td>Context menu actions don't show keyboard shortcut hints next to their labels (e.g. "Copy ID  Ctrl+C", "Open history  H"). Adding shortcut hints improves discoverability without needing to open KeyboardShortcutsModal.</td><td>UX</td><td>low</td><td>S</td><td>open</td></tr>
+<tr><td>FE-110</td><td>On narrow viewports (&lt;768 px) the sidebar and table overlap and become unusable. Implement responsive behaviour: auto-collapse the sidebar below a breakpoint and allow reopening via a floating button or swipe gesture.</td><td>UX</td><td>medium</td><td>M</td><td>open</td></tr>
+<tr style="background-color:#1a3a1f"><td>FE-111</td><td>Export: filtered object list as plain JSON to clipboard — one-click copy of the current view as raw JSON without opening a file dialog.</td><td>Feature</td><td>low</td><td>S</td><td>done</td></tr>
+<tr><td>FE-112</td><td>Sidebar toggle button has no active/highlighted state: visually mark the button when the sidebar is collapsed so users can tell at a glance that it is hidden and can be reopened.</td><td>UX</td><td>low</td><td>S</td><td>open</td></tr>
+<tr><td>FE-113</td><td>Fit-to-column action respects the configured max column width, cutting off content in wide columns. Ignore the max-width limit when the action is triggered explicitly so the column resizes to the actual content width.</td><td>UX</td><td>low</td><td>S</td><td>open</td></tr>
+<tr><td>FE-114</td><td>ObjectEditModal: the object role field (common.role) is not editable for folder, channel, and device type objects — only shown for states. Expose the role field for all object types in the Details tab.</td><td>Feature</td><td>medium</td><td>S</td><td>open</td></tr>
 </tbody>
 </table>

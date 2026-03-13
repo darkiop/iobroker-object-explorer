@@ -2186,6 +2186,25 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
     URL.revokeObjectURL(url);
   }
 
+  function handleCopyJson() {
+    const allIds = checkedIds.size > 0 ? [...checkedIds] : (exportIds ?? ids);
+    const rows = allIds.map((id) => {
+      const obj = objects[id];
+      return {
+        id,
+        name: obj?.common?.name ? (typeof obj.common.name === 'string' ? obj.common.name : (obj.common.name.de || obj.common.name.en || '')) : '',
+        type: obj?.common?.type || obj?.type || '',
+        role: obj?.common?.role || '',
+        unit: obj?.common?.unit || '',
+        room: roomMap[id] || '',
+        function: functionMap[id] || '',
+        read: obj?.common?.read !== false ? 'true' : 'false',
+        write: obj?.common?.write === true ? 'true' : 'false',
+      };
+    });
+    copyText(JSON.stringify(rows, null, 2));
+  }
+
   function exportDatapointsToJson(idsToExport: string[]) {
     const result: Record<string, object> = {};
     for (const id of idsToExport) {
@@ -2234,6 +2253,13 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
               className="px-3 py-1.5 text-xs text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
             >
               JSON
+            </button>
+            <button
+              onMouseDown={() => handleCopyJson()}
+              className="px-3 py-1.5 text-xs text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              title={isEn ? 'Copy filtered list as JSON to clipboard' : 'Gefilterte Liste als JSON in die Zwischenablage kopieren'}
+            >
+              {isEn ? 'JSON (Clipboard)' : 'JSON (Zwischenablage)'}
             </button>
           </div>
         </div>
@@ -2657,6 +2683,19 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
           ? (isEn ? `Export ${exportIds.length} datapoints (JSON)` : `${exportIds.length} Datenpunkte exportieren (JSON)`)
           : (isEn ? 'Export datapoint (JSON)' : 'Datenpunkt exportieren (JSON)');
         items.push({ icon: <Download size={13} />, label: exportLabel, onClick: () => exportDatapointsToJson(exportIds) });
+        const copyJsonIds = checkedIds.has(ctxId) && checkedIds.size > 1 ? [...checkedIds] : [ctxId];
+        const copyJsonLabel = copyJsonIds.length > 1
+          ? (isEn ? `Copy ${copyJsonIds.length} datapoints as JSON` : `${copyJsonIds.length} Datenpunkte als JSON kopieren`)
+          : (isEn ? 'Copy datapoint as JSON' : 'Datenpunkt als JSON kopieren');
+        items.push({ icon: <Copy size={13} />, label: copyJsonLabel, onClick: () => {
+          const result: Record<string, object> = {};
+          for (const id of copyJsonIds) {
+            const obj = objects[id] ?? { _id: id };
+            const { enums: _enums, ...rest } = obj as unknown as Record<string, unknown>;
+            result[id] = rest;
+          }
+          copyText(JSON.stringify(result, null, 2));
+        }});
         items.push({ separator: true } as const);
         items.push({ icon: <Trash2 size={13} />, label: isEn ? 'Delete datapoint' : 'Datenpunkt löschen', onClick: () => setDeletingId(ctxId), danger: true });
         return <ContextMenu x={x} y={y} items={items} onClose={() => setCtxMenu(null)} />;
