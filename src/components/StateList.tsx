@@ -2039,7 +2039,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
     });
   }, [sortedIds, valueFilter, tsFilterParsed, dateFormat, (valueFilter || tsFilterParsed.mode !== 'none') ? states : null]);
 
-  type DisplayItem = { kind: 'row'; id: string } | { kind: 'sep'; prefix: string };
+  type DisplayItem = { kind: 'row'; id: string } | { kind: 'sep'; prefix: string; isState: boolean };
   const displayItems = useMemo((): DisplayItem[] => {
     if (!groupByPath) return filteredIds.map((id) => ({ kind: 'row' as const, id }));
     // Group IDs by prefix, preserving filteredIds order within each group
@@ -2054,13 +2054,18 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
     const sortedPrefixes = [...groups.keys()].sort((a, b) =>
       a.localeCompare(b, undefined, { sensitivity: 'base' })
     );
+    const filteredIdSet = new Set(filteredIds);
     const items: DisplayItem[] = [];
     for (const prefix of sortedPrefixes) {
-      items.push({ kind: 'sep', prefix });
+      // isState: the prefix itself is also a state — its value is shown inline in the sep row
+      items.push({ kind: 'sep', prefix, isState: filteredIdSet.has(prefix) });
       const isCollapsed = collapsedPrefixes === null || collapsedPrefixes.has(prefix);
       if (!isCollapsed) {
         for (const id of groups.get(prefix)!) {
-          items.push({ kind: 'row', id });
+          // Skip IDs that are also group prefixes — they appear as their own sep row
+          if (!groups.has(id)) {
+            items.push({ kind: 'row', id });
+          }
         }
       }
     }
@@ -2977,6 +2982,11 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                           ? <ColoredId id={item.prefix} className="text-sm font-mono font-bold" />
                           : <span className="text-sm text-gray-400 dark:text-gray-500 font-mono font-bold italic">root</span>
                         }
+                        {item.isState && (
+                          <span className="text-xs font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded shrink-0">
+                            {formatValue(states[item.prefix]?.val)}
+                          </span>
+                        )}
                         {item.prefix && objects[item.prefix] && (
                           <button
                             onClick={(e) => { e.stopPropagation(); setEditObjId(item.prefix); }}
