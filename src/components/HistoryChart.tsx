@@ -722,6 +722,11 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
           >
             {settingsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
             {isEn ? 'Settings' : 'Einstellungen'}
+            {!settingsOpen && (
+              <span className="ml-0.5 font-semibold text-blue-500 dark:text-blue-400">
+                · {rangeMs !== null ? (PRESETS.find((p) => p.ms === rangeMs)?.label ?? '?') : (isEn ? 'Manual' : 'Manuell')}
+              </span>
+            )}
           </button>
         )}
         {settingsOpen && <div className="flex items-center justify-between flex-wrap gap-2">
@@ -730,10 +735,10 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
               <button
                 key={p.label}
                 onClick={() => setRangeMs(p.ms)}
-                className={`h-7 px-2 text-xs rounded ${
+                className={`h-7 px-2.5 text-xs rounded-full font-medium transition-colors ${
                   rangeMs === p.ms
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                    ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-500/50'
+                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-700/60 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-gray-200'
                 }`}
               >
                 {p.label}
@@ -745,10 +750,10 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
                 setCustomStart(toLocalDatetime(options.start));
                 setCustomEnd(toLocalDatetime(options.end));
               }}
-              className={`h-7 px-2 text-xs rounded ${
+              className={`h-7 px-2.5 text-xs rounded-full font-medium transition-colors ${
                 rangeMs === null
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                  ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-500/50'
+                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-700/60 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-gray-200'
               }`}
             >
               {isEn ? 'Manual' : 'Manuell'}

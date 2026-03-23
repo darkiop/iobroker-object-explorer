@@ -1,6 +1,6 @@
 # ioBroker Object Explorer
 
-![alt text](image.png)
+![alt text](demo.gif)
 
 A React dashboard for browsing, managing, and monitoring ioBroker datapoints via the REST API. Light/dark theme, EN/DE UI language.
 

@@ -219,7 +219,7 @@ const EditableNameCell = React.memo(function EditableNameCell({ id, name, desc, 
   );
 });
 
-const EditableRoleCell = React.memo(function EditableRoleCell({ id, role, suggestions, language = 'en' }: { id: string; role: string; suggestions: string[]; language?: 'en' | 'de' }) {
+const EditableRoleCell = React.memo(function EditableRoleCell({ id, role, objType, suggestions, language = 'en' }: { id: string; role: string; objType?: string; suggestions: string[]; language?: 'en' | 'de' }) {
   const isEn = language === 'en';
   const [editing, setEditing] = useState(false);
   const [filter, setFilter] = useState('');
@@ -268,7 +268,7 @@ const EditableRoleCell = React.memo(function EditableRoleCell({ id, role, sugges
             <span className={`truncate font-semibold ${getRoleColor(role)}`} title={role}>{role}</span>
             <Pencil size={12} className="opacity-0 group-hover/role:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity" />
           </>
-        ) : (
+        ) : objType === 'folder' || objType === 'device' || objType === 'channel' ? null : (
           <span className="text-gray-300 dark:text-gray-600 italic font-sans">{isEn ? 'Select role…' : 'Rolle wählen…'}</span>
         )}
       </div>
@@ -444,7 +444,7 @@ const EditableUnitCell = React.memo(function EditableUnitCell({ id, unit, sugges
 });
 
 
-const EditableTypeCell = React.memo(function EditableTypeCell({ id, typeValue, language = 'en' }: { id: string; typeValue: string; language?: 'en' | 'de' }) {
+const EditableTypeCell = React.memo(function EditableTypeCell({ id, typeValue, objType, language = 'en' }: { id: string; typeValue: string; objType?: string; language?: 'en' | 'de' }) {
   const isEn = language === 'en';
   const [editing, setEditing] = useState(false);
   const [filter, setFilter] = useState('');
@@ -494,6 +494,8 @@ const EditableTypeCell = React.memo(function EditableTypeCell({ id, typeValue, l
             <span className={`truncate font-semibold ${getTypeColor(typeValue)}`} title={typeValue}>{typeValue}</span>
             <Pencil size={12} className="opacity-0 group-hover/type:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity" />
           </>
+        ) : objType && objType !== 'state' ? (
+          <span className="text-xs font-semibold font-sans px-1.5 py-0.5 rounded bg-gray-200/70 text-gray-500 dark:bg-gray-700/60 dark:text-gray-400">{objType}</span>
         ) : (
           <span className="text-gray-300 dark:text-gray-600 italic font-sans">{isEn ? 'Select type…' : 'Typ wählen…'}</span>
         )}
@@ -1595,10 +1597,10 @@ const StateRow = React.memo(function StateRow({
           language={language}
         />
       )}
-      {show('type') && <EditableTypeCell id={id} typeValue={obj?.common?.type || ''} language={language} />}
-      {show('role') && <EditableRoleCell id={id} role={obj?.common?.role || ''} suggestions={roles} language={language} />}
-      {show('value') && <EditableValueCell id={id} state={state} obj={obj} expertMode={expertMode} onOpen={onOpenValueModal} language={language} />}
-      {show('unit') && <EditableUnitCell id={id} unit={unit} suggestions={units} language={language} />}
+      {show('type') && <EditableTypeCell id={id} typeValue={obj?.common?.type || ''} objType={obj?.type} language={language} />}
+      {show('role') && <EditableRoleCell id={id} role={obj?.common?.role || ''} objType={obj?.type} suggestions={roles} language={language} />}
+      {show('value') && (obj?.type === 'folder' || obj?.type === 'device' || obj?.type === 'channel' ? <td data-col="value" /> : <EditableValueCell id={id} state={state} obj={obj} expertMode={expertMode} onOpen={onOpenValueModal} language={language} />)}
+      {show('unit') && (obj?.type === 'folder' || obj?.type === 'device' || obj?.type === 'channel' ? <td data-col="unit" /> : <EditableUnitCell id={id} unit={unit} suggestions={units} language={language} />)}
       {show('ack') && (
         <td data-col="ack" className="px-3 py-2">
           {state ? (
