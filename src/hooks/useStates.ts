@@ -49,11 +49,12 @@ export function useFilteredObjects(pattern: string, fulltext = true, exact = fal
   });
 }
 
-export function useAllObjects() {
+export function useAllObjects(refetchInterval?: number | false) {
   return useQuery({
     queryKey: queryKeys.objects.all,
     queryFn: () => getAllObjects(),
     staleTime: Infinity,
+    refetchInterval: refetchInterval ?? false,
   });
 }
 

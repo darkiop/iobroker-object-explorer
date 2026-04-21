@@ -63,6 +63,7 @@ interface AppSettings {
   customDefaultWidths: Partial<Record<SortKey, number>>;
   customMaxWidths: Partial<Record<SortKey, number>>;
   noPaginationOnFilter: boolean;
+  objectsRefreshInterval: 'off' | '30s' | '1m' | '5m' | '10m';
 }
 
 function getDefaultAppSettings(): AppSettings {
@@ -82,6 +83,7 @@ function getDefaultAppSettings(): AppSettings {
     customDefaultWidths: {},
     customMaxWidths: {},
     noPaginationOnFilter: true,
+    objectsRefreshInterval: 'off',
   };
 }
 
@@ -160,6 +162,7 @@ function loadAppSettings(): AppSettings {
       customDefaultWidths: parseColWidthMap(parsed.customDefaultWidths),
       customMaxWidths: parseColWidthMap(parsed.customMaxWidths),
       noPaginationOnFilter: parsed.noPaginationOnFilter !== false,
+      objectsRefreshInterval: (['off','30s','1m','5m','10m'] as const).includes(parsed.objectsRefreshInterval as 'off'|'30s'|'1m'|'5m'|'10m') ? parsed.objectsRefreshInterval as 'off'|'30s'|'1m'|'5m'|'10m' : 'off',
     };
   } catch {
     return fallback;
@@ -340,7 +343,11 @@ function AppContent() {
   const { basePattern, roomFilter, functionFilter, typeFilter, roleFilter } = useMemo(() => parseEnumFilters(pattern), [pattern]);
 
   const { data: stateObjectsData, error: objectsError, refetch: refetchFilteredObjects } = useFilteredObjects(basePattern, fulltextEnabled, exactEnabled);
-  const { data: allObjectsData, refetch: refetchAllObjects } = useAllObjects();
+  const objectsRefetchMs = useMemo(() => {
+    const map: Record<string, number | false> = { 'off': false, '30s': 30_000, '1m': 60_000, '5m': 300_000, '10m': 600_000 };
+    return map[appSettings.objectsRefreshInterval] ?? false;
+  }, [appSettings.objectsRefreshInterval]);
+  const { data: allObjectsData, refetch: refetchAllObjects } = useAllObjects(objectsRefetchMs);
   const { data: roomMapData, refetch: refetchRoomMap } = useRoomMap();
   const { data: functionMapData, refetch: refetchFunctionMap } = useFunctionMap();
   const { data: roomEnums = [], refetch: refetchRoomEnums } = useRoomEnums();
@@ -620,6 +627,7 @@ function AppContent() {
       groupByPath: settingsDraft.groupByPath,
       adminPort: settingsDraft.adminPort,
       noPaginationOnFilter: settingsDraft.noPaginationOnFilter,
+      objectsRefreshInterval: settingsDraft.objectsRefreshInterval,
     };
     setAppSettings(next);
     setPage(0);
@@ -821,6 +829,7 @@ function AppContent() {
       lastUpdated={lastValidUpdatedAt.current > 0 ? lastValidUpdatedAt.current : undefined}
       adminPort={appSettings.adminPort}
       onManualRefresh={handleManualRefresh}
+      objectsRefreshInterval={appSettings.objectsRefreshInterval}
       sidebar={
         <div className="flex flex-col h-full">
           <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex flex-col gap-2">
@@ -1378,6 +1387,20 @@ function AppContent() {
                         <option value="objects">{isEn ? 'Objects only' : 'Nur Objekte'}</option>
                         <option value="states">{isEn ? 'States only' : 'Nur States'}</option>
                         <option value="both">{isEn ? 'Both (States / Objects)' : 'Beides (States / Objekte)'}</option>
+                      </select>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Auto-refresh objects' : 'Objekte auto-aktualisieren'}</span>
+                      <select
+                        value={settingsDraft.objectsRefreshInterval}
+                        onChange={(e) => setSettingsDraft((prev) => ({ ...prev, objectsRefreshInterval: e.target.value as 'off'|'30s'|'1m'|'5m'|'10m' }))}
+                        className="h-7 px-2 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                      >
+                        <option value="off">{isEn ? 'Off' : 'Aus'}</option>
+                        <option value="30s">30s</option>
+                        <option value="1m">1m</option>
+                        <option value="5m">5m</option>
+                        <option value="10m">10m</option>
                       </select>
                     </div>
                     {([

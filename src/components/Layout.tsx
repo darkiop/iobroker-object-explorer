@@ -18,6 +18,7 @@ interface LayoutProps {
   lastUpdated?: number;
   adminPort?: number;
   onManualRefresh?: () => void;
+  objectsRefreshInterval?: string;
 }
 
 const LS_SIDEBAR_WIDTH = 'iobroker-explorer-sidebar-width';
@@ -35,6 +36,7 @@ export default function Layout({
   lastUpdated,
   adminPort = 8081,
   onManualRefresh,
+  objectsRefreshInterval,
 }: LayoutProps) {
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const stored = parseInt(localStorage.getItem(LS_SIDEBAR_WIDTH) ?? '', 10);
@@ -247,6 +249,15 @@ export default function Layout({
               {lastUpdated && (
                 <span className="text-[11px] font-mono font-medium px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
                   {new Date(lastUpdated).toLocaleTimeString()}
+                </span>
+              )}
+              {objectsRefreshInterval && objectsRefreshInterval !== 'off' && (
+                <span
+                  className="inline-flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400"
+                  title={language === 'en' ? `Objects auto-refresh every ${objectsRefreshInterval}` : `Objekte werden alle ${objectsRefreshInterval} aktualisiert`}
+                >
+                  <RefreshCw size={10} className="animate-spin" style={{ animationDuration: '3s' }} />
+                  {objectsRefreshInterval}
                 </span>
               )}
             </>
