@@ -31,14 +31,15 @@ interface StateTreeProps {
   onOpenAliasReplace?: (initialStr?: string) => void;
   onAutoCreateAlias?: (deviceId: string) => void;
   treeFontSize?: 'small' | 'normal' | 'large' | 'xl';
-  treeShowCount?: boolean;
+  treeCountMode?: 'off' | 'states' | 'objects' | 'both';
 }
 
 function buildTree(ids: string[], structureIds: string[] = []): TreeNode {
-  const root: TreeNode = { name: 'root', fullPath: '', children: new Map(), isLeaf: false, count: 0 };
+  const root: TreeNode = { name: 'root', fullPath: '', children: new Map(), isLeaf: false, count: 0, totalCount: 0 };
 
   for (const id of ids) {
     root.count = (root.count ?? 0) + 1;
+    root.totalCount = (root.totalCount ?? 0) + 1;
     const parts = id.split('.');
     let current = root;
     for (let i = 0; i < parts.length; i++) {
@@ -51,10 +52,12 @@ function buildTree(ids: string[], structureIds: string[] = []): TreeNode {
           children: new Map(),
           isLeaf: i === parts.length - 1,
           count: 0,
+          totalCount: 0,
         });
       }
       current = current.children.get(part)!;
       current.count = (current.count ?? 0) + 1;
+      current.totalCount = (current.totalCount ?? 0) + 1;
       if (i === parts.length - 1) {
         current.isLeaf = true;
       }
@@ -65,6 +68,7 @@ function buildTree(ids: string[], structureIds: string[] = []): TreeNode {
   for (const id of structureIds) {
     const parts = id.split('.');
     let current = root;
+    root.totalCount = (root.totalCount ?? 0) + 1;
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i];
       const fullPath = parts.slice(0, i + 1).join('.');
@@ -75,9 +79,11 @@ function buildTree(ids: string[], structureIds: string[] = []): TreeNode {
           children: new Map(),
           isLeaf: false,
           count: 0,
+          totalCount: 0,
         });
       }
       current = current.children.get(part)!;
+      current.totalCount = (current.totalCount ?? 0) + 1;
       // Never mark as leaf for structure nodes
     }
   }
@@ -86,18 +92,21 @@ function buildTree(ids: string[], structureIds: string[] = []): TreeNode {
 }
 
 function buildAdapterTree(ids: string[], structureIds: string[] = []): TreeNode {
-  const root: TreeNode = { name: 'root', fullPath: '', children: new Map(), isLeaf: false };
+  const root: TreeNode = { name: 'root', fullPath: '', children: new Map(), isLeaf: false, count: 0, totalCount: 0 };
 
   for (const id of ids) {
+    root.count = (root.count ?? 0) + 1;
+    root.totalCount = (root.totalCount ?? 0) + 1;
     const parts = id.split('.');
     const adapterKey = parts.length >= 2 ? `${parts[0]}.${parts[1]}` : parts[0];
     if (!root.children.has(adapterKey)) {
       root.children.set(adapterKey, {
-        name: adapterKey, fullPath: adapterKey, children: new Map(), isLeaf: false, count: 0,
+        name: adapterKey, fullPath: adapterKey, children: new Map(), isLeaf: false, count: 0, totalCount: 0,
       });
     }
     const adapterNode = root.children.get(adapterKey)!;
     adapterNode.count = (adapterNode.count ?? 0) + 1;
+    adapterNode.totalCount = (adapterNode.totalCount ?? 0) + 1;
     const remaining = parts.slice(parts.length >= 2 ? 2 : 1);
     let current = adapterNode;
     for (let i = 0; i < remaining.length; i++) {
@@ -105,25 +114,28 @@ function buildAdapterTree(ids: string[], structureIds: string[] = []): TreeNode 
       const childPath = `${current.fullPath}.${seg}`;
       if (!current.children.has(seg)) {
         current.children.set(seg, {
-          name: seg, fullPath: childPath, children: new Map(), isLeaf: i === remaining.length - 1, count: 0,
+          name: seg, fullPath: childPath, children: new Map(), isLeaf: i === remaining.length - 1, count: 0, totalCount: 0,
         });
       }
       current = current.children.get(seg)!;
       current.count = (current.count ?? 0) + 1;
+      current.totalCount = (current.totalCount ?? 0) + 1;
       if (i === remaining.length - 1) current.isLeaf = true;
     }
   }
 
   // Add folder/device/channel objects that may have no child states
   for (const id of structureIds) {
+    root.totalCount = (root.totalCount ?? 0) + 1;
     const parts = id.split('.');
     const adapterKey = parts.length >= 2 ? `${parts[0]}.${parts[1]}` : parts[0];
     if (!root.children.has(adapterKey)) {
       root.children.set(adapterKey, {
-        name: adapterKey, fullPath: adapterKey, children: new Map(), isLeaf: false, count: 0,
+        name: adapterKey, fullPath: adapterKey, children: new Map(), isLeaf: false, count: 0, totalCount: 0,
       });
     }
     const adapterNode = root.children.get(adapterKey)!;
+    adapterNode.totalCount = (adapterNode.totalCount ?? 0) + 1;
     const remaining = parts.slice(parts.length >= 2 ? 2 : 1);
     let current = adapterNode;
     for (let i = 0; i < remaining.length; i++) {
@@ -131,10 +143,11 @@ function buildAdapterTree(ids: string[], structureIds: string[] = []): TreeNode 
       const childPath = `${current.fullPath}.${seg}`;
       if (!current.children.has(seg)) {
         current.children.set(seg, {
-          name: seg, fullPath: childPath, children: new Map(), isLeaf: false,
+          name: seg, fullPath: childPath, children: new Map(), isLeaf: false, count: 0, totalCount: 0,
         });
       }
       current = current.children.get(seg)!;
+      current.totalCount = (current.totalCount ?? 0) + 1;
       // Never mark as leaf for structure nodes
     }
   }
@@ -193,7 +206,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   onAutoCreateAlias,
   onAddToTreeFilter,
   nodeFontClass = 'text-sm',
-  treeShowCount = true,
+  treeCountMode = 'objects' as 'off' | 'states' | 'objects' | 'both',
 }: {
   node: TreeNode;
   depth: number;
@@ -216,7 +229,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   onAutoCreateAlias?: (deviceId: string) => void;
   onAddToTreeFilter: (path: string) => void;
   nodeFontClass?: string;
-  treeShowCount?: boolean;
+  treeCountMode?: 'off' | 'states' | 'objects' | 'both';
 }) {
   const isEn = language === 'en';
   const [expanded, setExpanded] = useState(false);
@@ -225,6 +238,13 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const deleteSubtree = useDeleteSubtree();
+  const { deleteCount, deleteStateCount } = useMemo(() => {
+    if (node.isLeaf) return { deleteCount: 1, deleteStateCount: 1 };
+    const prefix = node.fullPath + '.';
+    const ids = Object.keys(allObjects).filter((id) => id === node.fullPath || id.startsWith(prefix));
+    const stateCount = ids.filter((id) => allObjects[id]?.type === 'state').length;
+    return { deleteCount: ids.length, deleteStateCount: stateCount };
+  }, [node.isLeaf, node.fullPath, allObjects]);
 
   function exportSubtree() {
     const prefix = node.fullPath + '.';
@@ -309,7 +329,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
             language={language}
             onAddToTreeFilter={onAddToTreeFilter}
             nodeFontClass={nodeFontClass}
-            treeShowCount={treeShowCount}
+            treeCountMode={treeCountMode}
           />
         ))}
       </>
@@ -328,7 +348,12 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
       )}
       {confirmDelete && (
         <ConfirmDialog
-          title={isEn ? 'Delete object' : 'Objekt löschen'}
+          title={isEn ? `Delete ${deleteCount} object${deleteCount !== 1 ? 's' : ''}` : `${deleteCount} Objekt${deleteCount !== 1 ? 'e' : ''} löschen`}
+          description={node.isLeaf
+            ? undefined
+            : (isEn
+                ? `${deleteStateCount} state${deleteStateCount !== 1 ? 's' : ''}, ${deleteCount - deleteStateCount} folder/device/channel will be permanently deleted:`
+                : `${deleteStateCount} State${deleteStateCount !== 1 ? 's' : ''}, ${deleteCount - deleteStateCount} Ordner/Gerät/Kanal werden unwiderruflich gelöscht:`)}
           message={node.fullPath}
           onConfirm={() => { deleteSubtree.mutate({ id: node.fullPath, allObjects }); setConfirmDelete(false); }}
           onCancel={() => setConfirmDelete(false)}
@@ -434,9 +459,11 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
         <span className={`truncate ${node.isLeaf ? (isHistoryEnabled ? 'text-blue-500 dark:text-blue-400' : 'text-green-600 dark:text-green-400') : (isHighlightedNamespace ? 'font-semibold' : 'text-gray-600 font-medium dark:text-gray-400')}`}>
           {node.name}
         </span>
-        {treeShowCount && !node.isLeaf && node.count !== undefined && node.count > 0 && (
-          <span className="shrink-0 text-[10px] font-medium px-1 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 leading-none">
-            {node.count}
+        {treeCountMode !== 'off' && !node.isLeaf && (node.totalCount ?? 0) > 0 && (
+          <span className="shrink-0 text-[10px] font-medium px-1 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 leading-none whitespace-nowrap">
+            {treeCountMode === 'states' && (node.count ?? 0)}
+            {treeCountMode === 'objects' && node.totalCount}
+            {treeCountMode === 'both' && `${node.count ?? 0} / ${node.totalCount}`}
           </span>
         )}
         {isFolder && objectType && (
@@ -541,7 +568,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
             onAutoCreateAlias={onAutoCreateAlias}
             onAddToTreeFilter={onAddToTreeFilter}
             nodeFontClass={nodeFontClass}
-            treeShowCount={treeShowCount}
+            treeCountMode={treeCountMode}
           />
         ))}
     </div>
@@ -549,7 +576,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
 });
 
 
-function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeScope, onCreateAtPath, historyOnly, smartOnly, historyIds, smartIds, expandToDepth, treeFilter = null, treeSearch: treeSearchProp = '', onTreeSearchChange, pattern, language = 'en', onOpenAliasReplace, onAutoCreateAlias, treeFontSize = 'normal', treeShowCount = true }: StateTreeProps) {
+function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeScope, onCreateAtPath, historyOnly, smartOnly, historyIds, smartIds, expandToDepth, treeFilter = null, treeSearch: treeSearchProp = '', onTreeSearchChange, pattern, language = 'en', onOpenAliasReplace, onAutoCreateAlias, treeFontSize = 'normal', treeCountMode = 'objects' }: StateTreeProps) {
   const isEn = language === 'en';
   const nodeFontClass = treeFontSize === 'small' ? 'text-xs' : treeFontSize === 'large' ? 'text-base' : treeFontSize === 'xl' ? 'text-lg' : 'text-sm';
   const [expandSignal, setExpandSignal] = useState<{ depth: number; seq: number }>({ depth: 0, seq: 0 });
@@ -657,6 +684,15 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
           <BarChart2 size={13} />
         </button>
       </div>
+      <div className="flex items-center justify-center gap-3 px-3 py-1.5 border-b border-gray-200 dark:border-gray-700 shrink-0 bg-gray-50/50 dark:bg-gray-800/30">
+        <span className="text-xs text-gray-500 dark:text-gray-400">
+          {isEn ? 'Objects' : 'Objekte'}: <span className="font-semibold text-gray-700 dark:text-gray-200">{(tree.totalCount ?? 0).toLocaleString()}</span>
+        </span>
+        <span className="text-gray-300 dark:text-gray-600">|</span>
+        <span className="text-xs text-gray-500 dark:text-gray-400">
+          {isEn ? 'States' : 'States'}: <span className="font-semibold text-gray-700 dark:text-gray-200">{(tree.count ?? 0).toLocaleString()}</span>
+        </span>
+      </div>
       <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 shrink-0">
         <div className="relative">
           <Filter size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none" />
@@ -726,7 +762,7 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
               onAutoCreateAlias={onAutoCreateAlias}
               onAddToTreeFilter={setTreeSearch}
               nodeFontClass={nodeFontClass}
-              treeShowCount={treeShowCount}
+              treeCountMode={treeCountMode}
             />
           ))
         )}

@@ -56,7 +56,7 @@ interface AppSettings {
   pageSize: number;
   tableFontSize: UiFontSize;
   treeFontSize: UiFontSize;
-  treeShowCount: boolean;
+  treeCountMode: 'off' | 'states' | 'objects' | 'both';
   showDesc: boolean;
   groupByPath: boolean;
   adminPort: number;
@@ -75,7 +75,7 @@ function getDefaultAppSettings(): AppSettings {
     pageSize: 50,
     tableFontSize: 'normal',
     treeFontSize: 'normal',
-    treeShowCount: true,
+    treeCountMode: 'objects',
     showDesc: true,
     groupByPath: true,
     adminPort: 8081,
@@ -153,7 +153,7 @@ function loadAppSettings(): AppSettings {
       pageSize: parsedPageSize,
       tableFontSize,
       treeFontSize,
-      treeShowCount: parsed.treeShowCount !== false,
+      treeCountMode: (['off','states','objects','both'] as const).includes(parsed.treeCountMode as 'off'|'states'|'objects'|'both') ? parsed.treeCountMode as 'off'|'states'|'objects'|'both' : ((parsed as Record<string,unknown>).treeShowCount === false ? 'off' : 'objects'),
       showDesc: parsed.showDesc !== false,
       groupByPath: parsed.groupByPath !== false,
       adminPort: typeof parsed.adminPort === 'number' && parsed.adminPort > 0 && parsed.adminPort <= 65535 ? parsed.adminPort : 8081,
@@ -613,7 +613,7 @@ function AppContent() {
       pageSize: validPageSize,
       tableFontSize: settingsDraft.tableFontSize,
       treeFontSize: settingsDraft.treeFontSize,
-      treeShowCount: settingsDraft.treeShowCount,
+      treeCountMode: settingsDraft.treeCountMode,
       showDesc: settingsDraft.showDesc,
       customDefaultWidths: settingsDraft.customDefaultWidths,
       customMaxWidths: settingsDraft.customMaxWidths,
@@ -1126,7 +1126,7 @@ function AppContent() {
               onOpenAliasReplace={() => setAliasReplaceInitialStr('')}
               onAutoCreateAlias={setAutoAliasDeviceId}
               treeFontSize={appSettings.treeFontSize}
-              treeShowCount={appSettings.treeShowCount}
+              treeCountMode={appSettings.treeCountMode}
             />
           </div>
         </div>
@@ -1367,9 +1367,21 @@ function AppContent() {
                       </select>
                     </div>
                     {/* Toggles */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Count badge in tree' : 'Anzahl-Badge im Baum'}</span>
+                      <select
+                        value={settingsDraft.treeCountMode}
+                        onChange={(e) => setSettingsDraft((prev) => ({ ...prev, treeCountMode: e.target.value as 'off'|'states'|'objects'|'both' }))}
+                        className="h-7 px-2 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                      >
+                        <option value="off">{isEn ? 'Off' : 'Aus'}</option>
+                        <option value="objects">{isEn ? 'Objects only' : 'Nur Objekte'}</option>
+                        <option value="states">{isEn ? 'States only' : 'Nur States'}</option>
+                        <option value="both">{isEn ? 'Both (States / Objects)' : 'Beides (States / Objekte)'}</option>
+                      </select>
+                    </div>
                     {([
                       { key: 'toolbarLabels',        labelEn: 'Toolbar button labels',             labelDe: 'Beschriftungen in der Toolbar' },
-                      { key: 'treeShowCount',        labelEn: 'Datapoint count in tree',           labelDe: 'Datenpunkt-Anzahl im Baum' },
                       { key: 'showDesc',             labelEn: 'Description below name',            labelDe: 'Beschreibung unter Name' },
                       { key: 'groupByPath',          labelEn: 'Group table by path',               labelDe: 'Tabelle nach Pfad gruppieren' },
                       { key: 'noPaginationOnFilter', labelEn: 'No pagination when filter active',  labelDe: 'Keine Paginierung bei aktivem Filter' },

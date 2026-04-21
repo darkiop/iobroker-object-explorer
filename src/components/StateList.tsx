@@ -2564,7 +2564,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
       )}
       {deletingId && (
         <ConfirmDialog
-          title={isEn ? 'Delete datapoint' : 'Datenpunkt löschen'}
+          title={isEn ? 'Delete 1 datapoint' : '1 Datenpunkt löschen'}
           message={deletingId}
           onConfirm={() => { deleteObject.mutate(deletingId); setDeletingId(null); }}
           onCancel={() => setDeletingId(null)}

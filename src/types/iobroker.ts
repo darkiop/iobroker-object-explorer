@@ -58,5 +58,6 @@ export interface TreeNode {
   fullPath: string;
   children: Map<string, TreeNode>;
   isLeaf: boolean;
-  count?: number;
+  count?: number;      // descendant states (leaf nodes)
+  totalCount?: number; // descendant objects of all types
 }

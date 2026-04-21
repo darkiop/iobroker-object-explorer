@@ -610,7 +610,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
       )}
       {confirmDelete && (
         <ConfirmDialog
-          title={isEn ? 'Delete datapoint' : 'Datenpunkt löschen'}
+          title={isEn ? 'Delete 1 datapoint' : '1 Datenpunkt löschen'}
           message={id}
           onConfirm={() => { deleteObject.mutate(id, { onSuccess: onClose }); setConfirmDelete(false); }}
           onCancel={() => setConfirmDelete(false)}
