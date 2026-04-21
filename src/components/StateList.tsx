@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, RefreshCw, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Cpu, Layers } from 'lucide-react';
+import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Cpu, Layers } from 'lucide-react';
 import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
@@ -2290,14 +2290,6 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
         >
           <Upload size={16} />
           {showToolbarLabels && <span>Import</span>}
-        </button>
-        <button
-          onClick={() => onManualRefresh?.()}
-          title={isEn ? 'Refresh data' : 'Daten aktualisieren'}
-          className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-emerald-600 hover:bg-emerald-500/10 dark:text-gray-400 dark:hover:text-emerald-400 dark:hover:bg-emerald-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
-        >
-          <RefreshCw size={15} />
-          {showToolbarLabels && <span>{isEn ? 'Refresh API' : 'API aktualisieren'}</span>}
         </button>
         <button
           onClick={() => onOpenEnumManager?.()}

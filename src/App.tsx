@@ -818,6 +818,7 @@ function AppContent() {
       apiConnected={!objectsError}
       lastUpdated={statesUpdatedAt > 0 ? statesUpdatedAt : undefined}
       adminPort={appSettings.adminPort}
+      onManualRefresh={handleManualRefresh}
       sidebar={
         <div className="flex flex-col h-full">
           <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex flex-col gap-2">
@@ -1570,7 +1571,6 @@ function AppContent() {
             treeFilter={treeFilter}
             onClearTreeFilter={handleClearTreeFilter}
             sidebarToggleSeq={sidebarToggleSeq}
-            onManualRefresh={handleManualRefresh}
             fulltextEnabled={fulltextEnabled}
             dateFormat={appSettings.dateFormat}
             settingsVisibleCols={appSettings.visibleCols}

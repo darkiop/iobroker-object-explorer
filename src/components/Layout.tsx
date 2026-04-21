@@ -17,6 +17,7 @@ interface LayoutProps {
   onShowShortcuts?: () => void;
   lastUpdated?: number;
   adminPort?: number;
+  onManualRefresh?: () => void;
 }
 
 const LS_SIDEBAR_WIDTH = 'iobroker-explorer-sidebar-width';
@@ -33,6 +34,7 @@ export default function Layout({
   onShowShortcuts,
   lastUpdated,
   adminPort = 8081,
+  onManualRefresh,
 }: LayoutProps) {
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const stored = parseInt(localStorage.getItem(LS_SIDEBAR_WIDTH) ?? '', 10);
@@ -232,6 +234,15 @@ export default function Layout({
               }: {currentHost || '—'}
               <Pencil size={11} className="opacity-50" />
             </button>
+            {onManualRefresh && (
+              <button
+                onClick={onManualRefresh}
+                className="p-1.5 rounded-lg text-gray-500 hover:text-emerald-600 hover:bg-emerald-500/10 dark:text-gray-400 dark:hover:text-emerald-400 dark:hover:bg-emerald-500/10 transition-colors"
+                title={language === 'en' ? 'Refresh API' : 'API aktualisieren'}
+              >
+                <RefreshCw size={14} />
+              </button>
+            )}
           )}
         </div>
         <div className="flex items-center gap-3">
