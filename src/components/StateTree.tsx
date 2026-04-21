@@ -435,7 +435,9 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
           {node.name}
         </span>
         {treeShowCount && !node.isLeaf && node.count !== undefined && node.count > 0 && (
-          <span className="shrink-0 text-[10px] text-gray-400 dark:text-gray-500">({node.count})</span>
+          <span className="shrink-0 text-[10px] font-medium px-1 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 leading-none">
+            {node.count}
+          </span>
         )}
         {isFolder && objectType && (
           <span className="text-[10px] uppercase text-gray-400 dark:text-gray-500 tracking-wide shrink-0">
