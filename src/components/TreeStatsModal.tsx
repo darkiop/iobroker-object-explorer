@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, BarChart2, ChevronUp, ChevronDown } from 'lucide-react';
+import { X, BarChart2, ChevronUp, ChevronDown, Trash2, AlertTriangle } from 'lucide-react';
 import { useEscapeKey } from '../hooks/useEscapeKey';
+import { useDeleteSubtree } from '../hooks/useStates';
 import type { IoBrokerObject } from '../types/iobroker';
 
 interface Props {
@@ -30,6 +31,9 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
 
   const [sortKey, setSortKey] = useState<SortKey>('total');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [pendingDelete, setPendingDelete] = useState<NsStats | null>(null);
+
+  const deleteSubtree = useDeleteSubtree();
 
   const { rows, totals } = useMemo(() => {
     const map = new Map<string, NsStats>();
@@ -87,11 +91,10 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
     }
   }
 
-  function SortIcon({ k }: { k: SortKey }) {
-    if (k !== sortKey) return <span className="opacity-0 w-3 inline-block" />;
-    return sortDir === 'asc'
-      ? <ChevronUp size={11} className="inline-block ml-0.5 opacity-60" />
-      : <ChevronDown size={11} className="inline-block ml-0.5 opacity-60" />;
+  function handleDeleteConfirm() {
+    if (!pendingDelete) return;
+    deleteSubtree.mutate({ id: pendingDelete.ns, allObjects });
+    setPendingDelete(null);
   }
 
   const thClass = 'px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 cursor-pointer select-none hover:text-gray-800 dark:hover:text-gray-200 whitespace-nowrap';
@@ -102,7 +105,7 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
   return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center animate-backdrop-in bg-black/60 backdrop-blur-sm p-4"
-      onClick={onClose}
+      onClick={pendingDelete ? undefined : onClose}
     >
       <div
         className="w-full max-w-2xl bg-white dark:bg-gray-900 animate-modal-in rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[80vh]"
@@ -138,30 +141,31 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
             <thead className="sticky top-0 bg-white dark:bg-gray-900 z-10">
               <tr className="border-b border-gray-200 dark:border-gray-700">
                 <th className={thClass} onClick={() => handleSort('ns')}>
-                  {isEn ? 'Namespace' : 'Namespace'}<SortIcon k="ns" />
+                  {isEn ? 'Namespace' : 'Namespace'}<SortIcon k="ns" sortKey={sortKey} sortDir={sortDir} />
                 </th>
                 <th className={thRClass} onClick={() => handleSort('total')} style={{ minWidth: 140 }}>
-                  {isEn ? 'Objects' : 'Objekte'}<SortIcon k="total" />
+                  {isEn ? 'Objects' : 'Objekte'}<SortIcon k="total" sortKey={sortKey} sortDir={sortDir} />
                 </th>
                 <th className={thRClass} onClick={() => handleSort('states')}>
-                  {isEn ? 'States' : 'States'}<SortIcon k="states" />
+                  {isEn ? 'States' : 'States'}<SortIcon k="states" sortKey={sortKey} sortDir={sortDir} />
                 </th>
                 <th className={thRClass} onClick={() => handleSort('structure')}>
-                  {isEn ? 'Folders/Dev/Ch' : 'Ordner/Ger/Kan'}<SortIcon k="structure" />
+                  {isEn ? 'Folders/Dev/Ch' : 'Ordner/Ger/Kan'}<SortIcon k="structure" sortKey={sortKey} sortDir={sortDir} />
                 </th>
                 <th className={thRClass} onClick={() => handleSort('history')}>
-                  {isEn ? 'History' : 'History'}<SortIcon k="history" />
+                  {isEn ? 'History' : 'History'}<SortIcon k="history" sortKey={sortKey} sortDir={sortDir} />
                 </th>
                 <th className={thRClass} onClick={() => handleSort('smart')}>
-                  {isEn ? 'Smart' : 'Smart'}<SortIcon k="smart" />
+                  {isEn ? 'Smart' : 'Smart'}<SortIcon k="smart" sortKey={sortKey} sortDir={sortDir} />
                 </th>
+                <th className="px-2 py-2 w-8" />
               </tr>
             </thead>
             <tbody>
               {sorted.map((r) => (
                 <tr
                   key={r.ns}
-                  className={`border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${onSelectNamespace ? 'cursor-pointer' : ''}`}
+                  className={`border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 group ${onSelectNamespace ? 'cursor-pointer' : ''}`}
                   onClick={onSelectNamespace ? () => { onSelectNamespace(r.ns); onClose(); } : undefined}
                 >
                   <td className={`${tdClass} font-mono`}>
@@ -188,6 +192,15 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
                   <td className={`${tdRClass} ${r.smart > 0 ? 'text-violet-600 dark:text-violet-400' : 'text-gray-400 dark:text-gray-600'}`}>
                     {r.smart > 0 ? r.smart : '—'}
                   </td>
+                  <td className="px-2 py-1.5 text-right">
+                    <button
+                      title={isEn ? `Delete namespace ${r.ns}` : `Namespace ${r.ns} löschen`}
+                      className="opacity-0 group-hover:opacity-100 p-1 rounded text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-opacity"
+                      onClick={(e) => { e.stopPropagation(); setPendingDelete(r); }}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -205,12 +218,44 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
                 <td className={`${tdRClass} ${totals.smart > 0 ? 'text-violet-600 dark:text-violet-400' : ''}`}>
                   {totals.smart}
                 </td>
+                <td />
               </tr>
             </tfoot>
           </table>
         </div>
+
+        {/* Inline delete confirmation */}
+        {pendingDelete && (
+          <div className="shrink-0 border-t border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-5 py-3 flex items-center gap-3">
+            <AlertTriangle size={15} className="text-red-500 shrink-0" />
+            <span className="text-xs text-red-700 dark:text-red-300 flex-1">
+              {isEn
+                ? `Delete namespace "${pendingDelete.ns}" and all ${pendingDelete.total} objects (${pendingDelete.states} states)?`
+                : `Namespace „${pendingDelete.ns}" und alle ${pendingDelete.total} Objekte (${pendingDelete.states} States) löschen?`}
+            </span>
+            <button
+              onClick={() => setPendingDelete(null)}
+              className="px-3 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              {isEn ? 'Cancel' : 'Abbrechen'}
+            </button>
+            <button
+              onClick={handleDeleteConfirm}
+              className="px-3 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white font-medium"
+            >
+              {isEn ? 'Delete' : 'Löschen'}
+            </button>
+          </div>
+        )}
       </div>
     </div>,
     document.body
   );
+}
+
+function SortIcon({ k, sortKey, sortDir }: { k: SortKey; sortKey: SortKey; sortDir: 'asc' | 'desc' }) {
+  if (k !== sortKey) return <span className="opacity-0 w-3 inline-block" />;
+  return sortDir === 'asc'
+    ? <ChevronUp size={11} className="inline-block ml-0.5 opacity-60" />
+    : <ChevronDown size={11} className="inline-block ml-0.5 opacity-60" />;
 }
