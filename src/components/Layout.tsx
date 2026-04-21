@@ -219,30 +219,32 @@ export default function Layout({
               {hostError && <span className="text-xs text-red-400">{hostError}</span>}
             </form>
           ) : (
-            <button
-              onClick={() => { setEditingHost(true); }}
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-sm font-semibold font-mono shadow-sm border transition-colors ${
-                apiConnected
-                  ? 'border-emerald-300/80 dark:border-emerald-700/70 bg-emerald-100/80 dark:bg-emerald-900/35 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200/80 dark:hover:bg-emerald-800/50'
-                  : 'border-red-300/80 dark:border-red-700/70 bg-red-100/80 dark:bg-red-900/35 text-red-700 dark:text-red-300 hover:bg-red-200/80 dark:hover:bg-red-800/50'
-              }`}
-              title={language === 'en' ? 'Click to change host' : 'Klicken zum Ändern'}
-            >
-              {apiConnected
-                ? (language === 'en' ? 'Connected to' : 'Verbunden mit')
-                : (language === 'en' ? 'Not connected to' : 'Nicht verbunden mit')
-              }: {currentHost || '—'}
-              <Pencil size={11} className="opacity-50" />
-            </button>
-            {onManualRefresh && (
+            <>
               <button
-                onClick={onManualRefresh}
-                className="p-1.5 rounded-lg text-gray-500 hover:text-emerald-600 hover:bg-emerald-500/10 dark:text-gray-400 dark:hover:text-emerald-400 dark:hover:bg-emerald-500/10 transition-colors"
-                title={language === 'en' ? 'Refresh API' : 'API aktualisieren'}
+                onClick={() => { setEditingHost(true); }}
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-sm font-semibold font-mono shadow-sm border transition-colors ${
+                  apiConnected
+                    ? 'border-emerald-300/80 dark:border-emerald-700/70 bg-emerald-100/80 dark:bg-emerald-900/35 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200/80 dark:hover:bg-emerald-800/50'
+                    : 'border-red-300/80 dark:border-red-700/70 bg-red-100/80 dark:bg-red-900/35 text-red-700 dark:text-red-300 hover:bg-red-200/80 dark:hover:bg-red-800/50'
+                }`}
+                title={language === 'en' ? 'Click to change host' : 'Klicken zum Ändern'}
               >
-                <RefreshCw size={14} />
+                {apiConnected
+                  ? (language === 'en' ? 'Connected to' : 'Verbunden mit')
+                  : (language === 'en' ? 'Not connected to' : 'Nicht verbunden mit')
+                }: {currentHost || '—'}
+                <Pencil size={11} className="opacity-50" />
               </button>
-            )}
+              {onManualRefresh && (
+                <button
+                  onClick={onManualRefresh}
+                  className="p-1.5 rounded-lg text-gray-500 hover:text-emerald-600 hover:bg-emerald-500/10 dark:text-gray-400 dark:hover:text-emerald-400 dark:hover:bg-emerald-500/10 transition-colors"
+                  title={language === 'en' ? 'Refresh API' : 'API aktualisieren'}
+                >
+                  <RefreshCw size={14} />
+                </button>
+              )}
+            </>
           )}
         </div>
         <div className="flex items-center gap-3">
