@@ -1139,7 +1139,7 @@ function TsRangeFilterControl({
 export type { SortKey, DateFormatSetting } from './stateListColumns';
 export { ALL_COLUMNS, getColumnLabel, DEFAULT_COLS } from './stateListColumns';
 import type { SortKey, DateFormatSetting } from './stateListColumns';
-import { DEFAULT_COLS, getColumnLabel as _getColumnLabel, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MAX_WIDTHS } from './stateListColumns';
+import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel as _getColumnLabel, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MAX_WIDTHS } from './stateListColumns';
 const getColumnLabel = _getColumnLabel;
 const LS_KEY = 'iobroker-visible-cols';
 
@@ -1382,6 +1382,7 @@ interface StateRowProps {
   expertMode: boolean;
   isFocused: boolean;
   showDesc?: boolean;
+  childCounts?: { objs: number; states: number };
 }
 
 function aliasIdsEqual(a?: string[], b?: string[]): boolean {
@@ -1399,7 +1400,7 @@ const StateRow = React.memo(function StateRow({
   onSelect, onCheck, onContextMenu, onHistoryClick, onNavigateTo, onDeleteClick, onEditJson,
   onSelectRoom, onSelectFunction, onOpenValueModal,
   roomEditForced, fnEditForced, onRoomEditEnd, onFnEditEnd,
-  dateFormat, language, expertMode, isFocused, showDesc = true,
+  dateFormat, language, expertMode, isFocused, showDesc = true, childCounts,
 }: StateRowProps) {
   const isEn = language === 'en';
   const show = (key: SortKey) => visibleCols.includes(key);
@@ -1573,6 +1574,15 @@ const StateRow = React.memo(function StateRow({
         </td>
       )}
       {show('name') && <EditableNameCell id={id} name={name} desc={resolveI18n(obj?.common?.desc)} showDesc={showDesc} />}
+      {show('children') && (
+        <td data-col="children" className="px-3 py-2 text-center">
+          {childCounts && childCounts.objs > 0 && (
+            <span className="inline-block text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400 whitespace-nowrap tabular-nums" title={`${childCounts.objs} objects, ${childCounts.states} states`}>
+              {childCounts.objs} / {childCounts.states}
+            </span>
+          )}
+        </td>
+      )}
       {show('room') && (
         <EditableRoomCell
           id={id}
@@ -2392,6 +2402,31 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   );
 
   const existingIds = useMemo(() => new Set(Object.keys(objects)), [objects]);
+
+  const childrenColVisible = visibleCols.includes('children');
+  const childCountMap = useMemo(() => {
+    if (!childrenColVisible) return new Map<string, { objs: number; states: number }>();
+    const objCount = new Map<string, number>();
+    const stateCount = new Map<string, number>();
+    for (const [id, obj] of Object.entries(objects)) {
+      const parts = id.split('.');
+      for (let i = 1; i < parts.length; i++) {
+        const ancestor = parts.slice(0, i).join('.');
+        if (ancestor in objects) {
+          objCount.set(ancestor, (objCount.get(ancestor) ?? 0) + 1);
+          if (obj?.type === 'state') stateCount.set(ancestor, (stateCount.get(ancestor) ?? 0) + 1);
+        }
+      }
+    }
+    const map = new Map<string, { objs: number; states: number }>();
+    for (const [id, obj] of Object.entries(objects)) {
+      if (obj?.type === 'folder' || obj?.type === 'device' || obj?.type === 'channel') {
+        const objs = objCount.get(id) ?? 0;
+        if (objs > 0) map.set(id, { objs, states: stateCount.get(id) ?? 0 });
+      }
+    }
+    return map;
+  }, [objects, childrenColVisible]);
   const noRoomLabel = isEn ? '— No room —' : '— Kein Raum —';
   const noFunctionLabel = isEn ? '— No function —' : '— Keine Funktion —';
   const roomById = useMemo(() => new Map(roomEnums.map((r) => [r.id, r.name])), [roomEnums]);
@@ -2789,8 +2824,9 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
               {show('room')     && <SortHeader label={isEn ? 'Room' : 'Raum'} sortKey="room" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('room')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
               {show('function') && <SortHeader label={isEn ? 'Function' : 'Funktion'} sortKey="function" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('function')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
               {show('type')    && <SortHeader label={isEn ? 'Type' : 'Typ'} sortKey="type" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('type')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
-              {show('role')    && <SortHeader label={isEn ? 'Role' : 'Rolle'} sortKey="role" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('role')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
-              {show('value')   && <SortHeader label={isEn ? 'Value' : 'Wert'} sortKey="value" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('value')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} className="text-left" />}
+              {show('role')     && <SortHeader label={isEn ? 'Role' : 'Rolle'} sortKey="role" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('role')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
+              {show('children') && <SortHeader label={isEn ? 'Children' : 'Kinder'} sortKey="children" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('children')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} className="text-center" />}
+              {show('value')    && <SortHeader label={isEn ? 'Value' : 'Wert'} sortKey="value" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('value')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} className="text-left" />}
               {show('unit')    && <SortHeader label={isEn ? 'Unit' : 'Einheit'} sortKey="unit" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('unit')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
               {show('ack')     && <SortHeader label="ACK" sortKey="ack" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('ack')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
               {show('ts')      && <SortHeader label={isEn ? 'Last Update' : 'Letztes Update'} sortKey="ts" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('ts')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
@@ -3056,6 +3092,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                   expertMode={expertMode}
                   isFocused={focusedId === id && selectedId !== id}
                   showDesc={showDesc}
+                  childCounts={childCountMap.get(id)}
                 />
               );
             })}
