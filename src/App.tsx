@@ -472,6 +472,8 @@ function AppContent() {
   const totalPages = paginationDisabled ? 1 : Math.ceil(totalCount / appSettings.pageSize);
 
   const { data: stateValues, refetch: refetchStateValues, dataUpdatedAt: statesUpdatedAt } = useStateValues(pageIds);
+  const lastValidUpdatedAt = useRef<number>(0);
+  if (statesUpdatedAt > 0) lastValidUpdatedAt.current = statesUpdatedAt;
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -816,7 +818,7 @@ function AppContent() {
       onLanguageChange={handleLanguageChange}
       language={appSettings.language}
       apiConnected={!objectsError}
-      lastUpdated={statesUpdatedAt > 0 ? statesUpdatedAt : undefined}
+      lastUpdated={lastValidUpdatedAt.current > 0 ? lastValidUpdatedAt.current : undefined}
       adminPort={appSettings.adminPort}
       onManualRefresh={handleManualRefresh}
       sidebar={

@@ -739,6 +739,7 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
         historyIds={historyIds}
         smartIds={smartIds}
         language={language ?? 'en'}
+        onSelectNamespace={(ns) => onTreeScope(`${ns}.`)}
       />
     )}
     </>

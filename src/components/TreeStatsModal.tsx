@@ -10,6 +10,7 @@ interface Props {
   historyIds: Set<string>;
   smartIds: Set<string>;
   language: 'en' | 'de';
+  onSelectNamespace?: (ns: string) => void;
 }
 
 type SortKey = 'ns' | 'total' | 'states' | 'structure' | 'history' | 'smart';
@@ -23,7 +24,7 @@ interface NsStats {
   smart: number;
 }
 
-export default function TreeStatsModal({ onClose, allObjects, historyIds, smartIds, language }: Props) {
+export default function TreeStatsModal({ onClose, allObjects, historyIds, smartIds, language, onSelectNamespace }: Props) {
   useEscapeKey(onClose);
   const isEn = language === 'en';
 
@@ -117,6 +118,11 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
             <span className="text-xs text-gray-400 dark:text-gray-500">
               ({rows.length} {isEn ? 'namespaces' : 'Namespaces'})
             </span>
+            {onSelectNamespace && (
+              <span className="text-xs text-gray-400 dark:text-gray-500 italic">
+                — {isEn ? 'click row to filter' : 'Zeile klicken zum Filtern'}
+              </span>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -153,8 +159,16 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
             </thead>
             <tbody>
               {sorted.map((r) => (
-                <tr key={r.ns} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                  <td className={`${tdClass} font-mono`}>{r.ns}</td>
+                <tr
+                  key={r.ns}
+                  className={`border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${onSelectNamespace ? 'cursor-pointer' : ''}`}
+                  onClick={onSelectNamespace ? () => { onSelectNamespace(r.ns); onClose(); } : undefined}
+                >
+                  <td className={`${tdClass} font-mono`}>
+                    {onSelectNamespace ? (
+                      <span className="text-blue-600 dark:text-blue-400 hover:underline">{r.ns}</span>
+                    ) : r.ns}
+                  </td>
                   <td className={tdRClass} style={{ minWidth: 140 }}>
                     <div className="flex items-center justify-end gap-2">
                       <div className="flex-1 max-w-[80px] h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">

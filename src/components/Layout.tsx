@@ -244,16 +244,15 @@ export default function Layout({
                   <RefreshCw size={14} />
                 </button>
               )}
+              {lastUpdated && (
+                <span className="text-[11px] font-mono font-medium px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+                  {new Date(lastUpdated).toLocaleTimeString()}
+                </span>
+              )}
             </>
           )}
         </div>
         <div className="flex items-center gap-3">
-          {lastUpdated && (
-            <div className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 font-mono">
-              <RefreshCw size={10} />
-              {new Date(lastUpdated).toLocaleTimeString()}
-            </div>
-          )}
           <LanguageDropdown value={language} onChange={(next) => onLanguageChange?.(next)} compact />
           {currentHost && (
             <a
