@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, memo } from 'react';
-import { ChevronRight, ChevronDown, ChevronsUpDown, ChevronsDownUp, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil, LayoutList, LayoutGrid, Plus, FileCode2, Link2, UserRound, ShieldAlert, Download, Trash2, Filter } from 'lucide-react';
+import { ChevronRight, ChevronDown, ChevronsUpDown, ChevronsDownUp, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil, LayoutList, LayoutGrid, Plus, FileCode2, Link2, UserRound, ShieldAlert, Download, Trash2, Filter, BarChart2 } from 'lucide-react';
 import type { TreeNode, IoBrokerObject } from '../types/iobroker';
 import ObjectEditModal from './ObjectEditModal';
 import ContextMenu from './ContextMenu';
@@ -7,6 +7,7 @@ import type { ContextMenuEntry } from './ContextMenu';
 import ConfirmDialog from './ConfirmDialog';
 import { useDeleteSubtree } from '../hooks/useStates';
 import { copyText } from '../utils/clipboard';
+import TreeStatsModal from './TreeStatsModal';
 
 interface StateTreeProps {
   stateIds: string[];
@@ -554,6 +555,7 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
   const [showDevices,  setShowDevices]  = useState(true);
   const [showChannels, setShowChannels] = useState(true);
   const [treeViewMode, setTreeViewMode] = useState<'path' | 'adapter'>('adapter');
+  const [showStats, setShowStats] = useState(false);
   const treeSearch = treeSearchProp;
   const setTreeSearch = onTreeSearchChange ?? (() => {});
 
@@ -613,6 +615,7 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
     { key: 'channels', label: 'Channel', active: showChannels, set: setShowChannels, icon: <Layers   size={11} />, color: 'text-indigo-600 dark:text-indigo-400' },
   ] as const;
   return (
+    <>
     <div className="flex flex-col h-full overflow-hidden">
       <div className="flex gap-1.5 px-3 py-2 border-b border-gray-200 dark:border-gray-700 shrink-0">
         <button
@@ -643,6 +646,13 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
             : (isEn ? 'Adapter view' : 'Adapter-Ansicht')}
         >
           {treeViewMode === 'adapter' ? <LayoutList size={13} /> : <LayoutGrid size={13} />}
+        </button>
+        <button
+          onClick={() => setShowStats(true)}
+          className="flex items-center justify-center px-2 py-1 text-xs rounded bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-300 dark:border-gray-600/50 dark:hover:bg-gray-700"
+          title={isEn ? 'Statistics' : 'Statistik'}
+        >
+          <BarChart2 size={13} />
         </button>
       </div>
       <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 shrink-0">
@@ -720,6 +730,16 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
         )}
       </div>
     </div>
+    {showStats && (
+      <TreeStatsModal
+        onClose={() => setShowStats(false)}
+        allObjects={allObjects}
+        historyIds={historyIds}
+        smartIds={smartIds}
+        language={language ?? 'en'}
+      />
+    )}
+    </>
   );
 }
 
