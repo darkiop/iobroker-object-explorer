@@ -46,7 +46,7 @@ export function getColumnLabel(key: SortKey, language: 'en' | 'de' = 'de'): stri
   }
 }
 
-export const DEFAULT_COLS: SortKey[] = ['checkbox', 'write', 'history', 'smart', 'alias', 'id', 'name', 'room', 'function', 'type', 'role', 'value', 'unit', 'ack', 'ts'];
+export const DEFAULT_COLS: SortKey[] = ['checkbox', 'write', 'history', 'smart', 'scripts', 'alias', 'id', 'name', 'room', 'function', 'type', 'role', 'value', 'unit', 'ack', 'ts'];
 
 /** Columns whose width is user-configurable (excludes fixed icon columns) */
 export const CONFIGURABLE_WIDTH_COLS: SortKey[] = ['id', 'name', 'room', 'function', 'type', 'role', 'value', 'unit', 'ack', 'ts', 'relevanz'];
