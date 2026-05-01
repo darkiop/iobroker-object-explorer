@@ -22,6 +22,7 @@ import { ColoredId } from '../utils/coloredId';
 import { getTypeColor } from '../utils/typeColor';
 import { getRoleColor } from '../utils/roleColor';
 import { useToast } from '../context/ToastContext';
+import { ALL_COLUMNS } from './stateListColumns';
 
 export interface StateListHandle {
   fitToContainer: () => void;
