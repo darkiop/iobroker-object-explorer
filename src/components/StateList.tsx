@@ -2892,6 +2892,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
               {show('write')   && <th style={{ width: colWidths['write'],   minWidth: colWidths['write']   }} />}
               {show('history') && <th style={{ width: colWidths['history'], minWidth: colWidths['history'] }} />}
               {show('smart')   && <th style={{ width: colWidths['smart'],   minWidth: colWidths['smart']   }} />}
+              {show('scripts') && <th style={{ width: colWidths['scripts'], minWidth: colWidths['scripts'] }} />}
               {show('alias')   && <th style={{ width: w('alias'),           minWidth: w('alias')           }} />}
               {show('id')      && <SortHeader label="ID" sortKey="id" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('id')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
               {show('name')    && <SortHeader label={isEn ? 'Name' : 'Name'} sortKey="name" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('name')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
