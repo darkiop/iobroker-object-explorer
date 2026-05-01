@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
-import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, putFullObject, createObject, deleteObject, deleteObjectsMany, renameDatapoint, getAllRoles, getAllUnits, setState, getRoomMap, getAllObjects, getRoomEnums, updateRoomMembership, updateRoomMembershipBatch, getFunctionMap, getFunctionEnums, updateFunctionMembership, updateFunctionMembershipBatch, buildAliasReverseMap, importDatapoints, getSqlInstances, createEnumObject, renameEnumObject, findScriptsUsingObject } from '../api/iobroker';
+import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, putFullObject, createObject, deleteObject, deleteObjectsMany, renameDatapoint, getAllRoles, getAllUnits, setState, getRoomMap, getAllObjects, getRoomEnums, updateRoomMembership, updateRoomMembershipBatch, getFunctionMap, getFunctionEnums, updateFunctionMembership, updateFunctionMembershipBatch, buildAliasReverseMap, importDatapoints, getSqlInstances, createEnumObject, renameEnumObject, findScriptsUsingObject, getAllScriptSources } from '../api/iobroker';
 import type { IoBrokerObject, IoBrokerObjectCommon, IoBrokerState, HistoryOptions } from '../types/iobroker';
 
 const queryKeys = {
@@ -30,6 +30,7 @@ const queryKeys = {
   },
   scripts: {
     usages: (objectId: string) => ['scripts', 'usages', objectId] as const,
+    sources: ['scripts', 'sources'] as const,
   },
 };
 
@@ -544,6 +545,14 @@ export function useDeleteEnum() {
       queryClient.invalidateQueries({ queryKey: queryKeys.metadata.functionMap });
       queryClient.invalidateQueries({ queryKey: queryKeys.objects.all });
     },
+  });
+}
+
+export function useAllScriptSources() {
+  return useQuery({
+    queryKey: queryKeys.scripts.sources,
+    queryFn: getAllScriptSources,
+    staleTime: 5 * 60_000,
   });
 }
 

@@ -1,4 +1,4 @@
-export type SortKey = 'checkbox' | 'write' | 'alias' | 'id' | 'name' | 'room' | 'function' | 'type' | 'role' | 'value' | 'unit' | 'ack' | 'ts' | 'history' | 'smart' | 'relevanz' | 'children';
+export type SortKey = 'checkbox' | 'write' | 'alias' | 'id' | 'name' | 'room' | 'function' | 'type' | 'role' | 'value' | 'unit' | 'ack' | 'ts' | 'history' | 'smart' | 'scripts' | 'relevanz' | 'children';
 export type DateFormatSetting = 'de' | 'us' | 'iso';
 
 export const ALL_COLUMNS: { key: SortKey; label: string }[] = [
@@ -6,6 +6,7 @@ export const ALL_COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'write',   label: 'Schreibschutz' },
   { key: 'history', label: 'History' },
   { key: 'smart',   label: 'SmartName' },
+  { key: 'scripts', label: 'Skripte' },
   { key: 'alias',   label: 'Alias' },
   { key: 'id',      label: 'ID' },
   { key: 'name',    label: 'Name' },
@@ -27,6 +28,7 @@ export function getColumnLabel(key: SortKey, language: 'en' | 'de' = 'de'): stri
     case 'write': return isEn ? 'Read only' : 'Schreibschutz';
     case 'history': return 'History';
     case 'smart': return 'SmartName';
+    case 'scripts': return isEn ? 'Scripts' : 'Skripte';
     case 'alias': return 'Alias';
     case 'id': return 'ID';
     case 'name': return 'Name';
@@ -50,7 +52,7 @@ export const DEFAULT_COLS: SortKey[] = ['checkbox', 'write', 'history', 'smart',
 export const CONFIGURABLE_WIDTH_COLS: SortKey[] = ['id', 'name', 'room', 'function', 'type', 'role', 'value', 'unit', 'ack', 'ts', 'relevanz'];
 
 export const BUILTIN_DEFAULT_WIDTHS: Record<SortKey, number> = {
-  checkbox: 28, write: 22, history: 22, smart: 22, alias: 30,
+  checkbox: 28, write: 22, history: 22, smart: 22, scripts: 22, alias: 30,
   id: 350, name: 220, room: 110, function: 110, type: 70, role: 130, children: 80, value: 100,
   unit: 70, ack: 50, ts: 155, relevanz: 100,
 };

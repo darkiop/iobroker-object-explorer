@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Cpu, Layers, Network } from 'lucide-react';
+import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Cpu, Layers, Network, FileCode2 } from 'lucide-react';
 import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
@@ -62,6 +62,8 @@ interface StateListProps {
   onToggleGroupByPath?: () => void;
   customDefaultWidths?: Partial<Record<SortKey, number>>;
   customMaxWidths?: Partial<Record<SortKey, number>>;
+  scriptSources?: string;
+  onScriptsClick?: (id: string) => void;
 }
 
 function formatTimestamp(ts: number, dateFormat: DateFormatSetting): string {
@@ -1366,6 +1368,8 @@ interface StateRowProps {
   onCheck: (id: string, checked: boolean) => void;
   onContextMenu: (x: number, y: number, id: string) => void;
   onHistoryClick: (id: string) => void;
+  onScriptsClick?: (id: string) => void;
+  scriptSources?: string;
   onNavigateTo?: (ids: string[]) => void;
   onDeleteClick: (id: string) => void;
   onEditJson: (id: string) => void;
@@ -1397,10 +1401,10 @@ const StateRow = React.memo(function StateRow({
   id, state, obj, roomName, fnName,
   isSelected, isChecked, aliasIds, ownTargetExists,
   visibleCols, colWidths, roles, units, roomEnums, fnEnums,
-  onSelect, onCheck, onContextMenu, onHistoryClick, onNavigateTo, onDeleteClick, onEditJson,
+  onSelect, onCheck, onContextMenu, onHistoryClick, onScriptsClick, onNavigateTo, onDeleteClick, onEditJson,
   onSelectRoom, onSelectFunction, onOpenValueModal,
   roomEditForced, fnEditForced, onRoomEditEnd, onFnEditEnd,
-  dateFormat, language, expertMode, isFocused, showDesc = true, childCounts, treeDepth,
+  dateFormat, language, expertMode, isFocused, showDesc = true, childCounts, treeDepth, scriptSources,
 }: StateRowProps) {
   const isEn = language === 'en';
   const show = (key: SortKey) => visibleCols.includes(key);
@@ -1485,6 +1489,21 @@ const StateRow = React.memo(function StateRow({
               <span className="p-0.5 rounded hover:bg-violet-500/15 dark:hover:bg-violet-500/20 transition-colors">
                 <Mic2 size={15} className="text-violet-500 dark:text-violet-400" />
               </span>
+            )}
+          </div>
+        </td>
+      )}
+      {show('scripts') && (
+        <td style={{ width: colWidths['scripts'], minWidth: colWidths['scripts'] }} className="py-2 align-middle">
+          <div className="flex items-center justify-center">
+            {scriptSources?.includes(id) && (
+              <button
+                onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onScriptsClick?.(id); }}
+                title={isEn ? 'Show script usages' : 'Skript-Verwendungen anzeigen'}
+                className="p-0.5 rounded text-green-600 dark:text-green-500 hover:bg-green-500/15 dark:hover:bg-green-500/20 transition-colors"
+              >
+                <FileCode2 size={15} />
+              </button>
             )}
           </div>
         </td>
@@ -1672,7 +1691,7 @@ const StateRow = React.memo(function StateRow({
   );
 });
 
-function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, allObjectIds, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh: _onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en', expertMode = false, onToggleExpertMode, toolbarLabels = true, onOpenEnumManager, onOpenAliasReplace, tableFontSize = 'normal', showDesc = true, groupByPath = false, onToggleGroupByPath, customDefaultWidths, customMaxWidths }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
+function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, allObjectIds, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh: _onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en', expertMode = false, onToggleExpertMode, toolbarLabels = true, onOpenEnumManager, onOpenAliasReplace, tableFontSize = 'normal', showDesc = true, groupByPath = false, onToggleGroupByPath, customDefaultWidths, customMaxWidths, scriptSources, onScriptsClick }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
   const effectiveDefaults: Record<SortKey, number> = { ...BUILTIN_DEFAULT_WIDTHS, ...(customDefaultWidths ?? {}) };
   const effectiveMax: Partial<Record<SortKey, number>> = { ...BUILTIN_MAX_WIDTHS, ...(customMaxWidths ?? {}) };
   const effectiveMaxRef = useRef(effectiveMax);
@@ -3163,6 +3182,8 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                   onCheck={handleCheckRow}
                   onContextMenu={handleRowContextMenu}
                   onHistoryClick={handleRowHistoryClick}
+                  onScriptsClick={onScriptsClick}
+                  scriptSources={scriptSources}
                   onNavigateTo={onNavigateTo}
                   onDeleteClick={handleRowDeleteClick}
                   onEditJson={handleRowEditJsonClick}
