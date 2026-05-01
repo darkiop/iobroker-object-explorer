@@ -515,6 +515,31 @@ export async function renameEnumObject(enumId: string, newName: string): Promise
   await putFullObject(enumId, { ...obj, common: { ...obj.common, name: newName } });
 }
 
+export interface ScriptUsage {
+  scriptId: string;
+  scriptName: string;
+  enabled: boolean;
+  engineType: string;
+}
+
+export async function findScriptsUsingObject(objectId: string): Promise<ScriptUsage[]> {
+  const res = await fetchApi<Record<string, IoBrokerObject>>('/objects?type=script');
+  const results: ScriptUsage[] = [];
+  for (const [scriptId, obj] of Object.entries(res)) {
+    if (!scriptId.startsWith('script.js.') || obj.type !== 'script') continue;
+    const common = obj.common as unknown as Record<string, unknown>;
+    const source: string = (common?.source as string) ?? '';
+    if (!source.includes(objectId)) continue;
+    results.push({
+      scriptId,
+      scriptName: parseLocalizedName(obj.common?.name) || scriptId,
+      enabled: Boolean(common?.enabled),
+      engineType: String(common?.engineType ?? ''),
+    });
+  }
+  return results.sort((a, b) => a.scriptId.localeCompare(b.scriptId));
+}
+
 export async function setState(id: string, val: unknown, ack?: boolean): Promise<void> {
   const res = await fetch(`${getBaseUrl()}/state/${encodeURIComponent(id)}`, {
     method: 'PATCH',

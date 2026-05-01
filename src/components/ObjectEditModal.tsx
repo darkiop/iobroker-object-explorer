@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { createPortal } from 'react-dom';
-import { X, Save, AlertTriangle, Link2, Check, Wrench, Trash2, Maximize2, Copy, ChevronDown, Lock, Zap, PenLine, FolderInput } from 'lucide-react';
-import { usePutObject, useExtendObject, useStateDetail, useSetState, useAllRoles, useAllUnits, useDeleteObject, useAllObjects, useRoomEnums, useFunctionEnums, useUpdateRoomMembership, useUpdateFunctionMembership, useSqlInstances } from '../hooks/useStates';
+import { X, Save, AlertTriangle, Link2, Check, Wrench, Trash2, Maximize2, Copy, ChevronDown, Lock, Zap, PenLine, FolderInput, FileCode2, CircleCheck, CirclePause, RefreshCw } from 'lucide-react';
+import { usePutObject, useExtendObject, useStateDetail, useSetState, useAllRoles, useAllUnits, useDeleteObject, useAllObjects, useRoomEnums, useFunctionEnums, useUpdateRoomMembership, useUpdateFunctionMembership, useSqlInstances, useScriptUsages } from '../hooks/useStates';
 import { hasHistory } from '../api/iobroker';
 import HistoryChart from './HistoryChart';
 import ConfirmDialog from './ConfirmDialog';
@@ -21,10 +21,10 @@ interface Props {
   onOpenHistory?: () => void;
   language?: 'en' | 'de';
   dateFormat?: 'de' | 'us' | 'iso';
-  initialTab?: 'details' | 'json' | 'alias' | 'custom';
+  initialTab?: 'details' | 'json' | 'alias' | 'custom' | 'scripts';
 }
 
-type Tab = 'details' | 'json' | 'alias' | 'custom';
+type Tab = 'details' | 'json' | 'alias' | 'custom' | 'scripts';
 const STATE_TYPES = ['number', 'string', 'boolean', 'array', 'object', 'mixed'] as const;
 
 const SQL_CUSTOM_DEFAULT: Record<string, unknown> = {
@@ -446,6 +446,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
   const { data: allObjects } = useAllObjects();
   const existingIds = useMemo(() => new Set(Object.keys(allObjects ?? {})), [allObjects]);
   const { data: sqlInstances = [] } = useSqlInstances();
+  const { data: scriptUsages, isFetching: scriptsFetching, refetch: refetchScripts } = useScriptUsages(id, tab === 'scripts');
 
   const role = obj.common?.role ?? '';
   const type = obj.common?.type ?? '';
@@ -656,7 +657,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
 
           {/* Tabs */}
           <div className="flex border-b border-gray-200 dark:border-gray-700 shrink-0 px-5">
-            {(['details', 'json', ...(id.startsWith('alias.') ? ['alias'] : []), 'custom'] as Tab[]).map((t) => (
+            {(['details', 'json', ...(id.startsWith('alias.') ? ['alias'] : []), 'custom', 'scripts'] as Tab[]).map((t) => (
               <button
                 key={t}
                 onClick={() => { setTab(t); setJsonError(null); }}
@@ -666,7 +667,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                     : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                 }`}
               >
-                {t === 'details' ? 'Details' : t === 'json' ? 'JSON' : t === 'alias' ? 'Alias' : 'Custom'}
+                {t === 'details' ? 'Details' : t === 'json' ? 'JSON' : t === 'alias' ? 'Alias' : t === 'custom' ? 'Custom' : (isEn ? 'Scripts' : 'Skripte')}
               </button>
             ))}
           </div>
@@ -1160,6 +1161,65 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                     <pre className="font-mono text-gray-600 dark:text-gray-300 whitespace-pre-wrap break-all">
                       {JSON.stringify(obj.common.alias, null, 2)}
                     </pre>
+                  </div>
+                )}
+              </div>
+            )}
+
+
+            {tab === 'scripts' && (
+              <div className="px-5 py-4 flex flex-col gap-3 overflow-y-auto flex-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {isEn
+                      ? `ioBroker scripts that reference "${id}" in their source code.`
+                      : `ioBroker-Skripte, die "${id}" im Quellcode referenzieren.`}
+                  </p>
+                  <button
+                    onClick={() => refetchScripts()}
+                    disabled={scriptsFetching}
+                    className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-40"
+                    title={isEn ? 'Reload' : 'Neu laden'}
+                  >
+                    <RefreshCw size={11} className={scriptsFetching ? 'animate-spin' : ''} />
+                    {isEn ? 'Reload' : 'Neu laden'}
+                  </button>
+                </div>
+                {scriptsFetching && !scriptUsages && (
+                  <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
+                    <RefreshCw size={13} className="animate-spin" />
+                    {isEn ? 'Searching scripts…' : 'Skripte werden durchsucht…'}
+                  </div>
+                )}
+                {scriptUsages && scriptUsages.length === 0 && (
+                  <div className="flex flex-col items-center gap-2 py-8 text-gray-400 dark:text-gray-500">
+                    <FileCode2 size={28} className="opacity-30" />
+                    <span className="text-xs">{isEn ? 'No scripts found that reference this ID.' : 'Keine Skripte gefunden, die diese ID referenzieren.'}</span>
+                    <span className="text-[11px] text-gray-400/70 dark:text-gray-600">{isEn ? 'Note: only script source code is searched (text match).' : 'Hinweis: nur der Quellcode wird durchsucht (Textsuche).'}</span>
+                  </div>
+                )}
+                {scriptUsages && scriptUsages.length > 0 && (
+                  <div className="flex flex-col gap-1.5">
+                    {scriptUsages.map((s) => (
+                      <div key={s.scriptId} className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                        {s.enabled
+                          ? <CircleCheck size={14} className="text-green-500 shrink-0 mt-0.5" />
+                          : <CirclePause size={14} className="text-gray-400 dark:text-gray-500 shrink-0 mt-0.5" />
+                        }
+                        <div className="flex flex-col gap-0.5 min-w-0">
+                          <span className="text-xs font-medium text-gray-700 dark:text-gray-200 truncate">{s.scriptName}</span>
+                          <span className="font-mono text-[11px] text-gray-400 dark:text-gray-500 truncate">{s.scriptId}</span>
+                          {s.engineType && (
+                            <span className="text-[10px] text-gray-400 dark:text-gray-600">{s.engineType}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    <p className="text-[11px] text-gray-400 dark:text-gray-600 pt-1">
+                      {isEn
+                        ? 'Results are text matches — false positives possible (comments, strings, dead code).'
+                        : 'Ergebnisse sind Textsuchen — falsch-positive möglich (Kommentare, Strings, toter Code).'}
+                    </p>
                   </div>
                 )}
               </div>

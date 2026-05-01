@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
-import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, putFullObject, createObject, deleteObject, deleteObjectsMany, renameDatapoint, getAllRoles, getAllUnits, setState, getRoomMap, getAllObjects, getRoomEnums, updateRoomMembership, updateRoomMembershipBatch, getFunctionMap, getFunctionEnums, updateFunctionMembership, updateFunctionMembershipBatch, buildAliasReverseMap, importDatapoints, getSqlInstances, createEnumObject, renameEnumObject } from '../api/iobroker';
+import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, putFullObject, createObject, deleteObject, deleteObjectsMany, renameDatapoint, getAllRoles, getAllUnits, setState, getRoomMap, getAllObjects, getRoomEnums, updateRoomMembership, updateRoomMembershipBatch, getFunctionMap, getFunctionEnums, updateFunctionMembership, updateFunctionMembershipBatch, buildAliasReverseMap, importDatapoints, getSqlInstances, createEnumObject, renameEnumObject, findScriptsUsingObject } from '../api/iobroker';
 import type { IoBrokerObject, IoBrokerObjectCommon, IoBrokerState, HistoryOptions } from '../types/iobroker';
 
 const queryKeys = {
@@ -27,6 +27,9 @@ const queryKeys = {
     roomEnums: ['metadata', 'rooms', 'enums'] as const,
     functionMap: ['metadata', 'functions', 'map'] as const,
     functionEnums: ['metadata', 'functions', 'enums'] as const,
+  },
+  scripts: {
+    usages: (objectId: string) => ['scripts', 'usages', objectId] as const,
   },
 };
 
@@ -541,6 +544,15 @@ export function useDeleteEnum() {
       queryClient.invalidateQueries({ queryKey: queryKeys.metadata.functionMap });
       queryClient.invalidateQueries({ queryKey: queryKeys.objects.all });
     },
+  });
+}
+
+export function useScriptUsages(objectId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.scripts.usages(objectId),
+    queryFn: () => findScriptsUsingObject(objectId),
+    enabled,
+    staleTime: 60_000,
   });
 }
 
