@@ -15,7 +15,7 @@ import EnumManagerModal from './components/EnumManagerModal';
 import AliasReplaceModal from './components/AliasReplaceModal';
 import AutoCreateAliasModal from './components/AutoCreateAliasModal';
 import LanguageDropdown from './components/LanguageDropdown';
-import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunctionMap, useRoomEnums, useFunctionEnums, useAliasMap, useAllScriptSources } from './hooks/useStates';
+import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunctionMap, useRoomEnums, useFunctionEnums, useAliasMap } from './hooks/useStates';
 import { hasHistory, hasSmartName, clearObjectsCache } from './api/iobroker';
 import type { StateListHandle } from './components/StateList';
 import type { SortKey, DateFormatSetting } from './components/stateListColumns';
@@ -406,7 +406,6 @@ function AppContent() {
   // Reverse alias map: non-alias data point ID → [alias.0.* IDs that point to it]
   // Cached in QueryClient via useAliasMap (select on ['objects','all'])
   const { data: aliasMapData } = useAliasMap();
-  const { data: scriptSources } = useAllScriptSources();
   const aliasMap = aliasMapData ?? EMPTY_ALIAS_MAP;
   const existingIds = useMemo(() => new Set(Object.keys(allObjects)), [allObjects]);
   const quickPatternOptions = useMemo(
@@ -1627,7 +1626,6 @@ function AppContent() {
             onToggleGroupByPath={handleToggleGroupByPath}
             customDefaultWidths={appSettings.customDefaultWidths}
             customMaxWidths={appSettings.customMaxWidths}
-            scriptSources={scriptSources}
             onScriptsClick={(id) => { setSelectedId(id); setEditInitialTab('scripts'); }}
           />
         </div>

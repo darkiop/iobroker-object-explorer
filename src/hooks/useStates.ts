@@ -548,11 +548,12 @@ export function useDeleteEnum() {
   });
 }
 
-export function useAllScriptSources() {
+export function useAllScriptSources(enabled = true) {
   return useQuery({
     queryKey: queryKeys.scripts.sources,
     queryFn: getAllScriptSources,
     staleTime: 5 * 60_000,
+    enabled,
   });
 }
 

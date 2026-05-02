@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
 import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Cpu, Layers, Network, FileCode2 } from 'lucide-react';
-import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch } from '../hooks/useStates';
+import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch, useAllScriptSources } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
 import NewDatapointModal from './NewDatapointModal';
@@ -62,7 +62,6 @@ interface StateListProps {
   onToggleGroupByPath?: () => void;
   customDefaultWidths?: Partial<Record<SortKey, number>>;
   customMaxWidths?: Partial<Record<SortKey, number>>;
-  scriptSources?: string;
   onScriptsClick?: (id: string) => void;
 }
 
@@ -1691,7 +1690,7 @@ const StateRow = React.memo(function StateRow({
   );
 });
 
-function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, allObjectIds, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh: _onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en', expertMode = false, onToggleExpertMode, toolbarLabels = true, onOpenEnumManager, onOpenAliasReplace, tableFontSize = 'normal', showDesc = true, groupByPath = false, onToggleGroupByPath, customDefaultWidths, customMaxWidths, scriptSources, onScriptsClick }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
+function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, allObjectIds, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh: _onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en', expertMode = false, onToggleExpertMode, toolbarLabels = true, onOpenEnumManager, onOpenAliasReplace, tableFontSize = 'normal', showDesc = true, groupByPath = false, onToggleGroupByPath, customDefaultWidths, customMaxWidths, onScriptsClick }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
   const effectiveDefaults: Record<SortKey, number> = { ...BUILTIN_DEFAULT_WIDTHS, ...(customDefaultWidths ?? {}) };
   const effectiveMax: Partial<Record<SortKey, number>> = { ...BUILTIN_MAX_WIDTHS, ...(customMaxWidths ?? {}) };
   const effectiveMaxRef = useRef(effectiveMax);
@@ -1700,6 +1699,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   const [sortKey, setSortKey] = useState<SortKey>('id');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [visibleCols, setVisibleCols] = useState<SortKey[]>(loadVisibleCols);
+  const { data: scriptSources } = useAllScriptSources(visibleCols.includes('scripts'));
   const [colWidths, setColWidths] = useState<Record<SortKey, number>>(() => loadColWidths(effectiveDefaults, effectiveMax));
   const containerRef = useRef<HTMLDivElement>(null);
   const theadRef = useRef<HTMLTableSectionElement>(null);
