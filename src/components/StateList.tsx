@@ -1453,97 +1453,6 @@ const StateRow = React.memo(function StateRow({
           </div>
         </td>
       )}
-      {show('write') && (
-        <td style={{ width: colWidths['write'], minWidth: colWidths['write'] }} className="py-2 align-middle" title={obj?.common?.write === false ? 'Read-only' : undefined}>
-          <div className="flex items-center justify-center">
-            {obj?.common?.write === false && <Lock size={13} className="text-red-500 dark:text-red-400" />}
-          </div>
-        </td>
-      )}
-      {show('history') && (
-        <td style={{ width: colWidths['history'], minWidth: colWidths['history'] }} className="py-2 align-middle">
-          <div className="flex items-center justify-center">
-            {obj && hasHistory(obj) && (
-              <button
-                onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onHistoryClick(id); }}
-                title="History anzeigen"
-                className="p-0.5 rounded text-blue-500 dark:text-blue-400 hover:bg-blue-500/15 dark:hover:bg-blue-500/20 transition-colors"
-              >
-                <History size={15} />
-              </button>
-            )}
-          </div>
-        </td>
-      )}
-      {show('smart') && (
-        <td
-          style={{ width: colWidths['smart'], minWidth: colWidths['smart'] }}
-          className="py-2 align-middle"
-          title={obj && hasSmartName(obj) ? (
-            typeof obj.common.smartName === 'string'
-              ? obj.common.smartName
-              : typeof obj.common.smartName === 'object' && obj.common.smartName
-                ? Object.values(obj.common.smartName).join(' / ')
-                : 'SmartName'
-          ) : undefined}
-        >
-          <div className="flex items-center justify-center">
-            {obj && hasSmartName(obj) && (
-              <span className="p-0.5 rounded hover:bg-violet-500/15 dark:hover:bg-violet-500/20 transition-colors">
-                <Mic2 size={15} className="text-violet-500 dark:text-violet-400" />
-              </span>
-            )}
-          </div>
-        </td>
-      )}
-      {show('scripts') && (
-        <td style={{ width: colWidths['scripts'], minWidth: colWidths['scripts'] }} className="py-2 align-middle">
-          <div className="flex items-center justify-center">
-            {scriptSources?.includes(id) && (
-              <button
-                onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onScriptsClick?.(id); }}
-                title={isEn ? 'Show script usages' : 'Skript-Verwendungen anzeigen'}
-                className="p-0.5 rounded text-green-600 dark:text-green-500 hover:bg-green-500/15 dark:hover:bg-green-500/20 transition-colors"
-              >
-                <FileCode2 size={15} />
-              </button>
-            )}
-          </div>
-        </td>
-      )}
-      {show('alias') && (
-        <td style={{ width: w('alias'), minWidth: w('alias') }} className="py-2 align-middle">
-          <div className="flex items-center justify-center">
-            {danglingAlias && (
-              <span
-                title={aliasTooltip}
-                className="relative p-0.5 rounded text-red-500 dark:text-red-400"
-              >
-                <Link2 size={15} />
-              </span>
-            )}
-            {hasAlias && !danglingAlias && (
-              <button
-                onClick={(e) => {
-                  e.currentTarget.blur();
-                  e.stopPropagation();
-                  const targets = aliasIds?.length ? aliasIds : ownTarget ? [ownTarget] : [];
-                  onNavigateTo?.(targets);
-                }}
-                title={aliasTooltip}
-                className="relative p-0.5 rounded text-amber-500 dark:text-amber-400 hover:bg-amber-500/15 dark:hover:bg-amber-500/20 transition-colors"
-              >
-                <Link2 size={15} />
-                {aliasIds && aliasIds.length > 1 && (
-                  <span className="absolute -top-1.5 -right-2 text-[8px] font-bold leading-none bg-amber-500 text-white rounded-full min-w-[13px] h-[13px] flex items-center justify-center px-0.5">
-                    {aliasIds.length}
-                  </span>
-                )}
-              </button>
-            )}
-          </div>
-        </td>
-      )}
       {show('id') && (
         <td data-col="id" className="py-2 font-mono text-xs text-gray-500 dark:text-gray-400 overflow-hidden group/id" style={{ paddingLeft: 12 }}>
           <div className="flex flex-col gap-0.5 min-w-0">
@@ -1596,6 +1505,94 @@ const StateRow = React.memo(function StateRow({
         </td>
       )}
       {show('name') && <EditableNameCell id={id} name={name} desc={resolveI18n(obj?.common?.desc)} showDesc={showDesc} />}
+      {show('write') && (
+        <td style={{ width: colWidths['write'], minWidth: colWidths['write'] }} className="py-2 align-middle" title={obj?.common?.write === false ? 'Read-only' : undefined}>
+          <div className="flex items-center justify-center">
+            {obj?.common?.write === false && <Lock size={13} className="text-red-500 dark:text-red-400" />}
+          </div>
+        </td>
+      )}
+      {show('history') && (
+        <td style={{ width: colWidths['history'], minWidth: colWidths['history'] }} className="py-2 align-middle">
+          <div className="flex items-center justify-center">
+            {obj && hasHistory(obj) && (
+              <button
+                onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onHistoryClick(id); }}
+                title="History anzeigen"
+                className="p-0.5 rounded text-blue-500 dark:text-blue-400 hover:bg-blue-500/15 dark:hover:bg-blue-500/20 transition-colors"
+              >
+                <History size={15} />
+              </button>
+            )}
+          </div>
+        </td>
+      )}
+      {show('smart') && (
+        <td
+          style={{ width: colWidths['smart'], minWidth: colWidths['smart'] }}
+          className="py-2 align-middle"
+          title={obj && hasSmartName(obj) ? (
+            typeof obj.common.smartName === 'string'
+              ? obj.common.smartName
+              : typeof obj.common.smartName === 'object' && obj.common.smartName
+                ? Object.values(obj.common.smartName).join(' / ')
+                : 'SmartName'
+          ) : undefined}
+        >
+          <div className="flex items-center justify-center">
+            {obj && hasSmartName(obj) && (
+              <span className="p-0.5 rounded hover:bg-violet-500/15 dark:hover:bg-violet-500/20 transition-colors">
+                <Mic2 size={15} className="text-violet-500 dark:text-violet-400" />
+              </span>
+            )}
+          </div>
+        </td>
+      )}
+      {show('alias') && (
+        <td style={{ width: w('alias'), minWidth: w('alias') }} className="py-2 align-middle">
+          <div className="flex items-center justify-center">
+            {danglingAlias && (
+              <span title={aliasTooltip} className="relative p-0.5 rounded text-red-500 dark:text-red-400">
+                <Link2 size={15} />
+              </span>
+            )}
+            {hasAlias && !danglingAlias && (
+              <button
+                onClick={(e) => {
+                  e.currentTarget.blur();
+                  e.stopPropagation();
+                  const targets = aliasIds?.length ? aliasIds : ownTarget ? [ownTarget] : [];
+                  onNavigateTo?.(targets);
+                }}
+                title={aliasTooltip}
+                className="relative p-0.5 rounded text-amber-500 dark:text-amber-400 hover:bg-amber-500/15 dark:hover:bg-amber-500/20 transition-colors"
+              >
+                <Link2 size={15} />
+                {aliasIds && aliasIds.length > 1 && (
+                  <span className="absolute -top-1.5 -right-2 text-[8px] font-bold leading-none bg-amber-500 text-white rounded-full min-w-[13px] h-[13px] flex items-center justify-center px-0.5">
+                    {aliasIds.length}
+                  </span>
+                )}
+              </button>
+            )}
+          </div>
+        </td>
+      )}
+      {show('scripts') && (
+        <td style={{ width: colWidths['scripts'], minWidth: colWidths['scripts'] }} className="py-2 align-middle">
+          <div className="flex items-center justify-center">
+            {scriptSources?.includes(id) && (
+              <button
+                onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onScriptsClick?.(id); }}
+                title={isEn ? 'Show script usages' : 'Skript-Verwendungen anzeigen'}
+                className="p-0.5 rounded text-green-600 dark:text-green-500 hover:bg-green-500/15 dark:hover:bg-green-500/20 transition-colors"
+              >
+                <FileCode2 size={15} />
+              </button>
+            )}
+          </div>
+        </td>
+      )}
       {show('children') && (
         <td data-col="children" className="px-3 py-2 text-center">
           {childCounts && childCounts.objs > 0 && (
@@ -1997,7 +1994,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   }
 
   const sortNeedsState = sortKey === 'value' || sortKey === 'ack' || sortKey === 'ts';
-  const sortNeedsObject = sortKey === 'name' || sortKey === 'role' || sortKey === 'history' || sortKey === 'smart' || sortKey === 'unit' || sortKey === 'type';
+  const sortNeedsObject = sortKey === 'name' || sortKey === 'role' || sortKey === 'unit' || sortKey === 'type';
   const sortNeedsRoomMap = sortKey === 'room';
   const sortNeedsFunctionMap = sortKey === 'function';
 
@@ -2031,16 +2028,6 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
           return mul * (objA?.common?.type || objA?.type || '').localeCompare(objB?.common?.type || objB?.type || '');
         case 'role':
           return mul * (objA?.common?.role || '').localeCompare(objB?.common?.role || '');
-        case 'history': {
-          const hA = objA ? (hasHistory(objA) ? 1 : 0) : 0;
-          const hB = objB ? (hasHistory(objB) ? 1 : 0) : 0;
-          return mul * (hA - hB);
-        }
-        case 'smart': {
-          const sA = hasSmartName(objA) ? 1 : 0;
-          const sB = hasSmartName(objB) ? 1 : 0;
-          return mul * (sA - sB);
-        }
         case 'unit':
           return mul * (objA?.common?.unit || '').localeCompare(objB?.common?.unit || '');
         case 'ack': {
@@ -2067,12 +2054,14 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   ]);
 
   // metadata + icon filters applied in App.tsx before pagination
-  // value/timestamp are filtered here (page-local)
+  // value/timestamp/scripts are filtered here (page-local)
   const valueFilter = colFilters.value?.trim().toLowerCase() || '';
   const tsFilterParsed = useMemo(() => parseTsFilter(colFilters.ts || ''), [colFilters.ts]);
+  const scriptsFilterActive = colFilters.scripts === '1';
   const filteredIds = useMemo(() => {
-    if (!valueFilter && tsFilterParsed.mode === 'none') return sortedIds;
+    if (!valueFilter && tsFilterParsed.mode === 'none' && !scriptsFilterActive) return sortedIds;
     return sortedIds.filter((id) => {
+      if (scriptsFilterActive && !scriptSources?.includes(id)) return false;
       const valueOk = !valueFilter || formatValue(states[id]?.val).toLowerCase().includes(valueFilter);
       let tsOk = true;
       if (tsFilterParsed.mode === 'text') {
@@ -2085,7 +2074,8 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
       }
       return valueOk && tsOk;
     });
-  }, [sortedIds, valueFilter, tsFilterParsed, dateFormat, (valueFilter || tsFilterParsed.mode !== 'none') ? states : null]);
+  }, [sortedIds, valueFilter, tsFilterParsed, dateFormat, scriptsFilterActive, scriptSources,
+    (valueFilter || tsFilterParsed.mode !== 'none') ? states : null]);
 
   type DisplayItem = { kind: 'row'; id: string } | { kind: 'sep'; prefix: string; isState: boolean; depth: number };
 
@@ -2906,13 +2896,13 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                   })()}
                 </th>
               )}
-              {show('write')   && <th style={{ width: colWidths['write'],   minWidth: colWidths['write']   }} />}
-              {show('history') && <th style={{ width: colWidths['history'], minWidth: colWidths['history'] }} />}
-              {show('smart')   && <th style={{ width: colWidths['smart'],   minWidth: colWidths['smart']   }} />}
-              {show('scripts') && <th style={{ width: colWidths['scripts'], minWidth: colWidths['scripts'] }} />}
-              {show('alias')   && <th style={{ width: w('alias'),           minWidth: w('alias')           }} />}
               {show('id')      && <SortHeader label="ID" sortKey="id" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('id')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
-              {show('name')    && <SortHeader label={isEn ? 'Name' : 'Name'} sortKey="name" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('name')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
+              {show('name')    && <SortHeader label="Name" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('name')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
+              {show('write')   && <th style={{ width: colWidths['write'],   minWidth: colWidths['write']   }} className="text-center align-middle group/hdr relative" title={isEn ? 'Read only' : 'Schreibschutz'}><Lock size={12} className="mx-auto text-gray-400 dark:text-gray-500" /><button className="absolute inset-y-0 right-0 opacity-0 group-hover/hdr:opacity-100 px-0.5 text-gray-400 hover:text-red-400 transition-opacity" onClick={() => handleHideCol('write')} tabIndex={-1}><Minus size={10} /></button></th>}
+              {show('history') && <th style={{ width: colWidths['history'], minWidth: colWidths['history'] }} className="text-center align-middle group/hdr relative" title="History"><History size={12} className="mx-auto text-gray-400 dark:text-gray-500" /><button className="absolute inset-y-0 right-0 opacity-0 group-hover/hdr:opacity-100 px-0.5 text-gray-400 hover:text-red-400 transition-opacity" onClick={() => handleHideCol('history')} tabIndex={-1}><Minus size={10} /></button></th>}
+              {show('smart')   && <th style={{ width: colWidths['smart'],   minWidth: colWidths['smart']   }} className="text-center align-middle group/hdr relative" title="SmartName"><Mic2 size={12} className="mx-auto text-gray-400 dark:text-gray-500" /><button className="absolute inset-y-0 right-0 opacity-0 group-hover/hdr:opacity-100 px-0.5 text-gray-400 hover:text-red-400 transition-opacity" onClick={() => handleHideCol('smart')} tabIndex={-1}><Minus size={10} /></button></th>}
+              {show('alias')   && <th style={{ width: w('alias'),           minWidth: w('alias')           }} className="text-center align-middle group/hdr relative" title="Alias"><Link2 size={12} className="mx-auto text-gray-400 dark:text-gray-500" /><button className="absolute inset-y-0 right-0 opacity-0 group-hover/hdr:opacity-100 px-0.5 text-gray-400 hover:text-red-400 transition-opacity" onClick={() => handleHideCol('alias')} tabIndex={-1}><Minus size={10} /></button></th>}
+              {show('scripts') && <th style={{ width: colWidths['scripts'], minWidth: colWidths['scripts'] }} className="text-center align-middle group/hdr relative" title={isEn ? 'Scripts' : 'Skripte'}><FileCode2 size={12} className="mx-auto text-gray-400 dark:text-gray-500" /><button className="absolute inset-y-0 right-0 opacity-0 group-hover/hdr:opacity-100 px-0.5 text-gray-400 hover:text-red-400 transition-opacity" onClick={() => handleHideCol('scripts')} tabIndex={-1}><Minus size={10} /></button></th>}
               {show('room')     && <SortHeader label={isEn ? 'Room' : 'Raum'} sortKey="room" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('room')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
               {show('function') && <SortHeader label={isEn ? 'Function' : 'Funktion'} sortKey="function" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('function')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
               {show('type')    && <SortHeader label={isEn ? 'Type' : 'Typ'} sortKey="type" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('type')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
@@ -2935,9 +2925,9 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                   />
                 </th>
               )}
-              {(['write','history','smart','alias','id','name','room','function','type','role','value','unit','ack','ts'] as SortKey[]).filter(show).map((key) => {
+              {(['id','name','write','history','smart','alias','scripts','room','function','type','role','value','unit','ack','ts'] as SortKey[]).filter(show).map((key) => {
                 const filterable = ['id','name','room','function','type','role','value','unit','ts'].includes(key);
-                const isIconToggle = ['write','history','smart','alias'].includes(key);
+                const isIconToggle = ['write','history','smart','alias','scripts'].includes(key);
                 const isActive = colFiltersDraft[key] === '1';
 
                 if (isIconToggle) {
@@ -2947,6 +2937,8 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                     ? <History size={11} />
                     : key === 'alias'
                     ? <Link2 size={11} />
+                    : key === 'scripts'
+                    ? <FileCode2 size={11} />
                     : <Mic2 size={11} />;
                   const activeClass = key === 'write'
                     ? 'text-gray-500 dark:text-gray-300 bg-gray-300/60 dark:bg-gray-500/40'
@@ -2954,6 +2946,8 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                     ? 'text-blue-500 bg-blue-500/20'
                     : key === 'alias'
                     ? 'text-amber-500 bg-amber-500/20'
+                    : key === 'scripts'
+                    ? 'text-green-600 bg-green-500/20'
                     : 'text-violet-500 bg-violet-500/20';
                   const title = key === 'write'
                     ? (isEn ? 'Only read-only' : 'Nur Schreibgeschützte')
@@ -2961,6 +2955,8 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                     ? (isEn ? 'Only with history' : 'Nur mit History')
                     : key === 'alias'
                     ? (isEn ? 'Only with alias' : 'Nur mit Alias')
+                    : key === 'scripts'
+                    ? (isEn ? 'Only used in scripts' : 'Nur in Skripten verwendet')
                     : (isEn ? 'Only with SmartName' : 'Nur mit SmartName');
                   return (
                     <th key={key} style={{ width: w(key) }} className="py-1 text-center align-middle" onClick={(e) => e.stopPropagation()}>

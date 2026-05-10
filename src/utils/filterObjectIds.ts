@@ -1,6 +1,6 @@
 import type { IoBrokerObject } from '../types/iobroker';
 
-type ColumnFilterKey = 'id' | 'name' | 'room' | 'function' | 'type' | 'role' | 'unit' | 'write' | 'history' | 'smart' | 'alias';
+type ColumnFilterKey = 'id' | 'name' | 'room' | 'function' | 'type' | 'role' | 'unit' | 'write' | 'history' | 'smart' | 'alias' | 'scripts';
 type ColumnFilters = Partial<Record<ColumnFilterKey, string>>;
 
 interface FilterObjectIdsParams {

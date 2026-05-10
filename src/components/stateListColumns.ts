@@ -3,13 +3,13 @@ export type DateFormatSetting = 'de' | 'us' | 'iso';
 
 export const ALL_COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'checkbox', label: 'Auswahl' },
+  { key: 'id',      label: 'ID' },
+  { key: 'name',    label: 'Name' },
   { key: 'write',   label: 'Schreibschutz' },
   { key: 'history', label: 'History' },
   { key: 'smart',   label: 'SmartName' },
-  { key: 'scripts', label: 'Skripte' },
   { key: 'alias',   label: 'Alias' },
-  { key: 'id',      label: 'ID' },
-  { key: 'name',    label: 'Name' },
+  { key: 'scripts', label: 'Skripte' },
   { key: 'room',      label: 'Raum' },
   { key: 'function',  label: 'Funktion' },
   { key: 'type',    label: 'Typ' },
@@ -46,7 +46,7 @@ export function getColumnLabel(key: SortKey, language: 'en' | 'de' = 'de'): stri
   }
 }
 
-export const DEFAULT_COLS: SortKey[] = ['checkbox', 'write', 'history', 'smart', 'scripts', 'alias', 'id', 'name', 'room', 'function', 'type', 'role', 'value', 'unit', 'ack', 'ts'];
+export const DEFAULT_COLS: SortKey[] = ['checkbox', 'id', 'name', 'write', 'history', 'smart', 'alias', 'scripts', 'room', 'function', 'type', 'role', 'value', 'unit', 'ack', 'ts'];
 
 /** Columns whose width is user-configurable (excludes fixed icon columns) */
 export const CONFIGURABLE_WIDTH_COLS: SortKey[] = ['id', 'name', 'room', 'function', 'type', 'role', 'value', 'unit', 'ack', 'ts', 'relevanz'];
