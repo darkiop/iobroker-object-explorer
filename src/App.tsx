@@ -1627,6 +1627,8 @@ function AppContent() {
             customDefaultWidths={appSettings.customDefaultWidths}
             customMaxWidths={appSettings.customMaxWidths}
             onScriptsClick={(id) => { setSelectedId(id); setEditInitialTab('scripts'); }}
+            pageSize={appSettings.pageSize}
+            onPageSizeChange={(size) => { setAppSettings((prev) => ({ ...prev, pageSize: size })); setPage(0); }}
           />
         </div>
 

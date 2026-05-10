@@ -63,6 +63,8 @@ interface StateListProps {
   customDefaultWidths?: Partial<Record<SortKey, number>>;
   customMaxWidths?: Partial<Record<SortKey, number>>;
   onScriptsClick?: (id: string) => void;
+  pageSize?: number;
+  onPageSizeChange?: (size: number) => void;
 }
 
 function formatTimestamp(ts: number, dateFormat: DateFormatSetting): string {
@@ -1690,7 +1692,7 @@ const StateRow = React.memo(function StateRow({
   );
 });
 
-function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, allObjectIds, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh: _onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en', expertMode = false, onToggleExpertMode, toolbarLabels = true, onOpenEnumManager, onOpenAliasReplace, tableFontSize = 'normal', showDesc = true, groupByPath = false, onToggleGroupByPath, customDefaultWidths, customMaxWidths, onScriptsClick }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
+function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, allObjectIds, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh: _onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en', expertMode = false, onToggleExpertMode, toolbarLabels = true, onOpenEnumManager, onOpenAliasReplace, tableFontSize = 'normal', showDesc = true, groupByPath = false, onToggleGroupByPath, customDefaultWidths, customMaxWidths, onScriptsClick, pageSize, onPageSizeChange }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
   const effectiveDefaults: Record<SortKey, number> = { ...BUILTIN_DEFAULT_WIDTHS, ...(customDefaultWidths ?? {}) };
   const effectiveMax: Partial<Record<SortKey, number>> = { ...BUILTIN_MAX_WIDTHS, ...(customMaxWidths ?? {}) };
   const effectiveMaxRef = useRef(effectiveMax);
@@ -2512,6 +2514,16 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
         >
           <RotateCcw size={17} />
         </button>
+        {pageSize !== undefined && onPageSizeChange && (
+          <select
+            value={pageSize}
+            onChange={(e) => onPageSizeChange(parseInt(e.target.value, 10))}
+            title={isEn ? 'Rows per page' : 'Zeilen pro Seite'}
+            className="h-8 px-1.5 text-xs rounded-lg border border-gray-200 bg-white text-gray-600 hover:border-gray-300 focus:outline-none focus:border-blue-400 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:border-gray-600 dark:focus:border-blue-500 cursor-pointer"
+          >
+            {[25, 50, 100, 200, 500].map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        )}
         <ColPicker visible={visibleCols} onChange={handleColChange} language={language} />
       </div>
     </div>
