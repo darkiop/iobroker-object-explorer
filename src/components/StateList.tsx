@@ -2557,6 +2557,19 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   const bottomSpacer = virtualEnabled ? (activeDisplayItems.length - virtualEnd) * VIRTUAL_ROW_HEIGHT : 0;
   const rowColSpan = visibleCols.length + 1;
 
+  const sepCountMap = useMemo(() => {
+    if (!groupByPath) return new Map<string, number>();
+    const map = new Map<string, number>();
+    for (const id of filteredIds) {
+      const parts = id.split('.');
+      for (let i = 1; i < parts.length; i++) {
+        const prefix = parts.slice(0, i).join('.');
+        map.set(prefix, (map.get(prefix) ?? 0) + 1);
+      }
+    }
+    return map;
+  }, [filteredIds, groupByPath]);
+
   // Sep row column split: main cell spans up to first of type/role; trailing spans remainder + DEL_COL
   const _sepTypeIdx  = visibleCols.indexOf('type');
   const _sepRoleIdx  = visibleCols.indexOf('role');
@@ -3128,6 +3141,9 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                           ? <ColoredId id={item.prefix} className="text-sm font-mono font-bold" />
                           : <span className="text-sm text-gray-400 dark:text-gray-500 font-mono font-bold italic">root</span>
                         }
+                        {sepCountMap.get(item.prefix) != null && (
+                          <span className="text-xs text-gray-400 dark:text-gray-500 font-mono shrink-0">({sepCountMap.get(item.prefix)})</span>
+                        )}
                         {item.prefix && objects[item.prefix] && (
                           <button
                             onClick={(e) => { e.stopPropagation(); setEditObjId(item.prefix); }}
