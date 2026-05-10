@@ -2082,38 +2082,80 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
     });
   }, [sortedIds, valueFilter, tsFilterParsed, dateFormat, (valueFilter || tsFilterParsed.mode !== 'none') ? states : null]);
 
-  type DisplayItem = { kind: 'row'; id: string } | { kind: 'sep'; prefix: string; isState: boolean } | { kind: 'tree'; id: string; depth: number; isLeaf: boolean; hasChildren: boolean };
-  const displayItems = useMemo((): DisplayItem[] => {
-    if (!groupByPath) return filteredIds.map((id) => ({ kind: 'row' as const, id }));
-    // Group IDs by prefix, preserving filteredIds order within each group
-    const groups = new Map<string, string[]>();
+  type DisplayItem = { kind: 'row'; id: string } | { kind: 'sep'; prefix: string; isState: boolean; depth: number } | { kind: 'tree'; id: string; depth: number; isLeaf: boolean; hasChildren: boolean };
+
+  // All ancestor prefixes at every level, used for collapse/expand logic
+  const allSepPrefixes = useMemo((): Set<string> => {
+    if (!groupByPath) return new Set();
+    const result = new Set<string>();
     for (const id of filteredIds) {
       const parts = id.split('.');
-      const prefix = parts.length > 1 ? parts.slice(0, -1).join('.') : '';
-      if (!groups.has(prefix)) groups.set(prefix, []);
-      groups.get(prefix)!.push(id);
+      for (let i = 1; i < parts.length; i++) {
+        result.add(parts.slice(0, i).join('.'));
+      }
     }
-    // Sort prefixes alphabetically (case-insensitive) so groups always appear in A-Z order
-    const sortedPrefixes = [...groups.keys()].sort((a, b) =>
-      a.localeCompare(b, undefined, { sensitivity: 'base' })
-    );
+    return result;
+  }, [filteredIds, groupByPath]);
+
+  const displayItems = useMemo((): DisplayItem[] => {
+    if (!groupByPath) return filteredIds.map((id) => ({ kind: 'row' as const, id }));
+
     const filteredIdSet = new Set(filteredIds);
-    const items: DisplayItem[] = [];
-    for (const prefix of sortedPrefixes) {
-      // isState: the prefix itself is also a state — its value is shown inline in the sep row
-      items.push({ kind: 'sep', prefix, isState: filteredIdSet.has(prefix) });
-      const isCollapsed = collapsedPrefixes === null || collapsedPrefixes.has(prefix);
-      if (!isCollapsed) {
-        for (const id of groups.get(prefix)!) {
-          // Skip IDs that are also group prefixes — they appear as their own sep row
-          if (!groups.has(id)) {
-            items.push({ kind: 'row', id });
-          }
+
+    // Build parent→childPrefixes and parent→directLeaves maps from allSepPrefixes
+    const childPrefixesMap = new Map<string, Set<string>>();
+    const rootPrefixes = new Set<string>();
+    for (const prefix of allSepPrefixes) {
+      const parts = prefix.split('.');
+      if (parts.length === 1) {
+        rootPrefixes.add(prefix);
+      } else {
+        const parent = parts.slice(0, -1).join('.');
+        if (allSepPrefixes.has(parent)) {
+          if (!childPrefixesMap.has(parent)) childPrefixesMap.set(parent, new Set());
+          childPrefixesMap.get(parent)!.add(prefix);
+        } else {
+          rootPrefixes.add(prefix);
         }
       }
     }
+
+    const directLeavesMap = new Map<string, string[]>();
+    for (const id of filteredIds) {
+      if (allSepPrefixes.has(id)) continue; // appears as sep row, not a leaf
+      const parts = id.split('.');
+      const parent = parts.length > 1 ? parts.slice(0, -1).join('.') : '';
+      if (!directLeavesMap.has(parent)) directLeavesMap.set(parent, []);
+      directLeavesMap.get(parent)!.push(id);
+    }
+
+    const items: DisplayItem[] = [];
+    function visit(prefix: string, depth: number) {
+      items.push({ kind: 'sep', prefix, depth, isState: filteredIdSet.has(prefix) });
+      const isCollapsed = collapsedPrefixes === null || collapsedPrefixes.has(prefix);
+      if (!isCollapsed) {
+        const children = [...(childPrefixesMap.get(prefix) ?? [])].sort((a, b) =>
+          a.localeCompare(b, undefined, { sensitivity: 'base' })
+        );
+        for (const child of children) visit(child, depth + 1);
+        for (const id of (directLeavesMap.get(prefix) ?? [])) {
+          items.push({ kind: 'row', id });
+        }
+      }
+    }
+
+    const sortedRoots = [...rootPrefixes].sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: 'base' })
+    );
+    for (const root of sortedRoots) visit(root, 0);
+
+    // Leaves with no ancestor prefix (edge case: single-part IDs)
+    for (const id of (directLeavesMap.get('') ?? [])) {
+      items.push({ kind: 'row', id });
+    }
+
     return items;
-  }, [filteredIds, groupByPath, collapsedPrefixes]);
+  }, [filteredIds, groupByPath, collapsedPrefixes, allSepPrefixes]);
 
   const treeDisplayItems = useMemo((): DisplayItem[] => {
     if (!treeViewMode) return [];
@@ -2841,8 +2883,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
           icon: isCollapsed ? <ChevronDown size={13} /> : <ChevronRight size={13} />,
           label: isCollapsed ? (isEn ? 'Expand group' : 'Gruppe aufklappen') : (isEn ? 'Collapse group' : 'Gruppe einklappen'),
           onClick: () => setCollapsedPrefixes((prev) => {
-            const allPfx = [...new Set(filteredIds.map((id) => { const p = id.split('.'); return p.length > 1 ? p.slice(0, -1).join('.') : ''; }))];
-            const base = prev === null ? new Set(allPfx) : new Set(prev);
+            const base = prev === null ? new Set(allSepPrefixes) : new Set(prev);
             isCollapsed ? base.delete(prefix) : base.add(prefix);
             return base;
           }),
@@ -2875,8 +2916,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
               {show('checkbox') && (
                 <th style={{ width: w('checkbox'), minWidth: w('checkbox') }} className="text-center align-middle">
                   {groupByPath && (() => {
-                    const allPrefixes = [...new Set(filteredIds.map((id) => { const p = id.split('.'); return p.length > 1 ? p.slice(0, -1).join('.') : ''; }))];
-                    const allCollapsed = collapsedPrefixes === null || (allPrefixes.length > 0 && allPrefixes.every((p) => collapsedPrefixes.has(p)));
+                    const allCollapsed = collapsedPrefixes === null || (allSepPrefixes.size > 0 && [...allSepPrefixes].every((p) => collapsedPrefixes.has(p)));
                     return (
                       <button
                         onClick={() => setCollapsedPrefixes(allCollapsed ? new Set() : null)}
@@ -3066,12 +3106,11 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
               if (item.kind === 'sep') {
                 return (
                   <tr key={`sep_${item.prefix}_${idx}`} className="group/sep cursor-pointer select-none" onContextMenu={(e) => { e.preventDefault(); setSepCtxMenu({ x: e.clientX, y: e.clientY, prefix: item.prefix }); }} onClick={() => setCollapsedPrefixes((prev) => {
-                      const allPfx = [...new Set(filteredIds.map((id) => { const p = id.split('.'); return p.length > 1 ? p.slice(0, -1).join('.') : ''; }))];
-                      const base = prev === null ? new Set(allPfx) : new Set(prev);
+                      const base = prev === null ? new Set(allSepPrefixes) : new Set(prev);
                       base.has(item.prefix) ? base.delete(item.prefix) : base.add(item.prefix);
                       return base;
                     })}>
-                    <td colSpan={rowColSpan + 1} className="px-3 py-1.5 bg-gray-100/80 dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 hover:bg-gray-200/80 dark:hover:bg-gray-700/60 transition-colors">
+                    <td colSpan={rowColSpan + 1} className="py-1.5 bg-gray-100/80 dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 hover:bg-gray-200/80 dark:hover:bg-gray-700/60 transition-colors" style={{ paddingLeft: 12 + item.depth * 16 }}>
                       <div className="flex items-center gap-2">
                         {(collapsedPrefixes === null || collapsedPrefixes.has(item.prefix))
                           ? <ChevronRight size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
