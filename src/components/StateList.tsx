@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Cpu, Layers, FileCode2 } from 'lucide-react';
+import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Cpu, Layers, FileCode2, ToggleLeft, Hash, Type, Braces, List } from 'lucide-react';
 import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch, useAllScriptSources } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
@@ -1166,6 +1166,18 @@ const DEL_COL_WIDTH = 32;
 const VIRTUAL_ROW_HEIGHT = 37;
 const VIRTUAL_OVERSCAN = 10;
 const VIRTUALIZE_THRESHOLD = 120;
+function TypeIcon({ type, size = 12 }: { type: string; size?: number }) {
+  switch (type) {
+    case 'boolean': return <ToggleLeft size={size} className="text-orange-500 dark:text-orange-400 shrink-0" />;
+    case 'number':  return <Hash       size={size} className="text-blue-500 dark:text-blue-400 shrink-0" />;
+    case 'string':  return <Type       size={size} className="text-green-600 dark:text-green-400 shrink-0" />;
+    case 'object':  return <Braces     size={size} className="text-purple-500 dark:text-purple-400 shrink-0" />;
+    case 'array':   return <List       size={size} className="text-pink-500 dark:text-pink-400 shrink-0" />;
+    case 'mixed':   return <Layers     size={size} className="text-yellow-600 dark:text-yellow-400 shrink-0" />;
+    default:        return null;
+  }
+}
+
 const TYPE_OPTIONS = ['number', 'string', 'boolean', 'array', 'object', 'mixed'] as const;
 const TS_RANGE_PREFIX = 'range:';
 const TS_RANGE_SEP = '|~|';
@@ -1458,6 +1470,7 @@ const StateRow = React.memo(function StateRow({
         <td data-col="id" className="py-2 font-mono text-xs text-gray-500 dark:text-gray-400 overflow-hidden group/id" style={{ paddingLeft: 12 + depth * 10 }}>
           <div className="flex flex-col gap-0.5 min-w-0">
             <div className="flex items-center gap-1.5 min-w-0">
+              <TypeIcon type={obj?.common?.type || ''} />
               <ColoredId id={id} />
               <CopyIdButton id={id} />
               <button
