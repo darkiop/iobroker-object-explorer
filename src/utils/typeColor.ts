@@ -6,6 +6,9 @@ export function getTypeColor(type: string): string {
     case 'object':  return 'text-purple-500 dark:text-purple-400';
     case 'array':   return 'text-pink-500 dark:text-pink-400';
     case 'mixed':   return 'text-yellow-600 dark:text-yellow-400';
+    case 'folder':  return 'text-yellow-600 dark:text-yellow-500';
+    case 'device':  return 'text-sky-500 dark:text-sky-400';
+    case 'channel': return 'text-indigo-500 dark:text-indigo-400';
     default:        return 'text-gray-500 dark:text-gray-400';
   }
 }

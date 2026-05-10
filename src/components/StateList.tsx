@@ -271,7 +271,7 @@ const EditableRoleCell = React.memo(function EditableRoleCell({ id, role, objTyp
             <span className={`truncate font-semibold ${getRoleColor(role)}`} title={role}>{role}</span>
             <Pencil size={12} className="opacity-0 group-hover/role:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity" />
           </>
-        ) : objType === 'folder' || objType === 'device' || objType === 'channel' ? null : (
+        ) : (
           <span className="text-gray-300 dark:text-gray-600 italic font-sans">{isEn ? 'Select role…' : 'Rolle wählen…'}</span>
         )}
       </div>
@@ -498,7 +498,7 @@ const EditableTypeCell = React.memo(function EditableTypeCell({ id, typeValue, o
             <Pencil size={12} className="opacity-0 group-hover/type:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity" />
           </>
         ) : objType && objType !== 'state' ? (
-          <span className="text-xs font-semibold font-sans px-1.5 py-0.5 rounded bg-gray-200/70 text-gray-500 dark:bg-gray-700/60 dark:text-gray-400">{objType}</span>
+          <span className={`truncate font-semibold ${getTypeColor(objType)}`} title={objType}>{objType}</span>
         ) : (
           <span className="text-gray-300 dark:text-gray-600 italic font-sans">{isEn ? 'Select type…' : 'Typ wählen…'}</span>
         )}
@@ -2544,6 +2544,21 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   const bottomSpacer = virtualEnabled ? (activeDisplayItems.length - virtualEnd) * VIRTUAL_ROW_HEIGHT : 0;
   const rowColSpan = visibleCols.length + 1;
 
+  // Sep row column split: main cell spans up to first of type/role; trailing spans remainder + DEL_COL
+  const _sepTypeIdx  = visibleCols.indexOf('type');
+  const _sepRoleIdx  = visibleCols.indexOf('role');
+  const _sepTypeVis  = _sepTypeIdx >= 0;
+  const _sepRoleVis  = _sepRoleIdx >= 0;
+  const _sepSplitIdx = _sepTypeVis || _sepRoleVis
+    ? Math.min(_sepTypeVis ? _sepTypeIdx : Infinity, _sepRoleVis ? _sepRoleIdx : Infinity)
+    : visibleCols.length;
+  const _sepLastDetailIdx = Math.max(_sepTypeVis ? _sepTypeIdx : -1, _sepRoleVis ? _sepRoleIdx : -1);
+  const _sepMainSpan     = _sepSplitIdx;                                           // cols before first detail col
+  const _sepTrailingSpan = visibleCols.length - _sepLastDetailIdx - 1 + 1;         // remaining cols + DEL_COL
+  // type/role tds in visibleCols order
+  const _sepDetailCols = ([['type', _sepTypeIdx], ['role', _sepRoleIdx]] as [SortKey, number][])
+    .filter(([, i]) => i >= 0).sort((a, b) => a[1] - b[1]).map(([k]) => k);
+
   function handleBodyScroll(e: React.UIEvent<HTMLDivElement>) {
     const next = e.currentTarget.scrollTop;
     if (scrollRafRef.current != null) return;
@@ -3084,7 +3099,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                       base.has(item.prefix) ? base.delete(item.prefix) : base.add(item.prefix);
                       return base;
                     })}>
-                    <td colSpan={rowColSpan + 1} className="py-1.5 bg-gray-100/80 dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 hover:bg-gray-200/80 dark:hover:bg-gray-700/60 transition-colors" style={{ paddingLeft: 12 + item.depth * 10, paddingRight: 12 }}>
+                    <td colSpan={_sepMainSpan || rowColSpan + 1} className="py-1.5 bg-gray-100/80 dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 hover:bg-gray-200/80 dark:hover:bg-gray-700/60 transition-colors" style={{ paddingLeft: 12 + item.depth * 10, paddingRight: 12 }}>
                       <div className="flex items-center gap-2">
                         {(collapsedPrefixes === null || collapsedPrefixes.has(item.prefix))
                           ? <ChevronRight size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
@@ -3134,6 +3149,22 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                         </button>
                       </div>
                     </td>
+                    {_sepDetailCols.length > 0 && (() => {
+                      const sepObj = objects[item.prefix];
+                      return _sepDetailCols.map((k) => {
+                        const w = colWidths[k];
+                        if (k === 'type') {
+                          const t = item.prefix.split('.').length > 2 ? (sepObj?.type ?? 'folder') : sepObj?.type;
+                          return <td key="type" style={{ width: w, minWidth: w }} className="px-3 py-1.5 bg-gray-100/80 dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 text-xs font-mono align-middle">{t && <span className={`font-semibold ${getTypeColor(t)}`}>{t}</span>}</td>;
+                        }
+                        if (k === 'role') {
+                          const r = sepObj?.common?.role;
+                          return <td key="role" style={{ width: w, minWidth: w }} className="px-3 py-1.5 bg-gray-100/80 dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 text-xs font-mono align-middle">{r && <span className={`font-semibold ${getRoleColor(r)}`}>{r}</span>}</td>;
+                        }
+                        return null;
+                      });
+                    })()}
+                    {_sepDetailCols.length > 0 && <td colSpan={_sepTrailingSpan} className="bg-gray-100/80 dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60" />}
                   </tr>
                 );
               }
