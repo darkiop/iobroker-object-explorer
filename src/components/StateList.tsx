@@ -672,6 +672,9 @@ const EditableValueCell = React.memo(function EditableValueCell({
         {trendIcon}
         {state ? (() => {
           const v = formatValue(val);
+          if (role === 'url' && typeof val === 'string' && val.startsWith('http')) {
+            return <a href={val} target="_blank" rel="noopener noreferrer" title={v} onClick={(e) => e.stopPropagation()} className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 underline truncate max-w-[120px] block">{v}</a>;
+          }
           const truncated = v.length > 16 ? v.slice(0, 16) + '…' : v;
           return <span title={v}>{truncated}</span>;
         })() : <span className="text-gray-300 dark:text-gray-600">…</span>}

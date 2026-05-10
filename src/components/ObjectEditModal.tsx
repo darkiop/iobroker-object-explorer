@@ -863,6 +863,10 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                           <BooleanSelectControl val={state.val} onSet={handleSet} isPending={setStateMutation.isPending} disabled={!isWritable} />
                         ) : isWritable && (type === 'string' || type === 'mixed') ? (
                           <StringControl val={state.val} onSet={handleSet} isPending={setStateMutation.isPending} unit={obj.common?.unit} language={language} />
+                        ) : role === 'url' && typeof state.val === 'string' && state.val.startsWith('http') ? (
+                          <a href={state.val} target="_blank" rel="noopener noreferrer" className="font-mono font-bold text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 underline break-all text-base">
+                            {formatValue(state.val)}
+                          </a>
                         ) : (
                           <span className="font-mono font-bold text-gray-900 dark:text-white text-base">
                             {formatValue(state.val)}
