@@ -1772,6 +1772,8 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   const [moveId, setMoveId] = useState<string | null>(null);
   const [editObjId, setEditObjId] = useState<string | null>(null);
   const [editObjInitialTab, setEditObjInitialTab] = useState<'details' | 'json' | 'alias' | 'custom'>('details');
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
   const updateRoomMutateRef = useRef(updateRoom.mutate);
   const updateFnMutateRef = useRef(updateFn.mutate);
 
@@ -1782,6 +1784,17 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   useEffect(() => {
     updateFnMutateRef.current = updateFn.mutate;
   }, [updateFn.mutate]);
+
+  useEffect(() => {
+    if (!exportMenuOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setExportMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [exportMenuOpen]);
 
   function handleColChange(cols: SortKey[]) {
     setVisibleCols(cols);
@@ -2373,35 +2386,38 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
           <Plus size={16} />
           {showToolbarLabels && <span>{isEn ? 'New' : 'Neu'}</span>}
         </button>
-        <div className="relative group/export">
+        <div className="relative" ref={exportMenuRef}>
           <button
-            title="Exportieren"
-            className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
+            onClick={() => setExportMenuOpen((v) => !v)}
+            title={isEn ? 'Export' : 'Exportieren'}
+            className={`flex items-center gap-1.5 rounded-lg transition-colors ${exportMenuOpen ? 'text-blue-600 bg-blue-500/15 dark:text-blue-400 dark:bg-blue-500/20' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10'} ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
           >
             <Download size={16} />
             {showToolbarLabels && <span>Export</span>}
           </button>
-          <div className="absolute left-0 top-full mt-1 z-50 hidden group-hover/export:flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg overflow-hidden min-w-[90px]">
-            <button
-              onMouseDown={() => handleExport('csv')}
-              className="px-3 py-1.5 text-xs text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-            >
-              CSV
-            </button>
-            <button
-              onMouseDown={() => handleExport('json')}
-              className="px-3 py-1.5 text-xs text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-            >
-              JSON
-            </button>
-            <button
-              onMouseDown={() => handleCopyJson()}
-              className="px-3 py-1.5 text-xs text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-              title={isEn ? 'Copy filtered list as JSON to clipboard' : 'Gefilterte Liste als JSON in die Zwischenablage kopieren'}
-            >
-              {isEn ? 'JSON (Clipboard)' : 'JSON (Zwischenablage)'}
-            </button>
-          </div>
+          {exportMenuOpen && (
+            <div className="absolute left-0 top-full mt-1 z-50 flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg overflow-hidden min-w-[130px]">
+              <button
+                onClick={() => { handleExport('csv'); setExportMenuOpen(false); }}
+                className="px-3 py-1.5 text-xs text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                CSV
+              </button>
+              <button
+                onClick={() => { handleExport('json'); setExportMenuOpen(false); }}
+                className="px-3 py-1.5 text-xs text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                JSON
+              </button>
+              <button
+                onClick={() => { handleCopyJson(); setExportMenuOpen(false); }}
+                className="px-3 py-1.5 text-xs text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                title={isEn ? 'Copy filtered list as JSON to clipboard' : 'Gefilterte Liste als JSON in die Zwischenablage kopieren'}
+              >
+                {isEn ? 'JSON (Clipboard)' : 'JSON (Zwischenablage)'}
+              </button>
+            </div>
+          )}
         </div>
         <button
           onClick={() => setImportOpen(true)}
