@@ -3125,7 +3125,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                       base.has(item.prefix) ? base.delete(item.prefix) : base.add(item.prefix);
                       return base;
                     })}>
-                    <td colSpan={_sepMainSpan || rowColSpan + 1} className="py-1.5 bg-gray-100/80 dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 hover:bg-gray-200/80 dark:hover:bg-gray-700/60 transition-colors" style={{ paddingLeft: 12 + item.depth * 10, paddingRight: 12 }}>
+                    <td colSpan={_sepMainSpan || rowColSpan + 1} className="py-1.5 bg-gray-100/80 dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-200/80 dark:group-hover/sep:bg-gray-700/60 transition-colors" style={{ paddingLeft: 12 + item.depth * 10, paddingRight: 12 }}>
                       <div className="flex items-center gap-2">
                         {(collapsedPrefixes === null || collapsedPrefixes.has(item.prefix))
                           ? <ChevronRight size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
@@ -3169,13 +3169,15 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                             <Copy size={12} />
                           </button>
                         )}
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setDeletingGroupPrefix(item.prefix); }}
-                          className="ml-auto opacity-0 group-hover/sep:opacity-100 transition-opacity text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400"
-                          title={isEn ? 'Delete all datapoints in this group' : 'Alle Datenpunkte dieser Gruppe löschen'}
-                        >
-                          <Trash2 size={13} />
-                        </button>
+                        {_sepDetailCols.length === 0 && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setDeletingGroupPrefix(item.prefix); }}
+                            className="ml-auto opacity-0 group-hover/sep:opacity-100 transition-opacity text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400"
+                            title={isEn ? 'Delete all datapoints in this group' : 'Alle Datenpunkte dieser Gruppe löschen'}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
                       </div>
                     </td>
                     {_sepDetailCols.length > 0 && (() => {
@@ -3184,16 +3186,26 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                         const w = colWidths[k];
                         if (k === 'type') {
                           const t = item.prefix.split('.').length > 2 ? (sepObj?.type ?? 'folder') : sepObj?.type;
-                          return <td key="type" style={{ width: w, minWidth: w }} className="px-3 py-1.5 bg-gray-100/80 dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 text-xs font-mono align-middle">{t && <span className={`font-semibold ${getTypeColor(t)}`}>{t}</span>}</td>;
+                          return <td key="type" style={{ width: w, minWidth: w }} className="px-3 py-1.5 bg-gray-100/80 dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-200/80 dark:group-hover/sep:bg-gray-700/60 transition-colors text-xs font-mono align-middle">{t && <span className={`font-semibold ${getTypeColor(t)}`}>{t}</span>}</td>;
                         }
                         if (k === 'role') {
                           const r = sepObj?.common?.role;
-                          return <td key="role" style={{ width: w, minWidth: w }} className="px-3 py-1.5 bg-gray-100/80 dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 text-xs font-mono align-middle">{r && <span className={`font-semibold ${getRoleColor(r)}`}>{r}</span>}</td>;
+                          return <td key="role" style={{ width: w, minWidth: w }} className="px-3 py-1.5 bg-gray-100/80 dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-200/80 dark:group-hover/sep:bg-gray-700/60 transition-colors text-xs font-mono align-middle">{r && <span className={`font-semibold ${getRoleColor(r)}`}>{r}</span>}</td>;
                         }
                         return null;
                       });
                     })()}
-                    {_sepDetailCols.length > 0 && <td colSpan={_sepTrailingSpan} className="bg-gray-100/80 dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60" />}
+                    {_sepDetailCols.length > 0 && (
+                      <td colSpan={_sepTrailingSpan} className="bg-gray-100/80 dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-200/80 dark:group-hover/sep:bg-gray-700/60 transition-colors pr-2 text-right align-middle">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setDeletingGroupPrefix(item.prefix); }}
+                          className="opacity-0 group-hover/sep:opacity-100 transition-opacity text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400"
+                          title={isEn ? 'Delete all datapoints in this group' : 'Alle Datenpunkte dieser Gruppe löschen'}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 );
               }
