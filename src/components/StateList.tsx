@@ -1550,7 +1550,7 @@ const StateRow = React.memo(function StateRow({
         </td>
       )}
       {show('alias') && (
-        <td style={{ width: w('alias'), minWidth: w('alias') }} className="py-2 align-middle">
+        <td style={{ width: colWidths['alias'], minWidth: colWidths['alias'] }} className="py-2 align-middle">
           <div className="flex items-center justify-center">
             {danglingAlias && (
               <span title={aliasTooltip} className="relative p-0.5 rounded text-red-500 dark:text-red-400">
@@ -1849,7 +1849,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   function fitToContainer() {
     const containerWidth = containerRef.current?.clientWidth;
     if (!containerWidth) return;
-    const ICON_COLS: SortKey[] = ['checkbox', 'write', 'history', 'smart', 'alias'];
+    const ICON_COLS: SortKey[] = ['checkbox', 'write', 'history', 'smart', 'alias', 'scripts'];
     const scalable = visibleCols.filter((k) => !ICON_COLS.includes(k));
     const iconWidth = ICON_COLS.filter((k) => show(k)).reduce((s, k) => s + colWidths[k], 0);
     const available = containerWidth - iconWidth - DEL_COL_WIDTH;
@@ -2902,7 +2902,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
               {show('write')   && <th style={{ width: colWidths['write'],   minWidth: colWidths['write']   }} className="text-center align-middle group/hdr relative" title={isEn ? 'Read only' : 'Schreibschutz'}><Lock size={12} className="mx-auto text-gray-400 dark:text-gray-500" /><button className="absolute inset-y-0 right-0 opacity-0 group-hover/hdr:opacity-100 px-0.5 text-gray-400 hover:text-red-400 transition-opacity" onClick={() => handleHideCol('write')} tabIndex={-1}><Minus size={10} /></button></th>}
               {show('history') && <th style={{ width: colWidths['history'], minWidth: colWidths['history'] }} className="text-center align-middle group/hdr relative" title="History"><History size={12} className="mx-auto text-gray-400 dark:text-gray-500" /><button className="absolute inset-y-0 right-0 opacity-0 group-hover/hdr:opacity-100 px-0.5 text-gray-400 hover:text-red-400 transition-opacity" onClick={() => handleHideCol('history')} tabIndex={-1}><Minus size={10} /></button></th>}
               {show('smart')   && <th style={{ width: colWidths['smart'],   minWidth: colWidths['smart']   }} className="text-center align-middle group/hdr relative" title="SmartName"><Mic2 size={12} className="mx-auto text-gray-400 dark:text-gray-500" /><button className="absolute inset-y-0 right-0 opacity-0 group-hover/hdr:opacity-100 px-0.5 text-gray-400 hover:text-red-400 transition-opacity" onClick={() => handleHideCol('smart')} tabIndex={-1}><Minus size={10} /></button></th>}
-              {show('alias')   && <th style={{ width: w('alias'),           minWidth: w('alias')           }} className="text-center align-middle group/hdr relative" title="Alias"><Link2 size={12} className="mx-auto text-gray-400 dark:text-gray-500" /><button className="absolute inset-y-0 right-0 opacity-0 group-hover/hdr:opacity-100 px-0.5 text-gray-400 hover:text-red-400 transition-opacity" onClick={() => handleHideCol('alias')} tabIndex={-1}><Minus size={10} /></button></th>}
+              {show('alias')   && <th style={{ width: colWidths['alias'],           minWidth: colWidths['alias']           }} className="text-center align-middle group/hdr relative" title="Alias"><Link2 size={12} className="mx-auto text-gray-400 dark:text-gray-500" /><button className="absolute inset-y-0 right-0 opacity-0 group-hover/hdr:opacity-100 px-0.5 text-gray-400 hover:text-red-400 transition-opacity" onClick={() => handleHideCol('alias')} tabIndex={-1}><Minus size={10} /></button></th>}
               {show('scripts') && <th style={{ width: colWidths['scripts'], minWidth: colWidths['scripts'] }} className="text-center align-middle group/hdr relative" title={isEn ? 'Scripts' : 'Skripte'}><FileCode2 size={12} className="mx-auto text-gray-400 dark:text-gray-500" /><button className="absolute inset-y-0 right-0 opacity-0 group-hover/hdr:opacity-100 px-0.5 text-gray-400 hover:text-red-400 transition-opacity" onClick={() => handleHideCol('scripts')} tabIndex={-1}><Minus size={10} /></button></th>}
               {show('room')     && <SortHeader label={isEn ? 'Room' : 'Raum'} sortKey="room" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('room')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
               {show('function') && <SortHeader label={isEn ? 'Function' : 'Funktion'} sortKey="function" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('function')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}

@@ -52,7 +52,7 @@ export const DEFAULT_COLS: SortKey[] = ['checkbox', 'id', 'name', 'write', 'hist
 export const CONFIGURABLE_WIDTH_COLS: SortKey[] = ['id', 'name', 'room', 'function', 'type', 'role', 'value', 'unit', 'ack', 'ts', 'relevanz'];
 
 export const BUILTIN_DEFAULT_WIDTHS: Record<SortKey, number> = {
-  checkbox: 28, write: 22, history: 22, smart: 22, scripts: 22, alias: 30,
+  checkbox: 28, write: 28, history: 28, smart: 28, scripts: 28, alias: 28,
   id: 350, name: 220, room: 110, function: 110, type: 70, role: 130, children: 80, value: 100,
   unit: 70, ack: 50, ts: 155, relevanz: 100,
 };
