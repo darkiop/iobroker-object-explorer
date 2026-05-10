@@ -3110,7 +3110,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                       base.has(item.prefix) ? base.delete(item.prefix) : base.add(item.prefix);
                       return base;
                     })}>
-                    <td colSpan={rowColSpan + 1} className="py-1.5 bg-gray-100/80 dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 hover:bg-gray-200/80 dark:hover:bg-gray-700/60 transition-colors" style={{ paddingLeft: 12 + item.depth * 16 }}>
+                    <td colSpan={rowColSpan + 1} className="px-3 py-1.5 bg-gray-100/80 dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 hover:bg-gray-200/80 dark:hover:bg-gray-700/60 transition-colors">
                       <div className="flex items-center gap-2">
                         {(collapsedPrefixes === null || collapsedPrefixes.has(item.prefix))
                           ? <ChevronRight size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
