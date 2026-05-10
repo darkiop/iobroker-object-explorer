@@ -133,9 +133,15 @@ function loadAppSettings(): AppSettings {
     if (typeof unknown !== 'object' || unknown === null) return fallback;
     const parsed = unknown as Partial<AppSettings>;
     const validLanguage = parsed.language === 'de' || parsed.language === 'en' ? parsed.language : 'en';
-    const validCols = Array.isArray(parsed.visibleCols)
+    let validCols = Array.isArray(parsed.visibleCols)
       ? parsed.visibleCols.filter((k): k is SortKey => ALL_COLUMNS.some((c) => c.key === k))
       : [];
+    // migrate: ensure 'scripts' is included (inserted after 'alias' if present)
+    if (validCols.length > 0 && !validCols.includes('scripts')) {
+      const aliasIdx = validCols.indexOf('alias');
+      if (aliasIdx >= 0) validCols.splice(aliasIdx + 1, 0, 'scripts');
+      else validCols.push('scripts');
+    }
     const validDate = parsed.dateFormat === 'de' || parsed.dateFormat === 'us' || parsed.dateFormat === 'iso' ? parsed.dateFormat : 'de';
     const validExtra = Array.isArray(parsed.extraQuickFilters)
       ? parsed.extraQuickFilters.filter((x): x is string => typeof x === 'string').map(normalizeQuickPattern).filter(Boolean)

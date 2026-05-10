@@ -1390,6 +1390,7 @@ interface StateRowProps {
   isFocused: boolean;
   showDesc?: boolean;
   childCounts?: { objs: number; states: number };
+  depth?: number;
 }
 
 function aliasIdsEqual(a?: string[], b?: string[]): boolean {
@@ -1407,7 +1408,7 @@ const StateRow = React.memo(function StateRow({
   onSelect, onCheck, onContextMenu, onHistoryClick, onScriptsClick, onNavigateTo, onDeleteClick, onEditJson,
   onSelectRoom, onSelectFunction, onOpenValueModal,
   roomEditForced, fnEditForced, onRoomEditEnd, onFnEditEnd,
-  dateFormat, language, expertMode, isFocused, showDesc = true, childCounts, scriptSources,
+  dateFormat, language, expertMode, isFocused, showDesc = true, childCounts, scriptSources, depth = 0,
 }: StateRowProps) {
   const isEn = language === 'en';
   const show = (key: SortKey) => visibleCols.includes(key);
@@ -1454,7 +1455,7 @@ const StateRow = React.memo(function StateRow({
         </td>
       )}
       {show('id') && (
-        <td data-col="id" className="py-2 font-mono text-xs text-gray-500 dark:text-gray-400 overflow-hidden group/id" style={{ paddingLeft: 12 }}>
+        <td data-col="id" className="py-2 font-mono text-xs text-gray-500 dark:text-gray-400 overflow-hidden group/id" style={{ paddingLeft: 12 + depth * 10 }}>
           <div className="flex flex-col gap-0.5 min-w-0">
             <div className="flex items-center gap-1.5 min-w-0">
               <ColoredId id={id} />
@@ -2077,7 +2078,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   }, [sortedIds, valueFilter, tsFilterParsed, dateFormat, scriptsFilterActive, scriptSources,
     (valueFilter || tsFilterParsed.mode !== 'none') ? states : null]);
 
-  type DisplayItem = { kind: 'row'; id: string } | { kind: 'sep'; prefix: string; isState: boolean; depth: number };
+  type DisplayItem = { kind: 'row'; id: string; depth: number } | { kind: 'sep'; prefix: string; isState: boolean; depth: number };
 
   // All ancestor prefixes at every level, used for collapse/expand logic
   const allSepPrefixes = useMemo((): Set<string> => {
@@ -2093,7 +2094,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   }, [filteredIds, groupByPath]);
 
   const displayItems = useMemo((): DisplayItem[] => {
-    if (!groupByPath) return filteredIds.map((id) => ({ kind: 'row' as const, id }));
+    if (!groupByPath) return filteredIds.map((id) => ({ kind: 'row' as const, id, depth: 0 }));
 
     const filteredIdSet = new Set(filteredIds);
 
@@ -2134,7 +2135,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
         );
         for (const child of children) visit(child, depth + 1);
         for (const id of (directLeavesMap.get(prefix) ?? [])) {
-          items.push({ kind: 'row', id });
+          items.push({ kind: 'row', id, depth });
         }
       }
     }
@@ -2146,7 +2147,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
 
     // Leaves with no ancestor prefix (edge case: single-part IDs)
     for (const id of (directLeavesMap.get('') ?? [])) {
-      items.push({ kind: 'row', id });
+      items.push({ kind: 'row', id, depth: 0 });
     }
 
     return items;
@@ -3099,11 +3100,6 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                           ? <ColoredId id={item.prefix} className="text-sm font-mono font-bold" />
                           : <span className="text-sm text-gray-400 dark:text-gray-500 font-mono font-bold italic">root</span>
                         }
-                        {item.isState && (
-                          <span className="text-xs font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded shrink-0">
-                            {formatValue(states[item.prefix]?.val)}
-                          </span>
-                        )}
                         {item.prefix && objects[item.prefix] && (
                           <button
                             onClick={(e) => { e.stopPropagation(); setEditObjId(item.prefix); }}
@@ -3182,6 +3178,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                   isFocused={focusedId === id && selectedId !== id}
                   showDesc={showDesc}
                   childCounts={childCountMap.get(id)}
+                  depth={item.depth}
                 />
               );
             })}

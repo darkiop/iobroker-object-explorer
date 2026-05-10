@@ -459,11 +459,10 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
         <span className={`truncate ${node.isLeaf ? (isHistoryEnabled ? 'text-blue-500 dark:text-blue-400' : 'text-green-600 dark:text-green-400') : (isHighlightedNamespace ? 'font-semibold' : 'text-gray-600 font-medium dark:text-gray-400')}`}>
           {node.name}
         </span>
-        {treeCountMode !== 'off' && !node.isLeaf && (node.totalCount ?? 0) > 0 && (
+        {treeCountMode !== 'off' && !node.isLeaf && (node.totalCount ?? 0) > 0 &&
+         !(treeCountMode === 'states' && (node.count ?? 0) === 0) && (
           <span className="shrink-0 text-[10px] font-medium px-1 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 leading-none whitespace-nowrap">
-            {treeCountMode === 'states' && (node.count ?? 0)}
-            {treeCountMode === 'objects' && node.totalCount}
-            {treeCountMode === 'both' && `${node.count ?? 0} / ${node.totalCount}`}
+            {treeCountMode === 'states' ? (node.count ?? 0) : treeCountMode === 'objects' ? node.totalCount : `${node.count ?? 0} / ${node.totalCount}`}
           </span>
         )}
         {isFolder && objectType && (
