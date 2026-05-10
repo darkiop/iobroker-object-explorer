@@ -59,6 +59,7 @@ interface AppSettings {
   treeCountMode: 'off' | 'states' | 'objects' | 'both';
   showDesc: boolean;
   groupByPath: boolean;
+  treeViewMode: 'adapter' | 'path';
   adminPort: number;
   customDefaultWidths: Partial<Record<SortKey, number>>;
   customMaxWidths: Partial<Record<SortKey, number>>;
@@ -78,6 +79,7 @@ function getDefaultAppSettings(): AppSettings {
     treeCountMode: 'objects',
     showDesc: true,
     groupByPath: true,
+    treeViewMode: 'adapter',
     adminPort: 8081,
     customDefaultWidths: {},
     customMaxWidths: {},
@@ -162,6 +164,7 @@ function loadAppSettings(): AppSettings {
       treeCountMode: (['off','states','objects','both'] as const).includes(parsed.treeCountMode as 'off'|'states'|'objects'|'both') ? parsed.treeCountMode as 'off'|'states'|'objects'|'both' : ((parsed as Record<string,unknown>).treeShowCount === false ? 'off' : 'objects'),
       showDesc: parsed.showDesc !== false,
       groupByPath: parsed.groupByPath !== false,
+      treeViewMode: parsed.treeViewMode === 'path' ? 'path' : 'adapter',
       adminPort: typeof parsed.adminPort === 'number' && parsed.adminPort > 0 && parsed.adminPort <= 65535 ? parsed.adminPort : 8081,
       customDefaultWidths: parseColWidthMap(parsed.customDefaultWidths),
       customMaxWidths: parseColWidthMap(parsed.customMaxWidths),
@@ -629,6 +632,7 @@ function AppContent() {
       customDefaultWidths: settingsDraft.customDefaultWidths,
       customMaxWidths: settingsDraft.customMaxWidths,
       groupByPath: settingsDraft.groupByPath,
+      treeViewMode: settingsDraft.treeViewMode,
       adminPort: settingsDraft.adminPort,
       objectsRefreshInterval: settingsDraft.objectsRefreshInterval,
     };
@@ -1139,6 +1143,8 @@ function AppContent() {
               onAutoCreateAlias={setAutoAliasDeviceId}
               treeFontSize={appSettings.treeFontSize}
               treeCountMode={appSettings.treeCountMode}
+              treeViewMode={appSettings.treeViewMode}
+              onTreeViewModeChange={(mode) => setAppSettings(prev => ({ ...prev, treeViewMode: mode }))}
             />
           </div>
         </div>

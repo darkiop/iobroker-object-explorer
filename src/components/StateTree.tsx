@@ -32,6 +32,8 @@ interface StateTreeProps {
   onAutoCreateAlias?: (deviceId: string) => void;
   treeFontSize?: 'small' | 'normal' | 'large' | 'xl';
   treeCountMode?: 'off' | 'states' | 'objects' | 'both';
+  treeViewMode?: 'adapter' | 'path';
+  onTreeViewModeChange?: (mode: 'adapter' | 'path') => void;
 }
 
 function buildTree(ids: string[], structureIds: string[] = []): TreeNode {
@@ -575,14 +577,15 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
 });
 
 
-function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeScope, onCreateAtPath, historyOnly, smartOnly, historyIds, smartIds, expandToDepth, treeFilter = null, treeSearch: treeSearchProp = '', onTreeSearchChange, pattern, language = 'en', onOpenAliasReplace, onAutoCreateAlias, treeFontSize = 'normal', treeCountMode = 'objects' }: StateTreeProps) {
+function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeScope, onCreateAtPath, historyOnly, smartOnly, historyIds, smartIds, expandToDepth, treeFilter = null, treeSearch: treeSearchProp = '', onTreeSearchChange, pattern, language = 'en', onOpenAliasReplace, onAutoCreateAlias, treeFontSize = 'normal', treeCountMode = 'objects', treeViewMode: treeViewModeProp = 'adapter', onTreeViewModeChange }: StateTreeProps) {
   const isEn = language === 'en';
   const nodeFontClass = treeFontSize === 'small' ? 'text-xs' : treeFontSize === 'large' ? 'text-base' : treeFontSize === 'xl' ? 'text-lg' : 'text-sm';
   const [expandSignal, setExpandSignal] = useState<{ depth: number; seq: number }>({ depth: 0, seq: 0 });
   const [showFolders,  setShowFolders]  = useState(true);
   const [showDevices,  setShowDevices]  = useState(true);
   const [showChannels, setShowChannels] = useState(true);
-  const [treeViewMode, setTreeViewMode] = useState<'path' | 'adapter'>('adapter');
+  const [treeViewMode, setTreeViewMode] = useState<'path' | 'adapter'>(treeViewModeProp);
+  const handleTreeViewModeChange = (m: 'adapter' | 'path') => { setTreeViewMode(m); onTreeViewModeChange?.(m); };
   const [showStats, setShowStats] = useState(false);
   const treeSearch = treeSearchProp;
   const setTreeSearch = onTreeSearchChange ?? (() => {});
@@ -663,7 +666,7 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
           {isEn ? 'Collapse' : 'Zuklappen'}
         </button>
         <button
-          onClick={() => setTreeViewMode(m => m === 'path' ? 'adapter' : 'path')}
+          onClick={() => handleTreeViewModeChange(treeViewMode === 'path' ? 'adapter' : 'path')}
           className={`flex items-center justify-center gap-1 px-2 py-1 text-xs rounded border transition-colors ${
             treeViewMode === 'adapter'
               ? 'bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-400/40 hover:bg-blue-500/30'
