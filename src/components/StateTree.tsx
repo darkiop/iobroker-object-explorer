@@ -472,13 +472,13 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
           </span>
         )}
         {isSmartEnabled && (
-          <span title="SmartName vorhanden"><Mic2 size={11} className="shrink-0 text-violet-500 dark:text-violet-400" /></span>
+          <span title={isEn ? 'SmartName set' : 'SmartName vorhanden'}><Mic2 size={11} className="shrink-0 text-violet-500 dark:text-violet-400" /></span>
         )}
         {isFolder && (
           <button
             onClick={(e) => { e.stopPropagation(); setEditOpen(true); }}
             className="shrink-0 opacity-0 group-hover/row:opacity-100 text-gray-400 hover:text-yellow-500 dark:text-gray-500 dark:hover:text-yellow-400 transition-opacity"
-            title="Objekt bearbeiten"
+            title={isEn ? 'Edit object' : 'Objekt bearbeiten'}
           >
             <Pencil size={12} />
           </button>
@@ -487,7 +487,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
           <button
             onClick={(e) => { e.stopPropagation(); onCreateAtPath(`${node.fullPath}.`); }}
             className="shrink-0 opacity-0 group-hover/row:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 rounded p-1 transition-all"
-            title={`Neuer Datenpunkt unter: ${node.fullPath}`}
+            title={isEn ? `New datapoint under: ${node.fullPath}` : `Neuer Datenpunkt unter: ${node.fullPath}`}
           >
             <Plus size={14} />
           </button>
@@ -530,7 +530,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
                 ? 'text-blue-600 dark:text-blue-300 bg-blue-500/25 dark:bg-blue-400/25'
                 : 'opacity-0 group-hover/row:opacity-100 text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20'
             }`}
-            title={`In Tabelle anzeigen: ${node.fullPath}`}
+            title={isEn ? `Show in table: ${node.fullPath}` : `In Tabelle anzeigen: ${node.fullPath}`}
           >
             <Search size={14} />
           </button>
