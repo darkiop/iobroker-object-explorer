@@ -34,7 +34,7 @@ const queryClient = new QueryClient({
   },
 });
 
-const PAGE_SIZE_OPTIONS = [25, 50, 100, 200, 500, 1000];
+const PAGE_SIZE_OPTIONS = [200, 500, 1000, 3000];
 const LS_APP_SETTINGS = 'iobroker-app-settings';
 const LS_EXPERT_MODE = 'iobroker-expert-mode';
 const LS_FILTER_STATE = 'iobroker-filter-state';
@@ -72,7 +72,7 @@ function getDefaultAppSettings(): AppSettings {
     visibleCols: DEFAULT_COLS,
     extraQuickFilters: [],
     toolbarLabels: true,
-    pageSize: 50,
+    pageSize: 1000,
     tableFontSize: 'normal',
     treeFontSize: 'normal',
     treeCountMode: 'objects',
@@ -146,7 +146,7 @@ function loadAppSettings(): AppSettings {
     const validExtra = Array.isArray(parsed.extraQuickFilters)
       ? parsed.extraQuickFilters.filter((x): x is string => typeof x === 'string').map(normalizeQuickPattern).filter(Boolean)
       : [];
-    const parsedPageSize = typeof parsed.pageSize === 'number' && PAGE_SIZE_OPTIONS.includes(parsed.pageSize) ? parsed.pageSize : 50;
+    const parsedPageSize = typeof parsed.pageSize === 'number' && PAGE_SIZE_OPTIONS.includes(parsed.pageSize) ? parsed.pageSize : 1000;
     const validFontSizes = ['small', 'normal', 'large', 'xl'] as const;
     const tableFontSize = validFontSizes.includes(parsed.tableFontSize as UiFontSize) ? parsed.tableFontSize as UiFontSize : 'normal';
     const treeFontSize  = validFontSizes.includes(parsed.treeFontSize  as UiFontSize) ? parsed.treeFontSize  as UiFontSize : 'normal';
@@ -614,7 +614,7 @@ function AppContent() {
     const nextCols = settingsDraft.visibleCols.filter((k) => ALL_COLUMNS.some((c) => c.key === k));
     const normalizedExtra = [...new Set(settingsDraft.extraQuickFilters.map(normalizeQuickPattern).filter(Boolean))]
       .filter((p) => !DEFAULT_QUICK_PATTERNS.includes(p as typeof DEFAULT_QUICK_PATTERNS[number]));
-    const validPageSize = PAGE_SIZE_OPTIONS.includes(settingsDraft.pageSize) ? settingsDraft.pageSize : 50;
+    const validPageSize = PAGE_SIZE_OPTIONS.includes(settingsDraft.pageSize) ? settingsDraft.pageSize : 1000;
     const next: AppSettings = {
       language: settingsDraft.language,
       dateFormat: settingsDraft.dateFormat,

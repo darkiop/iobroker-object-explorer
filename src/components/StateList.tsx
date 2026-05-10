@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Cpu, Layers, FileCode2, ToggleLeft, Hash, Type, Braces, List } from 'lucide-react';
+import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Folder, Cpu, Layers, FileCode2, ToggleLeft, Hash, Type, Braces, List } from 'lucide-react';
 import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch, useAllScriptSources } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
@@ -2490,7 +2490,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
             title={isEn ? 'Rows per page' : 'Zeilen pro Seite'}
             className="h-8 px-1.5 text-xs rounded-lg border border-gray-200 bg-white text-gray-600 hover:border-gray-300 focus:outline-none focus:border-blue-400 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:border-gray-600 dark:focus:border-blue-500 cursor-pointer"
           >
-            {[25, 50, 100, 200, 500, 1000].map((n) => <option key={n} value={n}>{n}</option>)}
+            {[200, 500, 1000, 3000].map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
         )}
         <ColPicker visible={visibleCols} onChange={handleColChange} language={language} />
@@ -2932,7 +2932,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                         title={allCollapsed ? (isEn ? 'Expand all groups' : 'Alle Gruppen aufklappen') : (isEn ? 'Collapse all groups' : 'Alle Gruppen einklappen')}
                         className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-200 dark:text-gray-500 dark:hover:text-gray-300 dark:hover:bg-gray-700 transition-colors"
                       >
-                        {allCollapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
+                        {allCollapsed ? <FolderOpen size={13} /> : <Folder size={13} />}
                       </button>
                     );
                   })()}
