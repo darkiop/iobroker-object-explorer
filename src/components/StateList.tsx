@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Cpu, Layers, Network, FileCode2 } from 'lucide-react';
+import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Cpu, Layers, FileCode2 } from 'lucide-react';
 import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch, useAllScriptSources } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
@@ -1390,7 +1390,6 @@ interface StateRowProps {
   isFocused: boolean;
   showDesc?: boolean;
   childCounts?: { objs: number; states: number };
-  treeDepth?: number;
 }
 
 function aliasIdsEqual(a?: string[], b?: string[]): boolean {
@@ -1408,7 +1407,7 @@ const StateRow = React.memo(function StateRow({
   onSelect, onCheck, onContextMenu, onHistoryClick, onScriptsClick, onNavigateTo, onDeleteClick, onEditJson,
   onSelectRoom, onSelectFunction, onOpenValueModal,
   roomEditForced, fnEditForced, onRoomEditEnd, onFnEditEnd,
-  dateFormat, language, expertMode, isFocused, showDesc = true, childCounts, treeDepth, scriptSources,
+  dateFormat, language, expertMode, isFocused, showDesc = true, childCounts, scriptSources,
 }: StateRowProps) {
   const isEn = language === 'en';
   const show = (key: SortKey) => visibleCols.includes(key);
@@ -1546,7 +1545,7 @@ const StateRow = React.memo(function StateRow({
         </td>
       )}
       {show('id') && (
-        <td data-col="id" className="py-2 font-mono text-xs text-gray-500 dark:text-gray-400 overflow-hidden group/id" style={{ paddingLeft: treeDepth !== undefined ? treeDepth * 16 + 12 : 12 }}>
+        <td data-col="id" className="py-2 font-mono text-xs text-gray-500 dark:text-gray-400 overflow-hidden group/id" style={{ paddingLeft: 12 }}>
           <div className="flex flex-col gap-0.5 min-w-0">
             <div className="flex items-center gap-1.5 min-w-0">
               <ColoredId id={id} />
@@ -1715,21 +1714,9 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   const [viewportHeight, setViewportHeight] = useState(0);
   const isFilterActive = !!(pattern && pattern !== '*') || !!treeFilter;
   // null = "all collapsed". new Set() = all expanded.
-  const [collapsedPrefixes, setCollapsedPrefixes] = useState<Set<string> | null>(() => isFilterActive ? null : new Set());
-  const [treeViewMode, setTreeViewMode] = useState(false);
-  const [treeExpandedNodes, setTreeExpandedNodes] = useState<Set<string>>(() => new Set());
-
-  function toggleTreeViewMode() {
-    setTreeViewMode((v) => {
-      if (!v) {
-        // Expand all non-leaf nodes on first open so the full hierarchy is visible
-        setTreeExpandedNodes(new Set(Object.keys(objects).filter((id) => objects[id]?.type !== 'state')));
-      }
-      return !v;
-    });
-  }
+  const [collapsedPrefixes, setCollapsedPrefixes] = useState<Set<string> | null>(null);
   useEffect(() => {
-    setCollapsedPrefixes(isFilterActive ? null : new Set());
+    setCollapsedPrefixes(null);
   }, [isFilterActive]);
   const [headerHeight, setHeaderHeight] = useState(0);
   const [newDatapointOpen, setNewDatapointOpen] = useState(false);
@@ -2100,7 +2087,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
     });
   }, [sortedIds, valueFilter, tsFilterParsed, dateFormat, (valueFilter || tsFilterParsed.mode !== 'none') ? states : null]);
 
-  type DisplayItem = { kind: 'row'; id: string } | { kind: 'sep'; prefix: string; isState: boolean; depth: number } | { kind: 'tree'; id: string; depth: number; isLeaf: boolean; hasChildren: boolean };
+  type DisplayItem = { kind: 'row'; id: string } | { kind: 'sep'; prefix: string; isState: boolean; depth: number };
 
   // All ancestor prefixes at every level, used for collapse/expand logic
   const allSepPrefixes = useMemo((): Set<string> => {
@@ -2175,37 +2162,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
     return items;
   }, [filteredIds, groupByPath, collapsedPrefixes, allSepPrefixes]);
 
-  const treeDisplayItems = useMemo((): DisplayItem[] => {
-    if (!treeViewMode) return [];
-    const allIds = Object.keys(objects).sort();
-    const idSet = new Set(allIds);
-    // Which IDs have at least one child in objects
-    const hasChildrenSet = new Set<string>();
-    for (const id of allIds) {
-      const parts = id.split('.');
-      for (let i = 1; i < parts.length; i++) {
-        const ancestor = parts.slice(0, i).join('.');
-        if (idSet.has(ancestor)) hasChildrenSet.add(ancestor);
-      }
-    }
-    let minDepth = Infinity;
-    for (const id of allIds) minDepth = Math.min(minDepth, id.split('.').length);
-    if (!isFinite(minDepth)) minDepth = 1;
-    const items: DisplayItem[] = [];
-    for (const id of allIds) {
-      const parts = id.split('.');
-      let visible = true;
-      for (let i = 1; i < parts.length; i++) {
-        const ancestor = parts.slice(0, i).join('.');
-        if (idSet.has(ancestor) && !treeExpandedNodes.has(ancestor)) { visible = false; break; }
-      }
-      if (!visible) continue;
-      items.push({ kind: 'tree', id, depth: parts.length - minDepth, isLeaf: objects[id]?.type === 'state', hasChildren: hasChildrenSet.has(id) });
-    }
-    return items;
-  }, [objects, treeViewMode, treeExpandedNodes]);
-
-  const activeDisplayItems: DisplayItem[] = treeViewMode ? treeDisplayItems : displayItems;
+  const activeDisplayItems: DisplayItem[] = displayItems;
 
   const hasColFilters = Object.values(colFiltersDraft).some((v) => v.trim() !== '');
 
@@ -2487,17 +2444,6 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
           }`}
         >
           <FolderOpen size={17} />
-        </button>
-        <button
-          onClick={toggleTreeViewMode}
-          title={treeViewMode ? (isEn ? 'Switch to flat view' : 'Flache Ansicht') : (isEn ? 'Switch to tree view' : 'Baumansicht')}
-          className={`p-2 rounded-lg transition-colors ${
-            treeViewMode
-              ? 'text-blue-600 bg-blue-500/15 hover:bg-blue-500/25 dark:text-blue-400 dark:hover:bg-blue-500/20'
-              : 'text-gray-400 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-500 dark:hover:text-blue-400 dark:hover:bg-blue-500/10'
-          }`}
-        >
-          <Network size={17} />
         </button>
         <button
           onClick={() => onToggleExpertMode?.()}
@@ -3199,37 +3145,6 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                   </tr>
                 );
               }
-              if (item.kind === 'tree' && !item.isLeaf) {
-                const obj = objects[item.id];
-                const isExpanded = treeExpandedNodes.has(item.id);
-                return (
-                  <tr key={`tree_${item.id}`} className="group/sep cursor-pointer select-none" onClick={() => setTreeExpandedNodes((prev) => { const next = new Set(prev); next.has(item.id) ? next.delete(item.id) : next.add(item.id); return next; })}>
-                    <td colSpan={rowColSpan + 1} className="py-1.5 bg-gray-100/80 dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 hover:bg-gray-200/80 dark:hover:bg-gray-700/60 transition-colors" style={{ paddingLeft: item.depth * 16 + 12 }}>
-                      <div className="flex items-center gap-2">
-                        {item.hasChildren
-                          ? (isExpanded ? <ChevronDown size={14} className="text-gray-400 dark:text-gray-500 shrink-0" /> : <ChevronRight size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />)
-                          : <span className="w-3.5 shrink-0" />
-                        }
-                        {obj?.type === 'device'
-                          ? <Cpu size={14} className="text-sky-500/80 shrink-0" />
-                          : obj?.type === 'channel'
-                            ? <Layers size={14} className="text-indigo-500/80 shrink-0" />
-                            : <FolderOpen size={14} className="text-yellow-500/80 shrink-0" />
-                        }
-                        <ColoredId id={item.id} className="text-sm font-mono font-bold" />
-                        {obj && <span className="text-[10px] text-gray-400 dark:text-gray-500">{obj.common?.name ? (typeof obj.common.name === 'string' ? obj.common.name : Object.values(obj.common.name)[0]) : ''}</span>}
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setEditObjId(item.id); }}
-                          className="ml-1 opacity-0 group-hover/sep:opacity-100 transition-opacity text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400"
-                          title={isEn ? 'Edit object' : 'Objekt bearbeiten'}
-                        >
-                          <Pencil size={12} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              }
               const id = item.id;
               return (
                 <StateRow
@@ -3271,7 +3186,6 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                   isFocused={focusedId === id && selectedId !== id}
                   showDesc={showDesc}
                   childCounts={childCountMap.get(id)}
-                  treeDepth={item.kind === 'tree' ? item.depth : undefined}
                 />
               );
             })}

@@ -62,7 +62,6 @@ interface AppSettings {
   adminPort: number;
   customDefaultWidths: Partial<Record<SortKey, number>>;
   customMaxWidths: Partial<Record<SortKey, number>>;
-  noPaginationOnFilter: boolean;
   objectsRefreshInterval: 'off' | '30s' | '1m' | '5m' | '10m';
 }
 
@@ -82,7 +81,6 @@ function getDefaultAppSettings(): AppSettings {
     adminPort: 8081,
     customDefaultWidths: {},
     customMaxWidths: {},
-    noPaginationOnFilter: true,
     objectsRefreshInterval: 'off',
   };
 }
@@ -161,7 +159,6 @@ function loadAppSettings(): AppSettings {
       adminPort: typeof parsed.adminPort === 'number' && parsed.adminPort > 0 && parsed.adminPort <= 65535 ? parsed.adminPort : 8081,
       customDefaultWidths: parseColWidthMap(parsed.customDefaultWidths),
       customMaxWidths: parseColWidthMap(parsed.customMaxWidths),
-      noPaginationOnFilter: parsed.noPaginationOnFilter !== false,
       objectsRefreshInterval: (['off','30s','1m','5m','10m'] as const).includes(parsed.objectsRefreshInterval as 'off'|'30s'|'1m'|'5m'|'10m') ? parsed.objectsRefreshInterval as 'off'|'30s'|'1m'|'5m'|'10m' : 'off',
     };
   } catch {
@@ -469,7 +466,7 @@ function AppContent() {
     functionFilters.size > 0 || quickPatterns.size > 0 ||
     treeFilter !== null || danglingAliasFilter;
 
-  const paginationDisabled = appSettings.noPaginationOnFilter && isFilterActive;
+  const paginationDisabled = !isFilterActive;
 
   const totalCount = tableIds.length;
   const pageStart = paginationDisabled ? 0 : page * appSettings.pageSize;
@@ -627,7 +624,6 @@ function AppContent() {
       customMaxWidths: settingsDraft.customMaxWidths,
       groupByPath: settingsDraft.groupByPath,
       adminPort: settingsDraft.adminPort,
-      noPaginationOnFilter: settingsDraft.noPaginationOnFilter,
       objectsRefreshInterval: settingsDraft.objectsRefreshInterval,
     };
     setAppSettings(next);
@@ -1409,7 +1405,6 @@ function AppContent() {
                       { key: 'toolbarLabels',        labelEn: 'Toolbar button labels',             labelDe: 'Beschriftungen in der Toolbar' },
                       { key: 'showDesc',             labelEn: 'Description below name',            labelDe: 'Beschreibung unter Name' },
                       { key: 'groupByPath',          labelEn: 'Group table by path',               labelDe: 'Tabelle nach Pfad gruppieren' },
-                      { key: 'noPaginationOnFilter', labelEn: 'No pagination when filter active',  labelDe: 'Keine Paginierung bei aktivem Filter' },
                     ] as const).map(({ key, labelEn, labelDe }) => (
                       <div key={key} className="flex items-center justify-between">
                         <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? labelEn : labelDe}</span>
