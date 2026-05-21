@@ -2667,6 +2667,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
           existingIds={existingIds}
           initialId={newDatapointPrefix !== null ? newDatapointPrefix + '.' : patternToInitialId(pattern)}
           language={language}
+          allObjectIds={allObjectIds}
         />
       )}
       {importOpen && (

@@ -13,10 +13,12 @@ interface Props {
   existingIds: Set<string>;
   initialId?: string;
   language?: 'en' | 'de';
+  allObjectIds?: Set<string>;
 }
 
-export default function NewDatapointModal({ onClose, existingIds, initialId = '', language = 'en' }: Props) {
+export default function NewDatapointModal({ onClose, existingIds, initialId = '', language = 'en', allObjectIds }: Props) {
   const isEn = language === 'en';
+  const isAlias = initialId.startsWith('alias.');
   const [id, setId] = useState(initialId);
   const [name, setName] = useState('');
   const [objectType, setObjectType] = useState<typeof OBJECT_TYPES[number]>('state');
@@ -28,6 +30,9 @@ export default function NewDatapointModal({ onClose, existingIds, initialId = ''
   const [max, setMax] = useState('');
   const [read, setRead] = useState(true);
   const [write, setWrite] = useState(true);
+  const [aliasTarget, setAliasTarget] = useState('');
+  const [aliasSuggestionsOpen, setAliasSuggestionsOpen] = useState(false);
+  const [aliasActiveIndex, setAliasActiveIndex] = useState(-1);
   const [roleSuggestionsOpen, setRoleSuggestionsOpen] = useState(false);
   const [idSuggestionsOpen, setIdSuggestionsOpen] = useState(false);
   const [idActiveIndex, setIdActiveIndex] = useState(-1);
@@ -40,6 +45,13 @@ export default function NewDatapointModal({ onClose, existingIds, initialId = ''
   const existingIdsSorted = useState(() => [...existingIds].sort())[0];
   const filteredIdSuggestions = id.trim()
     ? existingIdsSorted.filter((s) => s.toLowerCase().startsWith(id.toLowerCase())).slice(0, 30)
+    : [];
+
+  const nonAliasSorted = useState(() =>
+    allObjectIds ? [...allObjectIds].filter((s) => !s.startsWith('alias.')).sort() : []
+  )[0];
+  const filteredAliasSuggestions = aliasTarget.trim()
+    ? nonAliasSorted.filter((s) => s.toLowerCase().includes(aliasTarget.toLowerCase())).slice(0, 40)
     : [];
 
   useEffect(() => {
@@ -72,6 +84,7 @@ export default function NewDatapointModal({ onClose, existingIds, initialId = ''
     const err = validate();
     if (err) { setError(err); return; }
 
+    const aliasCommon = isAlias && aliasTarget.trim() ? { alias: { id: aliasTarget.trim() } } : {};
     createDatapoint.mutate(
       {
         id: id.trim(),
@@ -86,9 +99,11 @@ export default function NewDatapointModal({ onClose, existingIds, initialId = ''
               max: stateType === 'number' && max.trim() !== '' ? Number(max) : undefined,
               read,
               write,
+              ...aliasCommon,
             }
           : {
               name: name.trim(),
+              ...aliasCommon,
             },
         initialValue: objectType === 'state' ? (initialValue.trim() || undefined) : undefined,
       },
@@ -162,6 +177,45 @@ export default function NewDatapointModal({ onClose, existingIds, initialId = ''
               className="px-2.5 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500"
             />
           </label>
+
+          {/* Alias target — only for alias.* IDs */}
+          {isAlias && objectType === 'state' && (
+            <div className="flex flex-col gap-1 relative">
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                {isEn ? 'Alias target' : 'Alias-Ziel'} <span className="text-gray-400 font-normal">({isEn ? 'optional' : 'optional'})</span>
+              </span>
+              <input
+                type="text"
+                value={aliasTarget}
+                onChange={(e) => { setAliasTarget(e.target.value); setAliasActiveIndex(-1); setAliasSuggestionsOpen(true); }}
+                onFocus={() => setAliasSuggestionsOpen(true)}
+                onBlur={() => setTimeout(() => setAliasSuggestionsOpen(false), 150)}
+                onKeyDown={(e) => {
+                  if (!aliasSuggestionsOpen || filteredAliasSuggestions.length === 0) return;
+                  if (e.key === 'ArrowDown') { e.preventDefault(); setAliasActiveIndex((i) => Math.min(i + 1, filteredAliasSuggestions.length - 1)); }
+                  else if (e.key === 'ArrowUp') { e.preventDefault(); setAliasActiveIndex((i) => Math.max(i - 1, -1)); }
+                  else if (e.key === 'Enter' && aliasActiveIndex >= 0) { e.preventDefault(); setAliasTarget(filteredAliasSuggestions[aliasActiveIndex]); setAliasSuggestionsOpen(false); setAliasActiveIndex(-1); }
+                  else if (e.key === 'Escape') setAliasSuggestionsOpen(false);
+                }}
+                placeholder={isEn ? 'e.g. hm-rpc.0.ABC123.1.TEMPERATURE' : 'z.B. hm-rpc.0.ABC123.1.TEMPERATUR'}
+                className="px-2.5 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500 font-mono"
+              />
+              {aliasSuggestionsOpen && filteredAliasSuggestions.length > 0 && (
+                <ul className="absolute top-full left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg z-50 text-sm">
+                  {filteredAliasSuggestions.map((s, i) => (
+                    <li
+                      key={s}
+                      onMouseDown={() => { setAliasTarget(s); setAliasSuggestionsOpen(false); setAliasActiveIndex(-1); }}
+                      onMouseEnter={() => setAliasActiveIndex(i)}
+                      className={`px-2.5 py-1 cursor-pointer font-mono text-xs ${i === aliasActiveIndex ? 'bg-blue-600 text-white' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                    >
+                      {s}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
 
           <div className="flex gap-3">
             <label className="flex flex-col gap-1 flex-1">
