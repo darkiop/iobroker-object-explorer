@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, BarChart2, ChevronUp, ChevronDown, Trash2, AlertTriangle } from 'lucide-react';
 import { useEscapeKey } from '../hooks/useEscapeKey';
-import { useDeleteSubtree, useAllScriptObjects } from '../hooks/useStates';
+import { useDeleteSubtree, useAllScriptSources } from '../hooks/useStates';
 import type { IoBrokerObject } from '../types/iobroker';
 
 interface Props {
@@ -36,7 +36,7 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
   const [pendingDelete, setPendingDelete] = useState<NsStats | null>(null);
 
   const deleteSubtree = useDeleteSubtree();
-  const { data: scriptObjects } = useAllScriptObjects();
+  const { data: scriptSources } = useAllScriptSources();
 
   const { rows, totals } = useMemo(() => {
     const map = new Map<string, NsStats>();
@@ -53,14 +53,7 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
       if (historyIds.has(id)) s.history++;
       if (smartIds.has(id)) s.smart++;
       if (id.startsWith('alias.0.')) s.aliases++;
-    }
-
-    // Count script objects per namespace from separately-fetched script objects
-    for (const id of Object.keys(scriptObjects ?? {})) {
-      const parts = id.split('.');
-      const ns = parts.length >= 2 ? `${parts[0]}.${parts[1]}` : parts[0];
-      if (!map.has(ns)) map.set(ns, { ...empty(), ns });
-      map.get(ns)!.scripts++;
+      if (scriptSources?.includes(id)) s.scripts++;
     }
 
     const allRows = Array.from(map.values());
@@ -70,7 +63,7 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
     );
 
     return { rows: allRows, totals };
-  }, [allObjects, historyIds, smartIds, scriptObjects]);
+  }, [allObjects, historyIds, smartIds, scriptSources]);
 
   const maxTotal = useMemo(() => Math.max(...rows.map((r) => r.total), 1), [rows]);
 
@@ -100,10 +93,10 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
     setPendingDelete(null);
   }
 
-  const thClass = 'px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 cursor-pointer select-none hover:text-gray-800 dark:hover:text-gray-200 whitespace-nowrap';
-  const thRClass = 'px-3 py-2 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 cursor-pointer select-none hover:text-gray-800 dark:hover:text-gray-200 whitespace-nowrap';
-  const tdClass = 'px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300';
-  const tdRClass = 'px-3 py-1.5 text-xs text-right tabular-nums text-gray-700 dark:text-gray-300';
+  const thClass = 'px-2 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 cursor-pointer select-none hover:text-gray-800 dark:hover:text-gray-200 whitespace-nowrap';
+  const thRClass = 'px-2 py-2 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 cursor-pointer select-none hover:text-gray-800 dark:hover:text-gray-200 whitespace-nowrap';
+  const tdClass = 'px-2 py-1.5 text-xs text-gray-700 dark:text-gray-300';
+  const tdRClass = 'px-2 py-1.5 text-xs text-right tabular-nums text-gray-700 dark:text-gray-300';
 
   return createPortal(
     <div
@@ -111,7 +104,7 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
       onClick={pendingDelete ? undefined : onClose}
     >
       <div
-        className="w-full max-w-2xl bg-white dark:bg-gray-900 animate-modal-in rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[80vh]"
+        className="w-full max-w-4xl bg-white dark:bg-gray-900 animate-modal-in rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[80vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -237,7 +230,7 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
                   {totals.aliases}
                 </td>
                 <td className={`${tdRClass} ${totals.scripts > 0 ? 'text-green-600 dark:text-green-500' : ''}`}>
-                  {totals.scripts || (scriptObjects === undefined ? '…' : 0)}
+                  {scriptSources === undefined ? '…' : totals.scripts}
                 </td>
                 <td />
               </tr>
