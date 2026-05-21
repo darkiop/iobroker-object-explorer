@@ -1458,7 +1458,7 @@ const StateRow = React.memo(function StateRow({
     >
       {show('checkbox') && (
         <td style={{ width: w('checkbox'), minWidth: w('checkbox') }} className="py-2 align-middle" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center justify-center">
+          <div className={`flex items-center justify-center transition-opacity ${isChecked ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
             <StyledCheckbox
               checked={isChecked}
               onChange={(e) => onCheck(id, e.target.checked)}
