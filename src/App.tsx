@@ -1475,6 +1475,35 @@ function AppContent() {
                         </button>
                       </div>
                     ))}
+                  </div>
+                )}
+                {/* Tab: Spalten */}
+                {settingsTab === 'columns' && (
+                  <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-2">
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Visible columns' : 'Angezeigte Spalten'}</span>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {ALL_COLUMNS.map(({ key }) => {
+                          const checked = settingsDraft.visibleCols.includes(key);
+                          return (
+                            <label key={key} className="flex items-center gap-2 px-2 py-1.5 rounded border border-gray-200 dark:border-gray-700 text-xs text-gray-700 dark:text-gray-300">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => setSettingsDraft((prev) => {
+                                  const next = checked
+                                    ? prev.visibleCols.filter((k) => k !== key)
+                                    : [...prev.visibleCols, key];
+                                  return { ...prev, visibleCols: next.length > 0 ? next : prev.visibleCols };
+                                })}
+                                className="w-3.5 h-3.5 accent-blue-500"
+                              />
+                              <span>{getColumnLabel(key, appSettings.language)}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
                     {/* Column widths */}
                     <div className="flex flex-col gap-1.5">
                       <div className="flex items-center justify-between">
@@ -1543,33 +1572,6 @@ function AppContent() {
                           </tbody>
                         </table>
                       </div>
-                    </div>
-                  </div>
-                )}
-                {/* Tab: Spalten */}
-                {settingsTab === 'columns' && (
-                  <div className="flex flex-col gap-2">
-                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Visible columns' : 'Angezeigte Spalten'}</span>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {ALL_COLUMNS.map(({ key }) => {
-                        const checked = settingsDraft.visibleCols.includes(key);
-                        return (
-                          <label key={key} className="flex items-center gap-2 px-2 py-1.5 rounded border border-gray-200 dark:border-gray-700 text-xs text-gray-700 dark:text-gray-300">
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => setSettingsDraft((prev) => {
-                                const next = checked
-                                  ? prev.visibleCols.filter((k) => k !== key)
-                                  : [...prev.visibleCols, key];
-                                return { ...prev, visibleCols: next.length > 0 ? next : prev.visibleCols };
-                              })}
-                              className="w-3.5 h-3.5 accent-blue-500"
-                            />
-                            <span>{getColumnLabel(key, appSettings.language)}</span>
-                          </label>
-                        );
-                      })}
                     </div>
                   </div>
                 )}
