@@ -515,17 +515,44 @@ export async function renameEnumObject(enumId: string, newName: string): Promise
   await putFullObject(enumId, { ...obj, common: { ...obj.common, name: newName } });
 }
 
-export async function getAllScriptObjects(): Promise<Record<string, IoBrokerObject>> {
-  const res = await fetchApi<Record<string, IoBrokerObject>>('/objects?type=script');
-  return Object.fromEntries(Object.entries(res).filter(([id, obj]) => id.startsWith('script.js.') && obj.type === 'script'));
-}
+const LS_SCRIPT_IDS_KEY = 'iob-script-used-ids-v1';
+const LS_SCRIPT_IDS_TS_KEY = 'iob-script-used-ids-ts';
+const SCRIPT_IDS_TTL = 60 * 60 * 1000; // 1 hour
 
-export async function getAllScriptSources(): Promise<string> {
+async function fetchScriptSources(): Promise<string> {
   const res = await fetchApi<Record<string, IoBrokerObject>>('/objects?type=script');
   return Object.entries(res)
     .filter(([id, obj]) => id.startsWith('script.js.') && obj.type === 'script')
     .map(([, obj]) => ((obj.common as unknown as Record<string, unknown>)?.source as string) ?? '')
     .join('\n');
+}
+
+export async function getScriptUsedIds(allObjectIds: string[], forceRefresh = false): Promise<Set<string>> {
+  if (!forceRefresh) {
+    const ts = localStorage.getItem(LS_SCRIPT_IDS_TS_KEY);
+    if (ts && Date.now() - parseInt(ts) < SCRIPT_IDS_TTL) {
+      const raw = localStorage.getItem(LS_SCRIPT_IDS_KEY);
+      if (raw) {
+        try { return new Set<string>(JSON.parse(raw)); } catch { /* fallthrough */ }
+      }
+    }
+  }
+  const sources = await fetchScriptSources();
+  const used = allObjectIds.filter((id) => sources.includes(id));
+  try {
+    localStorage.setItem(LS_SCRIPT_IDS_KEY, JSON.stringify(used));
+    localStorage.setItem(LS_SCRIPT_IDS_TS_KEY, String(Date.now()));
+  } catch { /* ignore storage quota errors */ }
+  return new Set<string>(used);
+}
+
+export function clearScriptUsedIdsCache(): void {
+  localStorage.removeItem(LS_SCRIPT_IDS_KEY);
+  localStorage.removeItem(LS_SCRIPT_IDS_TS_KEY);
+}
+
+export async function getAllScriptSources(): Promise<string> {
+  return fetchScriptSources();
 }
 
 export interface ScriptUsage {

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
-import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, putFullObject, createObject, deleteObject, deleteObjectsMany, renameDatapoint, getAllRoles, getAllUnits, setState, getRoomMap, getAllObjects, getRoomEnums, updateRoomMembership, updateRoomMembershipBatch, getFunctionMap, getFunctionEnums, updateFunctionMembership, updateFunctionMembershipBatch, buildAliasReverseMap, importDatapoints, getSqlInstances, createEnumObject, renameEnumObject, findScriptsUsingObject, getAllScriptSources, getAllScriptObjects } from '../api/iobroker';
+import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, putFullObject, createObject, deleteObject, deleteObjectsMany, renameDatapoint, getAllRoles, getAllUnits, setState, getRoomMap, getAllObjects, getRoomEnums, updateRoomMembership, updateRoomMembershipBatch, getFunctionMap, getFunctionEnums, updateFunctionMembership, updateFunctionMembershipBatch, buildAliasReverseMap, importDatapoints, getSqlInstances, createEnumObject, renameEnumObject, findScriptsUsingObject, getAllScriptSources, getScriptUsedIds, clearScriptUsedIdsCache } from '../api/iobroker';
 import type { IoBrokerObject, IoBrokerObjectCommon, IoBrokerState, HistoryOptions } from '../types/iobroker';
 
 const queryKeys = {
@@ -548,17 +548,33 @@ export function useDeleteEnum() {
   });
 }
 
-export function useAllScriptObjects() {
+export function useScriptUsedIds(allObjectIds: string[], enabled = true) {
   return useQuery({
-    queryKey: [...queryKeys.scripts.sources, 'objects'] as const,
-    queryFn: getAllScriptObjects,
-    staleTime: 5 * 60_000,
+    queryKey: queryKeys.scripts.sources,
+    queryFn: () => getScriptUsedIds(allObjectIds),
+    staleTime: Infinity, // result is cached in localStorage; invalidate manually
+    enabled,
   });
 }
 
+export function useRefreshScriptUsedIds(allObjectIds: string[]) {
+  const queryClient = useQueryClient();
+  return () => {
+    clearScriptUsedIdsCache();
+    queryClient.invalidateQueries({ queryKey: queryKeys.scripts.sources });
+    // Re-fetch with force refresh
+    queryClient.fetchQuery({
+      queryKey: queryKeys.scripts.sources,
+      queryFn: () => getScriptUsedIds(allObjectIds, true),
+      staleTime: 0,
+    });
+  };
+}
+
+// Keep for backward compat (used in ObjectEditModal Scripts tab)
 export function useAllScriptSources(enabled = true) {
   return useQuery({
-    queryKey: queryKeys.scripts.sources,
+    queryKey: ['scripts', 'sources-raw'],
     queryFn: getAllScriptSources,
     staleTime: 5 * 60_000,
     enabled,

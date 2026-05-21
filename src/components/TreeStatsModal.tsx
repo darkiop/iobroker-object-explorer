@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, BarChart2, ChevronUp, ChevronDown, Trash2, AlertTriangle } from 'lucide-react';
+import { X, BarChart2, ChevronUp, ChevronDown, Trash2, AlertTriangle, RotateCcw } from 'lucide-react';
 import { useEscapeKey } from '../hooks/useEscapeKey';
-import { useDeleteSubtree, useAllScriptSources } from '../hooks/useStates';
+import { useDeleteSubtree, useScriptUsedIds, useRefreshScriptUsedIds } from '../hooks/useStates';
 import type { IoBrokerObject } from '../types/iobroker';
 
 interface Props {
@@ -35,8 +35,10 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [pendingDelete, setPendingDelete] = useState<NsStats | null>(null);
 
+  const allObjectIds = useMemo(() => Object.keys(allObjects), [allObjects]);
   const deleteSubtree = useDeleteSubtree();
-  const { data: scriptSources } = useAllScriptSources();
+  const { data: scriptUsedIds, isFetching: scriptsFetching } = useScriptUsedIds(allObjectIds);
+  const refreshScriptIds = useRefreshScriptUsedIds(allObjectIds);
 
   const { rows, totals } = useMemo(() => {
     const map = new Map<string, NsStats>();
@@ -53,7 +55,7 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
       if (historyIds.has(id)) s.history++;
       if (smartIds.has(id)) s.smart++;
       if (id.startsWith('alias.0.')) s.aliases++;
-      if (scriptSources?.includes(id)) s.scripts++;
+      if (scriptUsedIds?.has(id)) s.scripts++;
     }
 
     const allRows = Array.from(map.values());
@@ -63,7 +65,7 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
     );
 
     return { rows: allRows, totals };
-  }, [allObjects, historyIds, smartIds, scriptSources]);
+  }, [allObjects, historyIds, smartIds, scriptUsedIds]);
 
   const maxTotal = useMemo(() => Math.max(...rows.map((r) => r.total), 1), [rows]);
 
@@ -123,12 +125,22 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
               </span>
             )}
           </div>
-          <button
-            onClick={onClose}
-            className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
-          >
-            <X size={16} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={refreshScriptIds}
+              disabled={scriptsFetching}
+              title={isEn ? 'Refresh script index (cached 1h)' : 'Skript-Index aktualisieren (1h gecacht)'}
+              className="p-1 rounded text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40"
+            >
+              <RotateCcw size={14} className={scriptsFetching ? 'animate-spin' : ''} />
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
+            >
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
         {/* Table */}
@@ -230,7 +242,7 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
                   {totals.aliases}
                 </td>
                 <td className={`${tdRClass} ${totals.scripts > 0 ? 'text-green-600 dark:text-green-500' : ''}`}>
-                  {scriptSources === undefined ? '…' : totals.scripts}
+                  {scriptUsedIds === undefined ? '…' : totals.scripts}
                 </td>
                 <td />
               </tr>
