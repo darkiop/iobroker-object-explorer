@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Sun, Moon, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Pencil, Loader2, AlertCircle, Check, Maximize, Minimize, RefreshCw, ExternalLink } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Sun, Moon, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Pencil, Loader2, AlertCircle, Check, Maximize, Minimize, RefreshCw, ExternalLink, RotateCcw, Info } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import LanguageDropdown from './LanguageDropdown';
 import { validateHost, validatePort } from '../utils/validation';
@@ -19,6 +20,14 @@ interface LayoutProps {
   adminPort?: number;
   onManualRefresh?: () => void;
   objectsRefreshInterval?: string;
+  includeScripts?: boolean;
+  onIncludeScriptsChange?: (v: boolean) => void;
+  scriptsFetching?: boolean;
+  onRequestRefreshScripts?: () => void;
+  confirmScriptRefresh?: boolean;
+  onConfirmScriptRefresh?: () => void;
+  onCancelScriptRefresh?: () => void;
+  scriptLastUpdated?: number;
 }
 
 const LS_SIDEBAR_WIDTH = 'iobroker-explorer-sidebar-width';
@@ -37,6 +46,14 @@ export default function Layout({
   adminPort = 8081,
   onManualRefresh,
   objectsRefreshInterval,
+  includeScripts,
+  onIncludeScriptsChange,
+  scriptsFetching,
+  onRequestRefreshScripts,
+  confirmScriptRefresh,
+  onConfirmScriptRefresh,
+  onCancelScriptRefresh,
+  scriptLastUpdated,
 }: LayoutProps) {
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const stored = parseInt(localStorage.getItem(LS_SIDEBAR_WIDTH) ?? '', 10);
@@ -169,6 +186,7 @@ export default function Layout({
   }, []);
 
   return (
+    <>
     <div className="h-screen flex flex-col bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100">
       {/* Header */}
       <header className="relative flex items-center justify-between px-4 py-3 bg-gray-100 border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700 shrink-0">
@@ -235,23 +253,49 @@ export default function Layout({
                   ? (language === 'en' ? 'Connected to' : 'Verbunden mit')
                   : (language === 'en' ? 'Not connected to' : 'Nicht verbunden mit')
                 }: {currentHost || '—'}
+                {lastUpdated && (
+                  <span className="ml-1 text-[10px] font-mono opacity-60">
+                    {new Date(lastUpdated).toLocaleTimeString()}
+                  </span>
+                )}
+                {onManualRefresh && (
+                  <RefreshCw
+                    size={11}
+                    className="opacity-50 hover:opacity-100 transition-opacity"
+                    onClick={(e) => { e.stopPropagation(); onManualRefresh(); }}
+                  />
+                )}
                 <Pencil size={11} className="opacity-50" />
               </button>
-              {onManualRefresh && (
-                <button
-                  onClick={onManualRefresh}
-                  className="p-1.5 rounded-lg text-gray-500 hover:text-emerald-600 hover:bg-emerald-500/10 dark:text-gray-400 dark:hover:text-emerald-400 dark:hover:bg-emerald-500/10 transition-colors"
-                  title={language === 'en' ? 'Refresh API' : 'API aktualisieren'}
-                >
-                  <RefreshCw size={14} />
-                </button>
+              {onIncludeScriptsChange && (
+                <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-sm font-semibold font-mono shadow-sm border transition-colors ${
+                  includeScripts
+                    ? 'border-green-300/80 dark:border-green-700/70 bg-green-100/80 dark:bg-green-900/35 text-green-700 dark:text-green-300'
+                    : 'border-gray-300/80 dark:border-gray-600/70 bg-gray-100/80 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={includeScripts ?? false}
+                    onChange={(e) => onIncludeScriptsChange(e.target.checked)}
+                    className="w-3 h-3 accent-green-600 cursor-pointer"
+                    title={language === 'en' ? 'Include script usage in statistics' : 'Skript-Verwendungen in Statistik einbeziehen'}
+                  />
+                  <span className="text-xs">{language === 'en' ? 'Scripts' : 'Skripte'}</span>
+                  {scriptLastUpdated && includeScripts && (
+                    <span className="text-[10px] font-mono opacity-60">
+                      {new Date(scriptLastUpdated).toLocaleTimeString()}
+                    </span>
+                  )}
+                  {onRequestRefreshScripts && (
+                    <RotateCcw
+                      size={11}
+                      className={`opacity-50 hover:opacity-100 transition-opacity cursor-pointer ${scriptsFetching ? 'animate-spin' : ''} ${!includeScripts ? 'pointer-events-none' : ''}`}
+                      onClick={(e) => { e.stopPropagation(); if (includeScripts) onRequestRefreshScripts(); }}
+                    />
+                  )}
+                </div>
               )}
-              {lastUpdated && (
-                <span className="text-[11px] font-mono font-medium px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
-                  {new Date(lastUpdated).toLocaleTimeString()}
-                </span>
-              )}
-              {objectsRefreshInterval && objectsRefreshInterval !== 'off' && (
+{objectsRefreshInterval && objectsRefreshInterval !== 'off' && (
                 <span
                   className="inline-flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400"
                   title={language === 'en' ? `Objects auto-refresh every ${objectsRefreshInterval}` : `Objekte werden alle ${objectsRefreshInterval} aktualisiert`}
@@ -325,9 +369,45 @@ export default function Layout({
           />
         )}
 
+
         {/* Main Content */}
         <main className="flex-1 overflow-hidden p-4 flex flex-col">{children}</main>
       </div>
     </div>
+    {confirmScriptRefresh && createPortal(
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onCancelScriptRefresh}>
+        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-sm mx-4 p-6 flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-start gap-3">
+            <Info size={18} className="text-blue-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">
+                {language === 'en' ? 'Refresh script index?' : 'Skript-Index aktualisieren?'}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {language === 'en'
+                  ? 'This scans the source code of all scripts and may take several seconds depending on the number of scripts and datapoints.'
+                  : 'Dieser Vorgang durchsucht den gesamten Quellcode aller Skripte und kann je nach Anzahl der Skripte und Datenpunkte mehrere Sekunden dauern.'}
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={onCancelScriptRefresh}
+              className="px-4 py-1.5 text-xs rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              {language === 'en' ? 'Cancel' : 'Abbrechen'}
+            </button>
+            <button
+              onClick={onConfirmScriptRefresh}
+              className="px-4 py-1.5 text-xs rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium"
+            >
+              {language === 'en' ? 'Continue' : 'Fortfahren'}
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body
+    )}
+    </>
   );
 }

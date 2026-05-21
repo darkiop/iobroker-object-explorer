@@ -34,6 +34,12 @@ interface StateTreeProps {
   treeCountMode?: 'off' | 'states' | 'objects' | 'both';
   treeViewMode?: 'adapter' | 'path';
   onTreeViewModeChange?: (mode: 'adapter' | 'path') => void;
+  scriptUsedIds?: Set<string> | null;
+  scriptsFetching?: boolean;
+  includeScripts?: boolean;
+  onIncludeScriptsChange?: (v: boolean) => void;
+  onScriptUsedIdsChange?: (ids: Set<string>) => void;
+  onRequestRefreshScripts?: () => void;
 }
 
 function buildTree(ids: string[], structureIds: string[] = []): TreeNode {
@@ -577,7 +583,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
 });
 
 
-function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeScope, onCreateAtPath, historyOnly, smartOnly, historyIds, smartIds, expandToDepth, treeFilter = null, treeSearch: treeSearchProp = '', onTreeSearchChange, pattern, language = 'en', onOpenAliasReplace, onAutoCreateAlias, treeFontSize = 'normal', treeCountMode = 'objects', treeViewMode: treeViewModeProp = 'adapter', onTreeViewModeChange }: StateTreeProps) {
+function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeScope, onCreateAtPath, historyOnly, smartOnly, historyIds, smartIds, expandToDepth, treeFilter = null, treeSearch: treeSearchProp = '', onTreeSearchChange, pattern, language = 'en', onOpenAliasReplace, onAutoCreateAlias, treeFontSize = 'normal', treeCountMode = 'objects', treeViewMode: treeViewModeProp = 'adapter', onTreeViewModeChange, scriptUsedIds, scriptsFetching, includeScripts, onIncludeScriptsChange, onScriptUsedIdsChange, onRequestRefreshScripts }: StateTreeProps) {
   const isEn = language === 'en';
   const nodeFontClass = treeFontSize === 'small' ? 'text-xs' : treeFontSize === 'large' ? 'text-base' : treeFontSize === 'xl' ? 'text-lg' : 'text-sm';
   const [expandSignal, setExpandSignal] = useState<{ depth: number; seq: number }>({ depth: 0, seq: 0 });
@@ -778,6 +784,12 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
         smartIds={smartIds}
         language={language ?? 'en'}
         onSelectNamespace={(ns) => onTreeScope(`${ns}.`)}
+        scriptUsedIds={scriptUsedIds}
+        scriptsFetching={scriptsFetching}
+        includeScripts={includeScripts}
+        onIncludeScriptsChange={onIncludeScriptsChange}
+        onScriptUsedIdsChange={onScriptUsedIdsChange}
+        onRequestRefreshScripts={onRequestRefreshScripts}
       />
     )}
     </>

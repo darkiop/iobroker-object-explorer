@@ -65,6 +65,7 @@ interface StateListProps {
   onScriptsClick?: (id: string) => void;
   pageSize?: number;
   onPageSizeChange?: (size: number) => void;
+  onTreeViewModeChange?: (active: boolean) => void;
 }
 
 function formatTimestamp(ts: number, dateFormat: DateFormatSetting): string {
@@ -1695,7 +1696,7 @@ const StateRow = React.memo(function StateRow({
   );
 });
 
-function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, allObjectIds, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh: _onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en', expertMode = false, onToggleExpertMode, toolbarLabels = true, onOpenEnumManager, onOpenAliasReplace, tableFontSize = 'normal', showDesc = true, groupByPath = false, onToggleGroupByPath, customDefaultWidths, customMaxWidths, onScriptsClick, pageSize, onPageSizeChange }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
+function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, allObjectIds, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh: _onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en', expertMode = false, onToggleExpertMode, toolbarLabels = true, onOpenEnumManager, onOpenAliasReplace, tableFontSize = 'normal', showDesc = true, groupByPath = false, onToggleGroupByPath, customDefaultWidths, customMaxWidths, onScriptsClick, pageSize, onPageSizeChange, onTreeViewModeChange }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
   const effectiveDefaults: Record<SortKey, number> = { ...BUILTIN_DEFAULT_WIDTHS, ...(customDefaultWidths ?? {}) };
   const effectiveMax: Partial<Record<SortKey, number>> = { ...BUILTIN_MAX_WIDTHS, ...(customMaxWidths ?? {}) };
   const effectiveMaxRef = useRef(effectiveMax);
@@ -2426,6 +2427,15 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
             <span className="truncate">Volltext: {pattern}</span>
           </span>
         )}
+        {hasColFilters && (
+          <button
+            onClick={() => setDraftAndPropagate({})}
+            className="flex items-center gap-1.5 px-3 py-0.5 text-xs rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20 border border-blue-200 dark:border-blue-500/30 transition-colors"
+          >
+            <X size={11} />
+            {isEn ? 'Clear column filters' : 'Spaltenfilter leeren'}
+          </button>
+        )}
       </div>
       <div className="flex items-center gap-1">
         <button
@@ -2462,15 +2472,6 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
         >
           <Maximize2 size={17} />
         </button>
-        {hasColFilters && (
-          <button
-            onClick={() => setDraftAndPropagate({})}
-            title="Clear column filters"
-            className="p-2 rounded-lg transition-colors text-blue-500 hover:text-blue-700 hover:bg-blue-500/10 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-500/10"
-          >
-            <X size={17} />
-          </button>
-        )}
         <button
           onClick={() => setConfirmResetLs(true)}
           title={isEn ? 'Reset settings (local storage)' : 'Einstellungen zurücksetzen'}
@@ -2478,7 +2479,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
         >
           <RotateCcw size={17} />
         </button>
-        {pageSize !== undefined && onPageSizeChange && (
+        {!groupByPath && pageSize !== undefined && onPageSizeChange && (
           <select
             value={pageSize}
             onChange={(e) => onPageSizeChange(parseInt(e.target.value, 10))}

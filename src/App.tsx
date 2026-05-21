@@ -16,7 +16,7 @@ import AliasReplaceModal from './components/AliasReplaceModal';
 import AutoCreateAliasModal from './components/AutoCreateAliasModal';
 import LanguageDropdown from './components/LanguageDropdown';
 import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunctionMap, useRoomEnums, useFunctionEnums, useAliasMap } from './hooks/useStates';
-import { hasHistory, hasSmartName, clearObjectsCache } from './api/iobroker';
+import { hasHistory, hasSmartName, clearObjectsCache, getScriptUsedIds, clearScriptUsedIdsCache } from './api/iobroker';
 import type { StateListHandle } from './components/StateList';
 import type { SortKey, DateFormatSetting } from './components/stateListColumns';
 import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel, CONFIGURABLE_WIDTH_COLS, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MAX_WIDTHS } from './components/stateListColumns';
@@ -64,6 +64,7 @@ interface AppSettings {
   customDefaultWidths: Partial<Record<SortKey, number>>;
   customMaxWidths: Partial<Record<SortKey, number>>;
   objectsRefreshInterval: 'off' | '30s' | '1m' | '5m' | '10m';
+  includeScripts: boolean;
 }
 
 function getDefaultAppSettings(): AppSettings {
@@ -84,6 +85,7 @@ function getDefaultAppSettings(): AppSettings {
     customDefaultWidths: {},
     customMaxWidths: {},
     objectsRefreshInterval: 'off',
+    includeScripts: false,
   };
 }
 
@@ -169,6 +171,7 @@ function loadAppSettings(): AppSettings {
       customDefaultWidths: parseColWidthMap(parsed.customDefaultWidths),
       customMaxWidths: parseColWidthMap(parsed.customMaxWidths),
       objectsRefreshInterval: (['off','30s','1m','5m','10m'] as const).includes(parsed.objectsRefreshInterval as 'off'|'30s'|'1m'|'5m'|'10m') ? parsed.objectsRefreshInterval as 'off'|'30s'|'1m'|'5m'|'10m' : 'off',
+      includeScripts: parsed.includeScripts === true,
     };
   } catch {
     return fallback;
@@ -746,6 +749,35 @@ function AppContent() {
     ]);
   }, [refetchFilteredObjects, refetchAllObjects, refetchRoomMap, refetchFunctionMap, refetchStateValues, refetchRoomEnums, refetchFunctionEnums]);
 
+  const [scriptUsedIds, setScriptUsedIds] = useState<Set<string> | null>(() => {
+    const ts = localStorage.getItem('iob-script-used-ids-ts');
+    if (ts && Date.now() - parseInt(ts) < 60 * 60 * 1000) {
+      const raw = localStorage.getItem('iob-script-used-ids-v1');
+      if (raw) { try { return new Set<string>(JSON.parse(raw)); } catch { /* ignore */ } }
+    }
+    return null;
+  });
+  const [scriptLastUpdated, setScriptLastUpdated] = useState<number | undefined>(() => {
+    const ts = localStorage.getItem('iob-script-used-ids-ts');
+    const n = ts ? parseInt(ts) : NaN;
+    return Number.isFinite(n) ? n : undefined;
+  });
+  const [scriptsFetching, setScriptsFetching] = useState(false);
+  const [confirmScriptRefresh, setConfirmScriptRefresh] = useState(false);
+
+  const handleScriptRefreshConfirmed = useCallback(async () => {
+    setConfirmScriptRefresh(false);
+    setScriptsFetching(true);
+    try {
+      clearScriptUsedIdsCache();
+      const result = await getScriptUsedIds(Object.keys(allObjects), true);
+      setScriptUsedIds(result);
+      setScriptLastUpdated(Date.now());
+    } finally {
+      setScriptsFetching(false);
+    }
+  }, [allObjects]);
+
   const handleToggleExpertMode = useCallback(() => {
     setExpertMode((prev) => {
       const next = !prev;
@@ -837,6 +869,14 @@ function AppContent() {
       adminPort={appSettings.adminPort}
       onManualRefresh={handleManualRefresh}
       objectsRefreshInterval={appSettings.objectsRefreshInterval}
+      includeScripts={appSettings.includeScripts}
+      onIncludeScriptsChange={(v) => setAppSettings((prev) => ({ ...prev, includeScripts: v }))}
+      scriptsFetching={scriptsFetching}
+      onRequestRefreshScripts={() => setConfirmScriptRefresh(true)}
+      confirmScriptRefresh={confirmScriptRefresh}
+      onConfirmScriptRefresh={handleScriptRefreshConfirmed}
+      onCancelScriptRefresh={() => setConfirmScriptRefresh(false)}
+      scriptLastUpdated={scriptLastUpdated}
       sidebar={
         <div className="flex flex-col h-full">
           <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex flex-col gap-2">
@@ -1145,6 +1185,12 @@ function AppContent() {
               treeCountMode={appSettings.treeCountMode}
               treeViewMode={appSettings.treeViewMode}
               onTreeViewModeChange={(mode) => setAppSettings(prev => ({ ...prev, treeViewMode: mode }))}
+              scriptUsedIds={scriptUsedIds}
+              scriptsFetching={scriptsFetching}
+              includeScripts={appSettings.includeScripts}
+              onIncludeScriptsChange={(v) => setAppSettings((prev) => ({ ...prev, includeScripts: v }))}
+              onScriptUsedIdsChange={setScriptUsedIds}
+              onRequestRefreshScripts={() => setConfirmScriptRefresh(true)}
             />
           </div>
         </div>
@@ -1639,40 +1685,42 @@ function AppContent() {
           />
         </div>
 
-        <div className="py-2 px-1 border-t border-gray-200 dark:border-gray-700 shrink-0">
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full gap-2">
-            <div className="flex items-center justify-start">
-              {totalPages > 1 && (
-                <button
-                  onClick={() => setPage((p) => Math.max(0, p - 1))}
-                  disabled={page === 0}
-                  className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                >
-                  {isEn ? 'Previous' : 'Zurück'}
-                </button>
-              )}
-            </div>
-            <div className="text-center">
-              <span className="text-xs text-gray-400 dark:text-gray-500">
-                {totalPages > 1
-                  ? <>{isEn ? 'Page' : 'Seite'} {page + 1} {isEn ? 'of' : 'von'} {totalPages} ({pageStart + 1}–{Math.min(pageStart + appSettings.pageSize, totalCount)} {isEn ? 'of' : 'von'} {totalCount})</>
-                  : <>{isEn ? 'Datapoints' : 'Datenpunkte'}: <span className="text-gray-700 dark:text-gray-200">{totalCount}</span></>
-                }
-              </span>
-            </div>
-            <div className="flex items-center justify-end gap-2">
-              {totalPages > 1 && (
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                  disabled={page >= totalPages - 1}
-                  className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                >
-                  {isEn ? 'Next' : 'Weiter'}
-                </button>
-              )}
+        {!appSettings.groupByPath && (
+          <div className="py-2 px-1 border-t border-gray-200 dark:border-gray-700 shrink-0">
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full gap-2">
+              <div className="flex items-center justify-start">
+                {totalPages > 1 && (
+                  <button
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    disabled={page === 0}
+                    className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                  >
+                    {isEn ? 'Previous' : 'Zurück'}
+                  </button>
+                )}
+              </div>
+              <div className="text-center">
+                <span className="text-xs text-gray-400 dark:text-gray-500">
+                  {totalPages > 1
+                    ? <>{isEn ? 'Page' : 'Seite'} {page + 1} {isEn ? 'of' : 'von'} {totalPages} ({pageStart + 1}–{Math.min(pageStart + appSettings.pageSize, totalCount)} {isEn ? 'of' : 'von'} {totalCount})</>
+                    : <>{isEn ? 'Datapoints' : 'Datenpunkte'}: <span className="text-gray-700 dark:text-gray-200">{totalCount}</span></>
+                  }
+                </span>
+              </div>
+              <div className="flex items-center justify-end gap-2">
+                {totalPages > 1 && (
+                  <button
+                    onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                    disabled={page >= totalPages - 1}
+                    className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                  >
+                    {isEn ? 'Next' : 'Weiter'}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </Layout>
   );

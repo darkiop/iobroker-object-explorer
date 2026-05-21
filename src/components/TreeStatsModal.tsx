@@ -13,6 +13,12 @@ interface Props {
   smartIds: Set<string>;
   language: 'en' | 'de';
   onSelectNamespace?: (ns: string) => void;
+  scriptUsedIds?: Set<string> | null;
+  scriptsFetching?: boolean;
+  includeScripts?: boolean;
+  onIncludeScriptsChange?: (v: boolean) => void;
+  onScriptUsedIdsChange?: (ids: Set<string>) => void;
+  onRequestRefreshScripts?: () => void;
 }
 
 type SortKey = 'ns' | 'total' | 'states' | 'structure' | 'history' | 'smart' | 'aliases' | 'scripts';
@@ -28,7 +34,7 @@ interface NsStats {
   scripts: number;
 }
 
-export default function TreeStatsModal({ onClose, allObjects, historyIds, smartIds, language, onSelectNamespace }: Props) {
+export default function TreeStatsModal({ onClose, allObjects, historyIds, smartIds, language, onSelectNamespace, scriptUsedIds: scriptUsedIdsProp, scriptsFetching: scriptsFetchingProp = false, includeScripts: includeScriptsProp, onIncludeScriptsChange, onScriptUsedIdsChange, onRequestRefreshScripts }: Props) {
   useEscapeKey(onClose);
   const isEn = language === 'en';
 
@@ -39,29 +45,41 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
   const allObjectIds = useMemo(() => Object.keys(allObjects), [allObjects]);
   const deleteSubtree = useDeleteSubtree();
 
-  // Script index: load from localStorage cache on mount (no network), fetch only on explicit refresh
-  const [scriptUsedIds, setScriptUsedIds] = useState<Set<string> | null>(() => {
-    const ts = localStorage.getItem('iob-script-used-ids-ts');
-    if (ts && Date.now() - parseInt(ts) < 60 * 60 * 1000) {
-      const raw = localStorage.getItem('iob-script-used-ids-v1');
-      if (raw) { try { return new Set<string>(JSON.parse(raw)); } catch { /* ignore */ } }
-    }
-    return null;
-  });
-  const [includeScripts, setIncludeScripts] = useState(scriptUsedIds !== null);
-  const [scriptsFetching, setScriptsFetching] = useState(false);
+  const scriptUsedIds = scriptUsedIdsProp ?? null;
+  const includeScripts = includeScriptsProp ?? false;
+  const scriptsFetching = scriptsFetchingProp;
+  const [localScriptUsedIds, setLocalScriptUsedIds] = useState<Set<string> | null>(null);
+  const [localIncludeScripts, setLocalIncludeScripts] = useState(false);
+  const [localScriptsFetching, setLocalScriptsFetching] = useState(false);
   const [confirmScriptRefresh, setConfirmScriptRefresh] = useState(false);
+
+  // Use prop-controlled values if provided, otherwise fall back to local state
+  const effectiveScriptUsedIds = onIncludeScriptsChange ? scriptUsedIds : localScriptUsedIds;
+  const effectiveIncludeScripts = onIncludeScriptsChange ? includeScripts : localIncludeScripts;
+  const effectiveScriptsFetching = onIncludeScriptsChange ? scriptsFetching : localScriptsFetching;
 
   async function handleScriptRefreshConfirmed() {
     setConfirmScriptRefresh(false);
-    setScriptsFetching(true);
-    try {
-      clearScriptUsedIdsCache();
-      const result = await getScriptUsedIds(allObjectIds, true);
-      setScriptUsedIds(result);
-    } finally {
-      setScriptsFetching(false);
+    if (onIncludeScriptsChange) {
+      // Controlled mode: delegate to parent
+      onRequestRefreshScripts?.();
+    } else {
+      // Local mode: do it here
+      setLocalScriptsFetching(true);
+      try {
+        clearScriptUsedIdsCache();
+        const result = await getScriptUsedIds(allObjectIds, true);
+        setLocalScriptUsedIds(result);
+        onScriptUsedIdsChange?.(result);
+      } finally {
+        setLocalScriptsFetching(false);
+      }
     }
+  }
+
+  function handleIncludeScriptsChange(v: boolean) {
+    if (onIncludeScriptsChange) onIncludeScriptsChange(v);
+    else setLocalIncludeScripts(v);
   }
 
   const { rows, totals } = useMemo(() => {
@@ -79,7 +97,7 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
       if (historyIds.has(id)) s.history++;
       if (smartIds.has(id)) s.smart++;
       if (id.startsWith('alias.0.')) s.aliases++;
-      if (includeScripts && scriptUsedIds?.has(id)) s.scripts++;
+      if (effectiveIncludeScripts && effectiveScriptUsedIds?.has(id)) s.scripts++;
     }
 
     const allRows = Array.from(map.values());
@@ -89,7 +107,7 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
     );
 
     return { rows: allRows, totals };
-  }, [allObjects, historyIds, smartIds, scriptUsedIds, includeScripts]);
+  }, [allObjects, historyIds, smartIds, effectiveScriptUsedIds, effectiveIncludeScripts]);
 
   const maxTotal = useMemo(() => Math.max(...rows.map((r) => r.total), 1), [rows]);
 
@@ -153,19 +171,19 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
             <label className="flex items-center gap-1.5 cursor-pointer select-none" title={isEn ? 'Include script usage (cached 1h, slow to compute)' : 'Skript-Verwendungen einbeziehen (1h gecacht, aufwendig)'}>
               <input
                 type="checkbox"
-                checked={includeScripts}
-                onChange={(e) => setIncludeScripts(e.target.checked)}
+                checked={effectiveIncludeScripts}
+                onChange={(e) => handleIncludeScriptsChange(e.target.checked)}
                 className="w-3.5 h-3.5 accent-green-600"
               />
               <span className="text-xs text-gray-500 dark:text-gray-400">{isEn ? 'Scripts' : 'Skripte'}</span>
             </label>
             <button
-              onClick={() => { if (includeScripts) setConfirmScriptRefresh(true); }}
-              disabled={scriptsFetching || !includeScripts}
+              onClick={() => { if (effectiveIncludeScripts) setConfirmScriptRefresh(true); }}
+              disabled={effectiveScriptsFetching || !effectiveIncludeScripts}
               title={isEn ? 'Refresh script index' : 'Skript-Index aktualisieren'}
               className="p-1 rounded text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed"
             >
-              <RotateCcw size={14} className={scriptsFetching ? 'animate-spin' : ''} />
+              <RotateCcw size={14} className={effectiveScriptsFetching ? 'animate-spin' : ''} />
             </button>
             <button
               onClick={onClose}
@@ -242,8 +260,8 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
                   <td className={`${tdRClass} ${r.aliases > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-400 dark:text-gray-600'}`}>
                     {r.aliases > 0 ? r.aliases : '—'}
                   </td>
-                  <td className={`${tdRClass} ${!includeScripts || scriptUsedIds === null ? 'text-gray-300 dark:text-gray-700' : r.scripts > 0 ? 'text-green-600 dark:text-green-500' : 'text-gray-400 dark:text-gray-600'}`}>
-                    {!includeScripts ? '—' : scriptsFetching ? '…' : scriptUsedIds === null ? '?' : r.scripts > 0 ? r.scripts : '—'}
+                  <td className={`${tdRClass} ${!effectiveIncludeScripts || effectiveScriptUsedIds === null ? 'text-gray-300 dark:text-gray-700' : r.scripts > 0 ? 'text-green-600 dark:text-green-500' : 'text-gray-400 dark:text-gray-600'}`}>
+                    {!effectiveIncludeScripts ? '—' : effectiveScriptsFetching ? '…' : effectiveScriptUsedIds === null ? '?' : r.scripts > 0 ? r.scripts : '—'}
                   </td>
                   <td className="px-2 py-1.5 text-right">
                     <button
@@ -275,7 +293,7 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
                   {totals.aliases}
                 </td>
                 <td className={`${tdRClass} ${totals.scripts > 0 ? 'text-green-600 dark:text-green-500' : ''}`}>
-                  {!includeScripts ? '—' : scriptsFetching ? '…' : scriptUsedIds === null ? '?' : totals.scripts}
+                  {!effectiveIncludeScripts ? '—' : effectiveScriptsFetching ? '…' : effectiveScriptUsedIds === null ? '?' : totals.scripts}
                 </td>
                 <td />
               </tr>
