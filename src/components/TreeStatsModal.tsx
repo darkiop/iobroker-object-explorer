@@ -97,7 +97,7 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
       if (historyIds.has(id)) s.history++;
       if (smartIds.has(id)) s.smart++;
       if (id.startsWith('alias.0.')) s.aliases++;
-      if (effectiveIncludeScripts && effectiveScriptUsedIds?.has(id)) s.scripts++;
+      if (effectiveScriptUsedIds?.has(id)) s.scripts++;
     }
 
     const allRows = Array.from(map.values());
@@ -107,7 +107,7 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
     );
 
     return { rows: allRows, totals };
-  }, [allObjects, historyIds, smartIds, effectiveScriptUsedIds, effectiveIncludeScripts]);
+  }, [allObjects, historyIds, smartIds, effectiveScriptUsedIds]);
 
   const maxTotal = useMemo(() => Math.max(...rows.map((r) => r.total), 1), [rows]);
 
@@ -168,18 +168,9 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
             )}
           </div>
           <div className="flex items-center gap-2">
-            <label className="flex items-center gap-1.5 cursor-pointer select-none" title={isEn ? 'Include script usage (cached 1h, slow to compute)' : 'Skript-Verwendungen einbeziehen (1h gecacht, aufwendig)'}>
-              <input
-                type="checkbox"
-                checked={effectiveIncludeScripts}
-                onChange={(e) => handleIncludeScriptsChange(e.target.checked)}
-                className="w-3.5 h-3.5 accent-green-600"
-              />
-              <span className="text-xs text-gray-500 dark:text-gray-400">{isEn ? 'Scripts' : 'Skripte'}</span>
-            </label>
             <button
-              onClick={() => { if (effectiveIncludeScripts) setConfirmScriptRefresh(true); }}
-              disabled={effectiveScriptsFetching || !effectiveIncludeScripts}
+              onClick={() => setConfirmScriptRefresh(true)}
+              disabled={effectiveScriptsFetching}
               title={isEn ? 'Refresh script index' : 'Skript-Index aktualisieren'}
               className="p-1 rounded text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed"
             >
@@ -260,8 +251,8 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
                   <td className={`${tdRClass} ${r.aliases > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-400 dark:text-gray-600'}`}>
                     {r.aliases > 0 ? r.aliases : '—'}
                   </td>
-                  <td className={`${tdRClass} ${!effectiveIncludeScripts || effectiveScriptUsedIds === null ? 'text-gray-300 dark:text-gray-700' : r.scripts > 0 ? 'text-green-600 dark:text-green-500' : 'text-gray-400 dark:text-gray-600'}`}>
-                    {!effectiveIncludeScripts ? '—' : effectiveScriptsFetching ? '…' : effectiveScriptUsedIds === null ? '?' : r.scripts > 0 ? r.scripts : '—'}
+                  <td className={`${tdRClass} ${effectiveScriptUsedIds === null ? 'text-gray-300 dark:text-gray-700' : r.scripts > 0 ? 'text-green-600 dark:text-green-500' : 'text-gray-400 dark:text-gray-600'}`}>
+                    {effectiveScriptsFetching ? '…' : effectiveScriptUsedIds === null ? '?' : r.scripts > 0 ? r.scripts : '—'}
                   </td>
                   <td className="px-2 py-1.5 text-right">
                     <button
@@ -293,7 +284,7 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
                   {totals.aliases}
                 </td>
                 <td className={`${tdRClass} ${totals.scripts > 0 ? 'text-green-600 dark:text-green-500' : ''}`}>
-                  {!effectiveIncludeScripts ? '—' : effectiveScriptsFetching ? '…' : effectiveScriptUsedIds === null ? '?' : totals.scripts}
+                  {effectiveScriptsFetching ? '…' : effectiveScriptUsedIds === null ? '?' : totals.scripts}
                 </td>
                 <td />
               </tr>

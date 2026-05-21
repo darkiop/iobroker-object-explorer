@@ -20,8 +20,6 @@ interface LayoutProps {
   adminPort?: number;
   onManualRefresh?: () => void;
   objectsRefreshInterval?: string;
-  includeScripts?: boolean;
-  onIncludeScriptsChange?: (v: boolean) => void;
   scriptsFetching?: boolean;
   onRequestRefreshScripts?: () => void;
   confirmScriptRefresh?: boolean;
@@ -46,8 +44,6 @@ export default function Layout({
   adminPort = 8081,
   onManualRefresh,
   objectsRefreshInterval,
-  includeScripts,
-  onIncludeScriptsChange,
   scriptsFetching,
   onRequestRefreshScripts,
   confirmScriptRefresh,
@@ -267,33 +263,21 @@ export default function Layout({
                 )}
                 <Pencil size={11} className="opacity-50" />
               </button>
-              {onIncludeScriptsChange && (
-                <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-sm font-semibold font-mono shadow-sm border transition-colors ${
-                  includeScripts
-                    ? 'border-green-300/80 dark:border-green-700/70 bg-green-100/80 dark:bg-green-900/35 text-green-700 dark:text-green-300'
-                    : 'border-gray-300/80 dark:border-gray-600/70 bg-gray-100/80 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400'
-                }`}>
-                  <input
-                    type="checkbox"
-                    checked={includeScripts ?? false}
-                    onChange={(e) => onIncludeScriptsChange(e.target.checked)}
-                    className="w-3 h-3 accent-green-600 cursor-pointer"
-                    title={language === 'en' ? 'Include script usage in statistics' : 'Skript-Verwendungen in Statistik einbeziehen'}
-                  />
-                  <span className="text-xs">{language === 'en' ? 'Scripts' : 'Skripte'}</span>
-                  {scriptLastUpdated && includeScripts && (
+              {onRequestRefreshScripts && (
+                <button
+                  onClick={onRequestRefreshScripts}
+                  disabled={scriptsFetching}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-sm font-semibold font-mono shadow-sm border transition-colors border-gray-300/80 dark:border-gray-600/70 bg-gray-100/80 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 hover:border-blue-300/80 dark:hover:border-blue-600/70 hover:bg-blue-50/80 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 disabled:opacity-40 disabled:cursor-not-allowed"
+                  title={language === 'en' ? 'Refresh script usage index' : 'Skript-Index aktualisieren'}
+                >
+                  <RotateCcw size={11} className={scriptsFetching ? 'animate-spin' : ''} />
+                  <span className="text-xs">Rescan Scripts</span>
+                  {scriptLastUpdated && (
                     <span className="text-[10px] font-mono opacity-60">
                       {new Date(scriptLastUpdated).toLocaleTimeString()}
                     </span>
                   )}
-                  {onRequestRefreshScripts && (
-                    <RotateCcw
-                      size={11}
-                      className={`opacity-50 hover:opacity-100 transition-opacity cursor-pointer ${scriptsFetching ? 'animate-spin' : ''} ${!includeScripts ? 'pointer-events-none' : ''}`}
-                      onClick={(e) => { e.stopPropagation(); if (includeScripts) onRequestRefreshScripts(); }}
-                    />
-                  )}
-                </div>
+                </button>
               )}
 {objectsRefreshInterval && objectsRefreshInterval !== 'off' && (
                 <span
