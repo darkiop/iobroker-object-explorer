@@ -138,9 +138,9 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
   }
 
   const thClass = 'px-2 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 cursor-pointer select-none hover:text-gray-800 dark:hover:text-gray-200 whitespace-nowrap';
-  const thRClass = 'px-2 py-2 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 cursor-pointer select-none hover:text-gray-800 dark:hover:text-gray-200 whitespace-nowrap';
+  const thRClass = 'px-2 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 cursor-pointer select-none hover:text-gray-800 dark:hover:text-gray-200 whitespace-nowrap';
   const tdClass = 'px-2 py-1.5 text-xs text-gray-700 dark:text-gray-300';
-  const tdRClass = 'px-2 py-1.5 text-xs text-right tabular-nums text-gray-700 dark:text-gray-300';
+  const tdRClass = 'px-2 py-1.5 text-xs text-left tabular-nums text-gray-700 dark:text-gray-300';
 
   return createPortal(
     <div
@@ -230,7 +230,7 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
                     ) : r.ns}
                   </td>
                   <td className={tdRClass} style={{ minWidth: 140 }}>
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex items-center justify-start gap-2">
                       <div className="flex-1 max-w-[80px] h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
                         <div
                           className="h-full rounded-full bg-blue-400 dark:bg-blue-500"
