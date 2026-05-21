@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Sun, Moon, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Pencil, Loader2, AlertCircle, Check, Maximize, Minimize, RefreshCw, ExternalLink, RotateCcw, Info } from 'lucide-react';
+import { Sun, Moon, Gem, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Pencil, Loader2, AlertCircle, Check, Maximize, Minimize, RefreshCw, ExternalLink, RotateCcw, Info } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import LanguageDropdown from './LanguageDropdown';
 import { validateHost, validatePort } from '../utils/validation';
@@ -62,7 +62,7 @@ export default function Layout({
   const startX = useRef(0);
   const startWidth = useRef(0);
   const sidebarWidthRef = useRef(sidebarWidth);
-  const { dark, toggle } = useTheme();
+  const { theme, dark, cycle } = useTheme();
   const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
 
   useEffect(() => {
@@ -305,11 +305,11 @@ export default function Layout({
             </a>
           )}
           <button
-            onClick={toggle}
-            className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
-            title={dark ? 'Light Mode' : 'Dark Mode'}
+            onClick={cycle}
+            className="p-1.5 rounded-lg transition-colors text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700"
+            title={theme === 'light' ? 'Dark Mode' : theme === 'dark' ? 'Obsidian Mode' : 'Light Mode'}
           >
-            {dark ? <Sun size={16} /> : <Moon size={16} />}
+            {theme === 'light' ? <Moon size={16} /> : theme === 'dark' ? <Gem size={16} /> : <Sun size={16} />}
           </button>
           <button
             onClick={onOpenSettings}

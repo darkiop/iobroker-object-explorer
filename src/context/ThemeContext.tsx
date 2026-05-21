@@ -1,29 +1,39 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 
+export type Theme = 'light' | 'dark' | 'obsidian';
+
 interface ThemeContextValue {
+  theme: Theme;
   dark: boolean;
-  toggle: () => void;
+  cycle: () => void;
 }
 
-const ThemeContext = createContext<ThemeContextValue>({ dark: true, toggle: () => {} });
+const ThemeContext = createContext<ThemeContextValue>({ theme: 'dark', dark: true, cycle: () => {} });
+
+function applyTheme(theme: Theme) {
+  const cl = document.documentElement.classList;
+  cl.remove('dark', 'obsidian');
+  if (theme === 'dark') cl.add('dark');
+  if (theme === 'obsidian') { cl.add('dark'); cl.add('obsidian'); }
+}
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [dark, setDark] = useState(() => {
-    const saved = localStorage.getItem('theme');
-    return saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const [theme, setTheme] = useState<Theme>(() => {
+    const saved = localStorage.getItem('theme') as Theme | null;
+    if (saved === 'light' || saved === 'dark' || saved === 'obsidian') return saved;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
   useEffect(() => {
-    if (dark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-    localStorage.setItem('theme', dark ? 'dark' : 'light');
-  }, [dark]);
+    applyTheme(theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
 
-  const toggle = useCallback(() => setDark((d) => !d), []);
-  const value = useMemo(() => ({ dark, toggle }), [dark, toggle]);
+  const cycle = useCallback(() => {
+    setTheme((t) => t === 'light' ? 'dark' : t === 'dark' ? 'obsidian' : 'light');
+  }, []);
+
+  const value = useMemo(() => ({ theme, dark: theme !== 'light', cycle }), [theme, cycle]);
 
   return (
     <ThemeContext.Provider value={value}>

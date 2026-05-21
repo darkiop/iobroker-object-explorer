@@ -42,6 +42,125 @@ html:not(.dark) * {
   scrollbar-color: #d1d5db transparent;
 }
 
+/* ============================================================
+   Obsidian Theme — Catppuccin Mocha palette
+   Applied via .obsidian class on <html> alongside .dark
+   ============================================================ */
+
+/* Scrollbar */
+.obsidian ::-webkit-scrollbar-thumb { background: #585b70; }
+.obsidian ::-webkit-scrollbar-thumb:hover { background: #6c7086; }
+.obsidian * { scrollbar-color: #585b70 transparent; }
+
+/* --- Backgrounds (gray) --- */
+.obsidian .dark\:bg-gray-900  { background-color: #1e1e2e !important; }
+.obsidian .dark\:bg-gray-800  { background-color: #24273a !important; }
+.obsidian .dark\:bg-gray-700  { background-color: #313244 !important; }
+.obsidian .dark\:bg-gray-600  { background-color: #45475a !important; }
+.obsidian .dark\:bg-gray-500  { background-color: #585b70 !important; }
+.obsidian .dark\:bg-gray-300  { background-color: #9399b2 !important; }
+
+.obsidian .dark\:bg-gray-800\/20 { background-color: rgb(36 39 58 / 0.2) !important; }
+.obsidian .dark\:bg-gray-800\/30 { background-color: rgb(36 39 58 / 0.3) !important; }
+.obsidian .dark\:bg-gray-800\/40 { background-color: rgb(36 39 58 / 0.4) !important; }
+.obsidian .dark\:bg-gray-800\/50 { background-color: rgb(36 39 58 / 0.5) !important; }
+.obsidian .dark\:bg-gray-800\/60 { background-color: rgb(36 39 58 / 0.6) !important; }
+.obsidian .dark\:bg-gray-800\/70 { background-color: rgb(36 39 58 / 0.7) !important; }
+.obsidian .dark\:bg-gray-700\/50 { background-color: rgb(49 50 68 / 0.5) !important; }
+.obsidian .dark\:bg-gray-700\/60 { background-color: rgb(49 50 68 / 0.6) !important; }
+.obsidian .dark\:bg-gray-700\/70 { background-color: rgb(49 50 68 / 0.7) !important; }
+.obsidian .dark\:bg-gray-500\/40 { background-color: rgb(88 91 112 / 0.4) !important; }
+
+/* --- Hover backgrounds (gray) --- */
+.obsidian .dark\:hover\:bg-gray-600:hover  { background-color: #45475a !important; }
+.obsidian .dark\:hover\:bg-gray-700:hover  { background-color: #313244 !important; }
+.obsidian .dark\:hover\:bg-gray-800:hover  { background-color: #24273a !important; }
+.obsidian .dark\:hover\:bg-gray-600\/60:hover  { background-color: rgb(69 71 90 / 0.6) !important; }
+.obsidian .dark\:hover\:bg-gray-700\/50:hover  { background-color: rgb(49 50 68 / 0.5) !important; }
+.obsidian .dark\:hover\:bg-gray-700\/80:hover  { background-color: rgb(49 50 68 / 0.8) !important; }
+.obsidian .dark\:hover\:bg-gray-800\/40:hover  { background-color: rgb(36 39 58 / 0.4) !important; }
+.obsidian .dark\:hover\:bg-gray-800\/50:hover  { background-color: rgb(36 39 58 / 0.5) !important; }
+
+/* --- Text (gray) --- */
+.obsidian .dark\:text-gray-100 { color: #cdd6f4 !important; }
+.obsidian .dark\:text-gray-200 { color: #bac2de !important; }
+.obsidian .dark\:text-gray-300 { color: #a6adc8 !important; }
+.obsidian .dark\:text-gray-400 { color: #7f849c !important; }
+.obsidian .dark\:text-gray-500 { color: #585b70 !important; }
+.obsidian .dark\:text-gray-600 { color: #45475a !important; }
+.obsidian .dark\:text-gray-700 { color: #313244 !important; }
+
+/* --- Hover text (gray) --- */
+.obsidian .dark\:hover\:text-gray-200:hover { color: #bac2de !important; }
+.obsidian .dark\:hover\:text-gray-300:hover { color: #a6adc8 !important; }
+.obsidian .dark\:hover\:text-gray-400:hover { color: #7f849c !important; }
+
+/* --- Borders (gray) --- */
+.obsidian .dark\:border-gray-900 { border-color: #1e1e2e !important; }
+.obsidian .dark\:border-gray-800 { border-color: #24273a !important; }
+.obsidian .dark\:border-gray-700 { border-color: #313244 !important; }
+.obsidian .dark\:border-gray-600 { border-color: #45475a !important; }
+.obsidian .dark\:border-gray-500 { border-color: #585b70 !important; }
+
+.obsidian .dark\:border-gray-800\/60 { border-color: rgb(36 39 58 / 0.6) !important; }
+.obsidian .dark\:border-gray-700\/60 { border-color: rgb(49 50 68 / 0.6) !important; }
+.obsidian .dark\:border-gray-600\/50 { border-color: rgb(69 71 90 / 0.5) !important; }
+.obsidian .dark\:border-gray-600\/60 { border-color: rgb(69 71 90 / 0.6) !important; }
+.obsidian .dark\:border-gray-600\/70 { border-color: rgb(69 71 90 / 0.7) !important; }
+
+/* --- Hover border (gray) --- */
+.obsidian .dark\:hover\:border-gray-600:hover { border-color: #45475a !important; }
+
+/* --- Placeholder (gray) --- */
+.obsidian .dark\:placeholder-gray-400::placeholder { color: #7f849c !important; }
+.obsidian .dark\:placeholder-gray-500::placeholder { color: #585b70 !important; }
+.obsidian .dark\:placeholder-gray-600::placeholder { color: #45475a !important; }
+
+/* --- Divide (gray) --- */
+.obsidian .dark\:divide-gray-700 > * + * { border-color: #313244 !important; }
+.obsidian .dark\:divide-gray-800 > * + * { border-color: #24273a !important; }
+
+/* -------------------------------------------------------
+   Blue → Lavender/Catppuccin Blue accent overrides
+   ------------------------------------------------------- */
+.obsidian .dark\:text-blue-100 { color: #e2e5ff !important; }
+.obsidian .dark\:text-blue-200 { color: #c7d0fe !important; }
+.obsidian .dark\:text-blue-300 { color: #b4befe !important; }
+.obsidian .dark\:text-blue-400 { color: #b4befe !important; }
+.obsidian .dark\:text-blue-500 { color: #89b4fa !important; }
+
+.obsidian .dark\:hover\:text-blue-200:hover { color: #c7d0fe !important; }
+.obsidian .dark\:hover\:text-blue-300:hover { color: #b4befe !important; }
+.obsidian .dark\:hover\:text-blue-400:hover { color: #b4befe !important; }
+
+.obsidian .dark\:bg-blue-400\/25  { background-color: rgb(180 190 254 / 0.25) !important; }
+.obsidian .dark\:bg-blue-500      { background-color: #89b4fa !important; }
+.obsidian .dark\:bg-blue-500\/10  { background-color: rgb(180 190 254 / 0.1) !important; }
+.obsidian .dark\:bg-blue-500\/20  { background-color: rgb(180 190 254 / 0.2) !important; }
+.obsidian .dark\:bg-blue-900\/20  { background-color: rgb(114 135 253 / 0.15) !important; }
+.obsidian .dark\:bg-blue-900\/30  { background-color: rgb(114 135 253 / 0.2) !important; }
+.obsidian .dark\:bg-blue-900\/40  { background-color: rgb(114 135 253 / 0.25) !important; }
+
+.obsidian .dark\:hover\:bg-blue-500\/10:hover { background-color: rgb(180 190 254 / 0.1) !important; }
+.obsidian .dark\:hover\:bg-blue-500\/20:hover { background-color: rgb(180 190 254 / 0.2) !important; }
+.obsidian .dark\:hover\:bg-blue-500\/30:hover { background-color: rgb(180 190 254 / 0.3) !important; }
+.obsidian .dark\:hover\:bg-blue-800\/60:hover { background-color: rgb(114 135 253 / 0.35) !important; }
+.obsidian .dark\:hover\:bg-blue-900\/20:hover { background-color: rgb(114 135 253 / 0.15) !important; }
+.obsidian .dark\:hover\:bg-blue-900\/30:hover { background-color: rgb(114 135 253 / 0.2) !important; }
+
+.obsidian .dark\:border-blue-500     { border-color: #89b4fa !important; }
+.obsidian .dark\:border-blue-500\/30 { border-color: rgb(180 190 254 / 0.3) !important; }
+.obsidian .dark\:border-blue-600     { border-color: #7287fd !important; }
+.obsidian .dark\:border-blue-800     { border-color: #585ea1 !important; }
+
+.obsidian .dark\:hover\:border-blue-600\/70:hover { border-color: rgb(114 135 253 / 0.7) !important; }
+
+/* --- focus:ring-blue — map to lavender --- */
+.obsidian .dark\:focus\:border-blue-500:focus { border-color: #89b4fa !important; }
+.obsidian .dark\:focus\:ring-blue-500:focus { --tw-ring-color: #89b4fa !important; }
+.obsidian .dark\:outline-blue-500 { outline-color: #89b4fa !important; }
+.obsidian .dark\:caret-gray-100 { caret-color: #cdd6f4 !important; }
+
 /* Table font size overrides */
 [data-table-fontsize="small"] td,
 [data-table-fontsize="small"] th { font-size: 0.65rem !important; }
