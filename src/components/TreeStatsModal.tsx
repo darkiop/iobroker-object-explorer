@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, BarChart2, ChevronUp, ChevronDown, Trash2, AlertTriangle, RotateCcw } from 'lucide-react';
+import { X, BarChart2, ChevronUp, ChevronDown, Trash2, AlertTriangle, RotateCcw, Info } from 'lucide-react';
 import { useEscapeKey } from '../hooks/useEscapeKey';
-import { useDeleteSubtree, useScriptUsedIds, useRefreshScriptUsedIds } from '../hooks/useStates';
+import { useDeleteSubtree } from '../hooks/useStates';
+import { getScriptUsedIds, clearScriptUsedIdsCache } from '../api/iobroker';
 import type { IoBrokerObject } from '../types/iobroker';
 
 interface Props {
@@ -37,8 +38,31 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
 
   const allObjectIds = useMemo(() => Object.keys(allObjects), [allObjects]);
   const deleteSubtree = useDeleteSubtree();
-  const { data: scriptUsedIds, isFetching: scriptsFetching } = useScriptUsedIds(allObjectIds);
-  const refreshScriptIds = useRefreshScriptUsedIds(allObjectIds);
+
+  // Script index: load from localStorage cache on mount (no network), fetch only on explicit refresh
+  const [scriptUsedIds, setScriptUsedIds] = useState<Set<string> | null>(() => {
+    const ts = localStorage.getItem('iob-script-used-ids-ts');
+    if (ts && Date.now() - parseInt(ts) < 60 * 60 * 1000) {
+      const raw = localStorage.getItem('iob-script-used-ids-v1');
+      if (raw) { try { return new Set<string>(JSON.parse(raw)); } catch { /* ignore */ } }
+    }
+    return null;
+  });
+  const [includeScripts, setIncludeScripts] = useState(scriptUsedIds !== null);
+  const [scriptsFetching, setScriptsFetching] = useState(false);
+  const [confirmScriptRefresh, setConfirmScriptRefresh] = useState(false);
+
+  async function handleScriptRefreshConfirmed() {
+    setConfirmScriptRefresh(false);
+    setScriptsFetching(true);
+    try {
+      clearScriptUsedIdsCache();
+      const result = await getScriptUsedIds(allObjectIds, true);
+      setScriptUsedIds(result);
+    } finally {
+      setScriptsFetching(false);
+    }
+  }
 
   const { rows, totals } = useMemo(() => {
     const map = new Map<string, NsStats>();
@@ -55,7 +79,7 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
       if (historyIds.has(id)) s.history++;
       if (smartIds.has(id)) s.smart++;
       if (id.startsWith('alias.0.')) s.aliases++;
-      if (scriptUsedIds?.has(id)) s.scripts++;
+      if (includeScripts && scriptUsedIds?.has(id)) s.scripts++;
     }
 
     const allRows = Array.from(map.values());
@@ -65,7 +89,7 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
     );
 
     return { rows: allRows, totals };
-  }, [allObjects, historyIds, smartIds, scriptUsedIds]);
+  }, [allObjects, historyIds, smartIds, scriptUsedIds, includeScripts]);
 
   const maxTotal = useMemo(() => Math.max(...rows.map((r) => r.total), 1), [rows]);
 
@@ -125,12 +149,21 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
               </span>
             )}
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-1.5 cursor-pointer select-none" title={isEn ? 'Include script usage (cached 1h, slow to compute)' : 'Skript-Verwendungen einbeziehen (1h gecacht, aufwendig)'}>
+              <input
+                type="checkbox"
+                checked={includeScripts}
+                onChange={(e) => setIncludeScripts(e.target.checked)}
+                className="w-3.5 h-3.5 accent-green-600"
+              />
+              <span className="text-xs text-gray-500 dark:text-gray-400">{isEn ? 'Scripts' : 'Skripte'}</span>
+            </label>
             <button
-              onClick={refreshScriptIds}
-              disabled={scriptsFetching}
-              title={isEn ? 'Refresh script index (cached 1h)' : 'Skript-Index aktualisieren (1h gecacht)'}
-              className="p-1 rounded text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40"
+              onClick={() => { if (includeScripts) setConfirmScriptRefresh(true); }}
+              disabled={scriptsFetching || !includeScripts}
+              title={isEn ? 'Refresh script index' : 'Skript-Index aktualisieren'}
+              className="p-1 rounded text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed"
             >
               <RotateCcw size={14} className={scriptsFetching ? 'animate-spin' : ''} />
             </button>
@@ -209,8 +242,8 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
                   <td className={`${tdRClass} ${r.aliases > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-400 dark:text-gray-600'}`}>
                     {r.aliases > 0 ? r.aliases : '—'}
                   </td>
-                  <td className={`${tdRClass} ${r.scripts > 0 ? 'text-green-600 dark:text-green-500' : 'text-gray-400 dark:text-gray-600'}`}>
-                    {r.scripts > 0 ? r.scripts : '—'}
+                  <td className={`${tdRClass} ${!includeScripts || scriptUsedIds === null ? 'text-gray-300 dark:text-gray-700' : r.scripts > 0 ? 'text-green-600 dark:text-green-500' : 'text-gray-400 dark:text-gray-600'}`}>
+                    {!includeScripts ? '—' : scriptsFetching ? '…' : scriptUsedIds === null ? '?' : r.scripts > 0 ? r.scripts : '—'}
                   </td>
                   <td className="px-2 py-1.5 text-right">
                     <button
@@ -242,13 +275,39 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
                   {totals.aliases}
                 </td>
                 <td className={`${tdRClass} ${totals.scripts > 0 ? 'text-green-600 dark:text-green-500' : ''}`}>
-                  {scriptUsedIds === undefined ? '…' : totals.scripts}
+                  {!includeScripts ? '—' : scriptsFetching ? '…' : scriptUsedIds === null ? '?' : totals.scripts}
                 </td>
                 <td />
               </tr>
             </tfoot>
           </table>
         </div>
+
+        {/* Script refresh confirmation */}
+        {confirmScriptRefresh && (
+          <div className="shrink-0 border-t border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-5 py-3 flex items-start gap-3">
+            <Info size={15} className="text-blue-500 shrink-0 mt-0.5" />
+            <span className="text-xs text-blue-800 dark:text-blue-200 flex-1">
+              {isEn
+                ? 'Calculating script usage scans all script source code and may take several seconds depending on the number of scripts and datapoints.'
+                : 'Die Berechnung der Skript-Verwendungen durchsucht den gesamten Quellcode aller Skripte und kann je nach Anzahl der Skripte und Datenpunkte mehrere Sekunden dauern.'}
+            </span>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => setConfirmScriptRefresh(false)}
+                className="px-3 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                {isEn ? 'Cancel' : 'Abbrechen'}
+              </button>
+              <button
+                onClick={handleScriptRefreshConfirmed}
+                className="px-3 py-1 text-xs rounded bg-blue-600 hover:bg-blue-700 text-white font-medium"
+              >
+                {isEn ? 'Continue' : 'Fortfahren'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Inline delete confirmation */}
         {pendingDelete && (
