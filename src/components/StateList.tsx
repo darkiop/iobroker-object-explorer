@@ -222,7 +222,7 @@ const EditableNameCell = React.memo(function EditableNameCell({ id, name, desc, 
   );
 });
 
-const EditableRoleCell = React.memo(function EditableRoleCell({ id, role, objType, suggestions, language = 'en' }: { id: string; role: string; objType?: string; suggestions: string[]; language?: 'en' | 'de' }) {
+const EditableRoleCell = React.memo(function EditableRoleCell({ id, role, objType: _objType, suggestions, language = 'en' }: { id: string; role: string; objType?: string; suggestions: string[]; language?: 'en' | 'de' }) {
   const isEn = language === 'en';
   const [editing, setEditing] = useState(false);
   const [filter, setFilter] = useState('');

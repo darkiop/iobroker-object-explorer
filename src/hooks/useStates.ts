@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
-import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, putFullObject, createObject, deleteObject, deleteObjectsMany, renameDatapoint, getAllRoles, getAllUnits, setState, getRoomMap, getAllObjects, getRoomEnums, updateRoomMembership, updateRoomMembershipBatch, getFunctionMap, getFunctionEnums, updateFunctionMembership, updateFunctionMembershipBatch, buildAliasReverseMap, importDatapoints, getSqlInstances, createEnumObject, renameEnumObject, findScriptsUsingObject, getAllScriptSources } from '../api/iobroker';
+import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, putFullObject, createObject, deleteObject, deleteObjectsMany, renameDatapoint, getAllRoles, getAllUnits, setState, getRoomMap, getAllObjects, getRoomEnums, updateRoomMembership, updateRoomMembershipBatch, getFunctionMap, getFunctionEnums, updateFunctionMembership, updateFunctionMembershipBatch, buildAliasReverseMap, importDatapoints, getSqlInstances, createEnumObject, renameEnumObject, findScriptsUsingObject, getAllScriptSources, getAllScriptObjects } from '../api/iobroker';
 import type { IoBrokerObject, IoBrokerObjectCommon, IoBrokerState, HistoryOptions } from '../types/iobroker';
 
 const queryKeys = {
@@ -545,6 +545,14 @@ export function useDeleteEnum() {
       queryClient.invalidateQueries({ queryKey: queryKeys.metadata.functionMap });
       queryClient.invalidateQueries({ queryKey: queryKeys.objects.all });
     },
+  });
+}
+
+export function useAllScriptObjects() {
+  return useQuery({
+    queryKey: [...queryKeys.scripts.sources, 'objects'] as const,
+    queryFn: getAllScriptObjects,
+    staleTime: 5 * 60_000,
   });
 }
 

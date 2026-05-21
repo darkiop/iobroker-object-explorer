@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, BarChart2, ChevronUp, ChevronDown, Trash2, AlertTriangle } from 'lucide-react';
 import { useEscapeKey } from '../hooks/useEscapeKey';
-import { useDeleteSubtree } from '../hooks/useStates';
+import { useDeleteSubtree, useAllScriptObjects } from '../hooks/useStates';
 import type { IoBrokerObject } from '../types/iobroker';
 
 interface Props {
@@ -14,7 +14,7 @@ interface Props {
   onSelectNamespace?: (ns: string) => void;
 }
 
-type SortKey = 'ns' | 'total' | 'states' | 'structure' | 'history' | 'smart';
+type SortKey = 'ns' | 'total' | 'states' | 'structure' | 'history' | 'smart' | 'aliases' | 'scripts';
 
 interface NsStats {
   ns: string;
@@ -23,6 +23,8 @@ interface NsStats {
   structure: number;
   history: number;
   smart: number;
+  aliases: number;
+  scripts: number;
 }
 
 export default function TreeStatsModal({ onClose, allObjects, historyIds, smartIds, language, onSelectNamespace }: Props) {
@@ -34,40 +36,41 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
   const [pendingDelete, setPendingDelete] = useState<NsStats | null>(null);
 
   const deleteSubtree = useDeleteSubtree();
+  const { data: scriptObjects } = useAllScriptObjects();
 
   const { rows, totals } = useMemo(() => {
     const map = new Map<string, NsStats>();
+    const empty = (): NsStats => ({ ns: '', total: 0, states: 0, structure: 0, history: 0, smart: 0, aliases: 0, scripts: 0 });
 
     for (const [id, obj] of Object.entries(allObjects)) {
       const parts = id.split('.');
       const ns = parts.length >= 2 ? `${parts[0]}.${parts[1]}` : parts[0];
-
-      if (!map.has(ns)) {
-        map.set(ns, { ns, total: 0, states: 0, structure: 0, history: 0, smart: 0 });
-      }
+      if (!map.has(ns)) map.set(ns, { ...empty(), ns });
       const s = map.get(ns)!;
       s.total++;
       if (obj.type === 'state') s.states++;
       if (obj.type === 'folder' || obj.type === 'device' || obj.type === 'channel') s.structure++;
       if (historyIds.has(id)) s.history++;
       if (smartIds.has(id)) s.smart++;
+      if (id.startsWith('alias.0.')) s.aliases++;
+    }
+
+    // Count script objects per namespace from separately-fetched script objects
+    for (const id of Object.keys(scriptObjects ?? {})) {
+      const parts = id.split('.');
+      const ns = parts.length >= 2 ? `${parts[0]}.${parts[1]}` : parts[0];
+      if (!map.has(ns)) map.set(ns, { ...empty(), ns });
+      map.get(ns)!.scripts++;
     }
 
     const allRows = Array.from(map.values());
     const totals: NsStats = allRows.reduce(
-      (acc, r) => ({
-        ns: '',
-        total: acc.total + r.total,
-        states: acc.states + r.states,
-        structure: acc.structure + r.structure,
-        history: acc.history + r.history,
-        smart: acc.smart + r.smart,
-      }),
-      { ns: '', total: 0, states: 0, structure: 0, history: 0, smart: 0 }
+      (acc, r) => ({ ...acc, total: acc.total + r.total, states: acc.states + r.states, structure: acc.structure + r.structure, history: acc.history + r.history, smart: acc.smart + r.smart, aliases: acc.aliases + r.aliases, scripts: acc.scripts + r.scripts }),
+      empty()
     );
 
     return { rows: allRows, totals };
-  }, [allObjects, historyIds, smartIds]);
+  }, [allObjects, historyIds, smartIds, scriptObjects]);
 
   const maxTotal = useMemo(() => Math.max(...rows.map((r) => r.total), 1), [rows]);
 
@@ -158,6 +161,12 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
                 <th className={thRClass} onClick={() => handleSort('smart')}>
                   {isEn ? 'Smart' : 'Smart'}<SortIcon k="smart" sortKey={sortKey} sortDir={sortDir} />
                 </th>
+                <th className={thRClass} onClick={() => handleSort('aliases')}>
+                  {isEn ? 'Aliases' : 'Aliase'}<SortIcon k="aliases" sortKey={sortKey} sortDir={sortDir} />
+                </th>
+                <th className={thRClass} onClick={() => handleSort('scripts')}>
+                  {isEn ? 'Scripts' : 'Skripte'}<SortIcon k="scripts" sortKey={sortKey} sortDir={sortDir} />
+                </th>
                 <th className="px-2 py-2 w-8" />
               </tr>
             </thead>
@@ -192,6 +201,12 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
                   <td className={`${tdRClass} ${r.smart > 0 ? 'text-violet-600 dark:text-violet-400' : 'text-gray-400 dark:text-gray-600'}`}>
                     {r.smart > 0 ? r.smart : '—'}
                   </td>
+                  <td className={`${tdRClass} ${r.aliases > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-400 dark:text-gray-600'}`}>
+                    {r.aliases > 0 ? r.aliases : '—'}
+                  </td>
+                  <td className={`${tdRClass} ${r.scripts > 0 ? 'text-green-600 dark:text-green-500' : 'text-gray-400 dark:text-gray-600'}`}>
+                    {r.scripts > 0 ? r.scripts : '—'}
+                  </td>
                   <td className="px-2 py-1.5 text-right">
                     <button
                       title={isEn ? `Delete namespace ${r.ns}` : `Namespace ${r.ns} löschen`}
@@ -217,6 +232,12 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
                 </td>
                 <td className={`${tdRClass} ${totals.smart > 0 ? 'text-violet-600 dark:text-violet-400' : ''}`}>
                   {totals.smart}
+                </td>
+                <td className={`${tdRClass} ${totals.aliases > 0 ? 'text-amber-600 dark:text-amber-400' : ''}`}>
+                  {totals.aliases}
+                </td>
+                <td className={`${tdRClass} ${totals.scripts > 0 ? 'text-green-600 dark:text-green-500' : ''}`}>
+                  {totals.scripts || (scriptObjects === undefined ? '…' : 0)}
                 </td>
                 <td />
               </tr>

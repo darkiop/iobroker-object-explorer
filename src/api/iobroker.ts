@@ -515,6 +515,11 @@ export async function renameEnumObject(enumId: string, newName: string): Promise
   await putFullObject(enumId, { ...obj, common: { ...obj.common, name: newName } });
 }
 
+export async function getAllScriptObjects(): Promise<Record<string, IoBrokerObject>> {
+  const res = await fetchApi<Record<string, IoBrokerObject>>('/objects?type=script');
+  return Object.fromEntries(Object.entries(res).filter(([id, obj]) => id.startsWith('script.js.') && obj.type === 'script'));
+}
+
 export async function getAllScriptSources(): Promise<string> {
   const res = await fetchApi<Record<string, IoBrokerObject>>('/objects?type=script');
   return Object.entries(res)
