@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, useImperativeHandle } from 'react';
-import { X, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, Wrench, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Folder, Cpu, Layers, FileCode2, BarChart2, Copy, Check, Pencil } from 'lucide-react';
+import { X, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, Wrench, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Folder, Cpu, Layers, FileCode2, BarChart2, Copy, Check, Pencil, List } from 'lucide-react';
 import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch, useAllScriptSources } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
