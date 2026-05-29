@@ -323,7 +323,7 @@ export default function SettingsModal() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1.5">
                   <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Language' : 'Sprache'}</span>
-                  <LanguageDropdown value={settingsDraft.language} onChange={handleLanguageChangeDraft} />
+                  <LanguageDropdown value={settingsDraft.language} onChange={handleLanguageChangeDraft} fullWidth />
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Date format' : 'Datumsformat'}</span>

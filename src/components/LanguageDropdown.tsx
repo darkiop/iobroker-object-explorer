@@ -5,6 +5,7 @@ interface LanguageDropdownProps {
   value: 'en' | 'de';
   onChange: (language: 'en' | 'de') => void;
   compact?: boolean;
+  fullWidth?: boolean;
 }
 
 const OPTIONS = [
@@ -12,7 +13,7 @@ const OPTIONS = [
   { value: 'de' as const, short: 'DE', label: 'Deutsch' },
 ];
 
-export default function LanguageDropdown({ value, onChange, compact = false }: LanguageDropdownProps) {
+export default function LanguageDropdown({ value, onChange, compact = false, fullWidth = false }: LanguageDropdownProps) {
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const selected = OPTIONS.find((opt) => opt.value === value) ?? OPTIONS[0];
@@ -28,12 +29,12 @@ export default function LanguageDropdown({ value, onChange, compact = false }: L
   }, []);
 
   return (
-    <div ref={wrapperRef} className="relative">
+    <div ref={wrapperRef} className={`relative${fullWidth ? ' w-full' : ''}`}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={`inline-flex items-center justify-between gap-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/80 transition-colors ${
-          compact ? 'h-7 min-w-[64px] px-2 text-[11px]' : 'h-8 min-w-[168px] px-2.5 text-xs'
+          compact ? 'h-7 min-w-[64px] px-2 text-[11px]' : fullWidth ? 'h-8 w-full px-2.5 text-xs' : 'h-8 min-w-[168px] px-2.5 text-xs'
         }`}
         title={value === 'en' ? 'Language' : 'Sprache'}
         aria-haspopup="listbox"
