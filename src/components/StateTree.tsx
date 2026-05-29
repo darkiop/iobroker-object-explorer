@@ -680,15 +680,6 @@ function StateTree({ stateIds, allObjects, historyIds, smartIds, onCreateAtPath,
           {treeViewMode === 'adapter' ? <LayoutList size={13} /> : <LayoutGrid size={13} />}
         </button>
       </div>
-      <div className="flex items-center justify-center gap-3 px-3 py-1.5 border-b border-gray-200 dark:border-gray-700 shrink-0 bg-gray-50/50 dark:bg-gray-800/30">
-        <span className="text-xs text-gray-500 dark:text-gray-400">
-          {isEn ? 'Objects' : 'Objekte'}: <span className="font-semibold text-gray-700 dark:text-gray-200">{(tree.totalCount ?? 0).toLocaleString()}</span>
-        </span>
-        <span className="text-gray-300 dark:text-gray-600">|</span>
-        <span className="text-xs text-gray-500 dark:text-gray-400">
-          {isEn ? 'States' : 'States'}: <span className="font-semibold text-gray-700 dark:text-gray-200">{(tree.count ?? 0).toLocaleString()}</span>
-        </span>
-      </div>
       <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 shrink-0">
         <div className="relative">
           <Filter size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none" />
@@ -762,6 +753,15 @@ function StateTree({ stateIds, allObjects, historyIds, smartIds, onCreateAtPath,
             />
           ))
         )}
+      </div>
+      <div className="flex items-center justify-center gap-3 px-3 py-1.5 border-t border-gray-200 dark:border-gray-700 shrink-0 bg-gray-50/50 dark:bg-gray-800/30">
+        <span className="text-xs text-gray-500 dark:text-gray-400">
+          {isEn ? 'Objects' : 'Objekte'}: <span className="font-semibold text-gray-700 dark:text-gray-200">{(tree.totalCount ?? 0).toLocaleString()}</span>
+        </span>
+        <span className="text-gray-300 dark:text-gray-600">|</span>
+        <span className="text-xs text-gray-500 dark:text-gray-400">
+          States: <span className="font-semibold text-gray-700 dark:text-gray-200">{(tree.count ?? 0).toLocaleString()}</span>
+        </span>
       </div>
     </div>
     </>
