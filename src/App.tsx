@@ -17,7 +17,7 @@ import AliasReplaceModal from './components/AliasReplaceModal';
 import AutoCreateAliasModal from './components/AutoCreateAliasModal';
 import SettingsModal from './components/SettingsModal';
 import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunctionMap, useRoomEnums, useFunctionEnums, useAliasMap } from './hooks/useStates';
-import { hasHistory, hasSmartName, clearObjectsCache } from './api/iobroker';
+import { hasHistory, hasSmartName } from './api/iobroker';
 import type { StateListHandle } from './components/StateList';
 import { filterObjectIds } from './utils/filterObjectIds';
 import type { IoBrokerObject, IoBrokerState } from './types/iobroker';
@@ -209,7 +209,6 @@ function AppContent() {
 
   // ── Cross-context handlers ───────────────────────────────────────────────
   const handleManualRefresh = useCallback(() => {
-    clearObjectsCache();
     void Promise.all([
       refetchFilteredObjects(), refetchAllObjects(), refetchRoomMap(),
       refetchFunctionMap(), refetchStateValues(), refetchRoomEnums(), refetchFunctionEnums(),

@@ -48,29 +48,12 @@ function scoreObject(id: string, obj: IoBrokerObject, query: string): number {
 }
 
 
-// Objects: einmalig laden und cachen (Baum-Struktur + Metadaten)
-let objectsCache: Record<string, IoBrokerObject> | null = null;
-let objectsCachePromise: Promise<Record<string, IoBrokerObject>> | null = null;
-
-export function clearObjectsCache(): void {
-  objectsCache = null;
-  objectsCachePromise = null;
-}
-
 export async function getAllObjects(): Promise<Record<string, IoBrokerObject>> {
-  if (objectsCache) return objectsCache;
-  if (objectsCachePromise) return objectsCachePromise;
-
-  objectsCachePromise = Promise.all([
+  const [all, enums] = await Promise.all([
     fetchApi<Record<string, IoBrokerObject>>('/objects'),
     fetchApi<Record<string, IoBrokerObject>>('/objects?type=enum'),
-  ]).then(([all, enums]) => {
-    objectsCache = { ...all, ...enums };
-    objectsCachePromise = null;
-    return objectsCache;
-  });
-
-  return objectsCachePromise;
+  ]);
+  return { ...all, ...enums };
 }
 
 export async function getObjectsByPattern(pattern: string, fulltext = true, exact = false): Promise<Record<string, IoBrokerObject>> {
@@ -281,20 +264,17 @@ export async function createObject(id: string, common: Partial<IoBrokerObjectCom
     body: JSON.stringify({ type: objectType, common, native: {} }),
   });
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
-  objectsCache = null;
 }
 
 export async function deleteObject(id: string): Promise<void> {
   const res = await fetch(`${getBaseUrl()}/object/${encodeURIComponent(id)}`, { method: 'DELETE' });
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
-  objectsCache = null;
 }
 
 export async function deleteObjectsMany(ids: string[]): Promise<void> {
   await Promise.all(ids.map(id =>
     fetch(`${getBaseUrl()}/object/${encodeURIComponent(id)}`, { method: 'DELETE' })
   ));
-  objectsCache = null;
 }
 
 export async function renameDatapoint(oldId: string, newId: string, obj: IoBrokerObject, currentVal?: { val: unknown; ack?: boolean }): Promise<void> {
@@ -312,7 +292,6 @@ export async function putFullObject(id: string, obj: IoBrokerObject): Promise<vo
     body: JSON.stringify(obj),
   });
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
-  objectsCache = null;
 }
 
 export type ImportItemResult = { id: string; status: 'created' | 'updated' | 'skipped' | 'error'; error?: string };
@@ -333,7 +312,6 @@ export async function importDatapoints(data: Record<string, IoBrokerObject>, exi
       items.push({ id, status: 'error', error: e instanceof Error ? e.message : String(e) });
     }
   }
-  objectsCache = null;
   return {
     items,
     created: items.filter((i) => i.status === 'created').length,
@@ -352,8 +330,6 @@ export async function extendObject(id: string, obj: { common: Partial<IoBrokerOb
   if (!res.ok) {
     throw new Error(`API error: ${res.status} ${res.statusText}`);
   }
-  // Invalidate objects cache since we changed an object
-  objectsCache = null;
 }
 
 export async function getObject(id: string): Promise<IoBrokerObject> {
@@ -410,7 +386,6 @@ export async function updateFunctionMembership(objectId: string, oldFnEnumId: st
     const members = [...new Set([...(obj.common?.members ?? []), objectId])];
     await putFullObject(newFnEnumId, { ...obj, common: { ...obj.common, members } });
   }
-  objectsCache = null;
 }
 
 export async function updateFunctionMembershipBatch(objectIds: string[], newFnEnumId: string | null): Promise<void> {
@@ -433,7 +408,6 @@ export async function updateFunctionMembershipBatch(objectIds: string[], newFnEn
     const members = [...new Set([...(obj.common?.members ?? []), ...objectIds])];
     await putFullObject(newFnEnumId, { ...obj, common: { ...obj.common, members } });
   }
-  objectsCache = null;
 }
 
 export async function getRoomEnums(): Promise<Array<{ id: string; name: string }>> {
@@ -462,7 +436,6 @@ export async function updateRoomMembership(objectId: string, oldRoomEnumId: stri
     const members = [...new Set([...(obj.common?.members ?? []), objectId])];
     await putFullObject(newRoomEnumId, { ...obj, common: { ...obj.common, members } });
   }
-  objectsCache = null;
 }
 
 export async function updateRoomMembershipBatch(objectIds: string[], newRoomEnumId: string | null): Promise<void> {
@@ -485,7 +458,6 @@ export async function updateRoomMembershipBatch(objectIds: string[], newRoomEnum
     const members = [...new Set([...(obj.common?.members ?? []), ...objectIds])];
     await putFullObject(newRoomEnumId, { ...obj, common: { ...obj.common, members } });
   }
-  objectsCache = null;
 }
 
 export async function createEnumObject(enumId: string, name: string): Promise<void> {

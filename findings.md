@@ -26,7 +26,7 @@
 | F-13 | **Fixed** | Performance | ~~HIGH~~ | API / Hauptthread | `src/api/iobroker.ts` | O(n×m)-Script-Suche in 200-ID-Batches aufgeteilt; `setTimeout(r,0)` yieldet zwischen Batches (commit `db716e5`). Langfristig: Web Worker. | Tab-Freeze verhindert. | — | — | — |
 | F-14 | **Fixed** | Codequalität | ~~MEDIUM~~ | Code Duplication | `src/utils/format.ts` | `formatTimestamp`/`formatValue` → `src/utils/format.ts` extrahiert. `hasSmartName`-Kopie in StateList entfernt, Import aus api/iobroker.ts. ObjectEditModal nutzt jetzt `dateFormat`-Prop für Zeitstempel. | Duplikation vollständig beseitigt. | — | — | — |
 | F-15 | **Fixed** | Codequalität | ~~MEDIUM~~ | Dead Code | `src/api/iobroker.ts` | `isDisplayable()` entfernt. Alle 5 Aufrufe durch direkte `!!obj`/`!obj`-Checks ersetzt. | Dead Code eliminiert. | — | — | — |
-| F-16 | Offen | Codequalität | MEDIUM | Architecture | `src/api/iobroker.ts:61–62` | Module-level `objectsCache` parallel zu React Querys Cache. `clearObjectsCache()` muss manuell aufgerufen werden. Race Condition bei schnellen Mutations möglich. | Zwei Caches können desynchronisieren. | Module-level Cache entfernen. React Querys `queryClient.getQueryData()` als Single Source of Truth. | M | Stability |
+| F-16 | **Fixed** | Codequalität | ~~MEDIUM~~ | Architecture | `src/api/iobroker.ts` | Module-level `objectsCache` und `clearObjectsCache()` entfernt. `getAllObjects()` ist jetzt ein purer Fetch. React Query (`staleTime: Infinity`) ist einziger Cache. Alle 10 `objectsCache = null`-Zeilen entfernt. | Race Condition zwischen zwei Caches eliminiert. | — | — | — |
 | F-17 | **Mitigiert** | Security | ~~MEDIUM~~ → INFO | Transport | `src/api/iobroker.ts:5–11` | HTTPS-Zugriff via Reverse Proxy funktioniert jetzt korrekt (commit `95fcf56`): `getBaseUrl()` routet bei HTTPS immer über `/api/v1`, nginx übernimmt die HTTP-Verbindung serverseitig. Offen: Direktverbindungen über HTTP bleiben unverschlüsselt (im lokalen Netz akzeptabel). | Mixed Content behoben. | HTTPS-Termination per nginx für Remote-Zugriff (Architektur bereits vorbereitet). | — | Security |
 | F-18 | **Fixed** | Codequalität | ~~MEDIUM~~ | TypeScript | `src/types/iobroker.ts` | `source?` und `engineType?` zu `IoBrokerObjectCommon` ergänzt. Alle `as unknown as Record<string, unknown>`-Casts entfernt. | Volle TypeScript-Sicherheit für Script-Properties. | — | — | — |
 | F-19 | **Fixed** | Performance | ~~MEDIUM~~ | React | `src/hooks/useStates.ts` | `gcTime: 60_000` gesetzt, IDs im Query-Key sortiert (commit `27b7c21`). Alte Seiten-Queries werden nach 60s entfernt statt nach 5 min. | Bis zu 10 simultane Polling-Queries eliminiert. | — | — | — |
@@ -48,13 +48,15 @@
 
 Das Projekt ist eine **funktionsreiche, intern gut strukturierte** React-Applikation für ioBroker-Administration. Der Entwickler demonstriert solides React-Wissen (TanStack Query, Optimistic Updates, Portal-basierte Dropdowns, TypeScript strict mode). Die App ist produktiv einsatzfähig.
 
-**Seit dem initialen Audit behobene Punkte:** F-02 bis F-30 vollständig — einzige verbleibende offene Findings sind F-01 (Tests, XL), F-11 (StateList-Split, L) und F-27 (aria-label, L) sowie F-16 (Cache, M).
+**Seit dem initialen Audit behobene Punkte:** F-02 bis F-30 sowie F-16 vollständig — einzige verbleibende offene Findings sind F-01 (Tests, XL), F-11 (StateList-Split, L) und F-27 (aria-label, L).
 
 **Die verbleibenden Probleme:**
 
 1. **Keine Tests (F-01)** — Die Codebase wächst aktiv ohne jegliches Sicherheitsnetz. Besonders kritisch bei `filterObjectIds`, `loadAppSettings` und allen Mutations mit Rollback.
 
 2. **God Component StateList.tsx (F-11)** — 3264 Zeilen, 12+ Komponenten. Letzter großer Architektur-Schuldner.
+
+(F-16 **Fixed 2026-05-29**: Module-level Cache entfernt, React Query ist alleinige Source of Truth.)
 
 Die Sicherheitslage hat sich erheblich verbessert: alle XSS-Vektoren geschlossen, Security-Header gesetzt, 4 HIGH-npm-Vulnerabilities behoben. Das Risikoprofil ist jetzt für ein internes Tool angemessen.
 
@@ -67,7 +69,7 @@ Die Sicherheitslage hat sich erheblich verbessert: alle XSS-Vektoren geschlossen
 | 1 | F-01 | Offen | Kein Test-Framework | Regressions bei jeder Änderung unerkennbar. Mutations können produktiv Daten beschädigen. |
 | 2 | F-11 | Offen | StateList.tsx 3264 Zeilen | 12 Komponenten in 1 Datei. Maintainability-Grenze überschritten. |
 | 3 | F-27 | Offen | Icon-Buttons ohne aria-label | App für Screen-Reader-Nutzer nicht bedienbar. WCAG 2.1 AA nicht erfüllt. |
-| 4 | F-16 | Offen | Paralleler Cache-Layer | `objectsCache` + React Query Cache können desynchronisieren. |
+| 4 | F-16 | **Fixed** | ~~Paralleler Cache-Layer~~ | ~~`objectsCache` + React Query Cache können desynchronisieren.~~ |
 
 ---
 
@@ -105,9 +107,9 @@ Hoch-Impact, geringer Aufwand — innerhalb eines Tages umsetzbar:
 
 App.tsx (638 Z.) und Context-Segmentierung (FilterContext, SelectionContext, UIContext) sind abgeschlossen. StateList.tsx (3264 Zeilen) bleibt der größte offene Punkt — 12+ Komponenten, ~400 Zeilen Editable\*Cell-Duplikation.
 
-### Risiko: Paralleler Cache-Layer
+### ~~Risiko: Paralleler Cache-Layer~~ (F-16 Fixed)
 
-Der module-level `objectsCache` in `api/iobroker.ts` ist ein zweiter Cache neben React Querys eigenem Cache. `clearObjectsCache()` muss manuell aufgerufen werden. Bei schnellen aufeinanderfolgenden Mutations (z.B. Batch-Edit von 100 Objekten) kann es zu kurzzeitigen Inkonsistenzen kommen.
+Der module-level `objectsCache` und `clearObjectsCache()` wurden entfernt. `getAllObjects()` ist jetzt ein purer Fetch ohne eigenes Caching — React Query übernimmt vollständig die Caching-Verantwortung via `staleTime: Infinity`.
 
 ---
 
@@ -176,7 +178,7 @@ Die O(n)-Berechnungen bleiben, aber sind unvermeidbar und bereits durch `useMemo
 
 13. **F-11** — StateList.tsx aufteilen: Editable\*Cell in `src/components/cells/`, `usePortalDropdown` extrahieren
 14. **F-20** — DateFormatDropdown und Utility-Funktionen aus App.tsx auslagern
-15. **F-16** — Module-level Cache in `api/iobroker.ts` entfernen, React Query als Single Source of Truth
+15. ~~**F-16**~~ ✅ Module-level Cache entfernt, React Query als Single Source of Truth
 16. **F-01** — Test-Abdeckung für alle Mutations und Optimistic-Update-Rollbacks
 
 ### Langfristig (3–6 Monate)
@@ -187,4 +189,4 @@ Die O(n)-Berechnungen bleiben, aber sind unvermeidbar und bereits durch `useMemo
 
 ---
 
-*Initialer Report basiert auf Commit `fac708b`. Aktualisiert 2026-05-29 auf Basis von Commits bis `135030e` (Performance-Sprint + Security-Sprint + S-Sprint: F-02 bis F-30 vollständig abgearbeitet — nur F-01, F-11, F-16, F-27 noch offen).*
+*Initialer Report basiert auf Commit `fac708b`. Aktualisiert 2026-05-29: F-02 bis F-30 + F-16 vollständig abgearbeitet — nur F-01, F-11, F-27 noch offen.*
