@@ -193,7 +193,7 @@ export default function SettingsModal() {
               connection: isEn ? 'Connection' : 'Verbindung',
               display:    isEn ? 'Display'    : 'Anzeige',
               columns:    isEn ? 'Table'      : 'Tabelle',
-              filters:    isEn ? 'Filters'    : 'Filter',
+              filters:    isEn ? 'Quick Filters' : 'Schnellfilter',
             }[tab];
             return (
               <button
