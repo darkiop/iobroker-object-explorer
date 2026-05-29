@@ -2602,6 +2602,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   }
 
   return (
+    <>
     <div className="flex flex-col h-full">
       {toolbar}
       {checkedIds.size > 0 && (
@@ -3249,6 +3250,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
         onRequestRefreshScripts={() => setConfirmScriptRefresh(true)}
       />
     )}
+    </>
   );
 }
 
