@@ -84,7 +84,7 @@ function AppContent() {
   // ── UI Context ───────────────────────────────────────────────────────────
   const {
     appSettings, settingsOpen, setSettingsOpen, shortcutsOpen, setShortcutsOpen,
-    scriptUsedIds, scriptsFetching, confirmScriptRefresh, setConfirmScriptRefresh,
+    scriptUsedIds, scriptLastUpdated, scriptsFetching, confirmScriptRefresh, setConfirmScriptRefresh,
     openSettings, persistSettings, handleLanguageChange, handleScriptRefreshConfirmed,
   } = useUIContext();
 
