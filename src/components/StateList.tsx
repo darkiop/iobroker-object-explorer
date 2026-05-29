@@ -1429,7 +1429,7 @@ const StateRow = React.memo(function StateRow({
             ? 'bg-blue-100/60 text-blue-800 dark:bg-blue-900/40 dark:text-blue-100 outline outline-1 -outline-offset-1 outline-blue-400 dark:outline-blue-500'
             : isChecked
               ? 'bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
-              : 'hover:bg-gray-100/80 text-gray-700 dark:hover:bg-gray-800/50 dark:text-gray-300'
+              : 'hover:bg-gray-100/80 text-gray-700 dark:hover:bg-gray-700/60 dark:text-gray-300'
       }`}
     >
       {show('checkbox') && (
