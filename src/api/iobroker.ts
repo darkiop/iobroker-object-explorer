@@ -3,6 +3,9 @@ import type { IoBrokerState, IoBrokerObject, IoBrokerObjectCommon, HistoryEntry,
 const LS_HOST_KEY = 'ioBrokerHost';
 
 function getBaseUrl(): string {
+  if (window.location.protocol === 'https:') {
+    return '/api/v1';
+  }
   const host = localStorage.getItem(LS_HOST_KEY) ?? window.__CONFIG__?.ioBrokerHost;
   return host ? `http://${host}/v1` : '/api/v1';
 }
