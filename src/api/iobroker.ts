@@ -1,4 +1,5 @@
 import type { IoBrokerState, IoBrokerObject, IoBrokerObjectCommon, HistoryEntry, HistoryOptions } from '../types/iobroker';
+import { getLocalizedName, getAllNamesForSearch } from '../utils/i18n';
 
 const LS_HOST_KEY = 'ioBrokerHost';
 
@@ -26,16 +27,6 @@ export function isGlobPattern(pattern: string): boolean {
   return pattern.includes('*');
 }
 
-function parseLocalizedName(raw: string | Record<string, string>): string {
-  if (typeof raw === 'string') return raw;
-  return raw.de || raw.en || Object.values(raw)[0] || '';
-}
-
-function getNameString(name: string | Record<string, string> | undefined): string {
-  if (!name) return '';
-  if (typeof name === 'string') return name;
-  return Object.values(name).join(' ');
-}
 
 function scoreObject(id: string, obj: IoBrokerObject, query: string): number {
   const q = query.toLowerCase();
@@ -43,7 +34,7 @@ function scoreObject(id: string, obj: IoBrokerObject, query: string): number {
   if (idLow === q) return 100;
   if (idLow.startsWith(q)) return 80;
   if (idLow.includes(q)) return 60;
-  const name = getNameString(obj.common?.name).toLowerCase();
+  const name = getAllNamesForSearch(obj.common?.name).toLowerCase();
   if (name && name.includes(q)) return 50;
   const rawAliasId = obj.common?.alias?.id;
   const aliasId = (typeof rawAliasId === 'object'
@@ -234,7 +225,7 @@ export async function getRoomMap(): Promise<Record<string, string>> {
     if (!obj.enums) continue;
     for (const [enumId, enumName] of Object.entries(obj.enums)) {
       if (enumId.startsWith('enum.rooms.')) {
-        map[id] = parseLocalizedName(enumName);
+        map[id] = getLocalizedName(enumName);
         break;
       }
     }
@@ -375,7 +366,7 @@ export async function getFunctionMap(): Promise<Record<string, string>> {
     if (!obj.enums) continue;
     for (const [enumId, enumName] of Object.entries(obj.enums)) {
       if (enumId.startsWith('enum.functions.')) {
-        map[id] = parseLocalizedName(enumName);
+        map[id] = getLocalizedName(enumName);
         break;
       }
     }
@@ -396,7 +387,7 @@ export async function getFunctionEnums(): Promise<Array<{ id: string; name: stri
   for (const [id, obj] of Object.entries(res)) {
     if (!id.startsWith('enum.functions.')) continue;
     const raw = obj.common?.name;
-    const name = raw ? parseLocalizedName(raw) || id : id;
+    const name = raw ? getLocalizedName(raw) || id : id;
     fns.push({ id, name });
   }
   return fns.sort((a, b) => a.name.localeCompare(b.name));
@@ -448,7 +439,7 @@ export async function getRoomEnums(): Promise<Array<{ id: string; name: string }
   for (const [id, obj] of Object.entries(res)) {
     if (!id.startsWith('enum.rooms.')) continue;
     const raw = obj.common?.name;
-    const name = raw ? parseLocalizedName(raw) || id : id;
+    const name = raw ? getLocalizedName(raw) || id : id;
     rooms.push({ id, name });
   }
   return rooms.sort((a, b) => a.name.localeCompare(b.name));
@@ -573,7 +564,7 @@ export async function findScriptsUsingObject(objectId: string): Promise<ScriptUs
     if (!source.includes(objectId)) continue;
     results.push({
       scriptId,
-      scriptName: parseLocalizedName(obj.common?.name) || scriptId,
+      scriptName: getLocalizedName(obj.common?.name) || scriptId,
       enabled: Boolean(obj.common?.enabled),
       engineType: String(obj.common?.engineType ?? ''),
     });
