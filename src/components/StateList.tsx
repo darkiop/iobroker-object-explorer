@@ -15,7 +15,7 @@ import HistoryModal from './HistoryModal';
 import ConfirmDialog from './ConfirmDialog';
 import MultiDeleteDialog from './MultiDeleteDialog';
 import ValueEditModal from './ValueEditModal';
-import { hasHistory, hasSmartName, isGlobPattern } from '../api/iobroker';
+import { hasHistory, hasSmartName as hasSmartNameApi, isGlobPattern } from '../api/iobroker';
 import { useAllObjects } from '../hooks/useStates';
 import TreeStatsModal from './TreeStatsModal';
 import type { IoBrokerState, IoBrokerObject } from '../types/iobroker';
@@ -1696,7 +1696,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const { data: allObjectsData } = useAllObjects();
   const allObjects = allObjectsData ?? {} as Record<string, IoBrokerObject>;
   const allHistoryIds = useMemo(() => { const s = new Set<string>(); for (const [id, obj] of Object.entries(allObjects)) { if (hasHistory(obj)) s.add(id); } return s; }, [allObjects]);
-  const allSmartIds = useMemo(() => { const s = new Set<string>(); for (const [id, obj] of Object.entries(allObjects)) { if (hasSmartName(obj)) s.add(id); } return s; }, [allObjects]);
+  const allSmartIds = useMemo(() => { const s = new Set<string>(); for (const [id, obj] of Object.entries(allObjects)) { if (hasSmartNameApi(obj)) s.add(id); } return s; }, [allObjects]);
   const [colWidths, setColWidths] = useState<Record<SortKey, number>>(() => loadColWidths(effectiveDefaults, effectiveMax));
   const containerRef = useRef<HTMLDivElement>(null);
   const theadRef = useRef<HTMLTableSectionElement>(null);
