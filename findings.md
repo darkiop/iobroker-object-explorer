@@ -21,7 +21,7 @@
 | F-08 | **Fixed** | Security | ~~HIGH~~ | Dependency | `package.json` | `npm audit fix` + recharts 3.8.1 (commit `7f396f8`): flatted, rollup, minimatch, picomatch behoben. Verbleibend: 2 moderate in esbuild/vite (nur Build-Tool). | Alle 4 HIGH-Vulnerabilities eliminiert. | — | — | — |
 | F-09 | **Fixed** | Security | ~~HIGH~~ | Misconfiguration | `nginx.conf` | `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` ergänzt (commit `c3a43a6`). | Clickjacking-Schutz aktiv. | — | — | — |
 | F-10 | **Fixed** | Architektur | ~~HIGH~~ | Dependencies | `package.json` | `@tanstack/react-query` befindet sich jetzt in `dependencies`. | — | — | — | — |
-| F-11 | Offen | Architektur | HIGH | React-Architektur | `src/components/StateList.tsx` (3264 Z.) | 12+ Komponenten in einer Datei. Editable\*Cell-Komponenten identisch strukturiert — ~400 Zeilen Duplication. | Kognitiv nicht wartbar. IDE-Performance leidet. | Jede Editable\*Cell in eigene Datei unter `src/components/cells/`. `usePortalDropdown()`-Hook extrahieren. | L | Maintainability |
+| F-11 | **Fixed** | Architektur | ~~HIGH~~ | React-Architektur | `src/components/StateList.tsx` | StateList.tsx von 3187 auf 1695 Zeilen reduziert. 16 neue Dateien extrahiert: `cells/` (8 Editable*-Komponenten), `StateRow.tsx`, `BatchComboControl.tsx`, `TsRangeFilterControl.tsx`, `ColPicker.tsx`, `StyledCheckbox.tsx`, `SortHeader.tsx`, `TypeIcon.tsx`, `stateListConstants.ts`, `stateListUtils.ts`. | Monolith aufgelöst, IDE-Performance und Wartbarkeit erheblich verbessert. | — | — | — |
 | F-12 | **Fixed** | Architektur | ~~HIGH~~ | React-Architektur | `src/App.tsx` | `react-error-boundary` installiert. `AppErrorFallback` mit Reload-Button auf App-Ebene; `fallback=null`-Boundary um alle Modals isoliert Modal-Crashes von der Hauptansicht. | App-Crash durch Fehler-Recovery ersetzt. | — | — | — |
 | F-13 | **Fixed** | Performance | ~~HIGH~~ | API / Hauptthread | `src/api/iobroker.ts` | O(n×m)-Script-Suche in 200-ID-Batches aufgeteilt; `setTimeout(r,0)` yieldet zwischen Batches (commit `db716e5`). Langfristig: Web Worker. | Tab-Freeze verhindert. | — | — | — |
 | F-14 | **Fixed** | Codequalität | ~~MEDIUM~~ | Code Duplication | `src/utils/format.ts` | `formatTimestamp`/`formatValue` → `src/utils/format.ts` extrahiert. `hasSmartName`-Kopie in StateList entfernt, Import aus api/iobroker.ts. ObjectEditModal nutzt jetzt `dateFormat`-Prop für Zeitstempel. | Duplikation vollständig beseitigt. | — | — | — |
@@ -48,15 +48,11 @@
 
 Das Projekt ist eine **funktionsreiche, intern gut strukturierte** React-Applikation für ioBroker-Administration. Der Entwickler demonstriert solides React-Wissen (TanStack Query, Optimistic Updates, Portal-basierte Dropdowns, TypeScript strict mode). Die App ist produktiv einsatzfähig.
 
-**Seit dem initialen Audit behobene Punkte:** F-02 bis F-30 sowie F-16 vollständig — einzige verbleibende offene Findings sind F-01 (Tests, XL), F-11 (StateList-Split, L) und F-27 (aria-label, L).
+**Seit dem initialen Audit behobene Punkte:** F-02 bis F-30 sowie F-11 und F-16 vollständig — einzige verbleibende offene Findings sind F-01 (Tests, XL) und F-27 (aria-label, L).
 
 **Die verbleibenden Probleme:**
 
 1. **Keine Tests (F-01)** — Die Codebase wächst aktiv ohne jegliches Sicherheitsnetz. Besonders kritisch bei `filterObjectIds`, `loadAppSettings` und allen Mutations mit Rollback.
-
-2. **God Component StateList.tsx (F-11)** — 3264 Zeilen, 12+ Komponenten. Letzter großer Architektur-Schuldner.
-
-(F-16 **Fixed 2026-05-29**: Module-level Cache entfernt, React Query ist alleinige Source of Truth.)
 
 Die Sicherheitslage hat sich erheblich verbessert: alle XSS-Vektoren geschlossen, Security-Header gesetzt, 4 HIGH-npm-Vulnerabilities behoben. Das Risikoprofil ist jetzt für ein internes Tool angemessen.
 
@@ -67,7 +63,7 @@ Die Sicherheitslage hat sich erheblich verbessert: alle XSS-Vektoren geschlossen
 | Rank | ID | Status | Titel | Warum kritisch |
 |------|----|--------|-------|----------------|
 | 1 | F-01 | Offen | Kein Test-Framework | Regressions bei jeder Änderung unerkennbar. Mutations können produktiv Daten beschädigen. |
-| 2 | F-11 | Offen | StateList.tsx 3264 Zeilen | 12 Komponenten in 1 Datei. Maintainability-Grenze überschritten. |
+| 2 | F-11 | **Fixed** | ~~StateList.tsx 3264 Zeilen~~ | ~~12 Komponenten in 1 Datei.~~ 1695 Zeilen, 16 Dateien extrahiert. |
 | 3 | F-27 | Offen | Icon-Buttons ohne aria-label | App für Screen-Reader-Nutzer nicht bedienbar. WCAG 2.1 AA nicht erfüllt. |
 | 4 | F-16 | **Fixed** | ~~Paralleler Cache-Layer~~ | ~~`objectsCache` + React Query Cache können desynchronisieren.~~ |
 
@@ -103,9 +99,9 @@ Hoch-Impact, geringer Aufwand — innerhalb eines Tages umsetzbar:
 
 ## Architektur-Risiken
 
-### Langfristiges Haupt-Risiko: Monolithische Komponenten
+### Langfristiges Haupt-Risiko: Monolithische Komponenten (F-11 Fixed)
 
-App.tsx (638 Z.) und Context-Segmentierung (FilterContext, SelectionContext, UIContext) sind abgeschlossen. StateList.tsx (3264 Zeilen) bleibt der größte offene Punkt — 12+ Komponenten, ~400 Zeilen Editable\*Cell-Duplikation.
+App.tsx (638 Z.) und Context-Segmentierung (FilterContext, SelectionContext, UIContext) sind abgeschlossen. StateList.tsx wurde von 3187 auf 1695 Zeilen reduziert — alle 12 Komponenten in eigene Dateien extrahiert.
 
 ### ~~Risiko: Paralleler Cache-Layer~~ (F-16 Fixed)
 
@@ -176,7 +172,7 @@ Die O(n)-Berechnungen bleiben, aber sind unvermeidbar und bereits durch `useMemo
 
 ### Mittelfristig (1–2 Monate)
 
-13. **F-11** — StateList.tsx aufteilen: Editable\*Cell in `src/components/cells/`, `usePortalDropdown` extrahieren
+13. ~~**F-11**~~ ✅ StateList.tsx aufgeteilt: `cells/` (8 Komponenten), StateRow, BatchComboControl, ColPicker, StyledCheckbox, SortHeader, TypeIcon, TsRangeFilterControl
 14. **F-20** — DateFormatDropdown und Utility-Funktionen aus App.tsx auslagern
 15. ~~**F-16**~~ ✅ Module-level Cache entfernt, React Query als Single Source of Truth
 16. **F-01** — Test-Abdeckung für alle Mutations und Optimistic-Update-Rollbacks
@@ -189,4 +185,4 @@ Die O(n)-Berechnungen bleiben, aber sind unvermeidbar und bereits durch `useMemo
 
 ---
 
-*Initialer Report basiert auf Commit `fac708b`. Aktualisiert 2026-05-29: F-02 bis F-30 + F-16 vollständig abgearbeitet — nur F-01, F-11, F-27 noch offen.*
+*Initialer Report basiert auf Commit `fac708b`. Aktualisiert 2026-05-29: F-02 bis F-30 + F-11 + F-16 vollständig abgearbeitet — nur F-01 und F-27 noch offen.*
