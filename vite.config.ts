@@ -18,6 +18,7 @@ function devConfigPlugin(ioBrokerTarget: string): Plugin {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '')
   const IOBROKER_TARGET = env.VITE_IOBROKER_TARGET
+  const ALLOWED_HOSTS = env.VITE_ALLOWED_HOSTS?.split(',').map((h) => h.trim()).filter(Boolean)
 
   return {
     plugins: [
@@ -26,7 +27,7 @@ export default defineConfig(({ mode }) => {
     ],
     server: {
       host: '0.0.0.0',
-      allowedHosts: ['pve-ct-dev', 'localhost', '127.0.0.1', 'iobroker-object-explorer.birkenweg.walk-steinweiler.de'],
+      allowedHosts: ALLOWED_HOSTS ?? ['pve-ct-dev', 'localhost', '127.0.0.1', 'iobroker-object-explorer.birkenweg.walk-steinweiler.de'],
       ...(IOBROKER_TARGET && {
         proxy: {
           '/api': {
