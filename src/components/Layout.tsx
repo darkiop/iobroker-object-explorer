@@ -340,7 +340,7 @@ export default function Layout({ sidebar, children, apiConnected = true, lastUpd
 
 
         {/* Main Content */}
-        <main className="flex-1 overflow-hidden p-4 flex flex-col">{children}</main>
+        <main className="flex-1 overflow-hidden p-4 flex flex-col bg-white dark:bg-gray-900">{children}</main>
       </div>
     </div>
     {confirmScriptRefresh && createPortal(
