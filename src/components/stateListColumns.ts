@@ -55,6 +55,10 @@ export const BUILTIN_DEFAULT_WIDTHS: Record<SortKey, number> = {
   unit: 70, ack: 50, ts: 155, relevanz: 100,
 };
 
+export const BUILTIN_MIN_WIDTHS: Partial<Record<SortKey, number>> = {
+  id: 150, name: 120, room: 60, function: 60, type: 50, role: 60, value: 60, unit: 40, ack: 40, ts: 80,
+};
+
 export const BUILTIN_MAX_WIDTHS: Partial<Record<SortKey, number>> = {
   id: 600, name: 400, room: 200, function: 200, type: 100, role: 220,
   value: 180, unit: 120, ack: 50, ts: 180, relevanz: 200,

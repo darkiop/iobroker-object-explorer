@@ -4,7 +4,7 @@ import { useEscapeKey } from '../hooks/useEscapeKey';
 import LanguageDropdown from './LanguageDropdown';
 import { X, ChevronDown, Check, Loader2, AlertCircle, Trash2 } from 'lucide-react';
 import type { SortKey, DateFormatSetting } from './stateListColumns';
-import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel, CONFIGURABLE_WIDTH_COLS, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MAX_WIDTHS } from './stateListColumns';
+import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel, CONFIGURABLE_WIDTH_COLS, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MIN_WIDTHS, BUILTIN_MAX_WIDTHS } from './stateListColumns';
 import { useAppSettingsContext, useUIOverlayContext, DEFAULT_QUICK_PATTERNS, getDefaultAppSettings } from '../context/UIContext';
 import type { AppSettings } from '../context/UIContext';
 import { useFilterContext } from '../context/FilterContext';
@@ -137,6 +137,7 @@ export default function SettingsModal() {
       treeCountMode: settingsDraft.treeCountMode,
       showDesc: settingsDraft.showDesc,
       customDefaultWidths: settingsDraft.customDefaultWidths,
+      customMinWidths: settingsDraft.customMinWidths,
       customMaxWidths: settingsDraft.customMaxWidths,
       groupByPath: settingsDraft.groupByPath,
       treeViewMode: settingsDraft.treeViewMode,
@@ -460,14 +461,17 @@ export default function SettingsModal() {
                       <tr className="bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
                         <th className="text-left px-2 py-1 font-medium">{isEn ? 'Column' : 'Spalte'}</th>
                         <th className="text-center px-1 py-1 font-medium w-16">{isEn ? 'Default' : 'Standard'}</th>
+                        <th className="text-center px-1 py-1 font-medium w-16">Min</th>
                         <th className="text-center px-1 py-1 font-medium w-16">Max</th>
                       </tr>
                     </thead>
                     <tbody>
                       {CONFIGURABLE_WIDTH_COLS.map((col) => {
                         const builtinDefault = BUILTIN_DEFAULT_WIDTHS[col];
+                        const builtinMin = BUILTIN_MIN_WIDTHS[col];
                         const builtinMax = BUILTIN_MAX_WIDTHS[col];
                         const currentDefault = settingsDraft.customDefaultWidths[col] ?? builtinDefault;
+                        const currentMin = settingsDraft.customMinWidths[col] ?? builtinMin ?? '';
                         const currentMax = settingsDraft.customMaxWidths[col] ?? builtinMax ?? '';
                         const inputCls = '[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none w-14 text-center px-1 py-0.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400';
                         return (
@@ -485,6 +489,21 @@ export default function SettingsModal() {
                                 onBlur={(e) => {
                                   const v = parseInt(e.target.value, 10);
                                   setSettingsDraft((prev) => ({ ...prev, customDefaultWidths: { ...prev.customDefaultWidths, [col]: isNaN(v) || v < 1 ? builtinDefault : v } }));
+                                }}
+                                className={inputCls}
+                              />
+                            </td>
+                            <td className="px-1 py-0.5 text-center">
+                              <input
+                                type="number"
+                                placeholder="—"
+                                value={currentMin}
+                                onChange={(e) => {
+                                  const v = parseInt(e.target.value, 10);
+                                  if (!isNaN(v) && v > 0)
+                                    setSettingsDraft((prev) => ({ ...prev, customMinWidths: { ...prev.customMinWidths, [col]: v } }));
+                                  else if (e.target.value === '')
+                                    setSettingsDraft((prev) => { const next = { ...prev.customMinWidths }; delete next[col]; return { ...prev, customMinWidths: next }; });
                                 }}
                                 className={inputCls}
                               />

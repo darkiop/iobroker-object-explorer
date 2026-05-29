@@ -20,6 +20,7 @@ export interface AppSettings {
   treeViewMode: 'adapter' | 'path';
   adminPort: number;
   customDefaultWidths: Partial<Record<SortKey, number>>;
+  customMinWidths: Partial<Record<SortKey, number>>;
   customMaxWidths: Partial<Record<SortKey, number>>;
   objectsRefreshInterval: 'off' | '30s' | '1m' | '5m' | '10m';
   includeScripts: boolean;
@@ -46,6 +47,7 @@ export function getDefaultAppSettings(): AppSettings {
     treeViewMode: 'adapter',
     adminPort: 8081,
     customDefaultWidths: {},
+    customMinWidths: {},
     customMaxWidths: {},
     objectsRefreshInterval: 'off',
     includeScripts: false,
@@ -109,6 +111,7 @@ export function loadAppSettings(): AppSettings {
       treeViewMode: parsed.treeViewMode === 'path' ? 'path' : 'adapter',
       adminPort: typeof parsed.adminPort === 'number' && parsed.adminPort > 0 && parsed.adminPort <= 65535 ? parsed.adminPort : 8081,
       customDefaultWidths: parseColWidthMap(parsed.customDefaultWidths),
+      customMinWidths: parseColWidthMap(parsed.customMinWidths),
       customMaxWidths: parseColWidthMap(parsed.customMaxWidths),
       objectsRefreshInterval: (['off','30s','1m','5m','10m'] as const).includes(parsed.objectsRefreshInterval as 'off'|'30s'|'1m'|'5m'|'10m') ? parsed.objectsRefreshInterval as 'off'|'30s'|'1m'|'5m'|'10m' : 'off',
       includeScripts: parsed.includeScripts === true,

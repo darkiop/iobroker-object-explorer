@@ -1122,7 +1122,7 @@ function TsRangeFilterControl({
 export type { SortKey, DateFormatSetting } from './stateListColumns';
 export { ALL_COLUMNS, getColumnLabel, DEFAULT_COLS } from './stateListColumns';
 import type { SortKey, DateFormatSetting } from './stateListColumns';
-import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel as _getColumnLabel, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MAX_WIDTHS } from './stateListColumns';
+import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel as _getColumnLabel, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MIN_WIDTHS, BUILTIN_MAX_WIDTHS } from './stateListColumns';
 const getColumnLabel = _getColumnLabel;
 const LS_KEY = 'iobroker-visible-cols';
 
@@ -1164,18 +1164,21 @@ const LS_WIDTHS_KEY = 'iobroker-col-widths';
 
 function clampColWidthsWith(
   widths: Record<SortKey, number>,
+  effectiveMin: Partial<Record<SortKey, number>>,
   effectiveMax: Partial<Record<SortKey, number>>,
 ): Record<SortKey, number> {
   const result = { ...widths };
   for (const k of Object.keys(result) as SortKey[]) {
+    const mn = effectiveMin[k] ?? minColWidth(k);
     const mx = effectiveMax[k] ?? Infinity;
-    result[k] = Math.min(mx, Math.max(minColWidth(k), result[k]));
+    result[k] = Math.min(mx, Math.max(mn, result[k]));
   }
   return result;
 }
 
 function loadColWidths(
   effectiveDefaults: Record<SortKey, number>,
+  effectiveMin: Partial<Record<SortKey, number>>,
   effectiveMax: Partial<Record<SortKey, number>>,
 ): Record<SortKey, number> {
   try {
@@ -1188,11 +1191,11 @@ function loadColWidths(
             .filter(([k, v]) => ALL_COLUMNS.some((c) => c.key === k) && typeof v === 'number')
             .map(([k, v]) => [k, v as number])
         ) as Partial<Record<SortKey, number>>;
-        return clampColWidthsWith({ ...effectiveDefaults, ...validated }, effectiveMax);
+        return clampColWidthsWith({ ...effectiveDefaults, ...validated }, effectiveMin, effectiveMax);
       }
     }
   } catch { /* ignore */ }
-  return clampColWidthsWith({ ...effectiveDefaults }, effectiveMax);
+  return clampColWidthsWith({ ...effectiveDefaults }, effectiveMin, effectiveMax);
 }
 
 function hasSmartName(obj: IoBrokerObject | undefined): boolean {
@@ -1677,14 +1680,17 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const { selectedId, setSelectedId: onSelect, setHistoryModalId: _setHistoryModalId, setEnumManagerOpen, setAliasReplaceInitialStr, setEditInitialTab } = useSelectionContext();
   const { appSettings, expertMode, handleToggleExpertMode: onToggleExpertMode, handleToggleToolbarLabels: onToggleToolbarLabels, handleToggleGroupByPath: onToggleGroupByPath, persistSettings } = useAppSettingsContext();
 
-  const { language = 'en', dateFormat = 'de', visibleCols: settingsVisibleCols, toolbarLabels = true, tableFontSize = 'normal', showDesc = true, groupByPath = false, customDefaultWidths, customMaxWidths, pageSize } = appSettings;
+  const { language = 'en', dateFormat = 'de', visibleCols: settingsVisibleCols, toolbarLabels = true, tableFontSize = 'normal', showDesc = true, groupByPath = false, customDefaultWidths, customMinWidths, customMaxWidths, pageSize } = appSettings;
   const onOpenEnumManager = React.useCallback(() => setEnumManagerOpen(true), [setEnumManagerOpen]);
   const onOpenAliasReplace = React.useCallback((initialStr?: string) => setAliasReplaceInitialStr(initialStr ?? null), [setAliasReplaceInitialStr]);
   const onScriptsClick = React.useCallback((id: string) => { onSelect(id); setEditInitialTab('scripts'); }, [onSelect, setEditInitialTab]);
   const onPageSizeChange = React.useCallback((size: number) => persistSettings({ ...appSettings, pageSize: size }), [persistSettings, appSettings]);
 
   const effectiveDefaults: Record<SortKey, number> = { ...BUILTIN_DEFAULT_WIDTHS, ...(customDefaultWidths ?? {}) };
+  const effectiveMin: Partial<Record<SortKey, number>> = { ...BUILTIN_MIN_WIDTHS, ...(customMinWidths ?? {}) };
   const effectiveMax: Partial<Record<SortKey, number>> = { ...BUILTIN_MAX_WIDTHS, ...(customMaxWidths ?? {}) };
+  const effectiveMinRef = useRef(effectiveMin);
+  effectiveMinRef.current = effectiveMin;
   const effectiveMaxRef = useRef(effectiveMax);
   effectiveMaxRef.current = effectiveMax;
   const isEn = language === 'en';
@@ -1697,7 +1703,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const allObjects = allObjectsData ?? {} as Record<string, IoBrokerObject>;
   const allHistoryIds = useMemo(() => { const s = new Set<string>(); for (const [id, obj] of Object.entries(allObjects)) { if (hasHistory(obj)) s.add(id); } return s; }, [allObjects]);
   const allSmartIds = useMemo(() => { const s = new Set<string>(); for (const [id, obj] of Object.entries(allObjects)) { if (hasSmartNameApi(obj)) s.add(id); } return s; }, [allObjects]);
-  const [colWidths, setColWidths] = useState<Record<SortKey, number>>(() => loadColWidths(effectiveDefaults, effectiveMax));
+  const [colWidths, setColWidths] = useState<Record<SortKey, number>>(() => loadColWidths(effectiveDefaults, effectiveMin, effectiveMax));
   const containerRef = useRef<HTMLDivElement>(null);
   const theadRef = useRef<HTMLTableSectionElement>(null);
   const autoFitRef = useRef(true);
@@ -1791,7 +1797,8 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
     let latestWidths: Record<SortKey, number> = colWidths;
 
     function clampWidth(w: number) {
-      return Math.min(effectiveMaxRef.current[key] ?? Infinity, Math.max(minColWidth(key), w));
+      const mn = effectiveMinRef.current[key] ?? minColWidth(key);
+      return Math.min(effectiveMaxRef.current[key] ?? Infinity, Math.max(mn, w));
     }
 
     function onMouseMove(ev: MouseEvent) {
@@ -1880,9 +1887,9 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
       for (let i = 0; i < free.length; i++) {
         const k = free[i];
         if (i === free.length - 1) {
-          next[k] = Math.max(minColWidth(k), remaining - allocated);
+          next[k] = Math.max(effectiveMinRef.current[k] ?? minColWidth(k), remaining - allocated);
         } else {
-          const w = Math.max(minColWidth(k), Math.floor(colWidths[k] * scale));
+          const w = Math.max(effectiveMinRef.current[k] ?? minColWidth(k), Math.floor(colWidths[k] * scale));
           next[k] = w;
           allocated += w;
         }
