@@ -104,7 +104,10 @@ function InlineNumberRow({ label, value, onSave, onClear, isPending }: { label: 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex gap-4 py-1.5 border-b border-gray-200 dark:border-gray-800">
-      <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{label}</span>
+      <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide flex items-center gap-1">
+        <Lock size={9} className="shrink-0 opacity-50" />
+        {label}
+      </span>
       <span className="text-gray-800 dark:text-gray-200 text-sm break-all">{value}</span>
     </div>
   );
@@ -353,6 +356,15 @@ function CustomSettingRow({ fieldKey, value, onChange }: { fieldKey: string; val
         onChange={(e) => onChange(e.target.value)}
         className="flex-1 min-w-0 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 text-sm rounded px-2 py-0.5 border border-gray-200 dark:border-gray-700 focus:border-blue-400 dark:focus:border-blue-500 focus:outline-none"
       />
+    </div>
+  );
+}
+
+function SectionHeader({ label, first = false }: { label: string; first?: boolean }) {
+  return (
+    <div className={`flex items-center gap-2 ${first ? 'mb-1' : 'mt-5 mb-1'}`}>
+      <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 shrink-0">{label}</span>
+      <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
     </div>
   );
 }
@@ -656,34 +668,27 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
           {/* Content */}
           <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
             {tab === 'details' && (
-              <div className="px-5 py-4 space-y-0 overflow-y-auto flex-1">
-                <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800 items-center">
-                  <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{isEn ? 'Object type' : 'Objekttyp'}</span>
-                  <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700">{obj.type}</span>
-                </div>
+              <div className="px-5 py-4 overflow-y-auto flex-1">
+
+                {/* ── Identity ── */}
+                <SectionHeader label={isEn ? 'Identity' : 'Identität'} first />
                 <InlineInputRow label="Name" value={getObjectName(obj.common)} onSave={(v) => saveField('name', v)} isPending={extend.isPending} />
-                {obj.type === 'state' && (
-                  <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800 items-center">
-                    <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{isEn ? 'Value type' : 'Werttyp'}</span>
-                    <div className="flex-1 relative">
-                      <select
-                        value={obj.common?.type || ''}
-                        onChange={(e) => saveField('type', e.target.value)}
-                        disabled={extend.isPending}
-                        className="w-full appearance-none [color-scheme:light] dark:[color-scheme:dark] [&>option]:bg-white [&>option]:text-gray-900 dark:[&>option]:bg-gray-800 dark:[&>option]:text-gray-200 bg-gray-50/70 text-gray-700 text-sm rounded-md pl-2.5 pr-8 py-1.5 border border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300/70 disabled:opacity-50 dark:bg-gray-800/70 dark:text-gray-200 dark:border-gray-700 dark:focus:border-gray-600 dark:focus:ring-gray-600/60 transition-colors"
-                      >
-                        <option value="">{isEn ? 'No type' : 'Kein Typ'}</option>
-                        {STATE_TYPES.map((stateType) => (
-                          <option key={stateType} value={stateType}>{stateType}</option>
-                        ))}
-                      </select>
-                      <ChevronDown
-                        size={13}
-                        className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-500"
-                      />
-                    </div>
-                  </div>
-                )}
+                <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800 items-center">
+                  <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide flex items-center gap-1">
+                    <Lock size={9} className="shrink-0 opacity-50" />
+                    {isEn ? 'Object type' : 'Objekttyp'}
+                  </span>
+                  <input readOnly value={obj.type} className={SELECT_CLS + ' cursor-default'} />
+                </div>
+                <InlineInputRow
+                  label={isEn ? 'Description' : 'Beschreibung'}
+                  value={typeof obj.common?.desc === 'string' ? obj.common.desc : obj.common?.desc ? JSON.stringify(obj.common.desc) : ''}
+                  onSave={(v) => saveField('desc', v)}
+                  isPending={extend.isPending}
+                />
+
+                {/* ── Type & Role ── */}
+                <SectionHeader label={isEn ? 'Type & Role' : 'Typ & Rolle'} />
                 <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800 items-center">
                   <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{isEn ? 'Role' : 'Rolle'}</span>
                   <div className="flex-1 relative">
@@ -695,41 +700,102 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                     >
                       <option value="">{isEn ? 'No role' : 'Keine Rolle'}</option>
                       {(roles ?? []).map((roleEntry) => (
-                        <option key={roleEntry} value={roleEntry}>
-                          {roleEntry}
-                        </option>
+                        <option key={roleEntry} value={roleEntry}>{roleEntry}</option>
                       ))}
                     </select>
-                    <ChevronDown
-                      size={13}
-                      className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-500"
-                    />
+                    <ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-500" />
                   </div>
                 </div>
                 {obj.type === 'state' && (
-                  <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800 items-center">
-                    <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{isEn ? 'Unit' : 'Einheit'}</span>
-                    <div className="flex-1 relative">
-                      <select
-                        value={obj.common?.unit || ''}
-                        onChange={(e) => saveField('unit', e.target.value)}
-                        disabled={extend.isPending}
-                        className="w-full appearance-none [color-scheme:light] dark:[color-scheme:dark] [&>option]:bg-white [&>option]:text-gray-900 dark:[&>option]:bg-gray-800 dark:[&>option]:text-gray-200 bg-gray-50/70 text-gray-700 text-sm rounded-md pl-2.5 pr-8 py-1.5 border border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300/70 disabled:opacity-50 dark:bg-gray-800/70 dark:text-gray-200 dark:border-gray-700 dark:focus:border-gray-600 dark:focus:ring-gray-600/60 transition-colors"
-                      >
-                        <option value="">{isEn ? 'No unit' : 'Keine Einheit'}</option>
-                        {(units ?? []).map((unitEntry) => (
-                          <option key={unitEntry} value={unitEntry}>
-                            {unitEntry}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown
-                        size={13}
-                        className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-500"
-                      />
+                  <>
+                    <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800 items-center">
+                      <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{isEn ? 'Value type' : 'Werttyp'}</span>
+                      <div className="flex-1 relative">
+                        <select
+                          value={obj.common?.type || ''}
+                          onChange={(e) => saveField('type', e.target.value)}
+                          disabled={extend.isPending}
+                          className="w-full appearance-none [color-scheme:light] dark:[color-scheme:dark] [&>option]:bg-white [&>option]:text-gray-900 dark:[&>option]:bg-gray-800 dark:[&>option]:text-gray-200 bg-gray-50/70 text-gray-700 text-sm rounded-md pl-2.5 pr-8 py-1.5 border border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300/70 disabled:opacity-50 dark:bg-gray-800/70 dark:text-gray-200 dark:border-gray-700 dark:focus:border-gray-600 dark:focus:ring-gray-600/60 transition-colors"
+                        >
+                          <option value="">{isEn ? 'No type' : 'Kein Typ'}</option>
+                          {STATE_TYPES.map((stateType) => (
+                            <option key={stateType} value={stateType}>{stateType}</option>
+                          ))}
+                        </select>
+                        <ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-500" />
+                      </div>
                     </div>
-                  </div>
+                    <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800 items-center">
+                      <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{isEn ? 'Unit' : 'Einheit'}</span>
+                      <div className="flex-1 relative">
+                        <select
+                          value={obj.common?.unit || ''}
+                          onChange={(e) => saveField('unit', e.target.value)}
+                          disabled={extend.isPending}
+                          className="w-full appearance-none [color-scheme:light] dark:[color-scheme:dark] [&>option]:bg-white [&>option]:text-gray-900 dark:[&>option]:bg-gray-800 dark:[&>option]:text-gray-200 bg-gray-50/70 text-gray-700 text-sm rounded-md pl-2.5 pr-8 py-1.5 border border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300/70 disabled:opacity-50 dark:bg-gray-800/70 dark:text-gray-200 dark:border-gray-700 dark:focus:border-gray-600 dark:focus:ring-gray-600/60 transition-colors"
+                        >
+                          <option value="">{isEn ? 'No unit' : 'Keine Einheit'}</option>
+                          {(units ?? []).map((unitEntry) => (
+                            <option key={unitEntry} value={unitEntry}>{unitEntry}</option>
+                          ))}
+                        </select>
+                        <ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-500" />
+                      </div>
+                    </div>
+                  </>
                 )}
+
+                {/* ── Permissions & Range (state only) ── */}
+                {obj.type === 'state' && (
+                  <>
+                    <SectionHeader label={isEn ? 'Permissions & Range' : 'Berechtigungen & Bereich'} />
+                    <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800 items-center">
+                      <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{isEn ? 'Read / Write' : 'Lesen / Schreiben'}</span>
+                      <div className="flex items-center gap-4 text-sm text-gray-700 dark:text-gray-200">
+                        <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={obj.common?.read !== false}
+                            onChange={(e) => extend.mutate({ id, common: { read: e.target.checked } })}
+                            disabled={extend.isPending}
+                            className="sr-only peer"
+                          />
+                          <span className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                            obj.common?.read !== false ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600'
+                          } ${extend.isPending ? 'opacity-50' : 'peer-focus:ring-1 peer-focus:ring-blue-400 dark:peer-focus:ring-blue-500'}`}>
+                            {obj.common?.read !== false && <Check size={11} className="text-white" strokeWidth={3} />}
+                          </span>
+                          <span>{isEn ? 'Read' : 'Lesen'}</span>
+                        </label>
+                        <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={obj.common?.write === true}
+                            onChange={(e) => extend.mutate({ id, common: { write: e.target.checked } })}
+                            disabled={extend.isPending}
+                            className="sr-only peer"
+                          />
+                          <span className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                            obj.common?.write === true ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600'
+                          } ${extend.isPending ? 'opacity-50' : 'peer-focus:ring-1 peer-focus:ring-blue-400 dark:peer-focus:ring-blue-500'}`}>
+                            {obj.common?.write === true && <Check size={11} className="text-white" strokeWidth={3} />}
+                          </span>
+                          <span>{isEn ? 'Write' : 'Schreiben'}</span>
+                        </label>
+                      </div>
+                    </div>
+                    {type === 'number' && (
+                      <>
+                        <InlineNumberRow label="Min" value={obj.common?.min} onSave={(v) => extend.mutate({ id, common: { min: v } })} onClear={() => extend.mutate({ id, common: { min: undefined } })} isPending={extend.isPending} />
+                        <InlineNumberRow label="Max" value={obj.common?.max} onSave={(v) => extend.mutate({ id, common: { max: v } })} onClear={() => extend.mutate({ id, common: { max: undefined } })} isPending={extend.isPending} />
+                        <InlineNumberRow label="Step" value={obj.common?.step} onSave={(v) => extend.mutate({ id, common: { step: v } })} onClear={() => extend.mutate({ id, common: { step: undefined } })} isPending={extend.isPending} />
+                      </>
+                    )}
+                  </>
+                )}
+
+                {/* ── Smart Home Classification ── */}
+                <SectionHeader label="Smart Home" />
                 <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800 items-center">
                   <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{isEn ? 'Room' : 'Raum'}</span>
                   <div className="flex-1 relative">
@@ -741,15 +807,10 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                     >
                       <option value="">{isEn ? 'No room' : 'Kein Raum'}</option>
                       {roomEnums.map((roomEntry) => (
-                        <option key={roomEntry.id} value={roomEntry.id}>
-                          {roomEntry.name}
-                        </option>
+                        <option key={roomEntry.id} value={roomEntry.id}>{roomEntry.name}</option>
                       ))}
                     </select>
-                    <ChevronDown
-                      size={13}
-                      className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-500"
-                    />
+                    <ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-500" />
                   </div>
                 </div>
                 <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800 items-center">
@@ -763,74 +824,17 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                     >
                       <option value="">{isEn ? 'No function' : 'Keine Funktion'}</option>
                       {fnEnums.map((fnEntry) => (
-                        <option key={fnEntry.id} value={fnEntry.id}>
-                          {fnEntry.name}
-                        </option>
+                        <option key={fnEntry.id} value={fnEntry.id}>{fnEntry.name}</option>
                       ))}
                     </select>
-                    <ChevronDown
-                      size={13}
-                      className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-500"
-                    />
+                    <ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-500" />
                   </div>
                 </div>
-                <InlineInputRow
-                  label={isEn ? 'Description' : 'Beschreibung'}
-                  value={typeof obj.common?.desc === 'string' ? obj.common.desc : obj.common?.desc ? JSON.stringify(obj.common.desc) : ''}
-                  onSave={(v) => saveField('desc', v)}
-                  isPending={extend.isPending}
-                />
-                {obj.type === 'state' && (
-                  <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800 items-center">
-                    <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{isEn ? 'Read/Write' : 'Lesen/Schreiben'}</span>
-                    <div className="flex items-center gap-4 text-sm text-gray-700 dark:text-gray-200">
-                      <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={obj.common?.read !== false}
-                          onChange={(e) => extend.mutate({ id, common: { read: e.target.checked } })}
-                          disabled={extend.isPending}
-                          className="sr-only peer"
-                        />
-                        <span className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-                          obj.common?.read !== false
-                            ? 'bg-blue-600 border-blue-600'
-                            : 'bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600'
-                        } ${extend.isPending ? 'opacity-50' : 'peer-focus:ring-1 peer-focus:ring-blue-400 dark:peer-focus:ring-blue-500'}`}>
-                          {obj.common?.read !== false && <Check size={11} className="text-white" strokeWidth={3} />}
-                        </span>
-                        <span>{isEn ? 'Read' : 'Lesen'}</span>
-                      </label>
-                      <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={obj.common?.write === true}
-                          onChange={(e) => extend.mutate({ id, common: { write: e.target.checked } })}
-                          disabled={extend.isPending}
-                          className="sr-only peer"
-                        />
-                        <span className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-                          obj.common?.write === true
-                            ? 'bg-blue-600 border-blue-600'
-                            : 'bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600'
-                        } ${extend.isPending ? 'opacity-50' : 'peer-focus:ring-1 peer-focus:ring-blue-400 dark:peer-focus:ring-blue-500'}`}>
-                          {obj.common?.write === true && <Check size={11} className="text-white" strokeWidth={3} />}
-                        </span>
-                        <span>{isEn ? 'Write' : 'Schreiben'}</span>
-                      </label>
-                    </div>
-                  </div>
-                )}
-                {type === 'number' && (
-                  <>
-                    <InlineNumberRow label="Min" value={obj.common?.min} onSave={(v) => extend.mutate({ id, common: { min: v } })} onClear={() => extend.mutate({ id, common: { min: undefined } })} isPending={extend.isPending} />
-                    <InlineNumberRow label="Max" value={obj.common?.max} onSave={(v) => extend.mutate({ id, common: { max: v } })} onClear={() => extend.mutate({ id, common: { max: undefined } })} isPending={extend.isPending} />
-                    <InlineNumberRow label="Step" value={obj.common?.step} onSave={(v) => extend.mutate({ id, common: { step: v } })} onClear={() => extend.mutate({ id, common: { step: undefined } })} isPending={extend.isPending} />
-                  </>
-                )}
 
+                {/* ── Live Value ── */}
                 {state && (
                   <>
+                    <SectionHeader label={isEn ? 'Live value' : 'Aktueller Wert'} />
                     <div className="flex gap-4 py-1.5 border-b border-gray-200 dark:border-gray-800 items-center">
                       <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{isEn ? 'Value' : 'Wert'}</span>
                       <div className="flex-1 flex items-center gap-2 min-w-0">
@@ -868,10 +872,11 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                   </>
                 )}
 
+                {/* ── History ── */}
                 {hasHistory(obj) && (
-                  <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+                  <>
+                    <SectionHeader label="History" />
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">History</span>
                       {onOpenHistory && (
                         <button
                           onClick={() => { onClose(); onOpenHistory(); }}
@@ -884,8 +889,9 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                       )}
                     </div>
                     <HistoryChart stateId={id} unit={obj.common?.unit} settingsCollapsible language={language} dateFormat={dateFormat} />
-                  </div>
+                  </>
                 )}
+
               </div>
             )}
 
