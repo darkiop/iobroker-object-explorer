@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useLayoutEffect, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Folder, Cpu, Layers, FileCode2, ToggleLeft, Hash, Type, Braces, List, BarChart2 } from 'lucide-react';
+import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Folder, Cpu, Layers, FileCode2, ToggleLeft, Hash, Type, Braces, List, BarChart2, AlertTriangle } from 'lucide-react';
 import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch, useAllScriptSources } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
@@ -607,6 +607,8 @@ const EditableValueCell = React.memo(function EditableValueCell({
     >
       <div className={`flex items-center justify-start gap-1 ${valueColor}`}>
         {trendIcon}
+        {thresholdStatus === 'exceeded' && <AlertTriangle size={10} aria-label={isEn ? 'Value exceeded limit' : 'Grenzwert überschritten'} />}
+        {thresholdStatus === 'warn' && <AlertTriangle size={10} aria-label={isEn ? 'Value near limit' : 'Wert nahe am Grenzwert'} />}
         {state ? (() => {
           const v = formatValue(val);
           if (role === 'url' && typeof val === 'string') {
