@@ -406,7 +406,7 @@ export async function getFunctionEnums(): Promise<Array<{ id: string; name: stri
 
 export async function updateFunctionMembership(objectId: string, oldFnEnumId: string | null, newFnEnumId: string | null): Promise<void> {
   if (oldFnEnumId === newFnEnumId) return;
-  const res = await fetchApi<Record<string, IoBrokerObject>>('/objects?type=enum');
+  const res = await getAllObjects();
 
   if (oldFnEnumId && res[oldFnEnumId]) {
     const obj = res[oldFnEnumId];
@@ -422,7 +422,7 @@ export async function updateFunctionMembership(objectId: string, oldFnEnumId: st
 }
 
 export async function updateFunctionMembershipBatch(objectIds: string[], newFnEnumId: string | null): Promise<void> {
-  const res = await fetchApi<Record<string, IoBrokerObject>>('/objects?type=enum');
+  const res = await getAllObjects();
   const objectIdSet = new Set(objectIds);
 
   // Remove selected IDs from all function enums they currently belong to
@@ -458,7 +458,7 @@ export async function getRoomEnums(): Promise<Array<{ id: string; name: string }
 
 export async function updateRoomMembership(objectId: string, oldRoomEnumId: string | null, newRoomEnumId: string | null): Promise<void> {
   if (oldRoomEnumId === newRoomEnumId) return;
-  const res = await fetchApi<Record<string, IoBrokerObject>>('/objects?type=enum');
+  const res = await getAllObjects();
 
   if (oldRoomEnumId && res[oldRoomEnumId]) {
     const obj = res[oldRoomEnumId];
@@ -474,7 +474,7 @@ export async function updateRoomMembership(objectId: string, oldRoomEnumId: stri
 }
 
 export async function updateRoomMembershipBatch(objectIds: string[], newRoomEnumId: string | null): Promise<void> {
-  const res = await fetchApi<Record<string, IoBrokerObject>>('/objects?type=enum');
+  const res = await getAllObjects();
   const objectIdSet = new Set(objectIds);
 
   // Remove selected IDs from all room enums they currently belong to
