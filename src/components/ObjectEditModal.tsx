@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { X, Save, AlertTriangle, Link2, Check, Wrench, Trash2, Maximize2, Copy, ChevronDown, Lock, Zap, PenLine, FolderInput, FileCode2, CircleCheck, CirclePause, RefreshCw } from 'lucide-react';
 import { usePutObject, useExtendObject, useStateDetail, useSetState, useAllRoles, useAllUnits, useDeleteObject, useAllObjects, useRoomEnums, useFunctionEnums, useUpdateRoomMembership, useUpdateFunctionMembership, useSqlInstances, useScriptUsages } from '../hooks/useStates';
 import { hasHistory } from '../api/iobroker';
+import { formatTimestamp, formatValue } from '../utils/format';
 import HistoryChart from './HistoryChart';
 import ConfirmDialog from './ConfirmDialog';
 import CopyDatapointModal from './CopyDatapointModal';
@@ -48,26 +49,6 @@ const SQL_CUSTOM_DEFAULT: Record<string, unknown> = {
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
-function formatTimestamp(ts: number): string {
-  if (!Number.isFinite(ts)) return '';
-  const d = new Date(ts);
-  if (Number.isNaN(d.getTime())) return '';
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
-}
-
-function formatValue(val: unknown): string {
-  if (val === null || val === undefined) return '—';
-  if (typeof val === 'boolean') return val ? 'true' : 'false';
-  if (typeof val === 'number') return val.toString();
-  if (typeof val === 'bigint') return val.toString();
-  if (typeof val === 'string') return val;
-  try {
-    return JSON.stringify(val, null, 2);
-  } catch {
-    return String(val);
-  }
-}
 
 function getObjectName(common: { name: string | Record<string, string> } | undefined): string {
   if (!common?.name) return '';
@@ -865,11 +846,11 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                           <StringControl val={state.val} onSet={handleSet} isPending={setStateMutation.isPending} unit={obj.common?.unit} language={language} />
                         ) : role === 'url' && typeof state.val === 'string' && state.val.startsWith('http') ? (
                           <a href={state.val} target="_blank" rel="noopener noreferrer" className="font-mono font-bold text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 underline break-all text-base">
-                            {formatValue(state.val)}
+                            {formatValue(state.val, true)}
                           </a>
                         ) : (
                           <span className="font-mono font-bold text-gray-900 dark:text-white text-base">
-                            {formatValue(state.val)}
+                            {formatValue(state.val, true)}
                             {obj.common?.unit && <span className="text-gray-500 dark:text-gray-400 ml-1 text-sm font-normal">{obj.common.unit}</span>}
                           </span>
                         )}
@@ -880,8 +861,8 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                       value={<span className={state.ack ? 'text-green-500 dark:text-green-400' : 'text-yellow-500 dark:text-yellow-400'}>{state.ack ? (isEn ? 'Yes' : 'Ja') : (isEn ? 'No' : 'Nein')}</span>}
                     />
                     <DetailRow label={isEn ? 'Quality' : 'Qualität'} value={state.q} />
-                    <DetailRow label={isEn ? 'Timestamp' : 'Zeitstempel'} value={formatTimestamp(state.ts)} />
-                    <DetailRow label={isEn ? 'Last change' : 'Letzte Änderung'} value={formatTimestamp(state.lc)} />
+                    <DetailRow label={isEn ? 'Timestamp' : 'Zeitstempel'} value={formatTimestamp(state.ts, dateFormat)} />
+                    <DetailRow label={isEn ? 'Last change' : 'Letzte Änderung'} value={formatTimestamp(state.lc, dateFormat)} />
                     <DetailRow label={isEn ? 'From' : 'Von'} value={state.from || '—'} />
                     {state.c && <DetailRow label={isEn ? 'Comment' : 'Kommentar'} value={state.c} />}
                   </>

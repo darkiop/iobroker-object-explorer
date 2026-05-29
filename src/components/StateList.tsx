@@ -15,11 +15,12 @@ import HistoryModal from './HistoryModal';
 import ConfirmDialog from './ConfirmDialog';
 import MultiDeleteDialog from './MultiDeleteDialog';
 import ValueEditModal from './ValueEditModal';
-import { hasHistory, hasSmartName as hasSmartNameApi, isGlobPattern } from '../api/iobroker';
+import { hasHistory, hasSmartName, isGlobPattern } from '../api/iobroker';
 import { useAllObjects } from '../hooks/useStates';
 import TreeStatsModal from './TreeStatsModal';
 import type { IoBrokerState, IoBrokerObject } from '../types/iobroker';
 import { copyText, copyToClipboard } from '../utils/clipboard';
+import { formatTimestamp, formatValue } from '../utils/format';
 import { ColoredId } from '../utils/coloredId';
 import { getTypeColor } from '../utils/typeColor';
 import { getRoleColor } from '../utils/roleColor';
@@ -44,32 +45,6 @@ interface StateListProps {
   onNavigateTo: (ids: string[]) => void;
 }
 
-function formatTimestamp(ts: number, dateFormat: DateFormatSetting): string {
-  if (!Number.isFinite(ts)) return '';
-  const d = new Date(ts);
-  if (Number.isNaN(d.getTime())) return '';
-  const p = (n: number) => String(n).padStart(2, '0');
-  const day = p(d.getDate());
-  const month = p(d.getMonth() + 1);
-  const year = d.getFullYear();
-  const time = `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
-  if (dateFormat === 'iso') return `${year}-${month}-${day} ${time}`;
-  if (dateFormat === 'us') return `${month}/${day}/${year} ${time}`;
-  return `${day}.${month}.${year} ${time}`;
-}
-
-function formatValue(val: unknown): string {
-  if (val === null || val === undefined) return '—';
-  if (typeof val === 'boolean') return val ? 'true' : 'false';
-  if (typeof val === 'number') return val.toString();
-  if (typeof val === 'bigint') return val.toString();
-  if (typeof val === 'string') return val;
-  try {
-    return JSON.stringify(val);
-  } catch {
-    return String(val);
-  }
-}
 
 function getThresholdStatus(
   val: unknown,
@@ -1167,14 +1142,6 @@ function loadColWidths(
   return clampColWidthsWith({ ...effectiveDefaults }, effectiveMin, effectiveMax);
 }
 
-function hasSmartName(obj: IoBrokerObject | undefined): boolean {
-  if (!obj) return false;
-  const sn = obj.common?.smartName;
-  if (!sn) return false;
-  if (typeof sn === 'string') return sn.trim().length > 0;
-  if (typeof sn === 'object') return Object.values(sn).some((v) => v && String(v).trim().length > 0);
-  return false;
-}
 
 function ColPicker({ visible, onChange, language = 'de' }: { visible: SortKey[]; onChange: (cols: SortKey[]) => void; language?: 'en' | 'de' }) {
   const [open, setOpen] = useState(false);
@@ -1671,7 +1638,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const { data: allObjectsData } = useAllObjects();
   const allObjects = allObjectsData ?? {} as Record<string, IoBrokerObject>;
   const allHistoryIds = useMemo(() => { const s = new Set<string>(); for (const [id, obj] of Object.entries(allObjects)) { if (hasHistory(obj)) s.add(id); } return s; }, [allObjects]);
-  const allSmartIds = useMemo(() => { const s = new Set<string>(); for (const [id, obj] of Object.entries(allObjects)) { if (hasSmartNameApi(obj)) s.add(id); } return s; }, [allObjects]);
+  const allSmartIds = useMemo(() => { const s = new Set<string>(); for (const [id, obj] of Object.entries(allObjects)) { if (hasSmartName(obj)) s.add(id); } return s; }, [allObjects]);
   const [colWidths, setColWidths] = useState<Record<SortKey, number>>(() => loadColWidths(effectiveDefaults, effectiveMin, effectiveMax));
   const containerRef = useRef<HTMLDivElement>(null);
   const theadRef = useRef<HTMLTableSectionElement>(null);
