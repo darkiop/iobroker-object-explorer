@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from 'vite'
 import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
+import pkg from './package.json'
 
 function devConfigPlugin(ioBrokerTarget: string): Plugin {
   const host = ioBrokerTarget.replace(/^https?:\/\//, '')
@@ -21,6 +22,9 @@ export default defineConfig(({ mode }) => {
   const ALLOWED_HOSTS = env.VITE_ALLOWED_HOSTS?.split(',').map((h) => h.trim()).filter(Boolean)
 
   return {
+    define: {
+      __APP_VERSION__: JSON.stringify(pkg.version),
+    },
     plugins: [
       react(),
       ...(IOBROKER_TARGET ? [devConfigPlugin(IOBROKER_TARGET)] : []),

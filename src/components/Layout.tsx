@@ -277,6 +277,7 @@ export default function Layout({ sidebar, children, apiConnected = true, lastUpd
           )}
         </div>
         <div className="flex items-center gap-3">
+          <span className="text-[10px] font-mono text-gray-400 dark:text-gray-600 select-none" title="App version">v{__APP_VERSION__}</span>
           <LanguageDropdown value={language} onChange={(next) => onLanguageChange?.(next)} compact />
           {currentHost && (
             <a
