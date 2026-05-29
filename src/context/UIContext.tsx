@@ -38,7 +38,7 @@ export function getDefaultAppSettings(): AppSettings {
     visibleCols: DEFAULT_COLS,
     extraQuickFilters: [],
     toolbarLabels: true,
-    pageSize: 1000,
+    pageSize: 200,
     tableFontSize: 'normal',
     treeFontSize: 'normal',
     treeCountMode: 'objects',
@@ -92,7 +92,7 @@ export function loadAppSettings(): AppSettings {
     const validExtra = Array.isArray(parsed.extraQuickFilters)
       ? parsed.extraQuickFilters.filter((x): x is string => typeof x === 'string').map(normalizeQuickPattern).filter(Boolean)
       : [];
-    const parsedPageSize = typeof parsed.pageSize === 'number' && PAGE_SIZE_OPTIONS.includes(parsed.pageSize) ? parsed.pageSize : 1000;
+    const parsedPageSize = typeof parsed.pageSize === 'number' && PAGE_SIZE_OPTIONS.includes(parsed.pageSize) ? parsed.pageSize : 200;
     const validFontSizes = ['small', 'normal', 'large', 'xl'] as const;
     const tableFontSize = validFontSizes.includes(parsed.tableFontSize as UiFontSize) ? parsed.tableFontSize as UiFontSize : 'normal';
     const treeFontSize  = validFontSizes.includes(parsed.treeFontSize  as UiFontSize) ? parsed.treeFontSize  as UiFontSize : 'normal';
