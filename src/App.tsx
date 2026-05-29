@@ -207,14 +207,6 @@ function AppContent() {
   if (statesUpdatedAt > 0) lastValidUpdatedAt.current = statesUpdatedAt;
 
   // ── Cross-context handlers ───────────────────────────────────────────────
-  // handleSaveSettings touches both UIContext (appSettings) and FilterContext (page, quickPatterns)
-  const handleSaveSettings = useCallback((next: AppSettings) => {
-    persistSettings(next);
-    setPage(0);
-    const allowed = new Set([...DEFAULT_QUICK_PATTERNS, ...next.extraQuickFilters]);
-    setQuickPatterns((prev) => new Set([...prev].filter((p) => allowed.has(p))));
-  }, [persistSettings, setPage, setQuickPatterns]);
-
   const handleManualRefresh = useCallback(() => {
     clearObjectsCache();
     void Promise.all([
@@ -253,22 +245,10 @@ function AppContent() {
   // ── Render ───────────────────────────────────────────────────────────────
   return (
     <Layout
-      onSidebarToggle={handleSidebarToggle}
-      onOpenSettings={openSettings}
-      onShowShortcuts={() => setShortcutsOpen(true)}
-      onLanguageChange={handleLanguageChange}
-      language={appSettings.language}
       apiConnected={!objectsError}
       lastUpdated={lastValidUpdatedAt.current > 0 ? lastValidUpdatedAt.current : undefined}
-      adminPort={appSettings.adminPort}
       onManualRefresh={handleManualRefresh}
-      objectsRefreshInterval={appSettings.objectsRefreshInterval}
-      scriptsFetching={scriptsFetching}
-      onRequestRefreshScripts={() => setConfirmScriptRefresh(true)}
-      confirmScriptRefresh={confirmScriptRefresh}
       onConfirmScriptRefresh={() => handleScriptRefreshConfirmed(Object.keys(allObjects))}
-      onCancelScriptRefresh={() => setConfirmScriptRefresh(false)}
-      scriptLastUpdated={scriptLastUpdated}
       sidebar={
         <div className="flex flex-col h-full">
           <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex flex-col gap-2">
@@ -580,14 +560,7 @@ function AppContent() {
             language={appSettings.language}
           />
         )}
-        {settingsOpen && (
-          <SettingsModal
-            appSettings={appSettings}
-            onClose={() => setSettingsOpen(false)}
-            onSave={handleSaveSettings}
-            onLanguageChange={handleLanguageChange}
-          />
-        )}
+        {settingsOpen && <SettingsModal />}
 
         <div className="flex-1 min-h-0 flex flex-col">
           <StateList

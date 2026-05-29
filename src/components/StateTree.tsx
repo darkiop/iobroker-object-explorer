@@ -10,7 +10,7 @@ import { copyText } from '../utils/clipboard';
 import TreeStatsModal from './TreeStatsModal';
 import { useFilterContext } from '../context/FilterContext';
 import { useSelectionContext } from '../context/SelectionContext';
-import { useUIContext } from '../context/UIContext';
+import { useAppSettingsContext } from '../context/UIContext';
 
 interface StateTreeProps {
   stateIds: string[];
@@ -566,7 +566,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
 function StateTree({ stateIds, allObjects, historyIds, smartIds, onCreateAtPath, onSearch, onTreeScope }: StateTreeProps) {
   const { treeFilter, treeSearch, setTreeSearch, treeExpandSignal, pattern, historyOnly, smartOnly } = useFilterContext();
   const { selectedId, setSelectedId, setAliasReplaceInitialStr, setAutoAliasDeviceId } = useSelectionContext();
-  const { appSettings, scriptUsedIds, scriptsFetching, setConfirmScriptRefresh, setScriptUsedIds, persistSettings } = useUIContext();
+  const { appSettings, scriptUsedIds, scriptsFetching, setConfirmScriptRefresh, setScriptUsedIds, persistSettings } = useAppSettingsContext();
 
   const language = appSettings.language;
   const isEn = language === 'en';

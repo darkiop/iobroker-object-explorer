@@ -24,7 +24,7 @@ import { getRoleColor } from '../utils/roleColor';
 import { useToast } from '../context/ToastContext';
 import { useFilterContext } from '../context/FilterContext';
 import { useSelectionContext } from '../context/SelectionContext';
-import { useUIContext } from '../context/UIContext';
+import { useAppSettingsContext } from '../context/UIContext';
 
 export interface StateListHandle {
   fitToContainer: () => void;
@@ -1673,7 +1673,7 @@ const StateRow = React.memo(function StateRow({
 function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allObjectIds, exportIds, onNavigateTo }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
   const { colFilters, handleColFilterChange: onColFilterChange, pattern, treeFilter, handleClearTreeFilter: onClearTreeFilter, sidebarToggleSeq, fulltextEnabled } = useFilterContext();
   const { selectedId, setSelectedId: onSelect, setHistoryModalId: _setHistoryModalId, setEnumManagerOpen, setAliasReplaceInitialStr, setEditInitialTab } = useSelectionContext();
-  const { appSettings, expertMode, handleToggleExpertMode: onToggleExpertMode, handleToggleToolbarLabels: onToggleToolbarLabels, handleToggleGroupByPath: onToggleGroupByPath, persistSettings } = useUIContext();
+  const { appSettings, expertMode, handleToggleExpertMode: onToggleExpertMode, handleToggleToolbarLabels: onToggleToolbarLabels, handleToggleGroupByPath: onToggleGroupByPath, persistSettings } = useAppSettingsContext();
 
   const { language = 'en', dateFormat = 'de', visibleCols: settingsVisibleCols, toolbarLabels = true, tableFontSize = 'normal', showDesc = true, groupByPath = false, customDefaultWidths, customMaxWidths, pageSize } = appSettings;
   const onOpenEnumManager = React.useCallback(() => setEnumManagerOpen(true), [setEnumManagerOpen]);

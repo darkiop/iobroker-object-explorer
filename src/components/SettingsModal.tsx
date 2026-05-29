@@ -5,50 +5,9 @@ import LanguageDropdown from './LanguageDropdown';
 import { X, ChevronDown, Check, Loader2, AlertCircle, Trash2 } from 'lucide-react';
 import type { SortKey, DateFormatSetting } from './stateListColumns';
 import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel, CONFIGURABLE_WIDTH_COLS, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MAX_WIDTHS } from './stateListColumns';
-
-type UiFontSize = 'small' | 'normal' | 'large' | 'xl';
-
-interface AppSettings {
-  language: 'en' | 'de';
-  dateFormat: DateFormatSetting;
-  visibleCols: SortKey[];
-  extraQuickFilters: string[];
-  toolbarLabels: boolean;
-  pageSize: number;
-  tableFontSize: UiFontSize;
-  treeFontSize: UiFontSize;
-  treeCountMode: 'off' | 'states' | 'objects' | 'both';
-  showDesc: boolean;
-  groupByPath: boolean;
-  treeViewMode: 'adapter' | 'path';
-  adminPort: number;
-  customDefaultWidths: Partial<Record<SortKey, number>>;
-  customMaxWidths: Partial<Record<SortKey, number>>;
-  objectsRefreshInterval: 'off' | '30s' | '1m' | '5m' | '10m';
-  includeScripts: boolean;
-}
-
-function getDefaultAppSettings(): AppSettings {
-  return {
-    language: 'en',
-    dateFormat: 'de',
-    visibleCols: DEFAULT_COLS,
-    extraQuickFilters: [],
-    toolbarLabels: true,
-    pageSize: 1000,
-    tableFontSize: 'normal',
-    treeFontSize: 'normal',
-    treeCountMode: 'objects',
-    showDesc: true,
-    groupByPath: true,
-    treeViewMode: 'adapter',
-    adminPort: 8081,
-    customDefaultWidths: {},
-    customMaxWidths: {},
-    objectsRefreshInterval: 'off',
-    includeScripts: false,
-  };
-}
+import { useAppSettingsContext, useUIOverlayContext, DEFAULT_QUICK_PATTERNS, getDefaultAppSettings } from '../context/UIContext';
+import type { AppSettings } from '../context/UIContext';
+import { useFilterContext } from '../context/FilterContext';
 
 function normalizeQuickPattern(input: string): string {
   let v = input.trim();
@@ -59,7 +18,6 @@ function normalizeQuickPattern(input: string): string {
 }
 
 const PAGE_SIZE_OPTIONS = [200, 500, 1000, 3000];
-const DEFAULT_QUICK_PATTERNS = ['alias.0.*', 'javascript.0.*', '0_userdata.0.*'] as const;
 
 const DATE_FORMAT_OPTIONS: { value: DateFormatSetting; label: string }[] = [
   { value: 'de', label: 'DD.MM.YYYY HH:mm:ss' },
@@ -109,13 +67,6 @@ function DateFormatDropdown({ value, onChange }: { value: DateFormatSetting; onC
   );
 }
 
-interface Props {
-  appSettings: AppSettings;
-  onClose: () => void;
-  onSave: (next: AppSettings) => void;
-  onLanguageChange: (lang: 'en' | 'de') => void;
-}
-
 function initHostState(): { ip: string; port: string } {
   const stored = localStorage.getItem('ioBrokerHost') ?? window.__CONFIG__?.ioBrokerHost ?? '';
   const colonIdx = stored.lastIndexOf(':');
@@ -141,7 +92,11 @@ function initDraftFromSettings(appSettings: AppSettings): AppSettings {
   return draft;
 }
 
-export default function SettingsModal({ appSettings, onClose, onSave, onLanguageChange }: Props) {
+export default function SettingsModal() {
+  const { appSettings, persistSettings, handleLanguageChange } = useAppSettingsContext();
+  const { setSettingsOpen } = useUIOverlayContext();
+  const { setPage, setQuickPatterns } = useFilterContext();
+  const onClose = () => setSettingsOpen(false);
   useEscapeKey(onClose);
 
   const [settingsTab, setSettingsTab] = useState<'connection' | 'display' | 'columns' | 'filters'>('connection');
@@ -153,6 +108,14 @@ export default function SettingsModal({ appSettings, onClose, onSave, onLanguage
   const [newQuickFilter, setNewQuickFilter] = useState('');
 
   const isEn = appSettings.language === 'en';
+
+  const applySettings = useCallback((next: AppSettings) => {
+    persistSettings(next);
+    setPage(0);
+    const allowed = new Set([...DEFAULT_QUICK_PATTERNS, ...next.extraQuickFilters]);
+    setQuickPatterns((prev) => new Set([...prev].filter((p) => allowed.has(p))));
+    setSettingsOpen(false);
+  }, [persistSettings, setPage, setQuickPatterns, setSettingsOpen]);
 
   const saveSettings = useCallback(() => {
     const nextCols = settingsDraft.visibleCols.filter((k) => ALL_COLUMNS.some((c) => c.key === k));
@@ -178,14 +141,13 @@ export default function SettingsModal({ appSettings, onClose, onSave, onLanguage
       objectsRefreshInterval: settingsDraft.objectsRefreshInterval,
       includeScripts: settingsDraft.includeScripts,
     };
-    onSave(next);
-    onClose();
-  }, [settingsDraft, onSave, onClose]);
+    applySettings(next);
+  }, [settingsDraft, applySettings]);
 
-  const handleLanguageChange = useCallback((language: 'en' | 'de') => {
-    onLanguageChange(language);
+  const handleLanguageChangeDraft = useCallback((language: 'en' | 'de') => {
+    handleLanguageChange(language);
     setSettingsDraft((prev) => ({ ...prev, language }));
-  }, [onLanguageChange]);
+  }, [handleLanguageChange]);
 
   const addExtraQuickFilter = useCallback(() => {
     const normalized = normalizeQuickPattern(newQuickFilter);
@@ -206,8 +168,8 @@ export default function SettingsModal({ appSettings, onClose, onSave, onLanguage
   const resetSettingsToDefault = useCallback(() => {
     const defaults = getDefaultAppSettings();
     setSettingsDraft(defaults);
-    onSave(defaults);
-  }, [onSave]);
+    applySettings(defaults);
+  }, [applySettings]);
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center animate-backdrop-in bg-black/50 p-4" onClick={onClose}>
@@ -331,7 +293,7 @@ export default function SettingsModal({ appSettings, onClose, onSave, onLanguage
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1.5">
                   <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Language' : 'Sprache'}</span>
-                  <LanguageDropdown value={settingsDraft.language} onChange={(language) => handleLanguageChange(language)} />
+                  <LanguageDropdown value={settingsDraft.language} onChange={handleLanguageChangeDraft} />
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Date format' : 'Datumsformat'}</span>

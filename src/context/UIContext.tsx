@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react';
 import { DEFAULT_COLS, ALL_COLUMNS } from '../components/stateListColumns';
 import type { SortKey, DateFormatSetting } from '../components/stateListColumns';
 import { clearScriptUsedIdsCache, getScriptUsedIds } from '../api/iobroker';
@@ -116,25 +116,22 @@ export function loadAppSettings(): AppSettings {
   } catch { return fallback; }
 }
 
-interface UIContextValue {
+// ── Stable context: appSettings, expertMode, script state ────────────────────
+// Only changes when settings or script data actually change.
+// StateList and StateTree subscribe here — they do NOT re-render when modals open.
+export interface AppSettingsContextValue {
   appSettings: AppSettings;
   expertMode: boolean;
-  settingsOpen: boolean;
-  shortcutsOpen: boolean;
   scriptUsedIds: Set<string> | null;
   scriptLastUpdated: number | undefined;
   scriptsFetching: boolean;
   confirmScriptRefresh: boolean;
   setAppSettings: React.Dispatch<React.SetStateAction<AppSettings>>;
   setExpertMode: React.Dispatch<React.SetStateAction<boolean>>;
-  setSettingsOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  setShortcutsOpen: React.Dispatch<React.SetStateAction<boolean>>;
   setScriptUsedIds: React.Dispatch<React.SetStateAction<Set<string> | null>>;
   setScriptLastUpdated: React.Dispatch<React.SetStateAction<number | undefined>>;
   setScriptsFetching: React.Dispatch<React.SetStateAction<boolean>>;
   setConfirmScriptRefresh: React.Dispatch<React.SetStateAction<boolean>>;
-  openSettings: () => void;
-  /** Persists settings; cross-context side effects (setPage, setQuickPatterns) handled in App.tsx */
   persistSettings: (next: AppSettings) => void;
   handleLanguageChange: (language: 'en' | 'de') => void;
   handleToggleExpertMode: () => void;
@@ -143,12 +140,35 @@ interface UIContextValue {
   handleScriptRefreshConfirmed: (allObjectKeys: string[]) => Promise<void>;
 }
 
-const UIContext = createContext<UIContextValue | null>(null);
+// ── Volatile context: modal open/close state ─────────────────────────────────
+// Changes on every settings/shortcuts open or close.
+// Components that only need AppSettingsContext are shielded from these re-renders.
+export interface UIOverlayContextValue {
+  settingsOpen: boolean;
+  shortcutsOpen: boolean;
+  setSettingsOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  setShortcutsOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  openSettings: () => void;
+}
 
-export function useUIContext(): UIContextValue {
-  const ctx = useContext(UIContext);
-  if (!ctx) throw new Error('useUIContext must be used inside UIContextProvider');
+const AppSettingsCtx = createContext<AppSettingsContextValue | null>(null);
+const UIOverlayCtx = createContext<UIOverlayContextValue | null>(null);
+
+export function useAppSettingsContext(): AppSettingsContextValue {
+  const ctx = useContext(AppSettingsCtx);
+  if (!ctx) throw new Error('useAppSettingsContext must be used inside UIContextProvider');
   return ctx;
+}
+
+export function useUIOverlayContext(): UIOverlayContextValue {
+  const ctx = useContext(UIOverlayCtx);
+  if (!ctx) throw new Error('useUIOverlayContext must be used inside UIContextProvider');
+  return ctx;
+}
+
+/** Convenience hook that merges both contexts — for components that need everything. */
+export function useUIContext(): AppSettingsContextValue & UIOverlayContextValue {
+  return { ...useAppSettingsContext(), ...useUIOverlayContext() };
 }
 
 export function UIContextProvider({ children }: { children: ReactNode }) {
@@ -226,14 +246,28 @@ export function UIContextProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const value: UIContextValue = {
-    appSettings, expertMode, settingsOpen, shortcutsOpen,
-    scriptUsedIds, scriptLastUpdated, scriptsFetching, confirmScriptRefresh,
-    setAppSettings, setExpertMode, setSettingsOpen, setShortcutsOpen,
-    setScriptUsedIds, setScriptLastUpdated, setScriptsFetching, setConfirmScriptRefresh,
-    openSettings, persistSettings, handleLanguageChange, handleToggleExpertMode,
-    handleToggleToolbarLabels, handleToggleGroupByPath, handleScriptRefreshConfirmed,
-  };
+  // Stable value — identity only changes when settings/script data change, NOT when modals open.
+  const appSettingsValue = useMemo<AppSettingsContextValue>(() => ({
+    appSettings, expertMode, scriptUsedIds, scriptLastUpdated, scriptsFetching, confirmScriptRefresh,
+    setAppSettings, setExpertMode, setScriptUsedIds, setScriptLastUpdated, setScriptsFetching, setConfirmScriptRefresh,
+    persistSettings, handleLanguageChange, handleToggleExpertMode, handleToggleToolbarLabels,
+    handleToggleGroupByPath, handleScriptRefreshConfirmed,
+  }), [
+    appSettings, expertMode, scriptUsedIds, scriptLastUpdated, scriptsFetching, confirmScriptRefresh,
+    persistSettings, handleLanguageChange, handleToggleExpertMode, handleToggleToolbarLabels,
+    handleToggleGroupByPath, handleScriptRefreshConfirmed,
+  ]);
 
-  return <UIContext.Provider value={value}>{children}</UIContext.Provider>;
+  // Volatile value — changes on every modal open/close.
+  const overlayValue = useMemo<UIOverlayContextValue>(() => ({
+    settingsOpen, shortcutsOpen, setSettingsOpen, setShortcutsOpen, openSettings,
+  }), [settingsOpen, shortcutsOpen, openSettings]);
+
+  return (
+    <AppSettingsCtx.Provider value={appSettingsValue}>
+      <UIOverlayCtx.Provider value={overlayValue}>
+        {children}
+      </UIOverlayCtx.Provider>
+    </AppSettingsCtx.Provider>
+  );
 }
