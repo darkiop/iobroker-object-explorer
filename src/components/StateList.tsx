@@ -19,7 +19,7 @@ import { hasHistory, hasSmartName as hasSmartNameApi, isGlobPattern } from '../a
 import { useAllObjects } from '../hooks/useStates';
 import TreeStatsModal from './TreeStatsModal';
 import type { IoBrokerState, IoBrokerObject } from '../types/iobroker';
-import { copyText } from '../utils/clipboard';
+import { copyText, copyToClipboard } from '../utils/clipboard';
 import { ColoredId } from '../utils/coloredId';
 import { getTypeColor } from '../utils/typeColor';
 import { getRoleColor } from '../utils/roleColor';
@@ -132,22 +132,7 @@ const EditableNameCell = React.memo(function EditableNameCell({ id, name, desc, 
             onClick={(e) => {
               e.stopPropagation();
               function done() { setCopied(true); setTimeout(() => setCopied(false), 1500); }
-              if (navigator.clipboard?.writeText) {
-                navigator.clipboard.writeText(name).then(done).catch(fallback);
-              } else {
-                fallback();
-              }
-              function fallback() {
-                const ta = document.createElement('textarea');
-                ta.value = name;
-                ta.style.position = 'fixed';
-                ta.style.opacity = '0';
-                document.body.appendChild(ta);
-                ta.select();
-                document.execCommand('copy');
-                document.body.removeChild(ta);
-                done();
-              }
+              copyToClipboard(name).then(done).catch(done);
             }}
             className="opacity-0 group-hover/name:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
             title="Name kopieren"
@@ -675,26 +660,8 @@ function CopyIdButton({ id }: { id: string }) {
 
   function handleCopy(e: React.MouseEvent) {
     e.stopPropagation();
-    if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(id).then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
-      }).catch(() => fallback());
-    } else {
-      fallback();
-    }
-    function fallback() {
-      const ta = document.createElement('textarea');
-      ta.value = id;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    }
+    function done() { setCopied(true); setTimeout(() => setCopied(false), 1500); }
+    copyToClipboard(id).then(done).catch(done);
   }
 
   return (
