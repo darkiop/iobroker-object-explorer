@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect, useImperativeHandle } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useLayoutEffect, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
 import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Folder, Cpu, Layers, FileCode2, ToggleLeft, Hash, Type, Braces, List, BarChart2 } from 'lucide-react';
 import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch, useAllScriptSources } from '../hooks/useStates';
@@ -174,8 +174,8 @@ const EditableRoleCell = React.memo(function EditableRoleCell({ id, role, objTyp
     ? suggestions.filter((s) => s.toLowerCase().includes(filter.toLowerCase()))
     : suggestions;
 
-  useEffect(() => {
-    if (editing) setTimeout(() => inputRef.current?.focus(), 0);
+  useLayoutEffect(() => {
+    if (editing) inputRef.current?.focus();
   }, [editing]);
 
   function openEdit() {
@@ -287,8 +287,8 @@ const EditableUnitCell = React.memo(function EditableUnitCell({ id, unit, sugges
     ? suggestions.filter((s) => s.toLowerCase().includes(filter.toLowerCase()))
     : suggestions;
 
-  useEffect(() => {
-    if (editing) setTimeout(() => inputRef.current?.focus(), 0);
+  useLayoutEffect(() => {
+    if (editing) inputRef.current?.focus();
   }, [editing]);
 
   function openEdit() {
@@ -399,8 +399,8 @@ const EditableTypeCell = React.memo(function EditableTypeCell({ id, typeValue, o
     ? TYPE_OPTIONS.filter((s) => s.toLowerCase().includes(filter.toLowerCase()))
     : TYPE_OPTIONS;
 
-  useEffect(() => {
-    if (editing) setTimeout(() => inputRef.current?.focus(), 0);
+  useLayoutEffect(() => {
+    if (editing) inputRef.current?.focus();
   }, [editing]);
 
   function openEdit() {
