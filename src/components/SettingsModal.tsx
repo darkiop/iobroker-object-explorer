@@ -192,7 +192,7 @@ export default function SettingsModal() {
             const label = {
               connection: isEn ? 'Connection' : 'Verbindung',
               display:    isEn ? 'Display'    : 'Anzeige',
-              columns:    isEn ? 'Columns'    : 'Spalten',
+              columns:    isEn ? 'Table'      : 'Tabelle',
               filters:    isEn ? 'Filters'    : 'Filter',
             }[tab];
             return (
