@@ -1,6 +1,6 @@
 # Technical Audit Report — ioBroker Object Explorer
 
-**Datum:** 2026-05-21 (aktualisiert 2026-05-29, Performance-Sprint 2026-05-29)  
+**Datum:** 2026-05-21 (aktualisiert 2026-05-29, Security-Sprint 2026-05-29)  
 **Auditor:** Senior React Architect / Security Engineer  
 **Scope:** Vollständiger Quellcode-Review (src/, Dockerfile, nginx.conf, package.json, docker/entrypoint.sh)  
 **Methode:** Statische Code-Analyse, Dependency-Audit, Architektur-Review
@@ -16,10 +16,10 @@
 | F-03 | **Fixed** | Architektur | ~~CRITICAL~~ | React-Architektur | `src/App.tsx` (638 Z.), `src/context/` | App.tsx auf 638 Zeilen reduziert. `FilterContext`, `SelectionContext`, `UIContext` extrahiert. `StateList` und `StateTree` mit `React.memo` abgesichert. `useReducer`-Konsolidierung als Maintainability-Aufgabe (kein Performance-Impact). | Cascading Re-Renders vollständig mitigiert. | — | — | — |
 | F-04 | **Fixed** | Performance | ~~CRITICAL~~ | API / Netzwerk | `src/api/iobroker.ts:72–83` | `getAllObjects()` nutzt jetzt einen einzigen `GET /objects`-Request (commit `1676e3e`). | 5× Netzwerklast, Race Condition beim Merge eliminiert. | — | — | — |
 | F-05 | **Fixed** | Performance | ~~CRITICAL~~ | Rendering | `src/context/UIContext.tsx:41,95` | `pageSize`-Default und Fallback von 1000 auf 200 gesenkt (commit `73cecef`). Virtualisierung greift ab 120 Items. | Render-Blockierung bei Erstinstallation eliminiert. | — | — | — |
-| F-06 | Offen | Security | HIGH | XSS | `src/components/StateList.tsx:677` | URL-Role-Rendering: `val.startsWith('http')` verhindert `javascript:` aber nicht `data:text/html,...`. | XSS via `data:`-URL in State-Value. Schreibzugriff auf einen State mit role=url genügt. | `URL`-Parser: `try { const u = new URL(val); if (!['http:','https:'].includes(u.protocol)) return '#'; } catch { return '#'; }` | S | Security |
-| F-07 | Offen | Security | HIGH | XSS | `src/components/ImportDatapointsModal.tsx:122` | `dangerouslySetInnerHTML` ohne DOMPurify. Manuell geschriebener `highlightJson()`-Parser — Edge-Cases in `escHtml()` könnten unsanitized HTML durchlassen. | XSS bei bösartigem JSON-Input (Import-Datei von fremder Quelle). | `DOMPurify.sanitize(highlighted)` vor `dangerouslySetInnerHTML`. | S | Security |
-| F-08 | Offen | Security | HIGH | Dependency | `package.json` | npm audit: 4 HIGH-Vulnerabilities: `flatted` (Prototype Pollution), `rollup` (Path Traversal im Build), `minimatch` (ReDoS), `picomatch` (Method Injection, ReDoS). | `flatted` Prototype Pollution bei History-Antworten möglich. ReDoS bei pathologischen Pattern-Eingaben. | `npm audit fix`. recharts auf Latest upgraden für flatted-Fix. `dependabot` einrichten. | S–M | Security |
-| F-09 | Offen | Security | HIGH | Misconfiguration | `nginx.conf` | Keine HTTP-Security-Headers: kein CSP, kein `X-Frame-Options`, kein `X-Content-Type-Options`, kein `Referrer-Policy`. | Clickjacking möglich. Ohne CSP kein Defense-in-Depth gegen XSS. | `add_header X-Frame-Options "DENY";` / `add_header X-Content-Type-Options "nosniff";` / `add_header Referrer-Policy "strict-origin-when-cross-origin";` in nginx.conf. | S | Security |
+| F-06 | **Fixed** | Security | ~~HIGH~~ | XSS | `src/components/StateList.tsx` | URL-Role href via `URL`-Parser sanitized (commit `da7b9fa`): nur `http:`/`https:` werden als Link gerendert, `data:` und `javascript:` fallen auf Textdarstellung zurück. | XSS-Vektor eliminiert. | — | — | — |
+| F-07 | **Fixed** | Security | ~~HIGH~~ | XSS | `src/components/ImportDatapointsModal.tsx` | `DOMPurify.sanitize()` vor `dangerouslySetInnerHTML` (commit `f2032af`). dompurify als Dependency ergänzt. | XSS bei bösartigem JSON-Import verhindert. | — | — | — |
+| F-08 | **Fixed** | Security | ~~HIGH~~ | Dependency | `package.json` | `npm audit fix` + recharts 3.8.1 (commit `7f396f8`): flatted, rollup, minimatch, picomatch behoben. Verbleibend: 2 moderate in esbuild/vite (nur Build-Tool). | Alle 4 HIGH-Vulnerabilities eliminiert. | — | — | — |
+| F-09 | **Fixed** | Security | ~~HIGH~~ | Misconfiguration | `nginx.conf` | `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` ergänzt (commit `c3a43a6`). | Clickjacking-Schutz aktiv. | — | — | — |
 | F-10 | **Fixed** | Architektur | ~~HIGH~~ | Dependencies | `package.json` | `@tanstack/react-query` befindet sich jetzt in `dependencies`. | — | — | — | — |
 | F-11 | Offen | Architektur | HIGH | React-Architektur | `src/components/StateList.tsx` (3264 Z.) | 12+ Komponenten in einer Datei. Editable\*Cell-Komponenten identisch strukturiert — ~400 Zeilen Duplication. | Kognitiv nicht wartbar. IDE-Performance leidet. | Jede Editable\*Cell in eigene Datei unter `src/components/cells/`. `usePortalDropdown()`-Hook extrahieren. | L | Maintainability |
 | F-12 | Offen | Architektur | HIGH | React-Architektur | `src/App.tsx`, `src/components/` | Keine Error Boundaries. Exception in beliebiger Komponente → weißer Bildschirm, kein Recovery. | Vollständiger App-Crash bei einem einzigen Render-Fehler. Kein Stack-Trace in Produktion. | `react-error-boundary`: eine Boundary für die App, eine für Modals. | S | Stability |
@@ -31,9 +31,9 @@
 | F-18 | Offen | Codequalität | MEDIUM | TypeScript | `src/api/iobroker.ts:526–527, 570–571` | `as unknown as Record<string, unknown>` als `any`-Äquivalent für Script-Properties. 6× im API-File. | Kein TypeScript-Schutz für Script-Objekt-Zugriffe. Laufzeitfehler bei fehlendem Feld möglich. | `IoBrokerObjectCommon` um `source?: string; engineType?: string; enabled?: boolean;` erweitern. | S | Maintainability |
 | F-19 | **Fixed** | Performance | ~~MEDIUM~~ | React | `src/hooks/useStates.ts` | `gcTime: 60_000` gesetzt, IDs im Query-Key sortiert (commit `27b7c21`). Alte Seiten-Queries werden nach 60s entfernt statt nach 5 min. | Bis zu 10 simultane Polling-Queries eliminiert. | — | — | — |
 | F-20 | Offen | Architektur | MEDIUM | React-Architektur | `src/App.tsx` | `DateFormatDropdown` und Utility-Funktionen (`parseEnumFilters`, `normalizeQuickPattern`, `parseColWidthMap`) noch in App.tsx definiert. | Testbarkeit eingeschränkt. | `DateFormatDropdown` → eigene Datei. Utility-Funktionen → `src/utils/`. | S | Maintainability |
-| F-21 | Offen | Build / Security | MEDIUM | Docker / Config | `docker/entrypoint.sh:7–11` | Shell-Injection in `config.js`-Generierung: `IOBROKER_HOST` unescaped in Heredoc. Bösartiger Wert erzeugt gültiges JavaScript in `config.js`. | XSS wenn `IOBROKER_HOST` aus externer Quelle kommt (CI, Ansible, Kubernetes). | Wert via JSON serialisieren: `printf '{"ioBrokerHost":"%s:%s"}' "$IOBROKER_HOST" "${IOBROKER_PORT:-8093}"` | S | Security |
+| F-21 | **Fixed** | Build / Security | ~~MEDIUM~~ | Docker / Config | `docker/entrypoint.sh` | `IOBROKER_HOST` wird jetzt via `printf` mit expliziter JSON-Struktur serialisiert (commit `c5b1f17`). Heredoc-Injection nicht mehr möglich. | Shell-Injection eliminiert. | — | — | — |
 | F-22 | Offen | Codequalität | MEDIUM | React | `src/components/StateList.tsx:242, 355` | `setTimeout(() => inputRef.current?.focus(), 0)` in `useEffect`. Race Condition wenn Komponente zwischen Render und Timeout unmountet. | Flackernder oder fehlender Fokus bei schnellen Interaktionen. | `autoFocus`-Prop oder `useLayoutEffect` statt `useEffect` + `setTimeout`. | S | Stability |
-| F-23 | Offen | Security | MEDIUM | Deprecated API | `src/components/StateList.tsx:171, 714` | `document.execCommand('copy')` als Clipboard-Fallback. Seit Chrome 117 in einigen Kontexten entfernt. Fehler wird still geschluckt. | Copy silently fail in modernen Browsern. | `execCommand` entfernen. Bei Fehler: expliziter Toast. `src/utils/clipboard.ts` konsolidieren. | S | Security |
+| F-23 | **Fixed** | Security | ~~MEDIUM~~ | Deprecated API | `src/utils/clipboard.ts` | `document.execCommand('copy')` aus clipboard.ts und beiden inline-Fallbacks in StateList entfernt (commit `dd1a9b6`). Nur `navigator.clipboard.writeText()` wird verwendet. | Deprecated API vollständig entfernt. | — | — | — |
 | F-24 | **Fixed** | Performance | ~~MEDIUM~~ | Netzwerk | `src/api/iobroker.ts` | Alle 4 Enum-Mutations (`updateRoomMembership`, `updateFunctionMembership` + Batch-Varianten) nutzen jetzt `getAllObjects()` statt `fetchApi('/objects?type=enum')` (commit `62dab5b`). | Bis zu 200 API-Fetches bei Batch-Edit von 100 Objekten eliminiert. | — | — | — |
 | F-25 | Offen | Codequalität | MEDIUM | localStorage | `src/App.tsx` | `visibleCols` wird in zwei localStorage-Keys geschrieben: `LS_APP_SETTINGS` und `'iobroker-visible-cols'`. Drei-Wege-State kann desynchronisieren. | visibleCols in RAM, `LS_APP_SETTINGS` und Legacy-Key können auseinanderlaufen. | Legacy-Key `'iobroker-visible-cols'` entfernen. `loadVisibleCols()` in StateList streichen. | S | Maintainability |
 | F-26 | **Teilweise** | Build | ~~MEDIUM~~ → LOW | DevOps | `vite.config.ts:29` | `allowedHosts` um `localhost`, `127.0.0.1` und Produktions-Hostname erweitert (commit `95fcf56`). Weiterhin hardcodiert statt aus ENV. | Liste wächst mit jedem neuen Deployment-Host. | `allowedHosts: env.VITE_ALLOWED_HOSTS?.split(',') ?? true` | S | DX |
@@ -48,7 +48,7 @@
 
 Das Projekt ist eine **funktionsreiche, intern gut strukturierte** React-Applikation für ioBroker-Administration. Der Entwickler demonstriert solides React-Wissen (TanStack Query, Optimistic Updates, Portal-basierte Dropdowns, TypeScript strict mode). Die App ist produktiv einsatzfähig.
 
-**Seit dem initialen Audit behobene Punkte:** F-02 (includeScripts-Bug), F-10 (@tanstack/react-query in dependencies), F-03 (Context-Segmentierung, React.memo, App.tsx auf 638 Zeilen), F-04 (1 API-Call statt 5), F-05 (pageSize-Default 200), F-13 (Script-Suche yielding), F-14 teilweise (hasSmartName-Kollision), F-17 mitigiert (HTTPS via Proxy), F-19 (gcTime 60s), F-24 (Enum-Mutations aus Cache), F-26 teilweise (allowedHosts erweitert).
+**Seit dem initialen Audit behobene Punkte:** F-02, F-03, F-04, F-05, F-06, F-07, F-08, F-09, F-10, F-13, F-17 (mitigiert), F-19, F-21, F-23, F-24, F-26 (teilweise).
 
 **Die verbleibenden kritischen Probleme:**
 
@@ -56,9 +56,7 @@ Das Projekt ist eine **funktionsreiche, intern gut strukturierte** React-Applika
 
 2. **God Component StateList.tsx** — 3264 Zeilen, 12+ Komponenten. App.tsx wurde bereits erheblich reduziert; StateList ist der nächste Kandidat.
 
-3. **Security-Lücken** — XSS via `data:`-URL (F-06), fehlende nginx Security-Header (F-09) und npm-Vulnerabilities (F-08) sind die größten offenen Risiken.
-
-Die Sicherheitslage ist für ein internes Tool vertretbar. Die gefundenen XSS-Vektoren (F-06, F-07) sind real aber exploitbar nur mit Schreibzugriff auf ioBroker-States.
+Die Sicherheitslage hat sich erheblich verbessert: alle XSS-Vektoren geschlossen, Security-Header gesetzt, 4 HIGH-npm-Vulnerabilities behoben. Das Risikoprofil ist jetzt für ein internes Tool angemessen.
 
 ---
 
@@ -67,15 +65,15 @@ Die Sicherheitslage ist für ein internes Tool vertretbar. Die gefundenen XSS-Ve
 | Rank | ID | Status | Titel | Warum kritisch |
 |------|----|--------|-------|----------------|
 | 1 | F-01 | Offen | Kein Test-Framework | Regressions bei jeder Änderung unerkennbar. Mutations können produktiv Daten beschädigen. |
-| 2 | F-08 | Offen | 4 HIGH npm Vulnerabilities | flatted Prototype Pollution, rollup Path Traversal, picomatch ReDoS. |
-| 3 | F-06 | Offen | XSS via URL-Role `href` | `data:`-URL-Injection möglich mit Schreibzugriff auf einen State. |
-| 4 | F-12 | Offen | Keine Error Boundaries | Einzelner Render-Fehler crasht die gesamte App ohne Recovery. |
-| 5 | F-11 | Offen | StateList.tsx 3264 Zeilen | 12 Komponenten in 1 Datei. Maintainability-Grenze überschritten. |
-| 6 | F-09 | Offen | Keine Security-Header in nginx.conf | Clickjacking möglich. Zero-Cost-Fix. |
-| 7 | F-07 | Offen | XSS in ImportDatapointsModal | `dangerouslySetInnerHTML` ohne DOMPurify. |
-| 8 | F-27 | Offen | Icon-Buttons ohne aria-label | App für Screen-Reader-Nutzer nicht bedienbar. WCAG 2.1 AA nicht erfüllt. |
-| 9 | F-16 | Offen | Paralleler Cache-Layer | `objectsCache` + React Query Cache können desynchronisieren. |
-| 10 | F-14 | Teilweise | Code-Duplikation (format utils) | `formatTimestamp`/`formatValue` an 2 Stellen — Bug-Fixes müssen doppelt gepflegt werden. |
+| 2 | F-12 | Offen | Keine Error Boundaries | Einzelner Render-Fehler crasht die gesamte App ohne Recovery. |
+| 3 | F-11 | Offen | StateList.tsx 3264 Zeilen | 12 Komponenten in 1 Datei. Maintainability-Grenze überschritten. |
+| 4 | F-27 | Offen | Icon-Buttons ohne aria-label | App für Screen-Reader-Nutzer nicht bedienbar. WCAG 2.1 AA nicht erfüllt. |
+| 5 | F-16 | Offen | Paralleler Cache-Layer | `objectsCache` + React Query Cache können desynchronisieren. |
+| 6 | F-14 | Teilweise | Code-Duplikation (format utils) | `formatTimestamp`/`formatValue` an 2 Stellen — Bug-Fixes müssen doppelt gepflegt werden. |
+| 7 | F-25 | Offen | Doppelter localStorage-Key (visibleCols) | Drei-Wege-State kann desynchronisieren. |
+| 8 | F-20 | Offen | Utility-Funktionen in App.tsx | Testbarkeit eingeschränkt. |
+| 9 | F-28 | Offen | Threshold-Highlighting nur via Farbe | WCAG 2.1 Kriterium 1.4.1 verletzt. Colorblind-Nutzer betroffen. |
+| 10 | F-26 | Teilweise | allowedHosts hardcodiert | Liste wächst mit jedem Deployment-Host. |
 
 ---
 
@@ -87,13 +85,15 @@ Hoch-Impact, geringer Aufwand — innerhalb eines Tages umsetzbar:
 |----|--------|----------|---------|--------|
 | F-02 | ✅ Fixed | `includeScripts` in `saveSettings()` ergänzt | — | Bug-Fix |
 | F-10 | ✅ Fixed | `@tanstack/react-query` nach `dependencies` verschoben | — | Kritischer Prod-Fix |
-| F-09 | Offen | Security-Header in `nginx.conf` (X-Frame-Options, X-Content-Type-Options) | 3 Zeilen | Clickjacking-Schutz |
+| F-06 | ✅ Fixed | URL-Role `href`-Sanitization via `URL`-Parser | — | XSS-Fix |
+| F-07 | ✅ Fixed | `DOMPurify.sanitize()` in `ImportDatapointsModal.tsx` | — | XSS-Mitigation |
+| F-08 | ✅ Fixed | `npm audit fix` + recharts 3.8.1 | — | 4 HIGH-Vulnerabilities behoben |
+| F-09 | ✅ Fixed | Security-Header in `nginx.conf` | — | Clickjacking-Schutz |
+| F-21 | ✅ Fixed | Shell-Injection in `entrypoint.sh` behoben | — | Docker-Injection-Fix |
+| F-23 | ✅ Fixed | `document.execCommand` entfernt | — | Deprecated API entfernt |
 | F-12 | Offen | `react-error-boundary` installieren, `<ErrorBoundary>` um App und Modals | 15 Zeilen | App-Crash verhindert |
-| F-07 | Offen | `DOMPurify.sanitize()` in `ImportDatapointsModal.tsx:122` | 1 Zeile | XSS-Mitigation |
-| F-06 | Offen | URL-Role `href`-Sanitization via `URL`-Parser statt `startsWith` | 5 Zeilen | XSS-Fix |
 | F-15 | Offen | `isDisplayable()` entfernen, direkte Null-Checks einsetzen | S | Dead-Code-Cleanup |
-| F-14 | Offen | `formatTimestamp`/`formatValue` in `src/utils/format.ts` extrahieren | 30 min | Duplikation + Bug in ObjectEditModal (fehlendes dateFormat) |
-| F-23 | Offen | `document.execCommand` entfernen, Error-Toast bei Clipboard-Fehler | 10 Zeilen | Deprecated API entfernt |
+| F-14 | Offen | `formatTimestamp`/`formatValue` in `src/utils/format.ts` extrahieren | 30 min | Duplikation + Bug in ObjectEditModal |
 | F-26 | Offen | `allowedHosts` in vite.config.ts aus ENV-Variable | 2 Zeilen | DX für alle Entwickler |
 
 ---
@@ -157,10 +157,12 @@ Die O(n)-Berechnungen bleiben, aber sind unvermeidbar und bereits durch `useMemo
 2. ~~**F-10**~~ ✅ `@tanstack/react-query` nach `dependencies`
 3. ~~**F-04**~~ ✅ `getAllObjects()` auf 1 API-Call reduziert
 4. ~~**F-05**~~ ✅ pageSize-Default auf 200 gesenkt
-5. **F-06, F-07** — XSS-Fixes (URL-Sanitization, DOMPurify in Import) — 30 Minuten
-6. **F-09** — nginx Security-Header — 15 Minuten
-7. **F-08** — `npm audit fix` + recharts upgrade für flatted — 30 Minuten
-8. **F-12** — Error Boundaries mit `react-error-boundary` — 1 Stunde
+5. ~~**F-06, F-07**~~ ✅ XSS-Fixes (URL-Sanitization, DOMPurify in Import)
+6. ~~**F-09**~~ ✅ nginx Security-Header
+7. ~~**F-08**~~ ✅ `npm audit fix` + recharts upgrade
+8. ~~**F-21**~~ ✅ Shell-Injection in entrypoint.sh behoben
+9. ~~**F-23**~~ ✅ `document.execCommand` entfernt
+10. **F-12** — Error Boundaries mit `react-error-boundary` — 1 Stunde
 
 ### Kurzfristig (nächste 2 Wochen)
 
@@ -184,4 +186,4 @@ Die O(n)-Berechnungen bleiben, aber sind unvermeidbar und bereits durch `useMemo
 
 ---
 
-*Initialer Report basiert auf Commit `fac708b`. Aktualisiert 2026-05-29 auf Basis von Commits bis `db716e5` (Performance-Sprint: F-03, F-04, F-05, F-13, F-19, F-24).*
+*Initialer Report basiert auf Commit `fac708b`. Aktualisiert 2026-05-29 auf Basis von Commits bis `7f396f8` (Performance-Sprint + Security-Sprint: F-03–F-09, F-13, F-17, F-19, F-21, F-23, F-24).*
