@@ -48,12 +48,21 @@ function scoreObject(id: string, obj: IoBrokerObject, query: string): number {
 }
 
 
+let _objectsFetchPromise: Promise<Record<string, IoBrokerObject>> | null = null;
+
 export async function getAllObjects(): Promise<Record<string, IoBrokerObject>> {
-  const [all, enums] = await Promise.all([
+  if (_objectsFetchPromise) return _objectsFetchPromise;
+  _objectsFetchPromise = Promise.all([
     fetchApi<Record<string, IoBrokerObject>>('/objects'),
     fetchApi<Record<string, IoBrokerObject>>('/objects?type=enum'),
-  ]);
-  return { ...all, ...enums };
+  ]).then(([all, enums]) => {
+    _objectsFetchPromise = null;
+    return { ...all, ...enums };
+  }).catch(err => {
+    _objectsFetchPromise = null;
+    throw err;
+  });
+  return _objectsFetchPromise;
 }
 
 export async function getObjectsByPattern(pattern: string, fulltext = true, exact = false): Promise<Record<string, IoBrokerObject>> {
