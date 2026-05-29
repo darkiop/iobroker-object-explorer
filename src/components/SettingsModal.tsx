@@ -5,19 +5,11 @@ import LanguageDropdown from './LanguageDropdown';
 import { X, ChevronDown, Check, Loader2, AlertCircle, Trash2 } from 'lucide-react';
 import type { SortKey, DateFormatSetting } from './stateListColumns';
 import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel, CONFIGURABLE_WIDTH_COLS, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MIN_WIDTHS, BUILTIN_MAX_WIDTHS } from './stateListColumns';
-import { useAppSettingsContext, useUIOverlayContext, DEFAULT_QUICK_PATTERNS, getDefaultAppSettings } from '../context/UIContext';
+import { useAppSettingsContext, useUIOverlayContext, DEFAULT_QUICK_PATTERNS, getDefaultAppSettings, normalizeQuickPattern } from '../context/UIContext';
 import type { AppSettings } from '../context/UIContext';
 import { useFilterContext } from '../context/FilterContext';
 import { useTheme } from '../context/ThemeContext';
 import type { Theme } from '../context/ThemeContext';
-
-function normalizeQuickPattern(input: string): string {
-  let v = input.trim();
-  if (!v) return '';
-  if (!v.endsWith('*')) v = `${v.replace(/\.+$/, '')}.*`;
-  if (v.endsWith('*') && !v.endsWith('.*')) v = `${v.replace(/\*+$/, '')}.*`;
-  return v;
-}
 
 const PAGE_SIZE_OPTIONS = [200, 500, 1000, 3000];
 

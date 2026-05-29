@@ -54,7 +54,7 @@ export function getDefaultAppSettings(): AppSettings {
   };
 }
 
-function normalizeQuickPattern(input: string): string {
+export function normalizeQuickPattern(input: string): string {
   let v = input.trim();
   if (!v) return '';
   if (!v.endsWith('*')) v = `${v.replace(/\.+$/, '')}.*`;
