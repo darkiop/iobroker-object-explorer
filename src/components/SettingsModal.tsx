@@ -359,12 +359,12 @@ export default function SettingsModal() {
                 </div>
               </div>
               {/* Rows per page */}
-              <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Rows per page' : 'Zeilen pro Seite'}</span>
                 <select
                   value={settingsDraft.pageSize}
                   onChange={(e) => setSettingsDraft((prev) => ({ ...prev, pageSize: parseInt(e.target.value, 10) }))}
-                  className="h-8 px-2.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400 w-28"
+                  className="h-7 px-2 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400"
                 >
                   {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
                 </select>
