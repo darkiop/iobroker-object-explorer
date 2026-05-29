@@ -6,9 +6,10 @@ interface ThemeContextValue {
   theme: Theme;
   dark: boolean;
   cycle: () => void;
+  setTheme: (t: Theme) => void;
 }
 
-const ThemeContext = createContext<ThemeContextValue>({ theme: 'dark', dark: true, cycle: () => {} });
+const ThemeContext = createContext<ThemeContextValue>({ theme: 'dark', dark: true, cycle: () => {}, setTheme: () => {} });
 
 function applyTheme(theme: Theme) {
   const cl = document.documentElement.classList;
@@ -33,7 +34,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setTheme((t) => t === 'light' ? 'dark' : t === 'dark' ? 'obsidian' : 'light');
   }, []);
 
-  const value = useMemo(() => ({ theme, dark: theme !== 'light', cycle }), [theme, cycle]);
+  const value = useMemo(() => ({ theme, dark: theme !== 'light', cycle, setTheme }), [theme, cycle, setTheme]);
 
   return (
     <ThemeContext.Provider value={value}>

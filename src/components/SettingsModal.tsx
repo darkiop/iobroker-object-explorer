@@ -8,6 +8,8 @@ import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel, CONFIGURABLE_WIDTH_COLS, BUI
 import { useAppSettingsContext, useUIOverlayContext, DEFAULT_QUICK_PATTERNS, getDefaultAppSettings } from '../context/UIContext';
 import type { AppSettings } from '../context/UIContext';
 import { useFilterContext } from '../context/FilterContext';
+import { useTheme } from '../context/ThemeContext';
+import type { Theme } from '../context/ThemeContext';
 
 function normalizeQuickPattern(input: string): string {
   let v = input.trim();
@@ -94,6 +96,7 @@ function initDraftFromSettings(appSettings: AppSettings): AppSettings {
 
 export default function SettingsModal() {
   const { appSettings, persistSettings, handleLanguageChange } = useAppSettingsContext();
+  const { theme, setTheme } = useTheme();
   const { setSettingsOpen } = useUIOverlayContext();
   const { setPage, setQuickPatterns } = useFilterContext();
   const onClose = () => setSettingsOpen(false);
@@ -289,6 +292,33 @@ export default function SettingsModal() {
           {/* Tab: Anzeige */}
           {settingsTab === 'display' && (
             <div className="flex flex-col gap-4">
+              {/* Theme */}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Theme' : 'Farbschema'}</span>
+                <div className="flex gap-2">
+                  {([
+                    { value: 'light',   labelEn: 'Light',   labelDe: 'Hell',     preview: 'bg-white border-gray-300 text-gray-800' },
+                    { value: 'dark',    labelEn: 'Dark',    labelDe: 'Dunkel',   preview: 'bg-gray-800 border-gray-600 text-gray-100' },
+                    { value: 'obsidian',labelEn: 'Obsidian',labelDe: 'Obsidian', preview: 'bg-[#1e1e2e] border-[#45475a] text-[#cdd6f4]' },
+                  ] as { value: Theme; labelEn: string; labelDe: string; preview: string }[]).map(({ value, labelEn, labelDe, preview }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setTheme(value)}
+                      className={`flex-1 flex flex-col items-center gap-1.5 py-2 px-3 rounded border-2 transition-colors ${
+                        theme === value
+                          ? 'border-blue-500 ring-1 ring-blue-400/50'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500'
+                      }`}
+                    >
+                      <span className={`w-full h-6 rounded text-[10px] flex items-center justify-center font-medium border ${preview}`}>
+                        Aa
+                      </span>
+                      <span className="text-xs text-gray-700 dark:text-gray-300">{isEn ? labelEn : labelDe}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
               {/* Language + Date format nebeneinander */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1.5">
