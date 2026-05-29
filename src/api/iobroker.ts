@@ -73,14 +73,8 @@ export async function getAllObjects(): Promise<Record<string, IoBrokerObject>> {
   if (objectsCache) return objectsCache;
   if (objectsCachePromise) return objectsCachePromise;
 
-  objectsCachePromise = Promise.all([
-    fetchApi<Record<string, IoBrokerObject>>('/objects'),
-    fetchApi<Record<string, IoBrokerObject>>('/objects?type=device'),
-    fetchApi<Record<string, IoBrokerObject>>('/objects?type=channel'),
-    fetchApi<Record<string, IoBrokerObject>>('/objects?type=folder'),
-    fetchApi<Record<string, IoBrokerObject>>('/objects?type=enum'),
-  ]).then(([states, devices, channels, folders, enums]) => {
-    objectsCache = { ...states, ...devices, ...channels, ...folders, ...enums };
+  objectsCachePromise = fetchApi<Record<string, IoBrokerObject>>('/objects').then(all => {
+    objectsCache = all;
     objectsCachePromise = null;
     return objectsCache;
   });
