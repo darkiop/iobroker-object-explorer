@@ -64,11 +64,13 @@ export function useAllObjects(refetchInterval?: number | false) {
 
 export function useStateValues(ids: string[]) {
   const pageVisible = usePageVisible();
+  const sortedIds = [...ids].sort();
   return useQuery({
-    queryKey: queryKeys.states.values(ids),
+    queryKey: queryKeys.states.values(sortedIds),
     queryFn: () => getStatesBatch(ids),
     enabled: ids.length > 0 && pageVisible,
     refetchInterval: 30_000,
+    gcTime: 60_000,
   });
 }
 
