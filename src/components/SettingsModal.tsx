@@ -210,7 +210,7 @@ export default function SettingsModal() {
             );
           })}
         </div>
-        <div className="p-4 flex flex-col gap-4 min-h-[260px] max-h-[65vh] overflow-y-auto">
+        <div className="p-4 flex flex-col gap-4 h-[65vh] overflow-y-auto">
           {/* Tab: Verbindung */}
           {settingsTab === 'connection' && (
             <div className="flex flex-col gap-3">
