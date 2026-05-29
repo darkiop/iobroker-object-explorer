@@ -32,7 +32,7 @@ function DateFormatDropdown({ value, onChange }: { value: DateFormatSetting; onC
   const selected = DATE_FORMAT_OPTIONS.find((opt) => opt.value === value) ?? DATE_FORMAT_OPTIONS[0];
 
   return (
-    <div className="relative w-56">
+    <div className="relative w-full">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
