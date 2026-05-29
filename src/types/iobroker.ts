@@ -27,6 +27,8 @@ export interface IoBrokerObjectCommon {
   smartName?: string | Record<string, string> | false;
   alias?: { id?: string | { read?: string; write?: string }; read?: string; write?: string };
   enabled?: boolean;
+  source?: string;
+  engineType?: string;
 }
 
 export interface IoBrokerObject {

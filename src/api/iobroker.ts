@@ -518,7 +518,7 @@ async function fetchScriptSources(): Promise<string> {
   const res = await fetchApi<Record<string, IoBrokerObject>>('/objects?type=script');
   return Object.entries(res)
     .filter(([id, obj]) => id.startsWith('script.js.') && obj.type === 'script')
-    .map(([, obj]) => ((obj.common as unknown as Record<string, unknown>)?.source as string) ?? '')
+    .map(([, obj]) => obj.common?.source ?? '')
     .join('\n');
 }
 
@@ -569,14 +569,13 @@ export async function findScriptsUsingObject(objectId: string): Promise<ScriptUs
   const results: ScriptUsage[] = [];
   for (const [scriptId, obj] of Object.entries(res)) {
     if (!scriptId.startsWith('script.js.') || obj.type !== 'script') continue;
-    const common = obj.common as unknown as Record<string, unknown>;
-    const source: string = (common?.source as string) ?? '';
+    const source = obj.common?.source ?? '';
     if (!source.includes(objectId)) continue;
     results.push({
       scriptId,
       scriptName: parseLocalizedName(obj.common?.name) || scriptId,
-      enabled: Boolean(common?.enabled),
-      engineType: String(common?.engineType ?? ''),
+      enabled: Boolean(obj.common?.enabled),
+      engineType: String(obj.common?.engineType ?? ''),
     });
   }
   return results.sort((a, b) => a.scriptId.localeCompare(b.scriptId));
