@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef, memo } from 'react';
-import { ChevronRight, ChevronDown, ChevronsUpDown, ChevronsDownUp, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil, LayoutList, LayoutGrid, Plus, FileCode2, Link2, UserRound, ShieldAlert, Download, Trash2, Filter, BarChart2 } from 'lucide-react';
+import { ChevronRight, ChevronDown, ChevronsUpDown, ChevronsDownUp, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil, LayoutList, LayoutGrid, Plus, FileCode2, Link2, UserRound, ShieldAlert, Download, Trash2, Filter } from 'lucide-react';
 import type { TreeNode, IoBrokerObject } from '../types/iobroker';
 import ObjectEditModal from './ObjectEditModal';
 import ContextMenu from './ContextMenu';
@@ -7,7 +7,6 @@ import type { ContextMenuEntry } from './ContextMenu';
 import ConfirmDialog from './ConfirmDialog';
 import { useDeleteSubtree } from '../hooks/useStates';
 import { copyText } from '../utils/clipboard';
-import TreeStatsModal from './TreeStatsModal';
 import { useFilterContext } from '../context/FilterContext';
 import { useSelectionContext } from '../context/SelectionContext';
 import { useAppSettingsContext } from '../context/UIContext';
@@ -566,7 +565,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
 function StateTree({ stateIds, allObjects, historyIds, smartIds, onCreateAtPath, onSearch, onTreeScope }: StateTreeProps) {
   const { treeFilter, treeSearch, setTreeSearch, treeExpandSignal, pattern, historyOnly, smartOnly } = useFilterContext();
   const { selectedId, setSelectedId, setAliasReplaceInitialStr, setAutoAliasDeviceId } = useSelectionContext();
-  const { appSettings, scriptUsedIds, scriptsFetching, setConfirmScriptRefresh, setScriptUsedIds, persistSettings } = useAppSettingsContext();
+  const { appSettings, persistSettings } = useAppSettingsContext();
 
   const language = appSettings.language;
   const isEn = language === 'en';
@@ -582,23 +581,12 @@ function StateTree({ stateIds, allObjects, historyIds, smartIds, onCreateAtPath,
     setTreeViewMode(m);
     persistSettings({ ...appSettings, treeViewMode: m });
   };
-  const [showStats, setShowStats] = useState(false);
-
   const onOpenAliasReplace = useCallback((initialStr?: string) => {
     setAliasReplaceInitialStr(initialStr ?? null);
   }, [setAliasReplaceInitialStr]);
   const onAutoCreateAlias = useCallback((deviceId: string) => {
     setAutoAliasDeviceId(deviceId);
   }, [setAutoAliasDeviceId]);
-  const onScriptUsedIdsChange = useCallback((ids: Set<string>) => {
-    setScriptUsedIds(ids);
-  }, [setScriptUsedIds]);
-  const onRequestRefreshScripts = useCallback(() => {
-    setConfirmScriptRefresh(true);
-  }, [setConfirmScriptRefresh]);
-  const onIncludeScriptsChange = useCallback((v: boolean) => {
-    persistSettings({ ...appSettings, includeScripts: v });
-  }, [persistSettings, appSettings]);
 
   const prevExpandSeqRef = useRef<number | undefined>(undefined);
   useEffect(() => {
@@ -691,13 +679,6 @@ function StateTree({ stateIds, allObjects, historyIds, smartIds, onCreateAtPath,
         >
           {treeViewMode === 'adapter' ? <LayoutList size={13} /> : <LayoutGrid size={13} />}
         </button>
-        <button
-          onClick={() => setShowStats(true)}
-          className="flex items-center justify-center px-2 py-1 text-xs rounded bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-300 dark:border-gray-600/50 dark:hover:bg-gray-700"
-          title={isEn ? 'Statistics' : 'Statistik'}
-        >
-          <BarChart2 size={13} />
-        </button>
       </div>
       <div className="flex items-center justify-center gap-3 px-3 py-1.5 border-b border-gray-200 dark:border-gray-700 shrink-0 bg-gray-50/50 dark:bg-gray-800/30">
         <span className="text-xs text-gray-500 dark:text-gray-400">
@@ -783,22 +764,6 @@ function StateTree({ stateIds, allObjects, historyIds, smartIds, onCreateAtPath,
         )}
       </div>
     </div>
-    {showStats && (
-      <TreeStatsModal
-        onClose={() => setShowStats(false)}
-        allObjects={allObjects}
-        historyIds={historyIds}
-        smartIds={smartIds}
-        language={language}
-        onSelectNamespace={(ns) => onTreeScope(`${ns}.`)}
-        scriptUsedIds={scriptUsedIds}
-        scriptsFetching={scriptsFetching}
-        includeScripts={appSettings.includeScripts}
-        onIncludeScriptsChange={onIncludeScriptsChange}
-        onScriptUsedIdsChange={onScriptUsedIdsChange}
-        onRequestRefreshScripts={onRequestRefreshScripts}
-      />
-    )}
     </>
   );
 }

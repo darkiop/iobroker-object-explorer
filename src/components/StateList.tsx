@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Folder, Cpu, Layers, FileCode2, ToggleLeft, Hash, Type, Braces, List } from 'lucide-react';
+import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Folder, Cpu, Layers, FileCode2, ToggleLeft, Hash, Type, Braces, List, BarChart2 } from 'lucide-react';
 import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch, useAllScriptSources } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
@@ -15,7 +15,9 @@ import HistoryModal from './HistoryModal';
 import ConfirmDialog from './ConfirmDialog';
 import MultiDeleteDialog from './MultiDeleteDialog';
 import ValueEditModal from './ValueEditModal';
-import { hasHistory, isGlobPattern } from '../api/iobroker';
+import { hasHistory, hasSmartName, isGlobPattern } from '../api/iobroker';
+import { useAllObjects } from '../hooks/useStates';
+import TreeStatsModal from './TreeStatsModal';
 import type { IoBrokerState, IoBrokerObject } from '../types/iobroker';
 import { copyText } from '../utils/clipboard';
 import { ColoredId } from '../utils/coloredId';
@@ -1690,6 +1692,11 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [visibleCols, setVisibleCols] = useState<SortKey[]>(loadVisibleCols);
   const { data: scriptSources } = useAllScriptSources(visibleCols.includes('scripts'));
+  const [showStats, setShowStats] = useState(false);
+  const { data: allObjectsData } = useAllObjects();
+  const allObjects = allObjectsData ?? {} as Record<string, IoBrokerObject>;
+  const allHistoryIds = useMemo(() => { const s = new Set<string>(); for (const [id, obj] of Object.entries(allObjects)) { if (hasHistory(obj)) s.add(id); } return s; }, [allObjects]);
+  const allSmartIds = useMemo(() => { const s = new Set<string>(); for (const [id, obj] of Object.entries(allObjects)) { if (hasSmartName(obj)) s.add(id); } return s; }, [allObjects]);
   const [colWidths, setColWidths] = useState<Record<SortKey, number>>(() => loadColWidths(effectiveDefaults, effectiveMax));
   const containerRef = useRef<HTMLDivElement>(null);
   const theadRef = useRef<HTMLTableSectionElement>(null);
@@ -2370,6 +2377,14 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
         >
           <Tag size={15} />
           {showToolbarLabels && <span>{isEn ? 'Enums' : 'Enums'}</span>}
+        </button>
+        <button
+          onClick={() => setShowStats(true)}
+          title={isEn ? 'Statistics' : 'Statistik'}
+          className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
+        >
+          <BarChart2 size={15} />
+          {showToolbarLabels && <span>{isEn ? 'Statistics' : 'Statistik'}</span>}
         </button>
         {[...checkedIds].some((id) => id.startsWith('alias.')) && (
           <button
@@ -3218,6 +3233,22 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
         </table>
       </div>
     </div>
+    {showStats && (
+      <TreeStatsModal
+        onClose={() => setShowStats(false)}
+        allObjects={allObjects}
+        historyIds={allHistoryIds}
+        smartIds={allSmartIds}
+        language={language}
+        onSelectNamespace={(ns) => handleTreeScope(`${ns}.`)}
+        scriptUsedIds={scriptUsedIds}
+        scriptsFetching={scriptsFetching}
+        includeScripts={appSettings.includeScripts}
+        onIncludeScriptsChange={(v) => persistSettings({ ...appSettings, includeScripts: v })}
+        onScriptUsedIdsChange={(ids) => setScriptUsedIds(ids)}
+        onRequestRefreshScripts={() => setConfirmScriptRefresh(true)}
+      />
+    )}
   );
 }
 
