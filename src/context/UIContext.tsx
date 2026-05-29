@@ -200,7 +200,6 @@ export function UIContextProvider({ children }: { children: ReactNode }) {
   const persistSettings = useCallback((next: AppSettings) => {
     setAppSettings(next);
     localStorage.setItem(LS_APP_SETTINGS, JSON.stringify(next));
-    localStorage.setItem('iobroker-visible-cols', JSON.stringify(next.visibleCols));
   }, []);
 
   const handleLanguageChange = useCallback((language: 'en' | 'de') => {

@@ -71,19 +71,7 @@ function initHostState(): { ip: string; port: string } {
 }
 
 function initDraftFromSettings(appSettings: AppSettings): AppSettings {
-  const draft = { ...appSettings };
-  try {
-    const rawCols = localStorage.getItem('iobroker-visible-cols');
-    if (rawCols) {
-      const parsedCols: unknown = JSON.parse(rawCols);
-      const parsed = Array.isArray(parsedCols) ? parsedCols as unknown[] : [];
-      const valid = parsed.filter((k): k is SortKey => typeof k === 'string' && ALL_COLUMNS.some((c) => c.key === k));
-      if (valid.length > 0) draft.visibleCols = valid;
-    }
-  } catch {
-    // ignore
-  }
-  return draft;
+  return { ...appSettings };
 }
 
 export default function SettingsModal() {

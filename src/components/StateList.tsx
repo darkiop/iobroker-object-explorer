@@ -1068,20 +1068,6 @@ export { ALL_COLUMNS, getColumnLabel, DEFAULT_COLS } from './stateListColumns';
 import type { SortKey, DateFormatSetting } from './stateListColumns';
 import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel as _getColumnLabel, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MIN_WIDTHS, BUILTIN_MAX_WIDTHS } from './stateListColumns';
 const getColumnLabel = _getColumnLabel;
-const LS_KEY = 'iobroker-visible-cols';
-
-function loadVisibleCols(): SortKey[] {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (raw) {
-      const parsedCols: unknown = JSON.parse(raw);
-      const parsed = Array.isArray(parsedCols) ? parsedCols as unknown[] : [];
-      const valid = parsed.filter((k): k is SortKey => typeof k === 'string' && ALL_COLUMNS.some((c) => c.key === k));
-      if (valid.length > 0) return valid;
-    }
-  } catch { /* ignore */ }
-  return DEFAULT_COLS;
-}
 
 const DEL_COL_WIDTH = 32;
 const VIRTUAL_ROW_HEIGHT = 37;
@@ -1632,7 +1618,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const isEn = language === 'en';
   const [sortKey, setSortKey] = useState<SortKey>('id');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
-  const [visibleCols, setVisibleCols] = useState<SortKey[]>(loadVisibleCols);
+  const [visibleCols, setVisibleCols] = useState<SortKey[]>(() => settingsVisibleCols ?? DEFAULT_COLS);
   const { data: scriptSources } = useAllScriptSources(visibleCols.includes('scripts'));
   const [showStats, setShowStats] = useState(false);
   const { data: allObjectsData } = useAllObjects();
@@ -1719,8 +1705,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   }, [exportMenuOpen]);
 
   function handleColChange(cols: SortKey[]) {
-    setVisibleCols(cols);
-    localStorage.setItem(LS_KEY, JSON.stringify(cols));
+    persistSettings({ ...appSettings, visibleCols: cols });
   }
 
   function handleHideCol(key: SortKey) {
@@ -1882,7 +1867,6 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   useEffect(() => {
     if (!settingsVisibleCols || settingsVisibleCols.length === 0) return;
     setVisibleCols(settingsVisibleCols);
-    localStorage.setItem(LS_KEY, JSON.stringify(settingsVisibleCols));
   }, [settingsVisibleCols]);
 
   // Sync external colFilters → draft (e.g. context menu, clear from App.tsx)
@@ -2666,10 +2650,9 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
         <ConfirmDialog
           title={isEn ? 'Reset local settings' : 'Lokale Einstellungen zurücksetzen'}
           description={isEn ? 'The following local storage entries will be deleted:' : 'Folgende Local-Storage-Einträge werden gelöscht:'}
-          message={`${LS_KEY}\n${LS_WIDTHS_KEY}`}
+          message={`${LS_WIDTHS_KEY}`}
           confirmLabel={isEn ? 'Reset' : 'Zurücksetzen'}
           onConfirm={() => {
-            localStorage.removeItem(LS_KEY);
             localStorage.removeItem(LS_WIDTHS_KEY);
             setVisibleCols(DEFAULT_COLS);
             setColWidths({ ...effectiveDefaults });
