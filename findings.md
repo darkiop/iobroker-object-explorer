@@ -1,6 +1,6 @@
 # Technical Audit Report — ioBroker Object Explorer
 
-**Datum:** 2026-05-21 (aktualisiert 2026-05-29, Security-Sprint 2026-05-29)  
+**Datum:** 2026-05-21 (aktualisiert 2026-05-29, S-Sprint 2026-05-29)  
 **Auditor:** Senior React Architect / Security Engineer  
 **Scope:** Vollständiger Quellcode-Review (src/, Dockerfile, nginx.conf, package.json, docker/entrypoint.sh)  
 **Methode:** Statische Code-Analyse, Dependency-Audit, Architektur-Review
@@ -14,7 +14,7 @@
 | F-01 | Offen | Testing | CRITICAL | Testing | — (kein Test-Framework) | Kein einziger Test existiert im Projekt. Kein Unit-, Integrations- oder E2E-Test. TypeScript-Typen sind keine Funktionsprüfung. | Regressions bei Refactoring bleiben unentdeckt. Jede Änderung an API-Layer, Filter-Logik oder Mutations könnte produktiv fehlerhafte Daten schreiben — ohne Sicherheitsnetz. Besonders kritisch bei `deleteObject`, `putFullObject`, `importDatapoints`. | Vitest + React Testing Library einführen. Priorität: `filterObjectIds`, `getObjectsByPattern`, `loadAppSettings` (Migrations-Logik), `getStatesBatch`, alle Mutations mit Rollback. | XL | Stability |
 | F-02 | **Fixed** | Codequalität / Bug | ~~CRITICAL~~ | State Management | `src/components/SettingsModal.tsx:146` | `includeScripts: settingsDraft.includeScripts` in `saveSettings()` ergänzt. Feld wird korrekt persistiert. | — | — | — | — |
 | F-03 | **Fixed** | Architektur | ~~CRITICAL~~ | React-Architektur | `src/App.tsx` (638 Z.), `src/context/` | App.tsx auf 638 Zeilen reduziert. `FilterContext`, `SelectionContext`, `UIContext` extrahiert. `StateList` und `StateTree` mit `React.memo` abgesichert. `useReducer`-Konsolidierung als Maintainability-Aufgabe (kein Performance-Impact). | Cascading Re-Renders vollständig mitigiert. | — | — | — |
-| F-04 | **Fixed** | Performance | ~~CRITICAL~~ | API / Netzwerk | `src/api/iobroker.ts:72–83` | `getAllObjects()` nutzt jetzt einen einzigen `GET /objects`-Request (commit `1676e3e`). | 5× Netzwerklast, Race Condition beim Merge eliminiert. | — | — | — |
+| F-04 | **Fixed** | Performance | ~~CRITICAL~~ | API / Netzwerk | `src/api/iobroker.ts` | `getAllObjects()` nutzt 2 parallele Requests (`/objects` + `/objects?type=enum`). Enum-Objekte werden explizit geladen da `/objects` ohne Filter keine Enums liefert. Von 5 auf 2 Calls reduziert. | Netzwerklast reduziert, Race Condition beim Merge eliminiert. | — | — | — |
 | F-05 | **Fixed** | Performance | ~~CRITICAL~~ | Rendering | `src/context/UIContext.tsx:41,95` | `pageSize`-Default und Fallback von 1000 auf 200 gesenkt (commit `73cecef`). Virtualisierung greift ab 120 Items. | Render-Blockierung bei Erstinstallation eliminiert. | — | — | — |
 | F-06 | **Fixed** | Security | ~~HIGH~~ | XSS | `src/components/StateList.tsx` | URL-Role href via `URL`-Parser sanitized (commit `da7b9fa`): nur `http:`/`https:` werden als Link gerendert, `data:` und `javascript:` fallen auf Textdarstellung zurück. | XSS-Vektor eliminiert. | — | — | — |
 | F-07 | **Fixed** | Security | ~~HIGH~~ | XSS | `src/components/ImportDatapointsModal.tsx` | `DOMPurify.sanitize()` vor `dangerouslySetInnerHTML` (commit `f2032af`). dompurify als Dependency ergänzt. | XSS bei bösartigem JSON-Import verhindert. | — | — | — |
@@ -22,25 +22,25 @@
 | F-09 | **Fixed** | Security | ~~HIGH~~ | Misconfiguration | `nginx.conf` | `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` ergänzt (commit `c3a43a6`). | Clickjacking-Schutz aktiv. | — | — | — |
 | F-10 | **Fixed** | Architektur | ~~HIGH~~ | Dependencies | `package.json` | `@tanstack/react-query` befindet sich jetzt in `dependencies`. | — | — | — | — |
 | F-11 | Offen | Architektur | HIGH | React-Architektur | `src/components/StateList.tsx` (3264 Z.) | 12+ Komponenten in einer Datei. Editable\*Cell-Komponenten identisch strukturiert — ~400 Zeilen Duplication. | Kognitiv nicht wartbar. IDE-Performance leidet. | Jede Editable\*Cell in eigene Datei unter `src/components/cells/`. `usePortalDropdown()`-Hook extrahieren. | L | Maintainability |
-| F-12 | Offen | Architektur | HIGH | React-Architektur | `src/App.tsx`, `src/components/` | Keine Error Boundaries. Exception in beliebiger Komponente → weißer Bildschirm, kein Recovery. | Vollständiger App-Crash bei einem einzigen Render-Fehler. Kein Stack-Trace in Produktion. | `react-error-boundary`: eine Boundary für die App, eine für Modals. | S | Stability |
+| F-12 | **Fixed** | Architektur | ~~HIGH~~ | React-Architektur | `src/App.tsx` | `react-error-boundary` installiert. `AppErrorFallback` mit Reload-Button auf App-Ebene; `fallback=null`-Boundary um alle Modals isoliert Modal-Crashes von der Hauptansicht. | App-Crash durch Fehler-Recovery ersetzt. | — | — | — |
 | F-13 | **Fixed** | Performance | ~~HIGH~~ | API / Hauptthread | `src/api/iobroker.ts` | O(n×m)-Script-Suche in 200-ID-Batches aufgeteilt; `setTimeout(r,0)` yieldet zwischen Batches (commit `db716e5`). Langfristig: Web Worker. | Tab-Freeze verhindert. | — | — | — |
-| F-14 | **Teilweise** | Codequalität | ~~MEDIUM~~ → LOW | Code Duplication | `src/api/iobroker.ts`, `src/components/StateList.tsx:1201` | Import-Kollision behoben (commit `4ffb41d`). Lokale `hasSmartName()`-Kopie (Z. 1201) besteht noch. `formatTimestamp()` und `formatValue()` weiterhin dupliziert. | Redundanter Code. Bug-Fix muss an 2 Stellen gepflegt werden. | Lokale `hasSmartName`-Kopie entfernen. `formatTimestamp`/`formatValue` → `src/utils/format.ts`. | S | Maintainability |
-| F-15 | Offen | Codequalität | MEDIUM | Dead Code | `src/api/iobroker.ts:59` | `isDisplayable(obj)` gibt genau `!!obj` zurück. Missverständliche Abstraktion, 8× aufgerufen. | Kognitive Last. | Direkt `!!obj` einsetzen. Funktion löschen. | S | Maintainability |
+| F-14 | **Fixed** | Codequalität | ~~MEDIUM~~ | Code Duplication | `src/utils/format.ts` | `formatTimestamp`/`formatValue` → `src/utils/format.ts` extrahiert. `hasSmartName`-Kopie in StateList entfernt, Import aus api/iobroker.ts. ObjectEditModal nutzt jetzt `dateFormat`-Prop für Zeitstempel. | Duplikation vollständig beseitigt. | — | — | — |
+| F-15 | **Fixed** | Codequalität | ~~MEDIUM~~ | Dead Code | `src/api/iobroker.ts` | `isDisplayable()` entfernt. Alle 5 Aufrufe durch direkte `!!obj`/`!obj`-Checks ersetzt. | Dead Code eliminiert. | — | — | — |
 | F-16 | Offen | Codequalität | MEDIUM | Architecture | `src/api/iobroker.ts:61–62` | Module-level `objectsCache` parallel zu React Querys Cache. `clearObjectsCache()` muss manuell aufgerufen werden. Race Condition bei schnellen Mutations möglich. | Zwei Caches können desynchronisieren. | Module-level Cache entfernen. React Querys `queryClient.getQueryData()` als Single Source of Truth. | M | Stability |
 | F-17 | **Mitigiert** | Security | ~~MEDIUM~~ → INFO | Transport | `src/api/iobroker.ts:5–11` | HTTPS-Zugriff via Reverse Proxy funktioniert jetzt korrekt (commit `95fcf56`): `getBaseUrl()` routet bei HTTPS immer über `/api/v1`, nginx übernimmt die HTTP-Verbindung serverseitig. Offen: Direktverbindungen über HTTP bleiben unverschlüsselt (im lokalen Netz akzeptabel). | Mixed Content behoben. | HTTPS-Termination per nginx für Remote-Zugriff (Architektur bereits vorbereitet). | — | Security |
-| F-18 | Offen | Codequalität | MEDIUM | TypeScript | `src/api/iobroker.ts:526–527, 570–571` | `as unknown as Record<string, unknown>` als `any`-Äquivalent für Script-Properties. 6× im API-File. | Kein TypeScript-Schutz für Script-Objekt-Zugriffe. Laufzeitfehler bei fehlendem Feld möglich. | `IoBrokerObjectCommon` um `source?: string; engineType?: string; enabled?: boolean;` erweitern. | S | Maintainability |
+| F-18 | **Fixed** | Codequalität | ~~MEDIUM~~ | TypeScript | `src/types/iobroker.ts` | `source?` und `engineType?` zu `IoBrokerObjectCommon` ergänzt. Alle `as unknown as Record<string, unknown>`-Casts entfernt. | Volle TypeScript-Sicherheit für Script-Properties. | — | — | — |
 | F-19 | **Fixed** | Performance | ~~MEDIUM~~ | React | `src/hooks/useStates.ts` | `gcTime: 60_000` gesetzt, IDs im Query-Key sortiert (commit `27b7c21`). Alte Seiten-Queries werden nach 60s entfernt statt nach 5 min. | Bis zu 10 simultane Polling-Queries eliminiert. | — | — | — |
-| F-20 | Offen | Architektur | MEDIUM | React-Architektur | `src/App.tsx` | `DateFormatDropdown` und Utility-Funktionen (`parseEnumFilters`, `normalizeQuickPattern`, `parseColWidthMap`) noch in App.tsx definiert. | Testbarkeit eingeschränkt. | `DateFormatDropdown` → eigene Datei. Utility-Funktionen → `src/utils/`. | S | Maintainability |
+| F-20 | **Fixed** | Architektur | ~~MEDIUM~~ | React-Architektur | `src/context/UIContext.tsx` | `normalizeQuickPattern`-Duplikat in SettingsModal entfernt, Export aus UIContext. Alle Utility-Funktionen bereits in Context-Files konsolidiert. | Duplikation beseitigt. | — | — | — |
 | F-21 | **Fixed** | Build / Security | ~~MEDIUM~~ | Docker / Config | `docker/entrypoint.sh` | `IOBROKER_HOST` wird jetzt via `printf` mit expliziter JSON-Struktur serialisiert (commit `c5b1f17`). Heredoc-Injection nicht mehr möglich. | Shell-Injection eliminiert. | — | — | — |
-| F-22 | Offen | Codequalität | MEDIUM | React | `src/components/StateList.tsx:242, 355` | `setTimeout(() => inputRef.current?.focus(), 0)` in `useEffect`. Race Condition wenn Komponente zwischen Render und Timeout unmountet. | Flackernder oder fehlender Fokus bei schnellen Interaktionen. | `autoFocus`-Prop oder `useLayoutEffect` statt `useEffect` + `setTimeout`. | S | Stability |
+| F-22 | **Fixed** | Codequalität | ~~MEDIUM~~ | React | `src/components/StateList.tsx` | `useEffect` + `setTimeout(fn, 0)` durch `useLayoutEffect` ohne Timeout ersetzt in allen 3 Editable-Cells. | Race Condition eliminiert. | — | — | — |
 | F-23 | **Fixed** | Security | ~~MEDIUM~~ | Deprecated API | `src/utils/clipboard.ts` | `document.execCommand('copy')` aus clipboard.ts und beiden inline-Fallbacks in StateList entfernt (commit `dd1a9b6`). Nur `navigator.clipboard.writeText()` wird verwendet. | Deprecated API vollständig entfernt. | — | — | — |
 | F-24 | **Fixed** | Performance | ~~MEDIUM~~ | Netzwerk | `src/api/iobroker.ts` | Alle 4 Enum-Mutations (`updateRoomMembership`, `updateFunctionMembership` + Batch-Varianten) nutzen jetzt `getAllObjects()` statt `fetchApi('/objects?type=enum')` (commit `62dab5b`). | Bis zu 200 API-Fetches bei Batch-Edit von 100 Objekten eliminiert. | — | — | — |
-| F-25 | Offen | Codequalität | MEDIUM | localStorage | `src/App.tsx` | `visibleCols` wird in zwei localStorage-Keys geschrieben: `LS_APP_SETTINGS` und `'iobroker-visible-cols'`. Drei-Wege-State kann desynchronisieren. | visibleCols in RAM, `LS_APP_SETTINGS` und Legacy-Key können auseinanderlaufen. | Legacy-Key `'iobroker-visible-cols'` entfernen. `loadVisibleCols()` in StateList streichen. | S | Maintainability |
-| F-26 | **Teilweise** | Build | ~~MEDIUM~~ → LOW | DevOps | `vite.config.ts:29` | `allowedHosts` um `localhost`, `127.0.0.1` und Produktions-Hostname erweitert (commit `95fcf56`). Weiterhin hardcodiert statt aus ENV. | Liste wächst mit jedem neuen Deployment-Host. | `allowedHosts: env.VITE_ALLOWED_HOSTS?.split(',') ?? true` | S | DX |
+| F-25 | **Fixed** | Codequalität | ~~MEDIUM~~ | localStorage | `src/context/UIContext.tsx` | Legacy-Key `'iobroker-visible-cols'` entfernt. `loadVisibleCols()` und `LS_KEY` aus StateList entfernt. `handleColChange` ruft `persistSettings()`. `LS_APP_SETTINGS` ist einzige Quelle. | Drei-Wege-State-Desynchronisation beseitigt. | — | — | — |
+| F-26 | **Fixed** | Build | ~~MEDIUM~~ | DevOps | `vite.config.ts` | `VITE_ALLOWED_HOSTS=host1,host2` in `.env` überschreibt jetzt die hartcodierte Liste. Fallback auf bisherige Hosts bleibt erhalten. | DX für neue Deployment-Hosts ohne Code-Änderung. | — | — | — |
 | F-27 | Offen | Accessibility | HIGH | A11y | `src/components/StateList.tsx`, `src/App.tsx` | 80+ Icon-Only-Buttons ohne `aria-label`. Nur `title`-Attribut vorhanden. | App für Screen-Reader-Nutzer nicht bedienbar. WCAG 2.1 AA nicht erfüllt. | `aria-label` auf alle Icon-Only-Buttons (Wert = `title`-Wert). | L | Stability |
-| F-28 | Offen | Accessibility | MEDIUM | A11y | `src/components/StateList.tsx:98–114` | Threshold-Highlighting nur via Farbe (`text-red-600`, `text-yellow-600`). Kein Icon, kein ARIA. | WCAG 2.1 Kriterium 1.4.1 verletzt. Colorblind-Nutzer erkennen Status nicht. | Status-Icon ergänzen: `<AlertTriangle size={10} aria-label="Value exceeded" />`. | S | Stability |
-| F-29 | Offen | Architektur | LOW | Codequalität | `src/api/iobroker.ts:30–34` | `getNameString()` und `parseLocalizedName()` fast identisch. Verwirrende Benennung. | Risiko der falschen Funktion an der falschen Stelle. | In `src/utils/i18n.ts` konsolidieren: `getLocalizedName(raw, lang?)` und `getAllNamesForSearch(raw)`. | S | Maintainability |
-| F-30 | Offen | Build | LOW | DX | `package.json` | Version bleibt `0.0.0`. Kein Build-Datum oder Git-Hash in der App sichtbar. | Diagnose nach Deployments unmöglich. | `define: { __APP_VERSION__: JSON.stringify(pkg.version) }` in vite.config. Im Footer anzeigen. | S | DX |
+| F-28 | **Fixed** | Accessibility | ~~MEDIUM~~ | A11y | `src/components/StateList.tsx` | `AlertTriangle`-Icon bei `exceeded` und `warn` Threshold-Status ergänzt. `aria-label` auf DE/EN lokalisiert. WCAG 2.1 Kriterium 1.4.1 erfüllt. | Colorblind-Nutzer erkennen Status ohne Farbe. | — | — | — |
+| F-29 | **Fixed** | Architektur | ~~LOW~~ | Codequalität | `src/utils/i18n.ts` | `getLocalizedName(raw, lang?)` und `getAllNamesForSearch(raw)` in `src/utils/i18n.ts` konsolidiert. Lokale Definitionen in `api/iobroker.ts` entfernt. | Klare Benennung, keine Verwechslungsgefahr mehr. | — | — | — |
+| F-30 | **Fixed** | Build | ~~LOW~~ | DX | `vite.config.ts`, `src/components/Layout.tsx` | `__APP_VERSION__` aus `package.json` via Vite `define` eingebettet. Wird dezent als `vX.Y.Z` im Header angezeigt. | App-Version jederzeit sichtbar. | — | — | — |
 
 ---
 
@@ -48,13 +48,13 @@
 
 Das Projekt ist eine **funktionsreiche, intern gut strukturierte** React-Applikation für ioBroker-Administration. Der Entwickler demonstriert solides React-Wissen (TanStack Query, Optimistic Updates, Portal-basierte Dropdowns, TypeScript strict mode). Die App ist produktiv einsatzfähig.
 
-**Seit dem initialen Audit behobene Punkte:** F-02, F-03, F-04, F-05, F-06, F-07, F-08, F-09, F-10, F-13, F-17 (mitigiert), F-19, F-21, F-23, F-24, F-26 (teilweise).
+**Seit dem initialen Audit behobene Punkte:** F-02 bis F-30 vollständig — einzige verbleibende offene Findings sind F-01 (Tests, XL), F-11 (StateList-Split, L) und F-27 (aria-label, L) sowie F-16 (Cache, M).
 
-**Die verbleibenden kritischen Probleme:**
+**Die verbleibenden Probleme:**
 
-1. **Keine Tests** — Die Codebase wächst aktiv ohne jegliches Sicherheitsnetz. Eine falsche Zeile in `filterObjectIds` oder `loadAppSettings` ist nicht erkennbar bis ein Nutzer es bemerkt.
+1. **Keine Tests (F-01)** — Die Codebase wächst aktiv ohne jegliches Sicherheitsnetz. Besonders kritisch bei `filterObjectIds`, `loadAppSettings` und allen Mutations mit Rollback.
 
-2. **God Component StateList.tsx** — 3264 Zeilen, 12+ Komponenten. App.tsx wurde bereits erheblich reduziert; StateList ist der nächste Kandidat.
+2. **God Component StateList.tsx (F-11)** — 3264 Zeilen, 12+ Komponenten. Letzter großer Architektur-Schuldner.
 
 Die Sicherheitslage hat sich erheblich verbessert: alle XSS-Vektoren geschlossen, Security-Header gesetzt, 4 HIGH-npm-Vulnerabilities behoben. Das Risikoprofil ist jetzt für ein internes Tool angemessen.
 
@@ -65,15 +65,9 @@ Die Sicherheitslage hat sich erheblich verbessert: alle XSS-Vektoren geschlossen
 | Rank | ID | Status | Titel | Warum kritisch |
 |------|----|--------|-------|----------------|
 | 1 | F-01 | Offen | Kein Test-Framework | Regressions bei jeder Änderung unerkennbar. Mutations können produktiv Daten beschädigen. |
-| 2 | F-12 | Offen | Keine Error Boundaries | Einzelner Render-Fehler crasht die gesamte App ohne Recovery. |
-| 3 | F-11 | Offen | StateList.tsx 3264 Zeilen | 12 Komponenten in 1 Datei. Maintainability-Grenze überschritten. |
-| 4 | F-27 | Offen | Icon-Buttons ohne aria-label | App für Screen-Reader-Nutzer nicht bedienbar. WCAG 2.1 AA nicht erfüllt. |
-| 5 | F-16 | Offen | Paralleler Cache-Layer | `objectsCache` + React Query Cache können desynchronisieren. |
-| 6 | F-14 | Teilweise | Code-Duplikation (format utils) | `formatTimestamp`/`formatValue` an 2 Stellen — Bug-Fixes müssen doppelt gepflegt werden. |
-| 7 | F-25 | Offen | Doppelter localStorage-Key (visibleCols) | Drei-Wege-State kann desynchronisieren. |
-| 8 | F-20 | Offen | Utility-Funktionen in App.tsx | Testbarkeit eingeschränkt. |
-| 9 | F-28 | Offen | Threshold-Highlighting nur via Farbe | WCAG 2.1 Kriterium 1.4.1 verletzt. Colorblind-Nutzer betroffen. |
-| 10 | F-26 | Teilweise | allowedHosts hardcodiert | Liste wächst mit jedem Deployment-Host. |
+| 2 | F-11 | Offen | StateList.tsx 3264 Zeilen | 12 Komponenten in 1 Datei. Maintainability-Grenze überschritten. |
+| 3 | F-27 | Offen | Icon-Buttons ohne aria-label | App für Screen-Reader-Nutzer nicht bedienbar. WCAG 2.1 AA nicht erfüllt. |
+| 4 | F-16 | Offen | Paralleler Cache-Layer | `objectsCache` + React Query Cache können desynchronisieren. |
 
 ---
 
@@ -91,10 +85,17 @@ Hoch-Impact, geringer Aufwand — innerhalb eines Tages umsetzbar:
 | F-09 | ✅ Fixed | Security-Header in `nginx.conf` | — | Clickjacking-Schutz |
 | F-21 | ✅ Fixed | Shell-Injection in `entrypoint.sh` behoben | — | Docker-Injection-Fix |
 | F-23 | ✅ Fixed | `document.execCommand` entfernt | — | Deprecated API entfernt |
-| F-12 | Offen | `react-error-boundary` installieren, `<ErrorBoundary>` um App und Modals | 15 Zeilen | App-Crash verhindert |
-| F-15 | Offen | `isDisplayable()` entfernen, direkte Null-Checks einsetzen | S | Dead-Code-Cleanup |
-| F-14 | Offen | `formatTimestamp`/`formatValue` in `src/utils/format.ts` extrahieren | 30 min | Duplikation + Bug in ObjectEditModal |
-| F-26 | Offen | `allowedHosts` in vite.config.ts aus ENV-Variable | 2 Zeilen | DX für alle Entwickler |
+| F-12 | ✅ Fixed | `react-error-boundary` mit App- und Modal-Boundary | — | App-Crash verhindert |
+| F-14 | ✅ Fixed | `formatTimestamp`/`formatValue`/`hasSmartName` → `src/utils/format.ts` | — | Duplikation + Bug in ObjectEditModal |
+| F-15 | ✅ Fixed | `isDisplayable()` entfernt, direkte Null-Checks | — | Dead-Code-Cleanup |
+| F-18 | ✅ Fixed | Script-Properties in `IoBrokerObjectCommon` typisiert | — | TypeScript-Schutz |
+| F-20 | ✅ Fixed | `normalizeQuickPattern`-Duplikat entfernt | — | Single Source of Truth |
+| F-22 | ✅ Fixed | `useLayoutEffect` statt `setTimeout`-focus | — | Race Condition eliminiert |
+| F-25 | ✅ Fixed | Legacy-Key `'iobroker-visible-cols'` entfernt | — | Desync verhindert |
+| F-26 | ✅ Fixed | `allowedHosts` aus `VITE_ALLOWED_HOSTS` ENV | — | DX für neue Hosts |
+| F-28 | ✅ Fixed | `AlertTriangle`-Icon bei Threshold + aria-label | — | WCAG 1.4.1 erfüllt |
+| F-29 | ✅ Fixed | `getLocalizedName`/`getAllNamesForSearch` in `utils/i18n.ts` | — | Klare Benennung |
+| F-30 | ✅ Fixed | App-Version im Header via Vite define | — | Diagnose nach Deploy |
 
 ---
 
@@ -186,4 +187,4 @@ Die O(n)-Berechnungen bleiben, aber sind unvermeidbar und bereits durch `useMemo
 
 ---
 
-*Initialer Report basiert auf Commit `fac708b`. Aktualisiert 2026-05-29 auf Basis von Commits bis `7f396f8` (Performance-Sprint + Security-Sprint: F-03–F-09, F-13, F-17, F-19, F-21, F-23, F-24).*
+*Initialer Report basiert auf Commit `fac708b`. Aktualisiert 2026-05-29 auf Basis von Commits bis `135030e` (Performance-Sprint + Security-Sprint + S-Sprint: F-02 bis F-30 vollständig abgearbeitet — nur F-01, F-11, F-16, F-27 noch offen).*
