@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect, memo } from 'react';
-import { ChevronRight, ChevronDown, ChevronsUpDown, ChevronsDownUp, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil, LayoutList, LayoutGrid, Plus, FileCode2, Link2, UserRound, ShieldAlert, Download, Trash2, Filter, BarChart2 } from 'lucide-react';
+import { useState, useMemo, useEffect, useCallback, useRef, memo } from 'react';
+import { ChevronRight, ChevronDown, ChevronsUpDown, ChevronsDownUp, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil, LayoutList, LayoutGrid, Plus, FileCode2, Link2, UserRound, ShieldAlert, Download, Trash2, Filter } from 'lucide-react';
 import type { TreeNode, IoBrokerObject } from '../types/iobroker';
 import ObjectEditModal from './ObjectEditModal';
 import ContextMenu from './ContextMenu';
@@ -7,39 +7,18 @@ import type { ContextMenuEntry } from './ContextMenu';
 import ConfirmDialog from './ConfirmDialog';
 import { useDeleteSubtree } from '../hooks/useStates';
 import { copyText } from '../utils/clipboard';
-import TreeStatsModal from './TreeStatsModal';
+import { useFilterContext } from '../context/FilterContext';
+import { useSelectionContext } from '../context/SelectionContext';
+import { useAppSettingsContext } from '../context/UIContext';
 
 interface StateTreeProps {
   stateIds: string[];
   allObjects: Record<string, IoBrokerObject>;
-  selectedId: string | null;
-  onSelect: (id: string) => void;
-  onSearch: (pattern: string) => void;
-  onTreeScope: (prefix: string) => void;
-  onCreateAtPath: (prefix: string) => void;
-  historyOnly: boolean;
-  smartOnly: boolean;
   historyIds: Set<string>;
   smartIds: Set<string>;
-  expandToDepth?: { depth: number; seq: number };
-  treeFilter?: string | null;
-  onClearTreeFilter?: () => void;
-  treeSearch?: string;
-  onTreeSearchChange?: (v: string) => void;
-  pattern?: string;
-  language?: 'en' | 'de';
-  onOpenAliasReplace?: (initialStr?: string) => void;
-  onAutoCreateAlias?: (deviceId: string) => void;
-  treeFontSize?: 'small' | 'normal' | 'large' | 'xl';
-  treeCountMode?: 'off' | 'states' | 'objects' | 'both';
-  treeViewMode?: 'adapter' | 'path';
-  onTreeViewModeChange?: (mode: 'adapter' | 'path') => void;
-  scriptUsedIds?: Set<string> | null;
-  scriptsFetching?: boolean;
-  includeScripts?: boolean;
-  onIncludeScriptsChange?: (v: boolean) => void;
-  onScriptUsedIdsChange?: (ids: Set<string>) => void;
-  onRequestRefreshScripts?: () => void;
+  onCreateAtPath: (prefix: string) => void;
+  onSearch: (pattern: string) => void;
+  onTreeScope: (prefix: string) => void;
 }
 
 function buildTree(ids: string[], structureIds: string[] = []): TreeNode {
@@ -583,23 +562,39 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
 });
 
 
-function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeScope, onCreateAtPath, historyOnly, smartOnly, historyIds, smartIds, expandToDepth, treeFilter = null, treeSearch: treeSearchProp = '', onTreeSearchChange, pattern, language = 'en', onOpenAliasReplace, onAutoCreateAlias, treeFontSize = 'normal', treeCountMode = 'objects', treeViewMode: treeViewModeProp = 'adapter', onTreeViewModeChange, scriptUsedIds, scriptsFetching, includeScripts, onIncludeScriptsChange, onScriptUsedIdsChange, onRequestRefreshScripts }: StateTreeProps) {
+function StateTree({ stateIds, allObjects, historyIds, smartIds, onCreateAtPath, onSearch, onTreeScope }: StateTreeProps) {
+  const { treeFilter, treeSearch, setTreeSearch, treeExpandSignal, pattern, historyOnly, smartOnly } = useFilterContext();
+  const { selectedId, setSelectedId, setAliasReplaceInitialStr, setAutoAliasDeviceId } = useSelectionContext();
+  const { appSettings, persistSettings } = useAppSettingsContext();
+
+  const language = appSettings.language;
   const isEn = language === 'en';
+  const treeFontSize = appSettings.treeFontSize;
+  const treeCountMode = appSettings.treeCountMode;
   const nodeFontClass = treeFontSize === 'small' ? 'text-xs' : treeFontSize === 'large' ? 'text-base' : treeFontSize === 'xl' ? 'text-lg' : 'text-sm';
   const [expandSignal, setExpandSignal] = useState<{ depth: number; seq: number }>({ depth: 0, seq: 0 });
   const [showFolders,  setShowFolders]  = useState(true);
   const [showDevices,  setShowDevices]  = useState(true);
   const [showChannels, setShowChannels] = useState(true);
-  const [treeViewMode, setTreeViewMode] = useState<'path' | 'adapter'>(treeViewModeProp);
-  const handleTreeViewModeChange = (m: 'adapter' | 'path') => { setTreeViewMode(m); onTreeViewModeChange?.(m); };
-  const [showStats, setShowStats] = useState(false);
-  const treeSearch = treeSearchProp;
-  const setTreeSearch = onTreeSearchChange ?? (() => {});
+  const [treeViewMode, setTreeViewMode] = useState<'path' | 'adapter'>(appSettings.treeViewMode);
+  const handleTreeViewModeChange = (m: 'adapter' | 'path') => {
+    setTreeViewMode(m);
+    persistSettings({ ...appSettings, treeViewMode: m });
+  };
+  const onOpenAliasReplace = useCallback((initialStr?: string) => {
+    setAliasReplaceInitialStr(initialStr ?? null);
+  }, [setAliasReplaceInitialStr]);
+  const onAutoCreateAlias = useCallback((deviceId: string) => {
+    setAutoAliasDeviceId(deviceId);
+  }, [setAutoAliasDeviceId]);
 
+  const prevExpandSeqRef = useRef<number | undefined>(undefined);
   useEffect(() => {
-    if (!expandToDepth) return;
-    setExpandSignal(s => ({ depth: expandToDepth.depth, seq: s.seq + 1 }));
-  }, [expandToDepth]);
+    if (!treeExpandSignal) return;
+    if (treeExpandSignal.seq === prevExpandSeqRef.current) return;
+    prevExpandSeqRef.current = treeExpandSignal.seq;
+    setExpandSignal(s => ({ depth: treeExpandSignal.depth, seq: s.seq + 1 }));
+  }, [treeExpandSignal]);
 
   function matchesTreeSearch(id: string, lower: string): boolean {
     if (!lower) return true;
@@ -684,22 +679,6 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
         >
           {treeViewMode === 'adapter' ? <LayoutList size={13} /> : <LayoutGrid size={13} />}
         </button>
-        <button
-          onClick={() => setShowStats(true)}
-          className="flex items-center justify-center px-2 py-1 text-xs rounded bg-gray-200/50 text-gray-500 border border-gray-300/50 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-300 dark:border-gray-600/50 dark:hover:bg-gray-700"
-          title={isEn ? 'Statistics' : 'Statistik'}
-        >
-          <BarChart2 size={13} />
-        </button>
-      </div>
-      <div className="flex items-center justify-center gap-3 px-3 py-1.5 border-b border-gray-200 dark:border-gray-700 shrink-0 bg-gray-50/50 dark:bg-gray-800/30">
-        <span className="text-xs text-gray-500 dark:text-gray-400">
-          {isEn ? 'Objects' : 'Objekte'}: <span className="font-semibold text-gray-700 dark:text-gray-200">{(tree.totalCount ?? 0).toLocaleString()}</span>
-        </span>
-        <span className="text-gray-300 dark:text-gray-600">|</span>
-        <span className="text-xs text-gray-500 dark:text-gray-400">
-          {isEn ? 'States' : 'States'}: <span className="font-semibold text-gray-700 dark:text-gray-200">{(tree.count ?? 0).toLocaleString()}</span>
-        </span>
       </div>
       <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 shrink-0">
         <div className="relative">
@@ -752,7 +731,7 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
               node={child}
               depth={0}
               selectedId={selectedId}
-              onSelect={onSelect}
+              onSelect={setSelectedId}
               onSearch={onSearch}
               onTreeScope={onTreeScope}
               onCreateAtPath={onCreateAtPath}
@@ -775,23 +754,16 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
           ))
         )}
       </div>
+      <div className="flex items-center justify-center gap-3 px-3 py-1.5 border-t border-gray-200 dark:border-gray-700 shrink-0 bg-gray-50/50 dark:bg-gray-800/30">
+        <span className="text-xs text-gray-500 dark:text-gray-400">
+          {isEn ? 'Objects' : 'Objekte'}: <span className="font-semibold text-gray-700 dark:text-gray-200">{(tree.totalCount ?? 0).toLocaleString()}</span>
+        </span>
+        <span className="text-gray-300 dark:text-gray-600">|</span>
+        <span className="text-xs text-gray-500 dark:text-gray-400">
+          States: <span className="font-semibold text-gray-700 dark:text-gray-200">{(tree.count ?? 0).toLocaleString()}</span>
+        </span>
+      </div>
     </div>
-    {showStats && (
-      <TreeStatsModal
-        onClose={() => setShowStats(false)}
-        allObjects={allObjects}
-        historyIds={historyIds}
-        smartIds={smartIds}
-        language={language ?? 'en'}
-        onSelectNamespace={(ns) => onTreeScope(`${ns}.`)}
-        scriptUsedIds={scriptUsedIds}
-        scriptsFetching={scriptsFetching}
-        includeScripts={includeScripts}
-        onIncludeScriptsChange={onIncludeScriptsChange}
-        onScriptUsedIdsChange={onScriptUsedIdsChange}
-        onRequestRefreshScripts={onRequestRefreshScripts}
-      />
-    )}
     </>
   );
 }

@@ -4,53 +4,38 @@ import { Sun, Moon, Gem, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Pe
 import { useTheme } from '../context/ThemeContext';
 import LanguageDropdown from './LanguageDropdown';
 import { validateHost, validatePort } from '../utils/validation';
+import { useUIContext } from '../context/UIContext';
+import { useFilterContext } from '../context/FilterContext';
 
 const LS_HOST_KEY = 'ioBrokerHost';
 
 interface LayoutProps {
   sidebar: React.ReactNode;
   children: React.ReactNode;
-  onSidebarToggle?: () => void;
-  onOpenSettings?: () => void;
-  onLanguageChange?: (language: 'en' | 'de') => void;
-  language?: 'en' | 'de';
   apiConnected?: boolean;
-  onShowShortcuts?: () => void;
   lastUpdated?: number;
-  adminPort?: number;
   onManualRefresh?: () => void;
-  objectsRefreshInterval?: string;
-  scriptsFetching?: boolean;
-  onRequestRefreshScripts?: () => void;
-  confirmScriptRefresh?: boolean;
   onConfirmScriptRefresh?: () => void;
-  onCancelScriptRefresh?: () => void;
-  scriptLastUpdated?: number;
 }
 
 const LS_SIDEBAR_WIDTH = 'iobroker-explorer-sidebar-width';
 const LS_SIDEBAR_COLLAPSED = 'iobroker-explorer-sidebar-collapsed';
 
-export default function Layout({
-  sidebar,
-  children,
-  onSidebarToggle,
-  onOpenSettings,
-  onLanguageChange,
-  language = 'en',
-  apiConnected = true,
-  onShowShortcuts,
-  lastUpdated,
-  adminPort = 8081,
-  onManualRefresh,
-  objectsRefreshInterval,
-  scriptsFetching,
-  onRequestRefreshScripts,
-  confirmScriptRefresh,
-  onConfirmScriptRefresh,
-  onCancelScriptRefresh,
-  scriptLastUpdated,
-}: LayoutProps) {
+export default function Layout({ sidebar, children, apiConnected = true, lastUpdated, onManualRefresh, onConfirmScriptRefresh }: LayoutProps) {
+  const {
+    appSettings, scriptsFetching, confirmScriptRefresh, scriptLastUpdated,
+    setConfirmScriptRefresh, handleLanguageChange, openSettings, setShortcutsOpen,
+  } = useUIContext();
+  const { handleSidebarToggle } = useFilterContext();
+  const language = appSettings.language;
+  const adminPort = appSettings.adminPort;
+  const objectsRefreshInterval = appSettings.objectsRefreshInterval;
+  const onSidebarToggle = handleSidebarToggle;
+  const onOpenSettings = openSettings;
+  const onLanguageChange = handleLanguageChange;
+  const onShowShortcuts = () => setShortcutsOpen(true);
+  const onRequestRefreshScripts = () => setConfirmScriptRefresh(true);
+  const onCancelScriptRefresh = () => setConfirmScriptRefresh(false);
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const stored = parseInt(localStorage.getItem(LS_SIDEBAR_WIDTH) ?? '', 10);
     return Number.isFinite(stored) ? Math.max(180, Math.min(600, stored)) : 360;
@@ -292,6 +277,7 @@ export default function Layout({
           )}
         </div>
         <div className="flex items-center gap-3">
+          <span className="text-[10px] font-mono text-gray-400 dark:text-gray-600 select-none" title="App version">v{__APP_VERSION__}</span>
           <LanguageDropdown value={language} onChange={(next) => onLanguageChange?.(next)} compact />
           {currentHost && (
             <a
@@ -355,7 +341,7 @@ export default function Layout({
 
 
         {/* Main Content */}
-        <main className="flex-1 overflow-hidden p-4 flex flex-col">{children}</main>
+        <main className="flex-1 overflow-hidden p-4 flex flex-col bg-white dark:bg-gray-900">{children}</main>
       </div>
     </div>
     {confirmScriptRefresh && createPortal(

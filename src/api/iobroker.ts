@@ -1,8 +1,12 @@
 import type { IoBrokerState, IoBrokerObject, IoBrokerObjectCommon, HistoryEntry, HistoryOptions } from '../types/iobroker';
+import { getLocalizedName, getAllNamesForSearch } from '../utils/i18n';
 
 const LS_HOST_KEY = 'ioBrokerHost';
 
 function getBaseUrl(): string {
+  if (window.location.protocol === 'https:') {
+    return '/api/v1';
+  }
   const host = localStorage.getItem(LS_HOST_KEY) ?? window.__CONFIG__?.ioBrokerHost;
   return host ? `http://${host}/v1` : '/api/v1';
 }
@@ -23,16 +27,6 @@ export function isGlobPattern(pattern: string): boolean {
   return pattern.includes('*');
 }
 
-function parseLocalizedName(raw: string | Record<string, string>): string {
-  if (typeof raw === 'string') return raw;
-  return raw.de || raw.en || Object.values(raw)[0] || '';
-}
-
-function getNameString(name: string | Record<string, string> | undefined): string {
-  if (!name) return '';
-  if (typeof name === 'string') return name;
-  return Object.values(name).join(' ');
-}
 
 function scoreObject(id: string, obj: IoBrokerObject, query: string): number {
   const q = query.toLowerCase();
@@ -40,7 +34,7 @@ function scoreObject(id: string, obj: IoBrokerObject, query: string): number {
   if (idLow === q) return 100;
   if (idLow.startsWith(q)) return 80;
   if (idLow.includes(q)) return 60;
-  const name = getNameString(obj.common?.name).toLowerCase();
+  const name = getAllNamesForSearch(obj.common?.name).toLowerCase();
   if (name && name.includes(q)) return 50;
   const rawAliasId = obj.common?.alias?.id;
   const aliasId = (typeof rawAliasId === 'object'
@@ -53,9 +47,6 @@ function scoreObject(id: string, obj: IoBrokerObject, query: string): number {
   return 0;
 }
 
-function isDisplayable(obj: IoBrokerObject | undefined): boolean {
-  return !!obj;
-}
 
 // Objects: einmalig laden und cachen (Baum-Struktur + Metadaten)
 let objectsCache: Record<string, IoBrokerObject> | null = null;
@@ -72,12 +63,9 @@ export async function getAllObjects(): Promise<Record<string, IoBrokerObject>> {
 
   objectsCachePromise = Promise.all([
     fetchApi<Record<string, IoBrokerObject>>('/objects'),
-    fetchApi<Record<string, IoBrokerObject>>('/objects?type=device'),
-    fetchApi<Record<string, IoBrokerObject>>('/objects?type=channel'),
-    fetchApi<Record<string, IoBrokerObject>>('/objects?type=folder'),
     fetchApi<Record<string, IoBrokerObject>>('/objects?type=enum'),
-  ]).then(([states, devices, channels, folders, enums]) => {
-    objectsCache = { ...states, ...devices, ...channels, ...folders, ...enums };
+  ]).then(([all, enums]) => {
+    objectsCache = { ...all, ...enums };
     objectsCachePromise = null;
     return objectsCache;
   });
@@ -92,7 +80,7 @@ export async function getObjectsByPattern(pattern: string, fulltext = true, exac
     const result: Record<string, IoBrokerObject> = {};
     const regex = compilePattern(pattern);
     for (const [id, obj] of Object.entries(all)) {
-      if (isDisplayable(obj) && regex.test(id)) {
+      if (!!obj && regex.test(id)) {
         result[id] = obj;
       }
     }
@@ -104,7 +92,7 @@ export async function getObjectsByPattern(pattern: string, fulltext = true, exac
       const q = pattern.toLowerCase();
       const result: Record<string, IoBrokerObject> = {};
       for (const [id, obj] of Object.entries(all)) {
-        if (isDisplayable(obj) && id.toLowerCase() === q) {
+        if (!!obj && id.toLowerCase() === q) {
           result[id] = obj;
           break;
         }
@@ -115,7 +103,7 @@ export async function getObjectsByPattern(pattern: string, fulltext = true, exac
     const q = pattern.toLowerCase();
     const result: Record<string, IoBrokerObject> = {};
     for (const [id, obj] of Object.entries(all)) {
-      if (isDisplayable(obj) && id.toLowerCase().includes(q)) {
+      if (!!obj && id.toLowerCase().includes(q)) {
         result[id] = obj;
       }
     }
@@ -126,7 +114,7 @@ export async function getObjectsByPattern(pattern: string, fulltext = true, exac
     const q = pattern.toLowerCase();
     const result: Record<string, IoBrokerObject> = {};
     for (const [id, obj] of Object.entries(all)) {
-      if (!isDisplayable(obj)) continue;
+      if (!obj) continue;
       if (id.toLowerCase() === q) {
         result[id] = obj;
         break;
@@ -138,7 +126,7 @@ export async function getObjectsByPattern(pattern: string, fulltext = true, exac
   // Volltext-Suche: ID, Name, Beschreibung, Alias-Ziel
   const scored: Array<[string, IoBrokerObject, number]> = [];
   for (const [id, obj] of Object.entries(all)) {
-    if (!isDisplayable(obj)) continue;
+    if (!obj) continue;
     const score = scoreObject(id, obj, pattern);
     if (score > 0) scored.push([id, obj, score]);
   }
@@ -240,7 +228,7 @@ export async function getRoomMap(): Promise<Record<string, string>> {
     if (!obj.enums) continue;
     for (const [enumId, enumName] of Object.entries(obj.enums)) {
       if (enumId.startsWith('enum.rooms.')) {
-        map[id] = parseLocalizedName(enumName);
+        map[id] = getLocalizedName(enumName);
         break;
       }
     }
@@ -277,7 +265,8 @@ export function hasHistory(obj: IoBrokerObject): boolean {
   return obj.common?.custom?.['sql.0']?.enabled === true;
 }
 
-export function hasSmartName(obj: IoBrokerObject): boolean {
+export function hasSmartName(obj: IoBrokerObject | undefined): boolean {
+  if (!obj) return false;
   const sn = obj.common?.smartName;
   if (!sn) return false;
   if (typeof sn === 'string') return sn.trim().length > 0;
@@ -380,7 +369,7 @@ export async function getFunctionMap(): Promise<Record<string, string>> {
     if (!obj.enums) continue;
     for (const [enumId, enumName] of Object.entries(obj.enums)) {
       if (enumId.startsWith('enum.functions.')) {
-        map[id] = parseLocalizedName(enumName);
+        map[id] = getLocalizedName(enumName);
         break;
       }
     }
@@ -401,7 +390,7 @@ export async function getFunctionEnums(): Promise<Array<{ id: string; name: stri
   for (const [id, obj] of Object.entries(res)) {
     if (!id.startsWith('enum.functions.')) continue;
     const raw = obj.common?.name;
-    const name = raw ? parseLocalizedName(raw) || id : id;
+    const name = raw ? getLocalizedName(raw) || id : id;
     fns.push({ id, name });
   }
   return fns.sort((a, b) => a.name.localeCompare(b.name));
@@ -409,7 +398,7 @@ export async function getFunctionEnums(): Promise<Array<{ id: string; name: stri
 
 export async function updateFunctionMembership(objectId: string, oldFnEnumId: string | null, newFnEnumId: string | null): Promise<void> {
   if (oldFnEnumId === newFnEnumId) return;
-  const res = await fetchApi<Record<string, IoBrokerObject>>('/objects?type=enum');
+  const res = await getAllObjects();
 
   if (oldFnEnumId && res[oldFnEnumId]) {
     const obj = res[oldFnEnumId];
@@ -425,7 +414,7 @@ export async function updateFunctionMembership(objectId: string, oldFnEnumId: st
 }
 
 export async function updateFunctionMembershipBatch(objectIds: string[], newFnEnumId: string | null): Promise<void> {
-  const res = await fetchApi<Record<string, IoBrokerObject>>('/objects?type=enum');
+  const res = await getAllObjects();
   const objectIdSet = new Set(objectIds);
 
   // Remove selected IDs from all function enums they currently belong to
@@ -453,7 +442,7 @@ export async function getRoomEnums(): Promise<Array<{ id: string; name: string }
   for (const [id, obj] of Object.entries(res)) {
     if (!id.startsWith('enum.rooms.')) continue;
     const raw = obj.common?.name;
-    const name = raw ? parseLocalizedName(raw) || id : id;
+    const name = raw ? getLocalizedName(raw) || id : id;
     rooms.push({ id, name });
   }
   return rooms.sort((a, b) => a.name.localeCompare(b.name));
@@ -461,7 +450,7 @@ export async function getRoomEnums(): Promise<Array<{ id: string; name: string }
 
 export async function updateRoomMembership(objectId: string, oldRoomEnumId: string | null, newRoomEnumId: string | null): Promise<void> {
   if (oldRoomEnumId === newRoomEnumId) return;
-  const res = await fetchApi<Record<string, IoBrokerObject>>('/objects?type=enum');
+  const res = await getAllObjects();
 
   if (oldRoomEnumId && res[oldRoomEnumId]) {
     const obj = res[oldRoomEnumId];
@@ -477,7 +466,7 @@ export async function updateRoomMembership(objectId: string, oldRoomEnumId: stri
 }
 
 export async function updateRoomMembershipBatch(objectIds: string[], newRoomEnumId: string | null): Promise<void> {
-  const res = await fetchApi<Record<string, IoBrokerObject>>('/objects?type=enum');
+  const res = await getAllObjects();
   const objectIdSet = new Set(objectIds);
 
   // Remove selected IDs from all room enums they currently belong to
@@ -523,7 +512,7 @@ async function fetchScriptSources(): Promise<string> {
   const res = await fetchApi<Record<string, IoBrokerObject>>('/objects?type=script');
   return Object.entries(res)
     .filter(([id, obj]) => id.startsWith('script.js.') && obj.type === 'script')
-    .map(([, obj]) => ((obj.common as unknown as Record<string, unknown>)?.source as string) ?? '')
+    .map(([, obj]) => obj.common?.source ?? '')
     .join('\n');
 }
 
@@ -538,7 +527,14 @@ export async function getScriptUsedIds(allObjectIds: string[], forceRefresh = fa
     }
   }
   const sources = await fetchScriptSources();
-  const used = allObjectIds.filter((id) => sources.includes(id));
+  const used: string[] = [];
+  const BATCH = 200;
+  for (let i = 0; i < allObjectIds.length; i += BATCH) {
+    for (const id of allObjectIds.slice(i, i + BATCH)) {
+      if (sources.includes(id)) used.push(id);
+    }
+    if (i + BATCH < allObjectIds.length) await new Promise<void>(r => setTimeout(r, 0));
+  }
   try {
     localStorage.setItem(LS_SCRIPT_IDS_KEY, JSON.stringify(used));
     localStorage.setItem(LS_SCRIPT_IDS_TS_KEY, String(Date.now()));
@@ -567,14 +563,13 @@ export async function findScriptsUsingObject(objectId: string): Promise<ScriptUs
   const results: ScriptUsage[] = [];
   for (const [scriptId, obj] of Object.entries(res)) {
     if (!scriptId.startsWith('script.js.') || obj.type !== 'script') continue;
-    const common = obj.common as unknown as Record<string, unknown>;
-    const source: string = (common?.source as string) ?? '';
+    const source = obj.common?.source ?? '';
     if (!source.includes(objectId)) continue;
     results.push({
       scriptId,
-      scriptName: parseLocalizedName(obj.common?.name) || scriptId,
-      enabled: Boolean(common?.enabled),
-      engineType: String(common?.engineType ?? ''),
+      scriptName: getLocalizedName(obj.common?.name) || scriptId,
+      enabled: Boolean(obj.common?.enabled),
+      engineType: String(obj.common?.engineType ?? ''),
     });
   }
   return results.sort((a, b) => a.scriptId.localeCompare(b.scriptId));

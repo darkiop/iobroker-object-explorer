@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useRef, useEffect, useImperativeHandle } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useLayoutEffect, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Folder, Cpu, Layers, FileCode2, ToggleLeft, Hash, Type, Braces, List } from 'lucide-react';
+import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Folder, Cpu, Layers, FileCode2, ToggleLeft, Hash, Type, Braces, List, BarChart2, AlertTriangle, File } from 'lucide-react';
 import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch, useAllScriptSources } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
@@ -15,13 +15,19 @@ import HistoryModal from './HistoryModal';
 import ConfirmDialog from './ConfirmDialog';
 import MultiDeleteDialog from './MultiDeleteDialog';
 import ValueEditModal from './ValueEditModal';
-import { hasHistory, isGlobPattern } from '../api/iobroker';
+import { hasHistory, hasSmartName, isGlobPattern } from '../api/iobroker';
+import { useAllObjects } from '../hooks/useStates';
+import TreeStatsModal from './TreeStatsModal';
 import type { IoBrokerState, IoBrokerObject } from '../types/iobroker';
-import { copyText } from '../utils/clipboard';
+import { copyText, copyToClipboard } from '../utils/clipboard';
+import { formatTimestamp, formatValue } from '../utils/format';
 import { ColoredId } from '../utils/coloredId';
 import { getTypeColor } from '../utils/typeColor';
 import { getRoleColor } from '../utils/roleColor';
 import { useToast } from '../context/ToastContext';
+import { useFilterContext } from '../context/FilterContext';
+import { useSelectionContext } from '../context/SelectionContext';
+import { useAppSettingsContext } from '../context/UIContext';
 
 export interface StateListHandle {
   fitToContainer: () => void;
@@ -33,67 +39,12 @@ interface StateListProps {
   objects: Record<string, IoBrokerObject>;
   roomMap: Record<string, string>;
   functionMap: Record<string, string>;
-  selectedId: string | null;
-  onSelect: (id: string) => void;
-  colFilters: Partial<Record<SortKey, string>>;
-  onColFilterChange: (filters: Partial<Record<SortKey, string>>) => void;
-  pattern?: string;
-  aliasMap?: Map<string, string[]>;
-  allObjectIds?: Set<string>;
-  onNavigateTo?: (ids: string[]) => void;
-  exportIds?: string[];
-  treeFilter?: string | null;
-  onClearTreeFilter?: () => void;
-  sidebarToggleSeq?: number;
-  onManualRefresh?: () => void;
-  fulltextEnabled?: boolean;
-  dateFormat?: DateFormatSetting;
-  settingsVisibleCols?: SortKey[];
-  language?: 'en' | 'de';
-  expertMode?: boolean;
-  onToggleExpertMode?: () => void;
-  toolbarLabels?: boolean;
-  onToggleToolbarLabels?: () => void;
-  onOpenEnumManager?: () => void;
-  onOpenAliasReplace?: (initialStr?: string) => void;
-  tableFontSize?: 'small' | 'normal' | 'large' | 'xl';
-  showDesc?: boolean;
-  groupByPath?: boolean;
-  onToggleGroupByPath?: () => void;
-  customDefaultWidths?: Partial<Record<SortKey, number>>;
-  customMaxWidths?: Partial<Record<SortKey, number>>;
-  onScriptsClick?: (id: string) => void;
-  pageSize?: number;
-  onPageSizeChange?: (size: number) => void;
-  onTreeViewModeChange?: (active: boolean) => void;
+  aliasMap: Map<string, string[]>;
+  allObjectIds: Set<string>;
+  exportIds: string[];
+  onNavigateTo: (ids: string[]) => void;
 }
 
-function formatTimestamp(ts: number, dateFormat: DateFormatSetting): string {
-  if (!Number.isFinite(ts)) return '';
-  const d = new Date(ts);
-  if (Number.isNaN(d.getTime())) return '';
-  const p = (n: number) => String(n).padStart(2, '0');
-  const day = p(d.getDate());
-  const month = p(d.getMonth() + 1);
-  const year = d.getFullYear();
-  const time = `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
-  if (dateFormat === 'iso') return `${year}-${month}-${day} ${time}`;
-  if (dateFormat === 'us') return `${month}/${day}/${year} ${time}`;
-  return `${day}.${month}.${year} ${time}`;
-}
-
-function formatValue(val: unknown): string {
-  if (val === null || val === undefined) return '—';
-  if (typeof val === 'boolean') return val ? 'true' : 'false';
-  if (typeof val === 'number') return val.toString();
-  if (typeof val === 'bigint') return val.toString();
-  if (typeof val === 'string') return val;
-  try {
-    return JSON.stringify(val);
-  } catch {
-    return String(val);
-  }
-}
 
 function getThresholdStatus(
   val: unknown,
@@ -156,22 +107,7 @@ const EditableNameCell = React.memo(function EditableNameCell({ id, name, desc, 
             onClick={(e) => {
               e.stopPropagation();
               function done() { setCopied(true); setTimeout(() => setCopied(false), 1500); }
-              if (navigator.clipboard?.writeText) {
-                navigator.clipboard.writeText(name).then(done).catch(fallback);
-              } else {
-                fallback();
-              }
-              function fallback() {
-                const ta = document.createElement('textarea');
-                ta.value = name;
-                ta.style.position = 'fixed';
-                ta.style.opacity = '0';
-                document.body.appendChild(ta);
-                ta.select();
-                document.execCommand('copy');
-                document.body.removeChild(ta);
-                done();
-              }
+              copyToClipboard(name).then(done).catch(done);
             }}
             className="opacity-0 group-hover/name:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
             title="Name kopieren"
@@ -238,8 +174,8 @@ const EditableRoleCell = React.memo(function EditableRoleCell({ id, role, objTyp
     ? suggestions.filter((s) => s.toLowerCase().includes(filter.toLowerCase()))
     : suggestions;
 
-  useEffect(() => {
-    if (editing) setTimeout(() => inputRef.current?.focus(), 0);
+  useLayoutEffect(() => {
+    if (editing) inputRef.current?.focus();
   }, [editing]);
 
   function openEdit() {
@@ -351,8 +287,8 @@ const EditableUnitCell = React.memo(function EditableUnitCell({ id, unit, sugges
     ? suggestions.filter((s) => s.toLowerCase().includes(filter.toLowerCase()))
     : suggestions;
 
-  useEffect(() => {
-    if (editing) setTimeout(() => inputRef.current?.focus(), 0);
+  useLayoutEffect(() => {
+    if (editing) inputRef.current?.focus();
   }, [editing]);
 
   function openEdit() {
@@ -463,8 +399,8 @@ const EditableTypeCell = React.memo(function EditableTypeCell({ id, typeValue, o
     ? TYPE_OPTIONS.filter((s) => s.toLowerCase().includes(filter.toLowerCase()))
     : TYPE_OPTIONS;
 
-  useEffect(() => {
-    if (editing) setTimeout(() => inputRef.current?.focus(), 0);
+  useLayoutEffect(() => {
+    if (editing) inputRef.current?.focus();
   }, [editing]);
 
   function openEdit() {
@@ -671,10 +607,14 @@ const EditableValueCell = React.memo(function EditableValueCell({
     >
       <div className={`flex items-center justify-start gap-1 ${valueColor}`}>
         {trendIcon}
+        {thresholdStatus === 'exceeded' && <AlertTriangle size={10} aria-label={isEn ? 'Value exceeded limit' : 'Grenzwert überschritten'} />}
+        {thresholdStatus === 'warn' && <AlertTriangle size={10} aria-label={isEn ? 'Value near limit' : 'Wert nahe am Grenzwert'} />}
         {state ? (() => {
           const v = formatValue(val);
-          if (role === 'url' && typeof val === 'string' && val.startsWith('http')) {
-            return <a href={val} target="_blank" rel="noopener noreferrer" title={v} onClick={(e) => e.stopPropagation()} className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 underline truncate max-w-[120px] block">{v}</a>;
+          if (role === 'url' && typeof val === 'string') {
+            let safeHref: string | null = null;
+            try { const u = new URL(val); if (u.protocol === 'https:' || u.protocol === 'http:') safeHref = val; } catch { /* invalid URL */ }
+            if (safeHref) return <a href={safeHref} target="_blank" rel="noopener noreferrer" title={v} onClick={(e) => e.stopPropagation()} className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 underline truncate max-w-[120px] block">{v}</a>;
           }
           const truncated = v.length > 16 ? v.slice(0, 16) + '…' : v;
           return <span title={v}>{truncated}</span>;
@@ -697,26 +637,8 @@ function CopyIdButton({ id }: { id: string }) {
 
   function handleCopy(e: React.MouseEvent) {
     e.stopPropagation();
-    if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(id).then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
-      }).catch(() => fallback());
-    } else {
-      fallback();
-    }
-    function fallback() {
-      const ta = document.createElement('textarea');
-      ta.value = id;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    }
+    function done() { setCopied(true); setTimeout(() => setCopied(false), 1500); }
+    copyToClipboard(id).then(done).catch(done);
   }
 
   return (
@@ -1146,22 +1068,8 @@ function TsRangeFilterControl({
 export type { SortKey, DateFormatSetting } from './stateListColumns';
 export { ALL_COLUMNS, getColumnLabel, DEFAULT_COLS } from './stateListColumns';
 import type { SortKey, DateFormatSetting } from './stateListColumns';
-import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel as _getColumnLabel, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MAX_WIDTHS } from './stateListColumns';
+import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel as _getColumnLabel, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MIN_WIDTHS, BUILTIN_MAX_WIDTHS } from './stateListColumns';
 const getColumnLabel = _getColumnLabel;
-const LS_KEY = 'iobroker-visible-cols';
-
-function loadVisibleCols(): SortKey[] {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (raw) {
-      const parsedCols: unknown = JSON.parse(raw);
-      const parsed = Array.isArray(parsedCols) ? parsedCols as unknown[] : [];
-      const valid = parsed.filter((k): k is SortKey => typeof k === 'string' && ALL_COLUMNS.some((c) => c.key === k));
-      if (valid.length > 0) return valid;
-    }
-  } catch { /* ignore */ }
-  return DEFAULT_COLS;
-}
 
 const DEL_COL_WIDTH = 32;
 const VIRTUAL_ROW_HEIGHT = 37;
@@ -1175,11 +1083,13 @@ function TypeIcon({ type, size = 12 }: { type: string; size?: number }) {
     case 'object':  return <Braces     size={size} className="text-purple-500 dark:text-purple-400 shrink-0" />;
     case 'array':   return <List       size={size} className="text-pink-500 dark:text-pink-400 shrink-0" />;
     case 'mixed':   return <Layers     size={size} className="text-yellow-600 dark:text-yellow-400 shrink-0" />;
+    case 'json':    return <FileCode2  size={size} className="text-cyan-500 dark:text-cyan-400 shrink-0" />;
+    case 'file':    return <File       size={size} className="text-slate-500 dark:text-slate-400 shrink-0" />;
     default:        return null;
   }
 }
 
-const TYPE_OPTIONS = ['number', 'string', 'boolean', 'array', 'object', 'mixed'] as const;
+const TYPE_OPTIONS = ['number', 'string', 'boolean', 'array', 'object', 'mixed', 'json', 'file'] as const;
 const TS_RANGE_PREFIX = 'range:';
 const TS_RANGE_SEP = '|~|';
 const MIN_COL_WIDTHS: Partial<Record<SortKey, number>> = { id: 150, name: 120 };
@@ -1188,18 +1098,21 @@ const LS_WIDTHS_KEY = 'iobroker-col-widths';
 
 function clampColWidthsWith(
   widths: Record<SortKey, number>,
+  effectiveMin: Partial<Record<SortKey, number>>,
   effectiveMax: Partial<Record<SortKey, number>>,
 ): Record<SortKey, number> {
   const result = { ...widths };
   for (const k of Object.keys(result) as SortKey[]) {
+    const mn = effectiveMin[k] ?? minColWidth(k);
     const mx = effectiveMax[k] ?? Infinity;
-    result[k] = Math.min(mx, Math.max(minColWidth(k), result[k]));
+    result[k] = Math.min(mx, Math.max(mn, result[k]));
   }
   return result;
 }
 
 function loadColWidths(
   effectiveDefaults: Record<SortKey, number>,
+  effectiveMin: Partial<Record<SortKey, number>>,
   effectiveMax: Partial<Record<SortKey, number>>,
 ): Record<SortKey, number> {
   try {
@@ -1212,21 +1125,13 @@ function loadColWidths(
             .filter(([k, v]) => ALL_COLUMNS.some((c) => c.key === k) && typeof v === 'number')
             .map(([k, v]) => [k, v as number])
         ) as Partial<Record<SortKey, number>>;
-        return clampColWidthsWith({ ...effectiveDefaults, ...validated }, effectiveMax);
+        return clampColWidthsWith({ ...effectiveDefaults, ...validated }, effectiveMin, effectiveMax);
       }
     }
   } catch { /* ignore */ }
-  return clampColWidthsWith({ ...effectiveDefaults }, effectiveMax);
+  return clampColWidthsWith({ ...effectiveDefaults }, effectiveMin, effectiveMax);
 }
 
-function hasSmartName(obj: IoBrokerObject | undefined): boolean {
-  if (!obj) return false;
-  const sn = obj.common?.smartName;
-  if (!sn) return false;
-  if (typeof sn === 'string') return sn.trim().length > 0;
-  if (typeof sn === 'object') return Object.values(sn).some((v) => v && String(v).trim().length > 0);
-  return false;
-}
 
 function ColPicker({ visible, onChange, language = 'de' }: { visible: SortKey[]; onChange: (cols: SortKey[]) => void; language?: 'en' | 'de' }) {
   const [open, setOpen] = useState(false);
@@ -1453,7 +1358,7 @@ const StateRow = React.memo(function StateRow({
             ? 'bg-blue-100/60 text-blue-800 dark:bg-blue-900/40 dark:text-blue-100 outline outline-1 -outline-offset-1 outline-blue-400 dark:outline-blue-500'
             : isChecked
               ? 'bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
-              : 'hover:bg-gray-100/80 text-gray-700 dark:hover:bg-gray-800/50 dark:text-gray-300'
+              : 'hover:bg-gray-100/80 text-gray-700 dark:hover:bg-gray-700/60 dark:text-gray-300'
       }`}
     >
       {show('checkbox') && (
@@ -1696,17 +1601,35 @@ const StateRow = React.memo(function StateRow({
   );
 });
 
-function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, allObjectIds, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh: _onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en', expertMode = false, onToggleExpertMode, toolbarLabels = true, onOpenEnumManager, onOpenAliasReplace, tableFontSize = 'normal', showDesc = true, groupByPath = false, onToggleGroupByPath, customDefaultWidths, customMaxWidths, onScriptsClick, pageSize, onPageSizeChange, onTreeViewModeChange }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
+function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allObjectIds, exportIds, onNavigateTo }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
+  const { colFilters, handleColFilterChange: onColFilterChange, pattern, treeFilter, handleClearTreeFilter: onClearTreeFilter, sidebarToggleSeq, fulltextEnabled } = useFilterContext();
+  const { selectedId, setSelectedId: onSelect, setHistoryModalId: _setHistoryModalId, setEnumManagerOpen, setAliasReplaceInitialStr, setEditInitialTab } = useSelectionContext();
+  const { appSettings, expertMode, scriptUsedIds, scriptLastUpdated, scriptsFetching, handleToggleExpertMode: onToggleExpertMode, handleToggleToolbarLabels: onToggleToolbarLabels, handleToggleGroupByPath: onToggleGroupByPath, persistSettings } = useAppSettingsContext();
+
+  const { language = 'en', dateFormat = 'de', visibleCols: settingsVisibleCols, toolbarLabels = true, tableFontSize = 'normal', showDesc = true, groupByPath = false, customDefaultWidths, customMinWidths, customMaxWidths, pageSize } = appSettings;
+  const onOpenEnumManager = React.useCallback(() => setEnumManagerOpen(true), [setEnumManagerOpen]);
+  const onOpenAliasReplace = React.useCallback((initialStr?: string) => setAliasReplaceInitialStr(initialStr ?? null), [setAliasReplaceInitialStr]);
+  const onScriptsClick = React.useCallback((id: string) => { onSelect(id); setEditInitialTab('scripts'); }, [onSelect, setEditInitialTab]);
+  const onPageSizeChange = React.useCallback((size: number) => persistSettings({ ...appSettings, pageSize: size }), [persistSettings, appSettings]);
+
   const effectiveDefaults: Record<SortKey, number> = { ...BUILTIN_DEFAULT_WIDTHS, ...(customDefaultWidths ?? {}) };
+  const effectiveMin: Partial<Record<SortKey, number>> = { ...BUILTIN_MIN_WIDTHS, ...(customMinWidths ?? {}) };
   const effectiveMax: Partial<Record<SortKey, number>> = { ...BUILTIN_MAX_WIDTHS, ...(customMaxWidths ?? {}) };
+  const effectiveMinRef = useRef(effectiveMin);
+  effectiveMinRef.current = effectiveMin;
   const effectiveMaxRef = useRef(effectiveMax);
   effectiveMaxRef.current = effectiveMax;
   const isEn = language === 'en';
   const [sortKey, setSortKey] = useState<SortKey>('id');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
-  const [visibleCols, setVisibleCols] = useState<SortKey[]>(loadVisibleCols);
+  const [visibleCols, setVisibleCols] = useState<SortKey[]>(() => settingsVisibleCols ?? DEFAULT_COLS);
   const { data: scriptSources } = useAllScriptSources(visibleCols.includes('scripts'));
-  const [colWidths, setColWidths] = useState<Record<SortKey, number>>(() => loadColWidths(effectiveDefaults, effectiveMax));
+  const [showStats, setShowStats] = useState(false);
+  const { data: allObjectsData } = useAllObjects();
+  const allObjects = allObjectsData ?? {} as Record<string, IoBrokerObject>;
+  const allHistoryIds = useMemo(() => { const s = new Set<string>(); for (const [id, obj] of Object.entries(allObjects)) { if (hasHistory(obj)) s.add(id); } return s; }, [allObjects]);
+  const allSmartIds = useMemo(() => { const s = new Set<string>(); for (const [id, obj] of Object.entries(allObjects)) { if (hasSmartName(obj)) s.add(id); } return s; }, [allObjects]);
+  const [colWidths, setColWidths] = useState<Record<SortKey, number>>(() => loadColWidths(effectiveDefaults, effectiveMin, effectiveMax));
   const containerRef = useRef<HTMLDivElement>(null);
   const theadRef = useRef<HTMLTableSectionElement>(null);
   const autoFitRef = useRef(true);
@@ -1786,8 +1709,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   }, [exportMenuOpen]);
 
   function handleColChange(cols: SortKey[]) {
-    setVisibleCols(cols);
-    localStorage.setItem(LS_KEY, JSON.stringify(cols));
+    persistSettings({ ...appSettings, visibleCols: cols });
   }
 
   function handleHideCol(key: SortKey) {
@@ -1800,7 +1722,8 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
     let latestWidths: Record<SortKey, number> = colWidths;
 
     function clampWidth(w: number) {
-      return Math.min(effectiveMaxRef.current[key] ?? Infinity, Math.max(minColWidth(key), w));
+      const mn = effectiveMinRef.current[key] ?? minColWidth(key);
+      return Math.min(effectiveMaxRef.current[key] ?? Infinity, Math.max(mn, w));
     }
 
     function onMouseMove(ev: MouseEvent) {
@@ -1889,9 +1812,9 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
       for (let i = 0; i < free.length; i++) {
         const k = free[i];
         if (i === free.length - 1) {
-          next[k] = Math.max(minColWidth(k), remaining - allocated);
+          next[k] = Math.max(effectiveMinRef.current[k] ?? minColWidth(k), remaining - allocated);
         } else {
-          const w = Math.max(minColWidth(k), Math.floor(colWidths[k] * scale));
+          const w = Math.max(effectiveMinRef.current[k] ?? minColWidth(k), Math.floor(colWidths[k] * scale));
           next[k] = w;
           allocated += w;
         }
@@ -1948,7 +1871,6 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   useEffect(() => {
     if (!settingsVisibleCols || settingsVisibleCols.length === 0) return;
     setVisibleCols(settingsVisibleCols);
-    localStorage.setItem(LS_KEY, JSON.stringify(settingsVisibleCols));
   }, [settingsVisibleCols]);
 
   // Sync external colFilters → draft (e.g. context menu, clear from App.tsx)
@@ -2385,7 +2307,15 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
           className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-amber-600 hover:bg-amber-500/10 dark:text-gray-400 dark:hover:text-amber-400 dark:hover:bg-amber-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
         >
           <Tag size={15} />
-          {showToolbarLabels && <span>{isEn ? 'Enums' : 'Enums'}</span>}
+          {showToolbarLabels && <span>{isEn ? 'Enum Management' : 'Enum Management'}</span>}
+        </button>
+        <button
+          onClick={() => setShowStats(true)}
+          title={isEn ? 'Statistics' : 'Statistik'}
+          className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
+        >
+          <BarChart2 size={15} />
+          {showToolbarLabels && <span>{isEn ? 'Statistics' : 'Statistik'}</span>}
         </button>
         {[...checkedIds].some((id) => id.startsWith('alias.')) && (
           <button
@@ -2603,6 +2533,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
   }
 
   return (
+    <>
     <div className="flex flex-col h-full">
       {toolbar}
       {checkedIds.size > 0 && (
@@ -2723,10 +2654,9 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
         <ConfirmDialog
           title={isEn ? 'Reset local settings' : 'Lokale Einstellungen zurücksetzen'}
           description={isEn ? 'The following local storage entries will be deleted:' : 'Folgende Local-Storage-Einträge werden gelöscht:'}
-          message={`${LS_KEY}\n${LS_WIDTHS_KEY}`}
+          message={`${LS_WIDTHS_KEY}`}
           confirmLabel={isEn ? 'Reset' : 'Zurücksetzen'}
           onConfirm={() => {
-            localStorage.removeItem(LS_KEY);
             localStorage.removeItem(LS_WIDTHS_KEY);
             setVisibleCols(DEFAULT_COLS);
             setColWidths({ ...effectiveDefaults });
@@ -2891,9 +2821,9 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
         return <ContextMenu x={x} y={y} items={sepItems} onClose={() => setSepCtxMenu(null)} />;
       })()}
 
-      <div ref={containerRef} onScroll={handleBodyScroll} onKeyDown={handleContainerKeyDown} tabIndex={0} className="overflow-x-auto overflow-y-auto flex-1 outline-none" data-table-fontsize={tableFontSize}>
+      <div ref={containerRef} onScroll={handleBodyScroll} onKeyDown={handleContainerKeyDown} tabIndex={0} className="overflow-x-auto overflow-y-auto flex-1 outline-none bg-white dark:bg-gray-900" data-table-fontsize={tableFontSize}>
         <table className="text-xs text-left table-fixed" style={{ width: totalWidth }}>
-          <thead ref={theadRef} className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-100 dark:bg-gray-800 sticky top-0 z-10">
+          <thead ref={theadRef} className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-white dark:bg-gray-800 sticky top-0 z-10">
             <tr>
               {show('checkbox') && (
                 <th style={{ width: w('checkbox'), minWidth: w('checkbox') }} className="text-center align-middle">
@@ -2928,7 +2858,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
               {show('ts')      && <SortHeader label={isEn ? 'Last Update' : 'Letztes Update'} sortKey="ts" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('ts')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
               <th style={{ width: DEL_COL_WIDTH, minWidth: DEL_COL_WIDTH }} />
             </tr>
-            <tr className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+            <tr className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
               {show('checkbox') && (
                 <th style={{ width: w('checkbox'), minWidth: w('checkbox') }} className="py-1 text-center align-middle" onClick={(e) => e.stopPropagation()}>
                   <StyledCheckbox
@@ -3097,7 +3027,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
                       base.has(item.prefix) ? base.delete(item.prefix) : base.add(item.prefix);
                       return base;
                     })}>
-                    <td colSpan={_sepMainSpan || rowColSpan + 1} className="py-1.5 bg-gray-100/80 dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-200/80 dark:group-hover/sep:bg-gray-700/60 transition-colors" style={{ paddingLeft: 12 + item.depth * 10, paddingRight: 12 }}>
+                    <td colSpan={_sepMainSpan || rowColSpan + 1} className="py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-100/50 dark:group-hover/sep:bg-gray-700/60 transition-colors" style={{ paddingLeft: 12 + item.depth * 10, paddingRight: 12 }}>
                       <div className="flex items-center gap-2">
                         {(collapsedPrefixes === null || collapsedPrefixes.has(item.prefix))
                           ? <ChevronRight size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
@@ -3234,6 +3164,23 @@ function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onS
         </table>
       </div>
     </div>
+    {showStats && (
+      <TreeStatsModal
+        onClose={() => setShowStats(false)}
+        allObjects={allObjects}
+        historyIds={allHistoryIds}
+        smartIds={allSmartIds}
+        language={language}
+        onSelectNamespace={(ns) => handleTreeScope(`${ns}.`)}
+        scriptUsedIds={scriptUsedIds}
+        scriptsFetching={scriptsFetching}
+        includeScripts={appSettings.includeScripts}
+        onIncludeScriptsChange={(v) => persistSettings({ ...appSettings, includeScripts: v })}
+        onScriptUsedIdsChange={(ids) => setScriptUsedIds(ids)}
+        onRequestRefreshScripts={() => setConfirmScriptRefresh(true)}
+      />
+    )}
+    </>
   );
 }
 

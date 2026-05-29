@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import DOMPurify from 'dompurify';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { createPortal } from 'react-dom';
 import { X, Upload, AlertTriangle, FileJson, FilePlus, CheckCircle2, RefreshCw, XCircle } from 'lucide-react';
@@ -88,7 +89,7 @@ function JsonEditor({ value, onChange, dark }: { value: string; onChange: (v: st
     }
   }, []);
 
-  const highlighted = highlightJson(value, dark) + '\n';
+  const highlighted = DOMPurify.sanitize(highlightJson(value, dark) + '\n', { FORCE_BODY: true });
 
   const sharedStyle: React.CSSProperties = {
     fontFamily: '"Fira Code", "Cascadia Code", "JetBrains Mono", Consolas, "Courier New", monospace',
