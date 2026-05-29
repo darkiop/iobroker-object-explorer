@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, memo } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef, memo } from 'react';
 import { ChevronRight, ChevronDown, ChevronsUpDown, ChevronsDownUp, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil, LayoutList, LayoutGrid, Plus, FileCode2, Link2, UserRound, ShieldAlert, Download, Trash2, Filter, BarChart2 } from 'lucide-react';
 import type { TreeNode, IoBrokerObject } from '../types/iobroker';
 import ObjectEditModal from './ObjectEditModal';
@@ -8,38 +8,18 @@ import ConfirmDialog from './ConfirmDialog';
 import { useDeleteSubtree } from '../hooks/useStates';
 import { copyText } from '../utils/clipboard';
 import TreeStatsModal from './TreeStatsModal';
+import { useFilterContext } from '../context/FilterContext';
+import { useSelectionContext } from '../context/SelectionContext';
+import { useUIContext } from '../context/UIContext';
 
 interface StateTreeProps {
   stateIds: string[];
   allObjects: Record<string, IoBrokerObject>;
-  selectedId: string | null;
-  onSelect: (id: string) => void;
-  onSearch: (pattern: string) => void;
-  onTreeScope: (prefix: string) => void;
-  onCreateAtPath: (prefix: string) => void;
-  historyOnly: boolean;
-  smartOnly: boolean;
   historyIds: Set<string>;
   smartIds: Set<string>;
-  expandToDepth?: { depth: number; seq: number };
-  treeFilter?: string | null;
-  onClearTreeFilter?: () => void;
-  treeSearch?: string;
-  onTreeSearchChange?: (v: string) => void;
-  pattern?: string;
-  language?: 'en' | 'de';
-  onOpenAliasReplace?: (initialStr?: string) => void;
-  onAutoCreateAlias?: (deviceId: string) => void;
-  treeFontSize?: 'small' | 'normal' | 'large' | 'xl';
-  treeCountMode?: 'off' | 'states' | 'objects' | 'both';
-  treeViewMode?: 'adapter' | 'path';
-  onTreeViewModeChange?: (mode: 'adapter' | 'path') => void;
-  scriptUsedIds?: Set<string> | null;
-  scriptsFetching?: boolean;
-  includeScripts?: boolean;
-  onIncludeScriptsChange?: (v: boolean) => void;
-  onScriptUsedIdsChange?: (ids: Set<string>) => void;
-  onRequestRefreshScripts?: () => void;
+  onCreateAtPath: (prefix: string) => void;
+  onSearch: (pattern: string) => void;
+  onTreeScope: (prefix: string) => void;
 }
 
 function buildTree(ids: string[], structureIds: string[] = []): TreeNode {
@@ -583,23 +563,50 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
 });
 
 
-function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTreeScope, onCreateAtPath, historyOnly, smartOnly, historyIds, smartIds, expandToDepth, treeFilter = null, treeSearch: treeSearchProp = '', onTreeSearchChange, pattern, language = 'en', onOpenAliasReplace, onAutoCreateAlias, treeFontSize = 'normal', treeCountMode = 'objects', treeViewMode: treeViewModeProp = 'adapter', onTreeViewModeChange, scriptUsedIds, scriptsFetching, includeScripts, onIncludeScriptsChange, onScriptUsedIdsChange, onRequestRefreshScripts }: StateTreeProps) {
+function StateTree({ stateIds, allObjects, historyIds, smartIds, onCreateAtPath, onSearch, onTreeScope }: StateTreeProps) {
+  const { treeFilter, treeSearch, setTreeSearch, treeExpandSignal, pattern, historyOnly, smartOnly } = useFilterContext();
+  const { selectedId, setSelectedId, setAliasReplaceInitialStr, setAutoAliasDeviceId } = useSelectionContext();
+  const { appSettings, scriptUsedIds, scriptsFetching, setConfirmScriptRefresh, setScriptUsedIds, persistSettings } = useUIContext();
+
+  const language = appSettings.language;
   const isEn = language === 'en';
+  const treeFontSize = appSettings.treeFontSize;
+  const treeCountMode = appSettings.treeCountMode;
   const nodeFontClass = treeFontSize === 'small' ? 'text-xs' : treeFontSize === 'large' ? 'text-base' : treeFontSize === 'xl' ? 'text-lg' : 'text-sm';
   const [expandSignal, setExpandSignal] = useState<{ depth: number; seq: number }>({ depth: 0, seq: 0 });
   const [showFolders,  setShowFolders]  = useState(true);
   const [showDevices,  setShowDevices]  = useState(true);
   const [showChannels, setShowChannels] = useState(true);
-  const [treeViewMode, setTreeViewMode] = useState<'path' | 'adapter'>(treeViewModeProp);
-  const handleTreeViewModeChange = (m: 'adapter' | 'path') => { setTreeViewMode(m); onTreeViewModeChange?.(m); };
+  const [treeViewMode, setTreeViewMode] = useState<'path' | 'adapter'>(appSettings.treeViewMode);
+  const handleTreeViewModeChange = (m: 'adapter' | 'path') => {
+    setTreeViewMode(m);
+    persistSettings({ ...appSettings, treeViewMode: m });
+  };
   const [showStats, setShowStats] = useState(false);
-  const treeSearch = treeSearchProp;
-  const setTreeSearch = onTreeSearchChange ?? (() => {});
 
+  const onOpenAliasReplace = useCallback((initialStr?: string) => {
+    setAliasReplaceInitialStr(initialStr ?? null);
+  }, [setAliasReplaceInitialStr]);
+  const onAutoCreateAlias = useCallback((deviceId: string) => {
+    setAutoAliasDeviceId(deviceId);
+  }, [setAutoAliasDeviceId]);
+  const onScriptUsedIdsChange = useCallback((ids: Set<string>) => {
+    setScriptUsedIds(ids);
+  }, [setScriptUsedIds]);
+  const onRequestRefreshScripts = useCallback(() => {
+    setConfirmScriptRefresh(true);
+  }, [setConfirmScriptRefresh]);
+  const onIncludeScriptsChange = useCallback((v: boolean) => {
+    persistSettings({ ...appSettings, includeScripts: v });
+  }, [persistSettings, appSettings]);
+
+  const prevExpandSeqRef = useRef<number | undefined>(undefined);
   useEffect(() => {
-    if (!expandToDepth) return;
-    setExpandSignal(s => ({ depth: expandToDepth.depth, seq: s.seq + 1 }));
-  }, [expandToDepth]);
+    if (!treeExpandSignal) return;
+    if (treeExpandSignal.seq === prevExpandSeqRef.current) return;
+    prevExpandSeqRef.current = treeExpandSignal.seq;
+    setExpandSignal(s => ({ depth: treeExpandSignal.depth, seq: s.seq + 1 }));
+  }, [treeExpandSignal]);
 
   function matchesTreeSearch(id: string, lower: string): boolean {
     if (!lower) return true;
@@ -752,7 +759,7 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
               node={child}
               depth={0}
               selectedId={selectedId}
-              onSelect={onSelect}
+              onSelect={setSelectedId}
               onSearch={onSearch}
               onTreeScope={onTreeScope}
               onCreateAtPath={onCreateAtPath}
@@ -782,11 +789,11 @@ function StateTree({ stateIds, allObjects, selectedId, onSelect, onSearch, onTre
         allObjects={allObjects}
         historyIds={historyIds}
         smartIds={smartIds}
-        language={language ?? 'en'}
+        language={language}
         onSelectNamespace={(ns) => onTreeScope(`${ns}.`)}
         scriptUsedIds={scriptUsedIds}
         scriptsFetching={scriptsFetching}
-        includeScripts={includeScripts}
+        includeScripts={appSettings.includeScripts}
         onIncludeScriptsChange={onIncludeScriptsChange}
         onScriptUsedIdsChange={onScriptUsedIdsChange}
         onRequestRefreshScripts={onRequestRefreshScripts}

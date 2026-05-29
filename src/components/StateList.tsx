@@ -22,6 +22,9 @@ import { ColoredId } from '../utils/coloredId';
 import { getTypeColor } from '../utils/typeColor';
 import { getRoleColor } from '../utils/roleColor';
 import { useToast } from '../context/ToastContext';
+import { useFilterContext } from '../context/FilterContext';
+import { useSelectionContext } from '../context/SelectionContext';
+import { useUIContext } from '../context/UIContext';
 
 export interface StateListHandle {
   fitToContainer: () => void;
@@ -33,39 +36,10 @@ interface StateListProps {
   objects: Record<string, IoBrokerObject>;
   roomMap: Record<string, string>;
   functionMap: Record<string, string>;
-  selectedId: string | null;
-  onSelect: (id: string) => void;
-  colFilters: Partial<Record<SortKey, string>>;
-  onColFilterChange: (filters: Partial<Record<SortKey, string>>) => void;
-  pattern?: string;
-  aliasMap?: Map<string, string[]>;
-  allObjectIds?: Set<string>;
-  onNavigateTo?: (ids: string[]) => void;
-  exportIds?: string[];
-  treeFilter?: string | null;
-  onClearTreeFilter?: () => void;
-  sidebarToggleSeq?: number;
-  onManualRefresh?: () => void;
-  fulltextEnabled?: boolean;
-  dateFormat?: DateFormatSetting;
-  settingsVisibleCols?: SortKey[];
-  language?: 'en' | 'de';
-  expertMode?: boolean;
-  onToggleExpertMode?: () => void;
-  toolbarLabels?: boolean;
-  onToggleToolbarLabels?: () => void;
-  onOpenEnumManager?: () => void;
-  onOpenAliasReplace?: (initialStr?: string) => void;
-  tableFontSize?: 'small' | 'normal' | 'large' | 'xl';
-  showDesc?: boolean;
-  groupByPath?: boolean;
-  onToggleGroupByPath?: () => void;
-  customDefaultWidths?: Partial<Record<SortKey, number>>;
-  customMaxWidths?: Partial<Record<SortKey, number>>;
-  onScriptsClick?: (id: string) => void;
-  pageSize?: number;
-  onPageSizeChange?: (size: number) => void;
-  onTreeViewModeChange?: (active: boolean) => void;
+  aliasMap: Map<string, string[]>;
+  allObjectIds: Set<string>;
+  exportIds: string[];
+  onNavigateTo: (ids: string[]) => void;
 }
 
 function formatTimestamp(ts: number, dateFormat: DateFormatSetting): string {
@@ -1696,7 +1670,17 @@ const StateRow = React.memo(function StateRow({
   );
 });
 
-function StateList({ ids, states, objects, roomMap, functionMap, selectedId, onSelect, colFilters, onColFilterChange, pattern = '*', aliasMap, allObjectIds, onNavigateTo, exportIds, treeFilter, onClearTreeFilter, sidebarToggleSeq, onManualRefresh: _onManualRefresh, fulltextEnabled = true, dateFormat = 'de', settingsVisibleCols, language = 'en', expertMode = false, onToggleExpertMode, toolbarLabels = true, onOpenEnumManager, onOpenAliasReplace, tableFontSize = 'normal', showDesc = true, groupByPath = false, onToggleGroupByPath, customDefaultWidths, customMaxWidths, onScriptsClick, pageSize, onPageSizeChange, onTreeViewModeChange }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
+function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allObjectIds, exportIds, onNavigateTo }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
+  const { colFilters, handleColFilterChange: onColFilterChange, pattern, treeFilter, handleClearTreeFilter: onClearTreeFilter, sidebarToggleSeq, fulltextEnabled } = useFilterContext();
+  const { selectedId, setSelectedId: onSelect, setHistoryModalId: _setHistoryModalId, setEnumManagerOpen, setAliasReplaceInitialStr, setEditInitialTab } = useSelectionContext();
+  const { appSettings, expertMode, handleToggleExpertMode: onToggleExpertMode, handleToggleToolbarLabels: onToggleToolbarLabels, handleToggleGroupByPath: onToggleGroupByPath, persistSettings } = useUIContext();
+
+  const { language = 'en', dateFormat = 'de', visibleCols: settingsVisibleCols, toolbarLabels = true, tableFontSize = 'normal', showDesc = true, groupByPath = false, customDefaultWidths, customMaxWidths, pageSize } = appSettings;
+  const onOpenEnumManager = React.useCallback(() => setEnumManagerOpen(true), [setEnumManagerOpen]);
+  const onOpenAliasReplace = React.useCallback((initialStr?: string) => setAliasReplaceInitialStr(initialStr ?? null), [setAliasReplaceInitialStr]);
+  const onScriptsClick = React.useCallback((id: string) => { onSelect(id); setEditInitialTab('scripts'); }, [onSelect, setEditInitialTab]);
+  const onPageSizeChange = React.useCallback((size: number) => persistSettings({ ...appSettings, pageSize: size }), [persistSettings, appSettings]);
+
   const effectiveDefaults: Record<SortKey, number> = { ...BUILTIN_DEFAULT_WIDTHS, ...(customDefaultWidths ?? {}) };
   const effectiveMax: Partial<Record<SortKey, number>> = { ...BUILTIN_MAX_WIDTHS, ...(customMaxWidths ?? {}) };
   const effectiveMaxRef = useRef(effectiveMax);
