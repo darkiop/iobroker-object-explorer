@@ -2305,7 +2305,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
           className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-amber-600 hover:bg-amber-500/10 dark:text-gray-400 dark:hover:text-amber-400 dark:hover:bg-amber-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
         >
           <Tag size={15} />
-          {showToolbarLabels && <span>{isEn ? 'Enums' : 'Enums'}</span>}
+          {showToolbarLabels && <span>{isEn ? 'Enum Management' : 'Enum Management'}</span>}
         </button>
         <button
           onClick={() => setShowStats(true)}
