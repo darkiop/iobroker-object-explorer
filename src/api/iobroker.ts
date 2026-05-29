@@ -56,9 +56,6 @@ function scoreObject(id: string, obj: IoBrokerObject, query: string): number {
   return 0;
 }
 
-function isDisplayable(obj: IoBrokerObject | undefined): boolean {
-  return !!obj;
-}
 
 // Objects: einmalig laden und cachen (Baum-Struktur + Metadaten)
 let objectsCache: Record<string, IoBrokerObject> | null = null;
@@ -89,7 +86,7 @@ export async function getObjectsByPattern(pattern: string, fulltext = true, exac
     const result: Record<string, IoBrokerObject> = {};
     const regex = compilePattern(pattern);
     for (const [id, obj] of Object.entries(all)) {
-      if (isDisplayable(obj) && regex.test(id)) {
+      if (!!obj && regex.test(id)) {
         result[id] = obj;
       }
     }
@@ -101,7 +98,7 @@ export async function getObjectsByPattern(pattern: string, fulltext = true, exac
       const q = pattern.toLowerCase();
       const result: Record<string, IoBrokerObject> = {};
       for (const [id, obj] of Object.entries(all)) {
-        if (isDisplayable(obj) && id.toLowerCase() === q) {
+        if (!!obj && id.toLowerCase() === q) {
           result[id] = obj;
           break;
         }
@@ -112,7 +109,7 @@ export async function getObjectsByPattern(pattern: string, fulltext = true, exac
     const q = pattern.toLowerCase();
     const result: Record<string, IoBrokerObject> = {};
     for (const [id, obj] of Object.entries(all)) {
-      if (isDisplayable(obj) && id.toLowerCase().includes(q)) {
+      if (!!obj && id.toLowerCase().includes(q)) {
         result[id] = obj;
       }
     }
@@ -123,7 +120,7 @@ export async function getObjectsByPattern(pattern: string, fulltext = true, exac
     const q = pattern.toLowerCase();
     const result: Record<string, IoBrokerObject> = {};
     for (const [id, obj] of Object.entries(all)) {
-      if (!isDisplayable(obj)) continue;
+      if (!obj) continue;
       if (id.toLowerCase() === q) {
         result[id] = obj;
         break;
@@ -135,7 +132,7 @@ export async function getObjectsByPattern(pattern: string, fulltext = true, exac
   // Volltext-Suche: ID, Name, Beschreibung, Alias-Ziel
   const scored: Array<[string, IoBrokerObject, number]> = [];
   for (const [id, obj] of Object.entries(all)) {
-    if (!isDisplayable(obj)) continue;
+    if (!obj) continue;
     const score = scoreObject(id, obj, pattern);
     if (score > 0) scored.push([id, obj, score]);
   }
