@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useLayoutEffect, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Folder, Cpu, Layers, FileCode2, ToggleLeft, Hash, Type, Braces, List, BarChart2, AlertTriangle } from 'lucide-react';
+import { Pencil, Check, X, Copy, ArrowUp, ArrowDown, SlidersHorizontal, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, CalendarDays, Wrench, Zap, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Folder, Cpu, Layers, FileCode2, ToggleLeft, Hash, Type, Braces, List, BarChart2, AlertTriangle, File } from 'lucide-react';
 import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useSetState, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch, useAllScriptSources } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
@@ -1083,11 +1083,13 @@ function TypeIcon({ type, size = 12 }: { type: string; size?: number }) {
     case 'object':  return <Braces     size={size} className="text-purple-500 dark:text-purple-400 shrink-0" />;
     case 'array':   return <List       size={size} className="text-pink-500 dark:text-pink-400 shrink-0" />;
     case 'mixed':   return <Layers     size={size} className="text-yellow-600 dark:text-yellow-400 shrink-0" />;
+    case 'json':    return <FileCode2  size={size} className="text-cyan-500 dark:text-cyan-400 shrink-0" />;
+    case 'file':    return <File       size={size} className="text-slate-500 dark:text-slate-400 shrink-0" />;
     default:        return null;
   }
 }
 
-const TYPE_OPTIONS = ['number', 'string', 'boolean', 'array', 'object', 'mixed'] as const;
+const TYPE_OPTIONS = ['number', 'string', 'boolean', 'array', 'object', 'mixed', 'json', 'file'] as const;
 const TS_RANGE_PREFIX = 'range:';
 const TS_RANGE_SEP = '|~|';
 const MIN_COL_WIDTHS: Partial<Record<SortKey, number>> = { id: 150, name: 120 };
