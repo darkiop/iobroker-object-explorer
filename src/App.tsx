@@ -1,4 +1,5 @@
 import { useMemo, useEffect, useCallback, useRef } from 'react';
+import { ErrorBoundary } from 'react-error-boundary';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
@@ -500,6 +501,7 @@ function AppContent() {
           </div>
         )}
 
+        <ErrorBoundary fallback={null} onError={(e) => console.error('Modal error:', e)}>
         {selectedId && allObjects[selectedId] && (
           <ObjectEditModal
             id={selectedId}
@@ -561,6 +563,7 @@ function AppContent() {
           />
         )}
         {settingsOpen && <SettingsModal />}
+        </ErrorBoundary>
 
         <div className="flex-1 min-h-0 flex flex-col">
           <StateList
@@ -618,21 +621,36 @@ function AppContent() {
   );
 }
 
+function AppErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-screen gap-4 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 p-8">
+      <AlertTriangle size={48} className="text-red-500" />
+      <h1 className="text-xl font-semibold">Unerwarteter Fehler</h1>
+      <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md text-center">{error.message}</p>
+      <button onClick={resetErrorBoundary} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
+        App neu laden
+      </button>
+    </div>
+  );
+}
+
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <ToastProvider>
-          <UIContextProvider>
-            <FilterContextProvider>
-              <SelectionContextProvider>
-                <AppContent />
-                <ToastContainer />
-              </SelectionContextProvider>
-            </FilterContextProvider>
-          </UIContextProvider>
-        </ToastProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <ErrorBoundary FallbackComponent={AppErrorFallback} onReset={() => window.location.reload()}>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <ToastProvider>
+            <UIContextProvider>
+              <FilterContextProvider>
+                <SelectionContextProvider>
+                  <AppContent />
+                  <ToastContainer />
+                </SelectionContextProvider>
+              </FilterContextProvider>
+            </UIContextProvider>
+          </ToastProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
