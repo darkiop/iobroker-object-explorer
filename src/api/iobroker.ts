@@ -535,7 +535,14 @@ export async function getScriptUsedIds(allObjectIds: string[], forceRefresh = fa
     }
   }
   const sources = await fetchScriptSources();
-  const used = allObjectIds.filter((id) => sources.includes(id));
+  const used: string[] = [];
+  const BATCH = 200;
+  for (let i = 0; i < allObjectIds.length; i += BATCH) {
+    for (const id of allObjectIds.slice(i, i + BATCH)) {
+      if (sources.includes(id)) used.push(id);
+    }
+    if (i + BATCH < allObjectIds.length) await new Promise<void>(r => setTimeout(r, 0));
+  }
   try {
     localStorage.setItem(LS_SCRIPT_IDS_KEY, JSON.stringify(used));
     localStorage.setItem(LS_SCRIPT_IDS_TS_KEY, String(Date.now()));
