@@ -1602,7 +1602,7 @@ const StateRow = React.memo(function StateRow({
 function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allObjectIds, exportIds, onNavigateTo }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
   const { colFilters, handleColFilterChange: onColFilterChange, pattern, treeFilter, handleClearTreeFilter: onClearTreeFilter, sidebarToggleSeq, fulltextEnabled } = useFilterContext();
   const { selectedId, setSelectedId: onSelect, setHistoryModalId: _setHistoryModalId, setEnumManagerOpen, setAliasReplaceInitialStr, setEditInitialTab } = useSelectionContext();
-  const { appSettings, expertMode, handleToggleExpertMode: onToggleExpertMode, handleToggleToolbarLabels: onToggleToolbarLabels, handleToggleGroupByPath: onToggleGroupByPath, persistSettings } = useAppSettingsContext();
+  const { appSettings, expertMode, scriptUsedIds, scriptLastUpdated, scriptsFetching, handleToggleExpertMode: onToggleExpertMode, handleToggleToolbarLabels: onToggleToolbarLabels, handleToggleGroupByPath: onToggleGroupByPath, persistSettings } = useAppSettingsContext();
 
   const { language = 'en', dateFormat = 'de', visibleCols: settingsVisibleCols, toolbarLabels = true, tableFontSize = 'normal', showDesc = true, groupByPath = false, customDefaultWidths, customMinWidths, customMaxWidths, pageSize } = appSettings;
   const onOpenEnumManager = React.useCallback(() => setEnumManagerOpen(true), [setEnumManagerOpen]);
