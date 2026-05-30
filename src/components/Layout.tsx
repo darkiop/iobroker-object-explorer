@@ -176,6 +176,7 @@ export default function Layout({ sidebar, children, apiConnected = true, lastUpd
             onClick={() => { setCollapsed((c) => { const next = !c; localStorage.setItem(LS_SIDEBAR_COLLAPSED, String(next)); return next; }); if (onSidebarToggle) setTimeout(onSidebarToggle, 210); }}
             className={`p-1.5 rounded-lg transition-colors ${collapsed ? 'text-blue-600 bg-blue-500/15 hover:bg-blue-500/25 dark:text-blue-400 dark:bg-blue-500/20 dark:hover:bg-blue-500/30' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700'}`}
             title={collapsed ? (language === 'en' ? 'Expand sidebar' : 'Sidebar ausklappen') : (language === 'en' ? 'Collapse sidebar' : 'Sidebar einklappen')}
+            aria-label={collapsed ? (language === 'en' ? 'Expand sidebar' : 'Sidebar ausklappen') : (language === 'en' ? 'Collapse sidebar' : 'Sidebar einklappen')}
           >
             {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
           </button>
@@ -212,6 +213,7 @@ export default function Layout({ sidebar, children, apiConnected = true, lastUpd
                   disabled={hostTesting}
                   className="p-0.5 rounded text-blue-500 hover:text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 disabled:opacity-40 transition-colors shrink-0"
                   title={language === 'en' ? 'Apply' : 'Übernehmen'}
+                  aria-label={language === 'en' ? 'Apply' : 'Übernehmen'}
                 >
                   {hostTesting ? <Loader2 size={14} className="animate-spin text-orange-400" /> : <Check size={14} />}
                 </button>
@@ -286,6 +288,7 @@ export default function Layout({ sidebar, children, apiConnected = true, lastUpd
               rel="noopener noreferrer"
               className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
               title={language === 'en' ? 'Open ioBroker Admin' : 'ioBroker Admin öffnen'}
+              aria-label={language === 'en' ? 'Open ioBroker Admin' : 'ioBroker Admin öffnen'}
             >
               <ExternalLink size={16} />
             </a>
@@ -294,6 +297,7 @@ export default function Layout({ sidebar, children, apiConnected = true, lastUpd
             onClick={cycle}
             className="p-1.5 rounded-lg transition-colors text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700"
             title={theme === 'light' ? 'Dark Mode' : theme === 'dark' ? 'Obsidian Mode' : 'Light Mode'}
+            aria-label={theme === 'light' ? 'Dark Mode' : theme === 'dark' ? 'Obsidian Mode' : 'Light Mode'}
           >
             {theme === 'light' ? <Moon size={16} /> : theme === 'dark' ? <Gem size={16} /> : <Sun size={16} />}
           </button>
@@ -301,6 +305,7 @@ export default function Layout({ sidebar, children, apiConnected = true, lastUpd
             onClick={onOpenSettings}
             className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
             title={language === 'en' ? 'Settings' : 'Einstellungen'}
+            aria-label={language === 'en' ? 'Settings' : 'Einstellungen'}
           >
             <Settings size={16} />
           </button>
@@ -308,6 +313,7 @@ export default function Layout({ sidebar, children, apiConnected = true, lastUpd
             onClick={onShowShortcuts}
             className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
             title={language === 'en' ? 'Keyboard shortcuts' : 'Tastenkürzel'}
+            aria-label={language === 'en' ? 'Keyboard shortcuts' : 'Tastenkürzel'}
           >
             <CircleHelp size={16} />
           </button>
@@ -315,6 +321,7 @@ export default function Layout({ sidebar, children, apiConnected = true, lastUpd
             onClick={toggleFullscreen}
             className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
             title={isFullscreen ? (language === 'en' ? 'Exit fullscreen' : 'Vollbild beenden') : (language === 'en' ? 'Fullscreen' : 'Vollbild')}
+            aria-label={isFullscreen ? (language === 'en' ? 'Exit fullscreen' : 'Vollbild beenden') : (language === 'en' ? 'Fullscreen' : 'Vollbild')}
           >
             {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
           </button>

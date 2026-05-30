@@ -203,6 +203,7 @@ export function UIContextProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const handleLanguageChange = useCallback((language: 'en' | 'de') => {
+    document.documentElement.lang = language;
     setAppSettings((prev) => {
       if (prev.language === language) return prev;
       const next = { ...prev, language };

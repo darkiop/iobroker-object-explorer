@@ -125,15 +125,15 @@ export function useDeleteHistory() {
   return {
     deleteEntry: useMutation({
       mutationFn: ({ id, ts }: { id: string; ts: number }) => deleteHistoryEntry(id, ts),
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.history.root }),
+      onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.history.root }),
     }),
     deleteRange: useMutation({
       mutationFn: ({ id, start, end }: { id: string; start: number; end: number }) => deleteHistoryRange(id, start, end),
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.history.root }),
+      onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.history.root }),
     }),
     deleteAll: useMutation({
       mutationFn: ({ id }: { id: string }) => deleteHistoryAll(id),
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.history.root }),
+      onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.history.root }),
     }),
   };
 }
@@ -258,7 +258,7 @@ export function useCreateDatapoint() {
         await updateFunctionMembership(id, null, functionEnumId);
       }
     },
-    onSuccess: (_data, vars) => {
+    onSettled: (_data, _error, vars) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.objects.root });
       if (vars.roomEnumId) {
         queryClient.invalidateQueries({ queryKey: queryKeys.metadata.roomMap });
@@ -274,7 +274,7 @@ export function useImportDatapoints() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ data, existingIds }: { data: Record<string, IoBrokerObject>; existingIds?: Set<string> }) => importDatapoints(data, existingIds),
-    onSuccess: () => {
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.objects.root });
     },
   });

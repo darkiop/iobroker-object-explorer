@@ -7,8 +7,14 @@ function getBaseUrl(): string {
   if (window.location.protocol === 'https:') {
     return '/api/v1';
   }
-  const host = localStorage.getItem(LS_HOST_KEY) ?? window.__CONFIG__?.ioBrokerHost;
-  return host ? `http://${host}/v1` : '/api/v1';
+  const raw = localStorage.getItem(LS_HOST_KEY) ?? window.__CONFIG__?.ioBrokerHost;
+  if (raw) {
+    if (/^[\w.-]+(:\d{1,5})?$/.test(raw)) {
+      return `http://${raw}/v1`;
+    }
+    localStorage.removeItem(LS_HOST_KEY);
+  }
+  return '/api/v1';
 }
 
 async function fetchApi<T>(path: string): Promise<T> {
@@ -539,7 +545,7 @@ export async function getScriptUsedIds(allObjectIds: string[], forceRefresh = fa
   const BATCH = 200;
   for (let i = 0; i < allObjectIds.length; i += BATCH) {
     for (const id of allObjectIds.slice(i, i + BATCH)) {
-      if (sources.includes(id)) used.push(id);
+      if (new RegExp('\\b' + id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b').test(sources)) used.push(id);
     }
     if (i + BATCH < allObjectIds.length) await new Promise<void>(r => setTimeout(r, 0));
   }

@@ -190,15 +190,15 @@ export function FilterContextProvider({ children }: { children: ReactNode }) {
   // Persist filter state to localStorage
   useEffect(() => {
     try {
-      const state: FilterState = {
-        pattern, page, historyOnly, smartOnly, colFilters,
+      const state: Omit<FilterState, 'page'> = {
+        pattern, historyOnly, smartOnly, colFilters,
         roomFilters: [...roomFilters],
         functionFilters: [...functionFilters],
         quickPatterns: [...quickPatterns],
       };
       localStorage.setItem(LS_FILTER_STATE, JSON.stringify(state));
     } catch { /* ignore quota errors */ }
-  }, [pattern, page, historyOnly, smartOnly, colFilters, roomFilters, functionFilters, quickPatterns]);
+  }, [pattern, historyOnly, smartOnly, colFilters, roomFilters, functionFilters, quickPatterns]);
 
   // Collapse tree when treeFilter is cleared
   useEffect(() => {
