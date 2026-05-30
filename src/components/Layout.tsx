@@ -13,6 +13,7 @@ interface LayoutProps {
   sidebar: React.ReactNode;
   children: React.ReactNode;
   apiConnected?: boolean;
+  browserOffline?: boolean;
   lastUpdated?: number;
   onManualRefresh?: () => void;
   onConfirmScriptRefresh?: () => void;
@@ -21,7 +22,7 @@ interface LayoutProps {
 const LS_SIDEBAR_WIDTH = 'iobroker-explorer-sidebar-width';
 const LS_SIDEBAR_COLLAPSED = 'iobroker-explorer-sidebar-collapsed';
 
-export default function Layout({ sidebar, children, apiConnected = true, lastUpdated, onManualRefresh, onConfirmScriptRefresh }: LayoutProps) {
+export default function Layout({ sidebar, children, apiConnected = true, browserOffline = false, lastUpdated, onManualRefresh, onConfirmScriptRefresh }: LayoutProps) {
   const {
     appSettings, scriptsFetching, confirmScriptRefresh, scriptLastUpdated,
     setConfirmScriptRefresh, handleLanguageChange, openSettings, setShortcutsOpen,
@@ -348,7 +349,22 @@ export default function Layout({ sidebar, children, apiConnected = true, lastUpd
 
 
         {/* Main Content */}
-        <main className="flex-1 overflow-hidden p-4 flex flex-col bg-white dark:bg-gray-900">{children}</main>
+        <main className="flex-1 overflow-hidden flex flex-col bg-white dark:bg-gray-900">
+          {(browserOffline || !apiConnected) && (
+            <div className={`shrink-0 flex items-center gap-2 px-4 py-2 text-sm font-medium animate-pulse ${
+              browserOffline
+                ? 'bg-gray-800 text-gray-100 dark:bg-gray-950 dark:text-gray-200'
+                : 'bg-amber-500/90 text-white dark:bg-amber-600/90'
+            }`}>
+              <span className="inline-block w-2 h-2 rounded-full bg-current shrink-0" />
+              {browserOffline
+                ? (language === 'en' ? 'No internet connection' : 'Keine Internetverbindung')
+                : (language === 'en' ? 'ioBroker unreachable — retrying…' : 'ioBroker nicht erreichbar — Verbindung wird wiederhergestellt…')
+              }
+            </div>
+          )}
+          <div className="flex-1 overflow-hidden p-4 flex flex-col">{children}</div>
+        </main>
       </div>
     </div>
     {confirmScriptRefresh && createPortal(

@@ -17,6 +17,7 @@ import AliasReplaceModal from './components/AliasReplaceModal';
 import AutoCreateAliasModal from './components/AutoCreateAliasModal';
 import SettingsModal from './components/SettingsModal';
 import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunctionMap, useRoomEnums, useFunctionEnums, useAliasMap } from './hooks/useStates';
+import { useApiConnectivity } from './hooks/useApiConnectivity';
 import { hasHistory, hasSmartName, hasCustomEnabled } from './api/iobroker';
 import type { StateListHandle } from './components/StateList';
 import { filterObjectIds } from './utils/filterObjectIds';
@@ -87,6 +88,9 @@ function AppContent() {
     appSettings, settingsOpen, setSettingsOpen, shortcutsOpen, setShortcutsOpen,
     handleScriptRefreshConfirmed,
   } = useUIContext();
+
+  // ── Connectivity ─────────────────────────────────────────────────────────
+  const { isOnline, browserOnline } = useApiConnectivity();
 
   // ── React Query ──────────────────────────────────────────────────────────
   const { data: stateObjectsData, error: objectsError, refetch: refetchFilteredObjects, isPlaceholderData: objectsIsPartial } = useFilteredObjects(basePattern, fulltextEnabled, exactEnabled);
@@ -250,7 +254,8 @@ function AppContent() {
   // ── Render ───────────────────────────────────────────────────────────────
   return (
     <Layout
-      apiConnected={!objectsError}
+      apiConnected={!objectsError && isOnline}
+      browserOffline={!browserOnline}
       lastUpdated={lastValidUpdatedAt.current > 0 ? lastValidUpdatedAt.current : undefined}
       onManualRefresh={handleManualRefresh}
       onConfirmScriptRefresh={() => handleScriptRefreshConfirmed(Object.keys(allObjects))}
