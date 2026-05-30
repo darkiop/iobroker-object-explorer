@@ -1,6 +1,7 @@
 import type { IoBrokerObject } from '../types/iobroker';
+import { EMPTY_SENTINEL } from '../components/BatchComboControl';
 
-type ColumnFilterKey = 'id' | 'name' | 'room' | 'function' | 'type' | 'role' | 'unit' | 'write' | 'history' | 'smart' | 'alias' | 'scripts';
+type ColumnFilterKey = 'id' | 'name' | 'room' | 'function' | 'type' | 'role' | 'unit' | 'write' | 'history' | 'custom' | 'smart' | 'alias' | 'scripts';
 type ColumnFilters = Partial<Record<ColumnFilterKey, string>>;
 
 interface FilterObjectIdsParams {
@@ -9,6 +10,7 @@ interface FilterObjectIdsParams {
   roomMap: Record<string, string>;
   functionMap: Record<string, string>;
   historyIds: Set<string>;
+  customIds: Set<string>;
   smartIds: Set<string>;
   aliasMap: Map<string, string[]>;
   colFilters: ColumnFilters;
@@ -41,6 +43,7 @@ export function filterObjectIds({
   roomMap,
   functionMap,
   historyIds,
+  customIds,
   smartIds,
   aliasMap,
   colFilters,
@@ -57,13 +60,24 @@ export function filterObjectIds({
   // Pre-compute filter values once before the single pass
   const fId = colFilters.id?.trim().toLowerCase() || null;
   const fName = colFilters.name?.trim().toLowerCase() || null;
-  const fRoom = colFilters.room?.trim().toLowerCase() || null;
-  const fFunction = colFilters.function?.trim().toLowerCase() || null;
-  const fType = colFilters.type?.trim().toLowerCase() || null;
-  const fRole = colFilters.role?.trim().toLowerCase() || null;
-  const fUnit = colFilters.unit?.trim().toLowerCase() || null;
+  const fRoomRaw = colFilters.room?.trim() || null;
+  const fRoom = fRoomRaw === EMPTY_SENTINEL ? null : fRoomRaw?.toLowerCase() || null;
+  const fRoomEmpty = fRoomRaw === EMPTY_SENTINEL;
+  const fFunctionRaw = colFilters.function?.trim() || null;
+  const fFunction = fFunctionRaw === EMPTY_SENTINEL ? null : fFunctionRaw?.toLowerCase() || null;
+  const fFunctionEmpty = fFunctionRaw === EMPTY_SENTINEL;
+  const fTypeRaw = colFilters.type?.trim() || null;
+  const fType = fTypeRaw === EMPTY_SENTINEL ? null : fTypeRaw?.toLowerCase() || null;
+  const fTypeEmpty = fTypeRaw === EMPTY_SENTINEL;
+  const fRoleRaw = colFilters.role?.trim() || null;
+  const fRole = fRoleRaw === EMPTY_SENTINEL ? null : fRoleRaw?.toLowerCase() || null;
+  const fRoleEmpty = fRoleRaw === EMPTY_SENTINEL;
+  const fUnitRaw = colFilters.unit?.trim() || null;
+  const fUnit = fUnitRaw === EMPTY_SENTINEL ? null : fUnitRaw?.toLowerCase() || null;
+  const fUnitEmpty = fUnitRaw === EMPTY_SENTINEL;
   const filterReadOnly = colFilters.write === '1';
   const filterHistory = colFilters.history === '1';
+  const filterCustom = colFilters.custom === '1';
   const filterSmart = colFilters.smart === '1';
   const filterAlias = colFilters.alias === '1';
   const fPatternRoom = patternRoomFilter?.toLowerCase() ?? null;
@@ -80,26 +94,33 @@ export function filterObjectIds({
     if (fName && !getNameLowerCase(obj).includes(fName)) return false;
 
     const room = roomMap[id] || '';
+    if (fRoomEmpty && room !== '') return false;
     if (fRoom && !room.toLowerCase().includes(fRoom)) return false;
     if (roomFilters.size > 0 && !roomFilters.has(roomMap[id])) return false;
     if (fPatternRoom && !room.toLowerCase().includes(fPatternRoom)) return false;
 
     const func = functionMap[id] || '';
+    if (fFunctionEmpty && func !== '') return false;
     if (fFunction && !func.toLowerCase().includes(fFunction)) return false;
     if (functionFilters.size > 0 && !functionFilters.has(functionMap[id])) return false;
     if (fPatternFunction && !func.toLowerCase().includes(fPatternFunction)) return false;
 
     const objType = (obj?.common?.type || obj?.type || '').toLowerCase();
+    if (fTypeEmpty && objType !== '') return false;
     if (fType && !objType.includes(fType)) return false;
     if (fPatternType && !objType.includes(fPatternType)) return false;
 
     const objRole = (obj?.common?.role || '').toLowerCase();
+    if (fRoleEmpty && objRole !== '') return false;
     if (fRole && !objRole.includes(fRole)) return false;
     if (fPatternRole && !objRole.includes(fPatternRole)) return false;
-    if (fUnit && !(obj?.common?.unit || '').toLowerCase().includes(fUnit)) return false;
+    const objUnit = (obj?.common?.unit || '').toLowerCase();
+    if (fUnitEmpty && objUnit !== '') return false;
+    if (fUnit && !objUnit.includes(fUnit)) return false;
 
     if (filterReadOnly && obj?.common?.write !== false) return false;
     if (filterHistory && !historyIds.has(id)) return false;
+    if (filterCustom && !customIds.has(id)) return false;
     if (filterSmart && !smartIds.has(id)) return false;
     if (filterAlias && !aliasMap.has(id) && !obj?.common?.alias?.id) return false;
 

@@ -19,7 +19,7 @@ import { hasHistory, hasSmartName, isGlobPattern } from '../api/iobroker';
 import { useAllObjects } from '../hooks/useStates';
 import TreeStatsModal from './TreeStatsModal';
 import type { IoBrokerState, IoBrokerObject } from '../types/iobroker';
-import { copyText } from '../utils/clipboard';
+import { copyText, copyToClipboard } from '../utils/clipboard';
 import { formatValue, formatTimestamp } from '../utils/format';
 import { ColoredId } from '../utils/coloredId';
 import { getTypeColor } from '../utils/typeColor';
@@ -28,7 +28,7 @@ import { useToast } from '../context/ToastContext';
 import { useFilterContext } from '../context/FilterContext';
 import { useSelectionContext } from '../context/SelectionContext';
 import { useAppSettingsContext } from '../context/UIContext';
-import BatchComboControl from './BatchComboControl';
+import BatchComboControl, { EMPTY_SENTINEL } from './BatchComboControl';
 import TsRangeFilterControl, { parseTsFilter } from './TsRangeFilterControl';
 import ColPicker from './ColPicker';
 import SortHeader from './SortHeader';
@@ -283,7 +283,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   function fitToContainer() {
     const containerWidth = containerRef.current?.clientWidth;
     if (!containerWidth) return;
-    const ICON_COLS: SortKey[] = ['checkbox', 'write', 'history', 'smart', 'alias', 'scripts'];
+    const ICON_COLS: SortKey[] = ['checkbox', 'write', 'history', 'custom', 'smart', 'alias', 'scripts'];
     const scalable = visibleCols.filter((k) => !ICON_COLS.includes(k));
     const iconWidth = ICON_COLS.filter((k) => show(k)).reduce((s, k) => s + colWidths[k], 0);
     const available = containerWidth - iconWidth - DEL_COL_WIDTH;
@@ -488,14 +488,24 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
 
   // metadata + icon filters applied in App.tsx before pagination
   // value/timestamp/scripts are filtered here (page-local)
-  const valueFilter = colFilters.value?.trim().toLowerCase() || '';
+  const valueFilterRaw = colFilters.value?.trim() || '';
+  const valueFilterEmpty = valueFilterRaw === EMPTY_SENTINEL;
+  const valueFilter = valueFilterEmpty ? '' : valueFilterRaw.toLowerCase();
   const tsFilterParsed = useMemo(() => parseTsFilter(colFilters.ts || ''), [colFilters.ts]);
   const scriptsFilterActive = colFilters.scripts === '1';
+  const ackFilter = colFilters.ack || '';
   const filteredIds = useMemo(() => {
-    if (!valueFilter && tsFilterParsed.mode === 'none' && !scriptsFilterActive) return sortedIds;
+    if (!valueFilter && !valueFilterEmpty && tsFilterParsed.mode === 'none' && !scriptsFilterActive && !ackFilter) return sortedIds;
     return sortedIds.filter((id) => {
       if (scriptsFilterActive && !scriptSources?.includes(id)) return false;
-      const valueOk = !valueFilter || formatValue(states[id]?.val).toLowerCase().includes(valueFilter);
+      if (ackFilter === 'yes' && !states[id]?.ack) return false;
+      if (ackFilter === 'no' && states[id]?.ack !== false) return false;
+      let valueOk: boolean;
+      if (valueFilterEmpty) {
+        valueOk = states[id]?.val == null;
+      } else {
+        valueOk = !valueFilter || formatValue(states[id]?.val).toLowerCase().includes(valueFilter);
+      }
       let tsOk = true;
       if (tsFilterParsed.mode === 'text') {
         tsOk = formatTimestamp(states[id]?.ts ?? NaN, dateFormat).toLowerCase().includes(tsFilterParsed.text || '');
@@ -507,8 +517,8 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
       }
       return valueOk && tsOk;
     });
-  }, [sortedIds, valueFilter, tsFilterParsed, dateFormat, scriptsFilterActive, scriptSources,
-    (valueFilter || tsFilterParsed.mode !== 'none') ? states : null]);
+  }, [sortedIds, valueFilter, valueFilterEmpty, tsFilterParsed, dateFormat, scriptsFilterActive, ackFilter, scriptSources,
+    (valueFilter || valueFilterEmpty || tsFilterParsed.mode !== 'none' || ackFilter) ? states : null]);
 
   type DisplayItem = { kind: 'row'; id: string; depth: number } | { kind: 'sep'; prefix: string; isState: boolean; depth: number };
 
@@ -1277,7 +1287,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
         const allChecked = groupIds.length > 0 && groupIds.every((id) => checkedIds.has(id));
         const sepItems: ContextMenuEntry[] = [];
         if (prefix) {
-          sepItems.push({ icon: <Copy size={13} />, label: isEn ? 'Copy path' : 'Pfad kopieren', onClick: () => copyText(prefix) });
+          sepItems.push({ icon: <Copy size={13} />, label: isEn ? 'Copy path' : 'Pfad kopieren', onClick: () => copyToClipboard(prefix).then(() => showToast(prefix, 'success')).catch(() => showToast(isEn ? 'Copy failed' : 'Kopieren fehlgeschlagen')) });
           sepItems.push({ icon: <Search size={13} />, label: isEn ? 'Set as filter' : 'Als Filter setzen', onClick: () => setDraftAndPropagate({ ...colFiltersDraft, id: prefix }) });
           sepItems.push({ separator: true } as const);
         }
@@ -1335,6 +1345,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
               {show('name')    && <SortHeader label="Name" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('name')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
               {show('write')   && <th style={{ width: colWidths['write'],   minWidth: colWidths['write']   }} className="text-center align-middle group/hdr relative" title={isEn ? 'Read only' : 'Schreibschutz'}><Lock size={12} className="mx-auto text-gray-400 dark:text-gray-500" /><button className="absolute inset-y-0 right-0 opacity-0 group-hover/hdr:opacity-100 px-0.5 text-gray-400 hover:text-red-400 transition-opacity" onClick={() => handleHideCol('write')} tabIndex={-1}><Minus size={10} /></button></th>}
               {show('history') && <th style={{ width: colWidths['history'], minWidth: colWidths['history'] }} className="text-center align-middle group/hdr relative" title="History"><History size={12} className="mx-auto text-gray-400 dark:text-gray-500" /><button className="absolute inset-y-0 right-0 opacity-0 group-hover/hdr:opacity-100 px-0.5 text-gray-400 hover:text-red-400 transition-opacity" onClick={() => handleHideCol('history')} tabIndex={-1}><Minus size={10} /></button></th>}
+              {show('custom')  && <th style={{ width: colWidths['custom'],  minWidth: colWidths['custom']  }} className="text-center align-middle group/hdr relative" title="Custom"><Wrench size={12} className="mx-auto text-gray-400 dark:text-gray-500" /><button className="absolute inset-y-0 right-0 opacity-0 group-hover/hdr:opacity-100 px-0.5 text-gray-400 hover:text-red-400 transition-opacity" onClick={() => handleHideCol('custom')} tabIndex={-1}><Minus size={10} /></button></th>}
               {show('smart')   && <th style={{ width: colWidths['smart'],   minWidth: colWidths['smart']   }} className="text-center align-middle group/hdr relative" title="SmartName"><Mic2 size={12} className="mx-auto text-gray-400 dark:text-gray-500" /><button className="absolute inset-y-0 right-0 opacity-0 group-hover/hdr:opacity-100 px-0.5 text-gray-400 hover:text-red-400 transition-opacity" onClick={() => handleHideCol('smart')} tabIndex={-1}><Minus size={10} /></button></th>}
               {show('alias')   && <th style={{ width: colWidths['alias'],           minWidth: colWidths['alias']           }} className="text-center align-middle group/hdr relative" title="Alias"><Link2 size={12} className="mx-auto text-gray-400 dark:text-gray-500" /><button className="absolute inset-y-0 right-0 opacity-0 group-hover/hdr:opacity-100 px-0.5 text-gray-400 hover:text-red-400 transition-opacity" onClick={() => handleHideCol('alias')} tabIndex={-1}><Minus size={10} /></button></th>}
               {show('scripts') && <th style={{ width: colWidths['scripts'], minWidth: colWidths['scripts'] }} className="text-center align-middle group/hdr relative" title={isEn ? 'Scripts' : 'Skripte'}><FileCode2 size={12} className="mx-auto text-gray-400 dark:text-gray-500" /><button className="absolute inset-y-0 right-0 opacity-0 group-hover/hdr:opacity-100 px-0.5 text-gray-400 hover:text-red-400 transition-opacity" onClick={() => handleHideCol('scripts')} tabIndex={-1}><Minus size={10} /></button></th>}
@@ -1359,9 +1370,9 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                   />
                 </th>
               )}
-              {(['id','name','write','history','smart','alias','scripts','room','function','type','role','value','unit','ack','ts'] as SortKey[]).filter(show).map((key) => {
-                const filterable = ['id','name','room','function','type','role','value','unit','ts'].includes(key);
-                const isIconToggle = ['write','history','smart','alias','scripts'].includes(key);
+              {(['id','name','write','history','custom','smart','alias','scripts','room','function','type','role','value','unit','ack','ts'] as SortKey[]).filter(show).map((key) => {
+                const filterable = ['id','name','room','function','type','role','value','unit','ack','ts'].includes(key);
+                const isIconToggle = ['write','history','custom','smart','alias','scripts'].includes(key);
                 const isActive = colFiltersDraft[key] === '1';
 
                 if (isIconToggle) {
@@ -1369,6 +1380,8 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                     ? <Lock size={11} />
                     : key === 'history'
                     ? <History size={11} />
+                    : key === 'custom'
+                    ? <Wrench size={11} />
                     : key === 'alias'
                     ? <Link2 size={11} />
                     : key === 'scripts'
@@ -1378,6 +1391,8 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                     ? 'text-gray-500 dark:text-gray-300 bg-gray-300/60 dark:bg-gray-500/40'
                     : key === 'history'
                     ? 'text-blue-500 bg-blue-500/20'
+                    : key === 'custom'
+                    ? 'text-purple-500 bg-purple-500/20'
                     : key === 'alias'
                     ? 'text-amber-500 bg-amber-500/20'
                     : key === 'scripts'
@@ -1387,6 +1402,8 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                     ? (isEn ? 'Only read-only' : 'Nur Schreibgeschützte')
                     : key === 'history'
                     ? (isEn ? 'Only with history' : 'Nur mit History')
+                    : key === 'custom'
+                    ? (isEn ? 'Only with custom settings' : 'Nur mit Custom-Einstellungen')
                     : key === 'alias'
                     ? (isEn ? 'Only with alias' : 'Nur mit Alias')
                     : key === 'scripts'
@@ -1409,7 +1426,17 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                   <th key={key} style={{ width: w(key) }} className="px-2 py-1 normal-case font-normal align-middle">
                     {filterable ? (
                       <div className="relative flex items-center" onClick={(e) => e.stopPropagation()}>
-                        {(key === 'role' || key === 'room' || key === 'function' || key === 'unit' || key === 'type') ? (
+                        {key === 'ack' ? (
+                          <BatchComboControl
+                            value={colFiltersDraft.ack || ''}
+                            onChange={(value) => setDraftAndPropagate({ ...colFiltersDraft, ack: value })}
+                            placeholder="Filter..."
+                            options={['yes', 'no']}
+                            displayMap={{ yes: isEn ? 'Yes' : 'Ja', no: isEn ? 'No' : 'Nein' }}
+                            className="w-full"
+                            language={language}
+                          />
+                        ) : (key === 'role' || key === 'room' || key === 'function' || key === 'unit' || key === 'type' || key === 'value') ? (
                           <BatchComboControl
                             value={colFiltersDraft[key] || ''}
                             onChange={(value) => setDraftAndDebounce({ ...colFiltersDraft, [key]: value })}
@@ -1423,10 +1450,13 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                                     ? fnFilterOptions
                                     : key === 'unit'
                                       ? unitFilterOptions
-                                      : typeFilterOptions
+                                      : key === 'type'
+                                        ? typeFilterOptions
+                                        : []
                             }
                             className="w-full"
                             language={language}
+                            emptyOptionLabel={isEn ? '(empty)' : '(leer)'}
                           />
                         ) : key === 'ts' ? (
                           <TsRangeFilterControl
@@ -1554,7 +1584,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                         </button>
                         {item.prefix && (
                           <button
-                            onClick={(e) => { e.stopPropagation(); copyText(item.prefix); }}
+                            onClick={(e) => { e.stopPropagation(); copyToClipboard(item.prefix).then(() => showToast(item.prefix, 'success')).catch(() => showToast(isEn ? 'Copy failed' : 'Kopieren fehlgeschlagen')); }}
                             className="opacity-0 group-hover/sep:opacity-100 transition-opacity text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
                             title={item.prefix}
                           >

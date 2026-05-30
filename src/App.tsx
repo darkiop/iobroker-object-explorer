@@ -17,7 +17,7 @@ import AliasReplaceModal from './components/AliasReplaceModal';
 import AutoCreateAliasModal from './components/AutoCreateAliasModal';
 import SettingsModal from './components/SettingsModal';
 import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunctionMap, useRoomEnums, useFunctionEnums, useAliasMap } from './hooks/useStates';
-import { hasHistory, hasSmartName } from './api/iobroker';
+import { hasHistory, hasSmartName, hasCustomEnabled } from './api/iobroker';
 import type { StateListHandle } from './components/StateList';
 import { filterObjectIds } from './utils/filterObjectIds';
 import type { IoBrokerObject, IoBrokerState } from './types/iobroker';
@@ -118,6 +118,12 @@ function AppContent() {
     return set;
   }, [stateObjects]);
 
+  const customIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const [id, obj] of Object.entries(stateObjects)) { if (hasCustomEnabled(obj)) set.add(id); }
+    return set;
+  }, [stateObjects]);
+
   const allStateIds = useMemo(
     () => Object.keys(allObjects).filter(id => allObjects[id]?.type === 'state').sort(),
     [allObjects]
@@ -176,13 +182,13 @@ function AppContent() {
       if (smartOnly) ids = ids.filter((id) => smartIds.has(id));
     }
     return filterObjectIds({
-      ids, objects: sourceObjects, roomMap, functionMap, historyIds, smartIds, aliasMap,
+      ids, objects: sourceObjects, roomMap, functionMap, historyIds, customIds, smartIds, aliasMap,
       colFilters, roomFilters, functionFilters, quickPatterns,
       patternRoomFilter: roomFilter, patternFunctionFilter: functionFilter,
       patternTypeFilter: typeFilter, patternRoleFilter: null,
       danglingAliases: danglingAliasFilter, allObjectIds: existingIds,
     });
-  }, [stateObjects, allObjects, historyOnly, historyIds, smartOnly, smartIds, colFilters, roomMap, functionMap, aliasMap, roomFilters, functionFilters, quickPatterns, roomFilter, functionFilter, typeFilter, danglingAliasFilter, existingIds]);
+  }, [stateObjects, allObjects, historyOnly, historyIds, customIds, smartOnly, smartIds, colFilters, roomMap, functionMap, aliasMap, roomFilters, functionFilters, quickPatterns, roomFilter, functionFilter, typeFilter, danglingAliasFilter, existingIds]);
 
   const tableIds = useMemo(
     () => treeFilter ? objectIds.filter((id) => id.startsWith(treeFilter)) : objectIds,

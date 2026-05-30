@@ -1,4 +1,4 @@
-export type SortKey = 'checkbox' | 'write' | 'alias' | 'id' | 'name' | 'room' | 'function' | 'type' | 'role' | 'value' | 'unit' | 'ack' | 'ts' | 'history' | 'smart' | 'scripts' | 'relevanz';
+export type SortKey = 'checkbox' | 'write' | 'alias' | 'id' | 'name' | 'room' | 'function' | 'type' | 'role' | 'value' | 'unit' | 'ack' | 'ts' | 'history' | 'custom' | 'smart' | 'scripts' | 'relevanz';
 export type DateFormatSetting = 'de' | 'us' | 'iso';
 
 export const ALL_COLUMNS: { key: SortKey; label: string }[] = [
@@ -7,6 +7,7 @@ export const ALL_COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'name',    label: 'Name' },
   { key: 'write',   label: 'Schreibschutz' },
   { key: 'history', label: 'History' },
+  { key: 'custom',  label: 'Custom' },
   { key: 'smart',   label: 'SmartName' },
   { key: 'alias',   label: 'Alias' },
   { key: 'scripts', label: 'Skripte' },
@@ -26,6 +27,7 @@ export function getColumnLabel(key: SortKey, language: 'en' | 'de' = 'de'): stri
     case 'checkbox': return isEn ? 'Selection' : 'Auswahl';
     case 'write': return isEn ? 'Read only' : 'Schreibschutz';
     case 'history': return 'History';
+    case 'custom': return 'Custom';
     case 'smart': return 'SmartName';
     case 'scripts': return isEn ? 'Scripts' : 'Skripte';
     case 'alias': return 'Alias';
@@ -44,22 +46,22 @@ export function getColumnLabel(key: SortKey, language: 'en' | 'de' = 'de'): stri
   }
 }
 
-export const DEFAULT_COLS: SortKey[] = ['checkbox', 'id', 'name', 'write', 'history', 'smart', 'alias', 'scripts', 'room', 'function', 'type', 'role', 'value', 'unit', 'ack', 'ts'];
+export const DEFAULT_COLS: SortKey[] = ['checkbox', 'id', 'name', 'write', 'history', 'custom', 'smart', 'alias', 'scripts', 'room', 'function', 'type', 'role', 'value', 'unit', 'ack', 'ts'];
 
 /** Columns whose width is user-configurable (excludes fixed icon columns) */
 export const CONFIGURABLE_WIDTH_COLS: SortKey[] = ['id', 'name', 'room', 'function', 'type', 'role', 'value', 'unit', 'ack', 'ts', 'relevanz'];
 
 export const BUILTIN_DEFAULT_WIDTHS: Record<SortKey, number> = {
-  checkbox: 28, write: 28, history: 28, smart: 28, scripts: 28, alias: 28,
+  checkbox: 28, write: 28, history: 28, custom: 28, smart: 28, scripts: 28, alias: 28,
   id: 350, name: 220, room: 110, function: 110, type: 70, role: 130, value: 100,
-  unit: 70, ack: 50, ts: 155, relevanz: 100,
+  unit: 70, ack: 85, ts: 155, relevanz: 100,
 };
 
 export const BUILTIN_MIN_WIDTHS: Partial<Record<SortKey, number>> = {
-  id: 150, name: 120, room: 60, function: 60, type: 50, role: 60, value: 60, unit: 40, ack: 40, ts: 80,
+  id: 150, name: 120, room: 60, function: 60, type: 50, role: 60, value: 60, unit: 40, ack: 65, ts: 80,
 };
 
 export const BUILTIN_MAX_WIDTHS: Partial<Record<SortKey, number>> = {
   id: 600, name: 400, room: 200, function: 200, type: 100, role: 220,
-  value: 180, unit: 120, ack: 50, ts: 180, relevanz: 200,
+  value: 180, unit: 120, ack: 150, ts: 180, relevanz: 200,
 };

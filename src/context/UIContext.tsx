@@ -88,6 +88,11 @@ export function loadAppSettings(): AppSettings {
       if (aliasIdx >= 0) validCols.splice(aliasIdx + 1, 0, 'scripts');
       else validCols.push('scripts');
     }
+    if (validCols.length > 0 && !validCols.includes('custom')) {
+      const historyIdx = validCols.indexOf('history');
+      if (historyIdx >= 0) validCols.splice(historyIdx + 1, 0, 'custom');
+      else validCols.push('custom');
+    }
     const validDate = parsed.dateFormat === 'de' || parsed.dateFormat === 'us' || parsed.dateFormat === 'iso' ? parsed.dateFormat : 'de';
     const validExtra = Array.isArray(parsed.extraQuickFilters)
       ? parsed.extraQuickFilters.filter((x): x is string => typeof x === 'string').map(normalizeQuickPattern).filter(Boolean)

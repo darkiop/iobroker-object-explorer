@@ -2,6 +2,8 @@ import { useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ChevronDown } from 'lucide-react';
 
+export const EMPTY_SENTINEL = '__empty__';
+
 function BatchComboControl({
   value,
   onChange,
@@ -9,6 +11,8 @@ function BatchComboControl({
   options,
   className = '',
   language = 'en',
+  emptyOptionLabel,
+  displayMap,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -16,17 +20,21 @@ function BatchComboControl({
   options: string[];
   className?: string;
   language?: 'en' | 'de';
+  emptyOptionLabel?: string;
+  displayMap?: Record<string, string>;
 }) {
   const isEn = language === 'en';
+  const isEmptySelected = value === EMPTY_SENTINEL;
   const [open, setOpen] = useState(false);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
 
   const filtered = useMemo(() => {
-    const q = value.trim().toLowerCase();
-    const source = q ? options.filter((o) => o.toLowerCase().includes(q)) : options;
+    const isMappedSelected = displayMap && value in displayMap;
+    const q = (isEmptySelected || isMappedSelected) ? '' : value.trim().toLowerCase();
+    const source = q ? options.filter((o) => (displayMap?.[o] ?? o).toLowerCase().includes(q)) : options;
     return source.slice(0, 80);
-  }, [options, value]);
+  }, [options, value, isEmptySelected, displayMap]);
 
   function openMenu() {
     if (!anchorRef.current) return;
@@ -44,14 +52,24 @@ function BatchComboControl({
         ref={anchorRef}
         className={`h-7 px-2 text-xs font-normal rounded border border-gray-300 dark:border-gray-600 bg-gray-50/70 dark:bg-gray-800/70 focus-within:outline-none focus-within:ring-1 focus-within:ring-blue-400 transition-colors flex items-center justify-between gap-2 ${className}`}
       >
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onFocus={openMenu}
-          placeholder={placeholder}
-          className="flex-1 min-w-0 bg-transparent text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none"
-        />
+        {isEmptySelected ? (
+          <span
+            className="flex-1 min-w-0 italic text-blue-500 dark:text-blue-400 cursor-default select-none"
+            onClick={openMenu}
+          >
+            {emptyOptionLabel || (isEn ? '(empty)' : '(leer)')}
+          </span>
+        ) : (
+          <input
+            type="text"
+            value={displayMap?.[value] ?? value}
+            onChange={(e) => onChange(e.target.value)}
+            onFocus={openMenu}
+            placeholder={placeholder}
+            readOnly={!!displayMap && value in (displayMap ?? {})}
+            className="flex-1 min-w-0 bg-transparent text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none"
+          />
+        )}
         <button
           type="button"
           onClick={(e) => {
@@ -82,6 +100,21 @@ function BatchComboControl({
             onMouseDown={(e) => e.stopPropagation()}
           >
             <ul className="max-h-56 overflow-y-auto py-1">
+              {emptyOptionLabel && (
+                <>
+                  <li
+                    onMouseDown={(e) => { e.preventDefault(); onChange(EMPTY_SENTINEL); closeMenu(); }}
+                    className={`px-3 py-1.5 text-xs cursor-pointer italic ${
+                      isEmptySelected
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    {emptyOptionLabel}
+                  </li>
+                  <li className="border-t border-gray-100 dark:border-gray-700 my-0.5" />
+                </>
+              )}
               {filtered.length > 0 ? (
                 filtered.map((opt) => (
                   <li
@@ -93,7 +126,7 @@ function BatchComboControl({
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                   >
-                    {opt}
+                    {displayMap?.[opt] ?? opt}
                   </li>
                 ))
               ) : (

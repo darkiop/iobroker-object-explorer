@@ -285,6 +285,11 @@ export function hasHistory(obj: IoBrokerObject): boolean {
   return obj.common?.custom?.['sql.0']?.enabled === true;
 }
 
+export function hasCustomEnabled(obj: IoBrokerObject | undefined): boolean {
+  if (!obj?.common?.custom) return false;
+  return Object.values(obj.common.custom).some((c) => c?.enabled === true);
+}
+
 export function hasSmartName(obj: IoBrokerObject | undefined): boolean {
   if (!obj) return false;
   const sn = obj.common?.smartName;

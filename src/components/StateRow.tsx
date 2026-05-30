@@ -12,7 +12,7 @@ import EditableFunctionCell from './cells/EditableFunctionCell';
 import CopyIdButton from './cells/CopyIdButton';
 import TypeIcon from './TypeIcon';
 import StyledCheckbox from './StyledCheckbox';
-import { hasHistory, hasSmartName } from '../api/iobroker';
+import { hasHistory, hasSmartName, hasCustomEnabled } from '../api/iobroker';
 import { ColoredId } from '../utils/coloredId';
 import { formatTimestamp } from '../utils/format';
 import { getObjectName, resolveI18n } from './stateListUtils';
@@ -190,6 +190,15 @@ const StateRow = React.memo(function StateRow({
               >
                 <History size={15} />
               </button>
+            )}
+          </div>
+        </td>
+      )}
+      {show('custom') && (
+        <td style={{ width: colWidths['custom'], minWidth: colWidths['custom'] }} className="py-2 align-middle">
+          <div className="flex items-center justify-center">
+            {obj && hasCustomEnabled(obj) && (
+              <Wrench size={13} className="text-purple-500 dark:text-purple-400" />
             )}
           </div>
         </td>
