@@ -11,7 +11,7 @@
 
 | ID | Status | Kategorie | Priorität | Bereich | Datei/Pfad | Problem | Technische Auswirkung | Empfehlung | Aufwand | Risiko |
 |----|--------|-----------|-----------|---------|------------|---------|----------------------|------------|---------|--------|
-| F-01 | Offen | Testing | CRITICAL | Testing | — (kein Test-Framework) | Kein einziger Test existiert im Projekt. Kein Unit-, Integrations- oder E2E-Test. TypeScript-Typen sind keine Funktionsprüfung. | Regressions bei Refactoring bleiben unentdeckt. Jede Änderung an API-Layer, Filter-Logik oder Mutations könnte produktiv fehlerhafte Daten schreiben — ohne Sicherheitsnetz. Besonders kritisch bei `deleteObject`, `putFullObject`, `importDatapoints`. | Vitest + React Testing Library einführen. Priorität: `filterObjectIds`, `getObjectsByPattern`, `loadAppSettings` (Migrations-Logik), `getStatesBatch`, alle Mutations mit Rollback. | XL | Stability |
+| F-01 | **Partial** | Testing | ~~CRITICAL~~ → MEDIUM | Testing | `src/**/*.test.ts` | Vitest 2.x + jsdom 24 eingeführt. 101 Tests in 5 Dateien: `format.test.ts`, `i18n.test.ts`, `stateListUtils.test.ts`, `iobroker.test.ts` (pure: `isGlobPattern`, `compilePattern`, `scoreObject`, `buildAliasReverseMap`, `hasHistory`, `hasSmartName`), `UIContext.test.ts` (`normalizeQuickPattern`, `getDefaultAppSettings`, `loadAppSettings` inkl. Migrations-Logik). Noch offen: Fetch-Mock-Tests für Mutations (`deleteObject`, `putFullObject`, `importDatapoints`) und React Query Hooks (RTL, Phase 2). | Sicherheitsnetz für pure Functions + Settings-Migration vorhanden. Mutations ohne Tests bleiben Risiko. | Phase 2: Fetch-Mock-Tests für Mutations + RTL für Hooks. | M | Stability |
 | F-02 | **Fixed** | Codequalität / Bug | ~~CRITICAL~~ | State Management | `src/components/SettingsModal.tsx:146` | `includeScripts: settingsDraft.includeScripts` in `saveSettings()` ergänzt. Feld wird korrekt persistiert. | — | — | — | — |
 | F-03 | **Fixed** | Architektur | ~~CRITICAL~~ | React-Architektur | `src/App.tsx` (638 Z.), `src/context/` | App.tsx auf 638 Zeilen reduziert. `FilterContext`, `SelectionContext`, `UIContext` extrahiert. `StateList` und `StateTree` mit `React.memo` abgesichert. `useReducer`-Konsolidierung als Maintainability-Aufgabe (kein Performance-Impact). | Cascading Re-Renders vollständig mitigiert. | — | — | — |
 | F-04 | **Fixed** | Performance | ~~CRITICAL~~ | API / Netzwerk | `src/api/iobroker.ts` | `getAllObjects()` nutzt 2 parallele Requests (`/objects` + `/objects?type=enum`). Enum-Objekte werden explizit geladen da `/objects` ohne Filter keine Enums liefert. Von 5 auf 2 Calls reduziert. | Netzwerklast reduziert, Race Condition beim Merge eliminiert. | — | — | — |
@@ -48,11 +48,11 @@
 
 Das Projekt ist eine **funktionsreiche, intern gut strukturierte** React-Applikation für ioBroker-Administration. Der Entwickler demonstriert solides React-Wissen (TanStack Query, Optimistic Updates, Portal-basierte Dropdowns, TypeScript strict mode). Die App ist produktiv einsatzfähig.
 
-**Seit dem initialen Audit behobene Punkte:** F-02 bis F-30 sowie F-11 und F-16 vollständig — einzige verbleibende offene Findings sind F-01 (Tests, XL) und F-27 (aria-label, L).
+**Seit dem initialen Audit behobene Punkte:** F-02 bis F-30 sowie F-11 und F-16 vollständig — offene Findings: F-01 (Tests, teilweise umgesetzt), F-27 (aria-label, L).
 
 **Die verbleibenden Probleme:**
 
-1. **Keine Tests (F-01)** — Die Codebase wächst aktiv ohne jegliches Sicherheitsnetz. Besonders kritisch bei `filterObjectIds`, `loadAppSettings` und allen Mutations mit Rollback.
+1. **Tests Phase 2 (F-01)** — 101 Tests für pure Functions + Settings-Migration vorhanden. Noch fehlend: Fetch-Mock-Tests für Mutations (`deleteObject`, `putFullObject`, `importDatapoints`) + RTL-Tests für React Query Hooks.
 
 Die Sicherheitslage hat sich erheblich verbessert: alle XSS-Vektoren geschlossen, Security-Header gesetzt, 4 HIGH-npm-Vulnerabilities behoben. Das Risikoprofil ist jetzt für ein internes Tool angemessen.
 
@@ -62,7 +62,7 @@ Die Sicherheitslage hat sich erheblich verbessert: alle XSS-Vektoren geschlossen
 
 | Rank | ID | Status | Titel | Warum kritisch |
 |------|----|--------|-------|----------------|
-| 1 | F-01 | Offen | Kein Test-Framework | Regressions bei jeder Änderung unerkennbar. Mutations können produktiv Daten beschädigen. |
+| 1 | F-01 | **Partial** | ~~Kein Test-Framework~~ 101 Tests für pure Functions + Settings. Offen: Mutations + RTL-Hooks. | Sicherheitsnetz für Kernlogik vorhanden. Mutations bleiben ungetestet. |
 | 2 | F-11 | **Fixed** | ~~StateList.tsx 3264 Zeilen~~ | ~~12 Komponenten in 1 Datei.~~ 1695 Zeilen, 16 Dateien extrahiert. |
 | 3 | F-27 | Offen | Icon-Buttons ohne aria-label | App für Screen-Reader-Nutzer nicht bedienbar. WCAG 2.1 AA nicht erfüllt. |
 | 4 | F-16 | **Fixed** | ~~Paralleler Cache-Layer~~ | ~~`objectsCache` + React Query Cache können desynchronisieren.~~ |
