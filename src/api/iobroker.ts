@@ -129,22 +129,44 @@ export async function getObjectsByPattern(pattern: string, fulltext = true, exac
   return result;
 }
 
-// States: immer einzeln laden, nie bulk
 export async function getState(id: string): Promise<IoBrokerState> {
   return fetchApi<IoBrokerState>(`/state/${encodeURIComponent(id)}`);
 }
 
-// Batch: mehrere States parallel laden (in konfigurierbaren Gruppen)
-export async function getStatesBatch(ids: string[], batchSize = 50): Promise<Record<string, IoBrokerState>> {
-  const BATCH_SIZE = batchSize;
+let _bulkStatesSupported: boolean | null = null;
+
+async function getStatesBulk(ids: string[]): Promise<Record<string, IoBrokerState> | null> {
+  const url = `${getBaseUrl()}/states?ids=${ids.map(encodeURIComponent).join(',')}`;
+  const res = await fetch(url);
+  if (!res.ok) return null;
+  const data: unknown = await res.json();
+  if (typeof data !== 'object' || data === null || Array.isArray(data)) return null;
+  return data as Record<string, IoBrokerState>;
+}
+
+export async function getStatesBatch(ids: string[]): Promise<Record<string, IoBrokerState>> {
+  if (ids.length === 0) return {};
+
+  if (_bulkStatesSupported !== false) {
+    try {
+      const result = await getStatesBulk(ids);
+      if (result !== null) {
+        _bulkStatesSupported = true;
+        return result;
+      }
+    } catch { /* fall through */ }
+    if (_bulkStatesSupported === null) _bulkStatesSupported = false;
+  }
+
+  // Fallback: parallel individual requests in batches of 50
+  const BATCH_SIZE = 50;
   const record: Record<string, IoBrokerState> = {};
   for (let i = 0; i < ids.length; i += BATCH_SIZE) {
     const batch = ids.slice(i, i + BATCH_SIZE);
     const results = await Promise.all(
       batch.map(async (id) => {
         try {
-          const state = await getState(id);
-          return [id, state] as const;
+          return [id, await getState(id)] as const;
         } catch {
           return [id, null] as const;
         }
@@ -281,9 +303,14 @@ export async function deleteObject(id: string): Promise<void> {
 }
 
 export async function deleteObjectsMany(ids: string[]): Promise<void> {
-  await Promise.all(ids.map(id =>
-    fetch(`${getBaseUrl()}/object/${encodeURIComponent(id)}`, { method: 'DELETE' })
-  ));
+  const CHUNK = 8;
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    await Promise.all(
+      ids.slice(i, i + CHUNK).map(id =>
+        fetch(`${getBaseUrl()}/object/${encodeURIComponent(id)}`, { method: 'DELETE' })
+      )
+    );
+  }
 }
 
 export async function renameDatapoint(oldId: string, newId: string, obj: IoBrokerObject, currentVal?: { val: unknown; ack?: boolean }): Promise<void> {

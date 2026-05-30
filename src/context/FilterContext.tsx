@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import type { SortKey } from '../components/stateListColumns';
 
 const LS_FILTER_STATE = 'iobroker-filter-state';
@@ -359,7 +359,7 @@ export function FilterContextProvider({ children }: { children: ReactNode }) {
     void prefix;
   }, []);
 
-  const value: FilterContextValue = {
+  const value = useMemo<FilterContextValue>(() => ({
     pattern, page, historyOnly, smartOnly, danglingAliasFilter,
     colFilters, roomFilters, roomsOpen, functionFilters, functionsOpen, typesOpen,
     quickPatterns, quickOpen, treeFilter, treeSearch, treeExpandSignal, sidebarToggleSeq,
@@ -376,7 +376,24 @@ export function FilterContextProvider({ children }: { children: ReactNode }) {
     resetAllFilters, handleRoomToggle, handleFunctionToggle, handleTypeToggle,
     handleTreeScope, handleLoadSavedFilter, handleDeleteSavedFilter,
     handleSaveCurrentFilter, handleNavigateTo, handleCreateDatapointAtPath,
-  };
+  }), [
+    pattern, page, historyOnly, smartOnly, danglingAliasFilter,
+    colFilters, roomFilters, roomsOpen, functionFilters, functionsOpen, typesOpen,
+    quickPatterns, quickOpen, treeFilter, treeSearch, treeExpandSignal, sidebarToggleSeq,
+    fulltextEnabled, exactEnabled, idSuggestEnabled,
+    savedFiltersList, savedFiltersOpen, saveFilterPromptOpen, saveFilterName,
+    basePattern, roomFilter, functionFilter, typeFilter, roleFilter, hasAnyFilter,
+    setPattern, setPage, setHistoryOnly, setSmartOnly, setDanglingAliasFilter,
+    setColFilters, setRoomFilters, setRoomsOpen, setFunctionFilters, setFunctionsOpen,
+    setTypesOpen, setQuickPatterns, setQuickOpen, setTreeFilter, setTreeSearch,
+    setTreeExpandSignal, setSidebarToggleSeq, setFulltextEnabled, setExactEnabled,
+    setIdSuggestEnabled, setSavedFiltersList, setSavedFiltersOpen, setSaveFilterPromptOpen,
+    setSaveFilterName,
+    handleSearch, handleColFilterChange, handleClearTreeFilter, handleSidebarToggle,
+    resetAllFilters, handleRoomToggle, handleFunctionToggle, handleTypeToggle,
+    handleTreeScope, handleLoadSavedFilter, handleDeleteSavedFilter,
+    handleSaveCurrentFilter, handleNavigateTo, handleCreateDatapointAtPath,
+  ]);
 
   return <FilterContext.Provider value={value}>{children}</FilterContext.Provider>;
 }

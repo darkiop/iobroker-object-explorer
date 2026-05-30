@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useCallback, useRef } from 'react';
+import { useMemo, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from './context/ThemeContext';
@@ -9,7 +9,7 @@ import SearchBar from './components/SearchBar';
 import StateTree from './components/StateTree';
 import StateList from './components/StateList';
 import ObjectEditModal from './components/ObjectEditModal';
-import HistoryModal from './components/HistoryModal';
+const HistoryModal = lazy(() => import('./components/HistoryModal'));
 import NewDatapointModal from './components/NewDatapointModal';
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
 import EnumManagerModal from './components/EnumManagerModal';
@@ -512,14 +512,16 @@ function AppContent() {
           />
         )}
         {historyModalId && (
-          <HistoryModal
-            stateId={historyModalId}
-            unit={allObjects[historyModalId]?.common?.unit}
-            objects={allObjects}
-            language={appSettings.language}
-            dateFormat={appSettings.dateFormat}
-            onClose={() => setHistoryModalId(null)}
-          />
+          <Suspense fallback={null}>
+            <HistoryModal
+              stateId={historyModalId}
+              unit={allObjects[historyModalId]?.common?.unit}
+              objects={allObjects}
+              language={appSettings.language}
+              dateFormat={appSettings.dateFormat}
+              onClose={() => setHistoryModalId(null)}
+            />
+          </Suspense>
         )}
         {enumManagerOpen && (
           <EnumManagerModal

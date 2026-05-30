@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useState, useMemo, type ReactNode } from 'react';
 
 type EditTab = 'details' | 'json' | 'alias' | 'custom' | 'scripts';
 
@@ -36,12 +36,15 @@ export function SelectionContextProvider({ children }: { children: ReactNode }) 
   const [aliasReplaceInitialStr, setAliasReplaceInitialStr] = useState<string | null>(null);
   const [autoAliasDeviceId, setAutoAliasDeviceId] = useState<string | null>(null);
 
-  const value: SelectionContextValue = {
+  const value = useMemo<SelectionContextValue>(() => ({
     selectedId, editInitialTab, historyModalId, newDatapointInitialId,
     enumManagerOpen, aliasReplaceInitialStr, autoAliasDeviceId,
     setSelectedId, setEditInitialTab, setHistoryModalId, setNewDatapointInitialId,
     setEnumManagerOpen, setAliasReplaceInitialStr, setAutoAliasDeviceId,
-  };
+  }), [selectedId, editInitialTab, historyModalId, newDatapointInitialId,
+    enumManagerOpen, aliasReplaceInitialStr, autoAliasDeviceId,
+    setSelectedId, setEditInitialTab, setHistoryModalId, setNewDatapointInitialId,
+    setEnumManagerOpen, setAliasReplaceInitialStr, setAutoAliasDeviceId]);
 
   return <SelectionContext.Provider value={value}>{children}</SelectionContext.Provider>;
 }
