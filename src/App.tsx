@@ -193,7 +193,7 @@ function AppContent() {
     Object.keys(colFilters).length > 0 || roomFilters.size > 0 ||
     functionFilters.size > 0 || quickPatterns.size > 0 ||
     treeFilter !== null || danglingAliasFilter;
-  const paginationDisabled = !isFilterActive;
+  const paginationDisabled = !isFilterActive || appSettings.groupByPath;
   const totalCount = tableIds.length;
   const pageStart = paginationDisabled ? 0 : page * appSettings.pageSize;
   const pageIds = useMemo(
