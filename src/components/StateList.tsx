@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, useImperativeHandle } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { X, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, Wrench, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Folder, Cpu, Layers, FileCode2, BarChart2, Copy, Check, Pencil, List, Zap } from 'lucide-react';
 import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch, useAllScriptSources } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
@@ -35,7 +36,7 @@ import type { SortDir } from './SortHeader';
 import StyledCheckbox from './StyledCheckbox';
 import StateRow from './StateRow';
 import { getObjectName } from './stateListUtils';
-import { DEL_COL_WIDTH, VIRTUAL_ROW_HEIGHT, VIRTUAL_OVERSCAN, VIRTUALIZE_THRESHOLD } from './stateListConstants';
+import { DEL_COL_WIDTH, VIRTUAL_ROW_HEIGHT, VIRTUAL_OVERSCAN } from './stateListConstants';
 
 export interface StateListHandle {
   fitToContainer: () => void;
@@ -142,9 +143,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const theadRef = useRef<HTMLTableSectionElement>(null);
   const autoFitRef = useRef(true);
   const saveWidthsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const scrollRafRef = useRef<number | null>(null);
-  const [scrollTop, setScrollTop] = useState(0);
-  const [viewportHeight, setViewportHeight] = useState(0);
+
   const isFilterActive = !!(pattern && pattern !== '*') || !!treeFilter;
   // null = "all collapsed". new Set() = all expanded.
   const [collapsedPrefixes, setCollapsedPrefixes] = useState<Set<string> | null>(null);
@@ -352,7 +351,6 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
     if (!container) return;
 
     const measure = () => {
-      setViewportHeight(container.clientHeight);
       setHeaderHeight(thead?.offsetHeight ?? 0);
     };
     measure();
@@ -950,21 +948,22 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   );
 
   const batchCanApply = batchRole.trim() !== '' || batchUnit.trim() !== '' || batchRoomEnumId !== '' || batchFnEnumId !== '';
-  const bodyViewportHeight = Math.max(0, viewportHeight - headerHeight);
-  const virtualEnabled = activeDisplayItems.length > VIRTUALIZE_THRESHOLD && bodyViewportHeight > 0;
-  const bodyScrollTop = Math.max(0, scrollTop - headerHeight);
-  const virtualStart = virtualEnabled
-    ? Math.max(0, Math.floor(bodyScrollTop / VIRTUAL_ROW_HEIGHT) - VIRTUAL_OVERSCAN)
-    : 0;
-  const virtualVisibleCount = virtualEnabled
-    ? Math.ceil(bodyViewportHeight / VIRTUAL_ROW_HEIGHT) + VIRTUAL_OVERSCAN * 2
-    : activeDisplayItems.length;
-  const virtualEnd = virtualEnabled
-    ? Math.min(activeDisplayItems.length, virtualStart + virtualVisibleCount)
-    : activeDisplayItems.length;
-  const visibleItems = virtualEnabled ? activeDisplayItems.slice(virtualStart, virtualEnd) : activeDisplayItems;
-  const topSpacer = virtualEnabled ? virtualStart * VIRTUAL_ROW_HEIGHT : 0;
-  const bottomSpacer = virtualEnabled ? (activeDisplayItems.length - virtualEnd) * VIRTUAL_ROW_HEIGHT : 0;
+
+  const rowVirtualizer = useVirtualizer({
+    count: activeDisplayItems.length,
+    getScrollElement: () => containerRef.current,
+    estimateSize: () => VIRTUAL_ROW_HEIGHT,
+    overscan: VIRTUAL_OVERSCAN,
+    scrollPaddingStart: headerHeight,
+  });
+
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  const totalVirtualSize = rowVirtualizer.getTotalSize();
+  const topSpacer = virtualItems.length > 0 ? virtualItems[0].start : 0;
+  const bottomSpacer = virtualItems.length > 0
+    ? totalVirtualSize - virtualItems[virtualItems.length - 1].end
+    : totalVirtualSize;
+  const visibleItems = virtualItems.map((v) => activeDisplayItems[v.index]);
   const rowColSpan = visibleCols.length + 1;
 
   const sepCountMap = useMemo(() => {
@@ -995,25 +994,8 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const _sepDetailCols = ([['type', _sepTypeIdx], ['role', _sepRoleIdx]] as [SortKey, number][])
     .filter(([, i]) => i >= 0).sort((a, b) => a[1] - b[1]).map(([k]) => k);
 
-  function handleBodyScroll(e: React.UIEvent<HTMLDivElement>) {
-    const next = e.currentTarget.scrollTop;
-    if (scrollRafRef.current != null) return;
-    scrollRafRef.current = requestAnimationFrame(() => {
-      setScrollTop(next);
-      scrollRafRef.current = null;
-    });
-  }
-
   function scrollRowIntoView(index: number) {
-    const container = containerRef.current;
-    if (!container) return;
-    const rowTop = headerHeight + index * VIRTUAL_ROW_HEIGHT;
-    const rowBottom = rowTop + VIRTUAL_ROW_HEIGHT;
-    if (rowTop < container.scrollTop) {
-      container.scrollTop = rowTop;
-    } else if (rowBottom > container.scrollTop + container.clientHeight) {
-      container.scrollTop = rowBottom - container.clientHeight;
-    }
+    rowVirtualizer.scrollToIndex(index, { align: 'auto' });
   }
 
   function handleContainerKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
@@ -1329,7 +1311,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
         return <ContextMenu x={x} y={y} items={sepItems} onClose={() => setSepCtxMenu(null)} />;
       })()}
 
-      <div ref={containerRef} onScroll={handleBodyScroll} onKeyDown={handleContainerKeyDown} tabIndex={0} className="overflow-x-auto overflow-y-auto flex-1 outline-none bg-white dark:bg-gray-900" data-table-fontsize={tableFontSize}>
+      <div ref={containerRef} onKeyDown={handleContainerKeyDown} tabIndex={0} className="overflow-x-auto overflow-y-auto flex-1 outline-none bg-white dark:bg-gray-900" data-table-fontsize={tableFontSize}>
         <table className="text-xs text-left table-fixed" style={{ width: totalWidth }}>
           <thead ref={theadRef} className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-white dark:bg-gray-800 sticky top-0 z-10">
             <tr>

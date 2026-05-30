@@ -13,6 +13,7 @@
     "test:ui": "vitest --ui"
   },
   "dependencies": {
+    "@tanstack/react-virtual": "^3.13.26",
     "dompurify": "^3.4.7",
     "lucide-react": "^0.575.0",
     "react": "^18.3.1",
