@@ -31,7 +31,7 @@ export default defineConfig(({ mode }) => {
     ],
     server: {
       host: '0.0.0.0',
-      allowedHosts: ALLOWED_HOSTS ?? ['pve-ct-dev', 'localhost', '127.0.0.1', 'iobroker-object-explorer.birkenweg.walk-steinweiler.de'],
+      ...(ALLOWED_HOSTS && { allowedHosts: ALLOWED_HOSTS }),
       ...(IOBROKER_TARGET && {
         proxy: {
           '/api': {
