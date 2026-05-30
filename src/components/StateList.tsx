@@ -155,6 +155,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const [newDatapointPrefix, setNewDatapointPrefix] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [historyModalId, setHistoryModalId] = useState<string | null>(null);
+  const [historyInitialExtra, setHistoryInitialExtra] = useState<import('./HistoryChart').ExtraSeries[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deletingGroupPrefix, setDeletingGroupPrefix] = useState<string | null>(null);
   const [valueEditId, setValueEditId] = useState<string | null>(null);
@@ -833,10 +834,19 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
           <BarChart2 size={15} />
           {showToolbarLabels && <span>{isEn ? 'Statistics' : 'Statistik'}</span>}
         </button>
-        {checkedIds.size === 1 && allHistoryIds.has([...checkedIds][0]) && (
+        {checkedIds.size >= 1 && checkedIds.size <= 2 && [...checkedIds].every(id => allHistoryIds.has(id)) && (
           <button
-            onClick={() => setHistoryModalId([...checkedIds][0])}
-            title={isEn ? `History: ${[...checkedIds][0]}` : `Verlauf: ${[...checkedIds][0]}`}
+            onClick={() => {
+              const [primary, secondary] = [...checkedIds];
+              const extra = secondary ? [{
+                id: secondary,
+                label: (() => { const n = objects[secondary]?.common?.name; return (typeof n === 'string' ? n : (n?.de || n?.en)) || secondary.split('.').slice(-2).join('.'); })(),
+                unit: objects[secondary]?.common?.unit,
+              }] : [];
+              setHistoryInitialExtra(extra);
+              setHistoryModalId(primary);
+            }}
+            title={isEn ? 'History' : 'Verlauf'}
             className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-purple-600 hover:bg-purple-500/10 dark:text-gray-400 dark:hover:text-purple-400 dark:hover:bg-purple-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
           >
             <History size={15} />
@@ -1124,7 +1134,8 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
           unit={objects[historyModalId]?.common?.unit}
           objects={objects}
           language={language}
-          onClose={() => setHistoryModalId(null)}
+          initialExtraSeries={historyInitialExtra.length > 0 ? historyInitialExtra : undefined}
+          onClose={() => { setHistoryModalId(null); setHistoryInitialExtra([]); }}
         />
       )}
       {valueEditId && (
@@ -1249,7 +1260,22 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
         if (ctxState) items.push({ icon: <Copy size={13} />, label: isEn ? 'Copy value' : 'Wert kopieren', onClick: () => copyText(formatValue(ctxState.val)) });
         items.push({ separator: true } as const);
         if (ctxObj && hasHistory(ctxObj)) {
-          items.push({ icon: <History size={13} />, label: isEn ? 'Show history' : 'History anzeigen', onClick: () => setHistoryModalId(ctxId) });
+          const secondaryId = checkedIds.size === 2 && checkedIds.has(ctxId)
+            ? [...checkedIds].find(id => id !== ctxId && allHistoryIds.has(id))
+            : undefined;
+          items.push({ icon: <History size={13} />, label: isEn ? 'Show history' : 'History anzeigen', onClick: () => {
+            if (secondaryId) {
+              const n = objects[secondaryId]?.common?.name;
+              setHistoryInitialExtra([{
+                id: secondaryId,
+                label: (typeof n === 'string' ? n : (n?.de || n?.en)) || secondaryId.split('.').slice(-2).join('.'),
+                unit: objects[secondaryId]?.common?.unit,
+              }]);
+            } else {
+              setHistoryInitialExtra([]);
+            }
+            setHistoryModalId(ctxId);
+          }});
           items.push({ separator: true } as const);
         }
         items.push({ icon: <Search size={13} />, label: isEn ? 'Set as filter' : 'Als Filter setzen', onClick: () => setDraftAndPropagate({ ...colFiltersDraft, id: ctxId }) });

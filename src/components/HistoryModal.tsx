@@ -14,6 +14,7 @@ interface Props {
   objects?: Record<string, IoBrokerObject>;
   language?: 'en' | 'de';
   dateFormat?: 'de' | 'us' | 'iso';
+  initialExtraSeries?: ExtraSeries[];
 }
 
 function getObjectName(obj: IoBrokerObject | undefined): string {
@@ -22,9 +23,9 @@ function getObjectName(obj: IoBrokerObject | undefined): string {
   return obj.common.name.de || obj.common.name.en || Object.values(obj.common.name)[0] || '';
 }
 
-export default function HistoryModal({ stateId, unit, onClose, objects, language = 'en', dateFormat = 'de' }: Props) {
+export default function HistoryModal({ stateId, unit, onClose, objects, language = 'en', dateFormat = 'de', initialExtraSeries }: Props) {
   const isEn = language === 'en';
-  const [extraSeries, setExtraSeries] = useState<ExtraSeries[]>([]);
+  const [extraSeries, setExtraSeries] = useState<ExtraSeries[]>(initialExtraSeries ?? []);
   const [addInput, setAddInput] = useState('');
   const [suggestionIdx, setSuggestionIdx] = useState(-1);
   const [inputFocused, setInputFocused] = useState(false);
