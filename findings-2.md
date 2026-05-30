@@ -10,8 +10,8 @@
 
 | ID | Status | Kategorie | Priorität | Bereich | Datei/Pfad | Problem | Technische Auswirkung | Empfehlung | Aufwand | Risiko |
 |----|--------|-----------|-----------|---------|------------|---------|----------------------|------------|---------|--------|
-| F-001 | **Open** | Security | CRITICAL | Code Execution | `src/components/ObjectEditModal.tsx:554,562` | `new Function('val', userInput)` executes user-typed alias formulas verbatim. No sandboxing, no whitelist, no restriction. | Arbitrary JS execution in browser context. Attacker can `localStorage.clear()`, exfiltrate all ioBroker API data, call mutating API endpoints (DELETE object, set state), redirect proxy. | Replace with `expr-eval` or `mathjs` expression evaluator. Whitelist operators. | M | Security |
-| F-002 | **Open** | Security | CRITICAL | Dependency | `package.json` | `@tanstack/react-query` is listed under `devDependencies`, not `dependencies`. | Production Docker build (`npm ci --omit=dev`) will fail at runtime with `Cannot find module '@tanstack/react-query'`. App is completely broken in production builds. | Move to `dependencies`. | S | Stability |
+| F-001 | **Fixed** | Security | CRITICAL | Code Execution | `src/components/ObjectEditModal.tsx:554,562` | ~~`new Function('val', userInput)` executes user-typed alias formulas verbatim.~~ | ~~Arbitrary JS execution in browser context.~~ | ✅ **CLOSED** (2026-05-30): `new Function()` replaced with `expr-eval` `Parser`. `assignment: false`, `in: false`. No access to `window`/`document`/`fetch`/`localStorage`. Formulas with JS builtins (`Math.round` etc.) show parse error in tester — executed correctly server-side by ioBroker. Added `src/types/expr-eval.d.ts`. | M | Security |
+| F-002 | **Fixed** | Security | CRITICAL | Dependency | `package.json` | ~~`@tanstack/react-query` is listed under `devDependencies`, not `dependencies`.~~ | ~~Production Docker build fails with `Cannot find module`.~~ | ✅ **CLOSED** (2026-05-30): Moved to `dependencies`. `npm ci --omit=dev` now resolves the package correctly. | S | Stability |
 | F-003 | **Open** | Security | HIGH | Secret Exposure | `docker-compose.yml:8`, `.env.local.example:3` | Real internal IP `10.4.0.33` committed to repository in both files. | Internal network topology exposed in public/shared repo. Combined with vite.config.ts hostname leak, reveals production infrastructure layout. | Replace with placeholder `YOUR_IOBROKER_IP` in both files. | S | Security |
 | F-004 | **Fixed** | Security | HIGH | Secret Exposure | `vite.config.ts:34` | ~~Personal FQDN `iobroker-object-explorer.birkenweg.walk-steinweiler.de` hardcoded in `allowedHosts` fallback array.~~ | ~~Personal domain name/infrastructure committed to source.~~ | ✅ **CLOSED** (2026-05-30): Moved to `VITE_ALLOWED_HOSTS` env var. Hardcoded fallback removed from `vite.config.ts`. `.env.local.example` uses placeholder `your-domain.example.com`. `.env.local` is gitignored. | S | Security |
 | F-005 | **Open** | Security | HIGH | Injection | `docker/entrypoint.sh:7-9` | `printf '{"ioBrokerHost":"%s:%s"}' "$IOBROKER_HOST" "$IOBROKER_PORT"` — no JSON-escaping of env values. | Crafted `IOBROKER_HOST=","evil":"injected"` produces invalid/poisoned `config.js` loaded as `<script>` in `index.html`. | Use `jq -n --arg h "$IOBROKER_HOST" --arg p "$IOBROKER_PORT" '{"ioBrokerHost":($h+":"+$p)}'` | S | Security |
@@ -64,9 +64,9 @@ Testing-Abdeckung ist minimal — ausschließlich pure-function unit tests, kein
 
 ## Top 10 Critical Findings
 
-1. **F-001 — `new Function()` Code Execution**: Alias-Formel-Tester in `ObjectEditModal` führt eingegebene Formeln via `new Function('val', input)` aus. Jeder App-Nutzer kann beliebigen JavaScript-Code im Browser ausführen.
+1. ~~**F-001 — `new Function()` Code Execution**~~ ✅ **FIXED**: `new Function()` durch `expr-eval` `Parser` ersetzt. Assignment und `in`-Operator deaktiviert. Kein Zugriff auf Browser-APIs.
 
-2. **F-002 — React Query in devDependencies**: `@tanstack/react-query` fehlt in `dependencies`. Production-Docker-Build schlägt mit "Cannot find module" fehl — App ist in Production vollständig kaputt.
+2. ~~**F-002 — React Query in devDependencies**~~ ✅ **FIXED**: `@tanstack/react-query` nach `dependencies` verschoben.
 
 3. **F-003 / F-004 — Infrastruktur-Daten im Repo**: Interne IP `10.4.0.33` in `docker-compose.yml` und `.env.local.example`, persönliche Domain in `vite.config.ts` committed. Minimale Info-Leaks, aber Reparatur dauert 2 Minuten.
 

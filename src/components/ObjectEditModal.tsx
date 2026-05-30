@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { Parser as ExprParser } from 'expr-eval';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { createPortal } from 'react-dom';
 import { X, Save, AlertTriangle, Link2, Check, Wrench, Trash2, Maximize2, Copy, ChevronDown, Lock, Zap, PenLine, FolderInput, FileCode2, CircleCheck, CirclePause, RefreshCw } from 'lucide-react';
@@ -544,25 +545,37 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
     );
   }
 
+  function evalFormula(formula: string, val: unknown): { value?: string; error?: string } {
+    try {
+      const parser = new ExprParser({
+        operators: {
+          logical: true,
+          comparison: true,
+          'in': false,
+          assignment: false,
+        },
+      });
+      const expr = parser.parse(formula.trim());
+      const output = expr.evaluate({ val });
+      return { value: String(output) };
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : String(e) };
+    }
+  }
+
   function runFormulaTest() {
     const raw = aliasTestInput.trim();
     const val: unknown = raw === '' ? undefined : isNaN(Number(raw)) ? raw : Number(raw);
     const result: typeof aliasTestResult = {};
     if (aliasRead.trim()) {
-      try {
-        // eslint-disable-next-line no-new-func
-        result.read = String(new Function('val', `return (${aliasRead.trim()})`)(val));
-      } catch (e) {
-        result.readErr = e instanceof Error ? e.message : String(e);
-      }
+      const { value, error } = evalFormula(aliasRead, val);
+      if (error) result.readErr = error;
+      else result.read = value;
     }
     if (aliasWrite.trim()) {
-      try {
-        // eslint-disable-next-line no-new-func
-        result.write = String(new Function('val', `return (${aliasWrite.trim()})`)(val));
-      } catch (e) {
-        result.writeErr = e instanceof Error ? e.message : String(e);
-      }
+      const { value, error } = evalFormula(aliasWrite, val);
+      if (error) result.writeErr = error;
+      else result.write = value;
     }
     setAliasTestResult(result);
   }
