@@ -34,7 +34,7 @@ interface NsStats {
   scripts: number;
 }
 
-export default function TreeStatsModal({ onClose, allObjects, historyIds, smartIds, language, onSelectNamespace, scriptUsedIds: scriptUsedIdsProp, scriptsFetching: scriptsFetchingProp = false, includeScripts: includeScriptsProp, onIncludeScriptsChange, onScriptUsedIdsChange, onRequestRefreshScripts }: Props) {
+export default function TreeStatsModal({ onClose, allObjects, historyIds, smartIds, language, onSelectNamespace, scriptUsedIds: scriptUsedIdsProp, scriptsFetching: scriptsFetchingProp = false, includeScripts: _includeScriptsProp, onIncludeScriptsChange, onScriptUsedIdsChange, onRequestRefreshScripts }: Props) {
   useEscapeKey(onClose);
   const isEn = language === 'en';
 
