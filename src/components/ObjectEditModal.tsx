@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { Parser as ExprParser } from 'expr-eval';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { createPortal } from 'react-dom';
-import { X, Save, AlertTriangle, Link2, Check, Wrench, Trash2, Maximize2, Copy, ChevronDown, Lock, Zap, PenLine, FolderInput, FileCode2, CircleCheck, CirclePause, RefreshCw } from 'lucide-react';
+import { X, Save, AlertTriangle, Link2, Check, Wrench, Trash2, Maximize2, Copy, ChevronDown, Lock, Zap, PenLine, FolderInput, FileCode2, CircleCheck, CirclePause, RefreshCw, ExternalLink } from 'lucide-react';
 import { usePutObject, useExtendObject, useStateDetail, useSetState, useAllRoles, useAllUnits, useDeleteObject, useAllObjects, useRoomEnums, useFunctionEnums, useUpdateRoomMembership, useUpdateFunctionMembership, useCustomSupportedInstances, useObjectFresh, useScriptUsages } from '../hooks/useStates';
 import { hasHistory } from '../api/iobroker';
 import { formatTimestamp, formatValue } from '../utils/format';
@@ -13,6 +13,8 @@ import RenameDatapointModal from './RenameDatapointModal';
 import MoveDatapointModal from './MoveDatapointModal';
 import type { IoBrokerObject, IoBrokerObjectCommon } from '../types/iobroker';
 import { useToast } from '../context/ToastContext';
+import { useAppSettingsContext } from '../context/UIContext';
+import { copyToClipboard } from '../utils/clipboard';
 import { ColoredId } from '../utils/coloredId';
 import { getRoleColor } from '../utils/roleColor';
 
@@ -482,6 +484,12 @@ function SectionHeader({ label, first = false }: { label: string; first?: boolea
 export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, language = 'en', dateFormat = 'de', initialTab }: Props) {
   const isEn = language === 'en';
   const showToast = useToast();
+  const { appSettings } = useAppSettingsContext();
+  const adminBaseUrl = (() => {
+    const raw = localStorage.getItem('ioBrokerHost') ?? window.__CONFIG__?.ioBrokerHost ?? '';
+    const host = raw ? raw.split(':')[0] : window.location.hostname;
+    return `http://${host}:${appSettings.adminPort}`;
+  })();
   const [tab, setTab] = useState<Tab>(initialTab ?? 'details');
   const [draft, setDraft] = useState(() => JSON.stringify(obj, null, 2));
   const [jsonError, setJsonError] = useState<string | null>(null);
@@ -1368,18 +1376,34 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                 {scriptUsages && scriptUsages.length > 0 && (
                   <div className="flex flex-col gap-1.5">
                     {scriptUsages.map((s) => (
-                      <div key={s.scriptId} className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                      <div key={s.scriptId} className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                         {s.enabled
-                          ? <CircleCheck size={14} className="text-green-500 shrink-0 mt-0.5" />
-                          : <CirclePause size={14} className="text-gray-400 dark:text-gray-500 shrink-0 mt-0.5" />
+                          ? <CircleCheck size={14} className="text-green-500 shrink-0" />
+                          : <CirclePause size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
                         }
-                        <div className="flex flex-col gap-0.5 min-w-0">
+                        <div className="flex flex-col gap-0.5 min-w-0 flex-1">
                           <span className="text-xs font-medium text-gray-700 dark:text-gray-200 truncate">{s.scriptName}</span>
                           <span className="font-mono text-[11px] text-gray-400 dark:text-gray-500 truncate">{s.scriptId}</span>
                           {s.engineType && (
                             <span className="text-[10px] text-gray-400 dark:text-gray-600">{s.engineType}</span>
                           )}
                         </div>
+                        <button
+                          onClick={() => { const name = s.scriptId.split('.').pop() ?? s.scriptId; copyToClipboard(name).then(() => showToast(name, 'success')).catch(() => {}); }}
+                          className="shrink-0 p-1.5 rounded text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                          title={isEn ? 'Copy script ID' : 'Skript-ID kopieren'}
+                        >
+                          <Copy size={13} />
+                        </button>
+                        <a
+                          href={`${adminBaseUrl}/#tab-javascript`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="shrink-0 p-1.5 rounded text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                          title={isEn ? 'Open JavaScript tab in Admin' : 'JavaScript-Tab im Admin öffnen'}
+                        >
+                          <ExternalLink size={13} />
+                        </a>
                       </div>
                     ))}
                     <p className="text-[11px] text-gray-400 dark:text-gray-600 pt-1">
