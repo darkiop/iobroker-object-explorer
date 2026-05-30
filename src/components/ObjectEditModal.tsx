@@ -3,7 +3,7 @@ import { Parser as ExprParser } from 'expr-eval';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { createPortal } from 'react-dom';
 import { X, Save, AlertTriangle, Link2, Check, Wrench, Trash2, Maximize2, Copy, ChevronDown, Lock, Zap, PenLine, FolderInput, FileCode2, CircleCheck, CirclePause, RefreshCw } from 'lucide-react';
-import { usePutObject, useExtendObject, useStateDetail, useSetState, useAllRoles, useAllUnits, useDeleteObject, useAllObjects, useRoomEnums, useFunctionEnums, useUpdateRoomMembership, useUpdateFunctionMembership, useSqlInstances, useScriptUsages } from '../hooks/useStates';
+import { usePutObject, useExtendObject, useStateDetail, useSetState, useAllRoles, useAllUnits, useDeleteObject, useAllObjects, useRoomEnums, useFunctionEnums, useUpdateRoomMembership, useUpdateFunctionMembership, useCustomSupportedInstances, useScriptUsages } from '../hooks/useStates';
 import { hasHistory } from '../api/iobroker';
 import { formatTimestamp, formatValue } from '../utils/format';
 import HistoryChart from './HistoryChart';
@@ -30,7 +30,7 @@ type Tab = 'details' | 'json' | 'alias' | 'custom' | 'scripts';
 const STATE_TYPES = ['number', 'string', 'boolean', 'array', 'object', 'mixed'] as const;
 
 const SQL_CUSTOM_DEFAULT: Record<string, unknown> = {
-  enabled: true,
+  enabled: false,
   storageType: '',
   counter: false,
   aliasId: '',
@@ -47,6 +47,62 @@ const SQL_CUSTOM_DEFAULT: Record<string, unknown> = {
   enableDebugLogs: false,
   debounce: 1000,
 };
+
+const HISTORY_CUSTOM_DEFAULT: Record<string, unknown> = {
+  enabled: false,
+  changesOnly: true,
+  debounce: 1000,
+  debounceTime: 0,
+  maxLength: 960,
+  retention: 31536000,
+  counter: false,
+  aliasId: '',
+  blockTime: 0,
+  changesRelogInterval: 0,
+  changesMinDelta: 0,
+  ignoreBelowNumber: '',
+  disableSkippedValueLogging: false,
+  enableDebugLogs: false,
+};
+
+const INFLUXDB_CUSTOM_DEFAULT: Record<string, unknown> = {
+  enabled: false,
+  changesOnly: true,
+  debounce: 1000,
+  debounceTime: 0,
+  maxLength: 0,
+  retention: 0,
+  counter: false,
+  aliasId: '',
+  blockTime: 0,
+  changesRelogInterval: 0,
+  changesMinDelta: 0,
+  ignoreBelowNumber: '',
+  disableSkippedValueLogging: false,
+  enableDebugLogs: false,
+};
+
+const ADAPTER_CUSTOM_DEFAULTS: Record<string, Record<string, unknown>> = {
+  sql: SQL_CUSTOM_DEFAULT,
+  history: HISTORY_CUSTOM_DEFAULT,
+  influxdb: INFLUXDB_CUSTOM_DEFAULT,
+  timescaledb: INFLUXDB_CUSTOM_DEFAULT,
+};
+
+const ADAPTER_LABELS: Record<string, string> = {
+  sql: 'SQL History',
+  history: 'File History',
+  influxdb: 'InfluxDB',
+  timescaledb: 'TimescaleDB',
+};
+
+function getDefaultForAdapter(adapterName: string): Record<string, unknown> {
+  return ADAPTER_CUSTOM_DEFAULTS[adapterName] ?? { enabled: false };
+}
+
+function getAdapterLabel(adapterName: string): string {
+  return ADAPTER_LABELS[adapterName] ?? adapterName;
+}
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -439,7 +495,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
   const updateFn = useUpdateFunctionMembership();
   const { data: allObjects } = useAllObjects();
   const existingIds = useMemo(() => new Set(Object.keys(allObjects ?? {})), [allObjects]);
-  const { data: sqlInstances = [] } = useSqlInstances();
+  const { data: customInstances = [] } = useCustomSupportedInstances();
   const { data: scriptUsages, isFetching: scriptsFetching, refetch: refetchScripts } = useScriptUsages(id, tab === 'scripts');
 
   const role = obj.common?.role ?? '';
@@ -922,12 +978,12 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
 
             {tab === 'custom' && (
               <div className="px-5 py-4 flex flex-col gap-3 overflow-y-auto flex-1">
-                {sqlInstances.length > 0 && (
+                {customInstances.length > 0 && (
                   <div className="flex flex-col gap-1.5 pb-3 border-b border-gray-200 dark:border-gray-700">
                     <div className="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500">
                       {isEn ? 'Available adapters' : 'Verfügbare Adapter'}
                     </div>
-                    {sqlInstances.map((instanceId) => {
+                    {customInstances.map(({ id: instanceId, adapterName }) => {
                       const alreadyConfigured = instanceId in customDraft;
                       return (
                         <label key={instanceId} className="inline-flex items-center gap-2 cursor-pointer select-none">
@@ -936,7 +992,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                             checked={alreadyConfigured}
                             onChange={(e) => {
                               if (e.target.checked) {
-                                setCustomDraft((prev) => ({ ...prev, [instanceId]: { ...SQL_CUSTOM_DEFAULT } }));
+                                setCustomDraft((prev) => ({ ...prev, [instanceId]: { ...getDefaultForAdapter(adapterName) } }));
                                 setExpandedAdapters((prev) => new Set([...prev, instanceId]));
                               } else {
                                 setCustomDraft((prev) => { const next = { ...prev }; delete next[instanceId]; return next; });
@@ -946,7 +1002,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                             className="w-3.5 h-3.5 rounded accent-blue-500 cursor-pointer"
                           />
                           <span className="text-sm text-gray-700 dark:text-gray-200 font-mono">{instanceId}</span>
-                          <span className="text-xs text-gray-400 dark:text-gray-500">SQL History</span>
+                          <span className="text-xs text-gray-400 dark:text-gray-500">{getAdapterLabel(adapterName)}</span>
                         </label>
                       );
                     })}

@@ -395,11 +395,14 @@ export async function getFunctionMap(): Promise<Record<string, string>> {
   return map;
 }
 
-export async function getSqlInstances(): Promise<string[]> {
+export async function getCustomSupportedInstances(): Promise<Array<{ id: string; adapterName: string }>> {
   const res = await fetchApi<Record<string, IoBrokerObject>>('/objects?type=instance');
   return Object.entries(res)
-    .filter(([id, o]) => /^system\.adapter\.sql\.\d+$/.test(id) && o.common?.enabled === true)
-    .map(([id]) => id.replace('system.adapter.', ''));
+    .filter(([, o]) => o.common?.enabled === true && o.common?.supportCustoms === true)
+    .map(([id]) => {
+      const instanceId = id.replace('system.adapter.', '');
+      return { id: instanceId, adapterName: instanceId.replace(/\.\d+$/, '') };
+    });
 }
 
 export async function getFunctionEnums(): Promise<Array<{ id: string; name: string }>> {

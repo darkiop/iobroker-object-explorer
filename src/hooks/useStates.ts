@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
-import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, putFullObject, createObject, deleteObject, deleteObjectsMany, renameDatapoint, getAllRoles, getAllUnits, setState, getRoomMap, getAllObjects, getRoomEnums, updateRoomMembership, updateRoomMembershipBatch, getFunctionMap, getFunctionEnums, updateFunctionMembership, updateFunctionMembershipBatch, buildAliasReverseMap, importDatapoints, getSqlInstances, createEnumObject, renameEnumObject, findScriptsUsingObject, getAllScriptSources, getScriptUsedIds, clearScriptUsedIdsCache } from '../api/iobroker';
+import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, putFullObject, createObject, deleteObject, deleteObjectsMany, renameDatapoint, getAllRoles, getAllUnits, setState, getRoomMap, getAllObjects, getRoomEnums, updateRoomMembership, updateRoomMembershipBatch, getFunctionMap, getFunctionEnums, updateFunctionMembership, updateFunctionMembershipBatch, buildAliasReverseMap, importDatapoints, getCustomSupportedInstances, createEnumObject, renameEnumObject, findScriptsUsingObject, getAllScriptSources, getScriptUsedIds, clearScriptUsedIdsCache } from '../api/iobroker';
 import type { IoBrokerObject, IoBrokerObjectCommon, IoBrokerState, HistoryOptions } from '../types/iobroker';
 
 const queryKeys = {
@@ -502,10 +502,10 @@ export function useUpdateRoomMembershipBatch() {
   });
 }
 
-export function useSqlInstances() {
+export function useCustomSupportedInstances() {
   return useQuery({
-    queryKey: ['metadata', 'sqlInstances'] as const,
-    queryFn: getSqlInstances,
+    queryKey: ['metadata', 'customSupportedInstances'] as const,
+    queryFn: getCustomSupportedInstances,
     staleTime: 60_000,
   });
 }
