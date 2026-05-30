@@ -55,6 +55,14 @@ export function scoreObject(id: string, obj: IoBrokerObject, query: string): num
 
 
 let _objectsFetchPromise: Promise<Record<string, IoBrokerObject>> | null = null;
+let _fastObjectsPromise: Promise<Record<string, IoBrokerObject>> | null = null;
+
+export async function getStateObjectsFast(): Promise<Record<string, IoBrokerObject>> {
+  if (_fastObjectsPromise) return _fastObjectsPromise;
+  _fastObjectsPromise = fetchApi<Record<string, IoBrokerObject>>('/objects?type=state')
+    .catch(err => { _fastObjectsPromise = null; throw err; });
+  return _fastObjectsPromise;
+}
 
 export async function getAllObjects(): Promise<Record<string, IoBrokerObject>> {
   if (_objectsFetchPromise) return _objectsFetchPromise;
@@ -63,6 +71,7 @@ export async function getAllObjects(): Promise<Record<string, IoBrokerObject>> {
     fetchApi<Record<string, IoBrokerObject>>('/objects?type=enum'),
   ]).then(([all, enums]) => {
     _objectsFetchPromise = null;
+    _fastObjectsPromise = null;
     return { ...all, ...enums };
   }).catch(err => {
     _objectsFetchPromise = null;

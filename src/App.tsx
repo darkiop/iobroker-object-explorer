@@ -89,7 +89,7 @@ function AppContent() {
   } = useUIContext();
 
   // ── React Query ──────────────────────────────────────────────────────────
-  const { data: stateObjectsData, error: objectsError, refetch: refetchFilteredObjects } = useFilteredObjects(basePattern, fulltextEnabled, exactEnabled);
+  const { data: stateObjectsData, error: objectsError, refetch: refetchFilteredObjects, isPlaceholderData: objectsIsPartial } = useFilteredObjects(basePattern, fulltextEnabled, exactEnabled);
   const objectsRefetchMs = useMemo(() => {
     const map: Record<string, number | false> = { 'off': false, '30s': 30_000, '1m': 60_000, '5m': 300_000, '10m': 600_000 };
     return map[appSettings.objectsRefreshInterval] ?? false;
@@ -606,6 +606,7 @@ function AppContent() {
                     ? <>{isEn ? 'Page' : 'Seite'} {page + 1} {isEn ? 'of' : 'von'} {totalPages} ({pageStart + 1}–{Math.min(pageStart + appSettings.pageSize, totalCount)} {isEn ? 'of' : 'von'} {totalCount})</>
                     : <>{isEn ? 'Datapoints' : 'Datenpunkte'}: <span className="text-gray-700 dark:text-gray-200">{totalCount}</span></>
                   }
+                  {objectsIsPartial && <span className="ml-2 text-[10px] text-blue-400 dark:text-blue-500 animate-pulse">{isEn ? 'loading…' : 'lädt…'}</span>}
                 </span>
               </div>
               <div className="flex items-center justify-end gap-2">

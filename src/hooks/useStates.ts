@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState, useEffect } from 'react';
-import { getObjectsByPattern, getStatesBatch, getState, getObject, getObjectFresh, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, putFullObject, createObject, deleteObject, deleteObjectsMany, renameDatapoint, getAllRoles, getAllUnits, setState, getRoomMap, getAllObjects, getRoomEnums, updateRoomMembership, updateRoomMembershipBatch, getFunctionMap, getFunctionEnums, updateFunctionMembership, updateFunctionMembershipBatch, buildAliasReverseMap, importDatapoints, getCustomSupportedInstances, createEnumObject, renameEnumObject, findScriptsUsingObject, getAllScriptSources, getScriptUsedIds, clearScriptUsedIdsCache } from '../api/iobroker';
+import { useState, useEffect, useMemo } from 'react';
+import { getObjectsByPattern, getStateObjectsFast, getStatesBatch, getState, getObject, getObjectFresh, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, putFullObject, createObject, deleteObject, deleteObjectsMany, renameDatapoint, getAllRoles, getAllUnits, setState, getRoomMap, getAllObjects, getRoomEnums, updateRoomMembership, updateRoomMembershipBatch, getFunctionMap, getFunctionEnums, updateFunctionMembership, updateFunctionMembershipBatch, buildAliasReverseMap, importDatapoints, getCustomSupportedInstances, createEnumObject, renameEnumObject, findScriptsUsingObject, getAllScriptSources, getScriptUsedIds, clearScriptUsedIdsCache, compilePattern, isGlobPattern } from '../api/iobroker';
 import type { IoBrokerObject, IoBrokerObjectCommon, IoBrokerState, HistoryOptions } from '../types/iobroker';
 
 const queryKeys = {
@@ -44,12 +44,45 @@ function usePageVisible() {
   return visible;
 }
 
+export function useStateObjectsFast() {
+  return useQuery({
+    queryKey: ['objects', 'bootstrap'] as const,
+    queryFn: getStateObjectsFast,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+}
+
 export function useFilteredObjects(pattern: string, fulltext = true, exact = false) {
+  const { data: fastObjects } = useStateObjectsFast();
+
+  const placeholderData = useMemo<Record<string, import('../types/iobroker').IoBrokerObject> | undefined>(() => {
+    if (!fastObjects) return undefined;
+    if (pattern === '*') return fastObjects;
+    if (isGlobPattern(pattern)) {
+      try {
+        const regex = compilePattern(pattern);
+        const result: Record<string, import('../types/iobroker').IoBrokerObject> = {};
+        for (const [id, obj] of Object.entries(fastObjects)) {
+          if (regex.test(id)) result[id] = obj;
+        }
+        return result;
+      } catch { return undefined; }
+    }
+    const q = pattern.toLowerCase();
+    const result: Record<string, import('../types/iobroker').IoBrokerObject> = {};
+    for (const [id, obj] of Object.entries(fastObjects)) {
+      if (id.toLowerCase().includes(q)) result[id] = obj;
+    }
+    return result;
+  }, [fastObjects, pattern]);
+
   return useQuery({
     queryKey: queryKeys.objects.filtered(pattern, fulltext, exact),
     queryFn: () => getObjectsByPattern(pattern, fulltext, exact),
     enabled: pattern.length > 0,
-    staleTime: Infinity, // Objects only change via mutations (which invalidate the cache)
+    staleTime: Infinity,
+    placeholderData,
   });
 }
 
