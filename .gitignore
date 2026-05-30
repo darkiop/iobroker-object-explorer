@@ -26,3 +26,7 @@ urls.md
 
 docker-compose.yml
 .env.local
+
+# Claude Code local config and worktrees
+.claude/settings.local.json
+.claude/worktrees/
