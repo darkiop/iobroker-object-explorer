@@ -1,4 +1,3 @@
-import React from 'react';
 import { ToggleLeft, Hash, Type, Braces, List, Layers, FileCode2, File } from 'lucide-react';
 
 function TypeIcon({ type, size = 12 }: { type: string; size?: number }) {

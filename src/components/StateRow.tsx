@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pencil, Trash2, History, Mic2, Link2, Wrench, Lock, FileCode2 } from 'lucide-react';
+import { Trash2, History, Mic2, Link2, Wrench, Lock, FileCode2 } from 'lucide-react';
 import type { IoBrokerState, IoBrokerObject } from '../types/iobroker';
 import type { SortKey, DateFormatSetting } from './stateListColumns';
 import EditableNameCell from './cells/EditableNameCell';

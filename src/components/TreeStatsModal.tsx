@@ -55,7 +55,6 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
 
   // Use prop-controlled values if provided, otherwise fall back to local state
   const effectiveScriptUsedIds = onIncludeScriptsChange ? scriptUsedIds : localScriptUsedIds;
-  const effectiveIncludeScripts = onIncludeScriptsChange ? includeScripts : localIncludeScripts;
   const effectiveScriptsFetching = onIncludeScriptsChange ? scriptsFetching : localScriptsFetching;
 
   async function handleScriptRefreshConfirmed() {
@@ -77,10 +76,6 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
     }
   }
 
-  function handleIncludeScriptsChange(v: boolean) {
-    if (onIncludeScriptsChange) onIncludeScriptsChange(v);
-    else setLocalIncludeScripts(v);
-  }
 
   const { rows, totals } = useMemo(() => {
     const map = new Map<string, NsStats>();

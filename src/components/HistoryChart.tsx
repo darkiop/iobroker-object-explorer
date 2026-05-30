@@ -132,9 +132,10 @@ function makeAxes(dark: boolean, isEn: boolean, dateFormat: 'de' | 'us' | 'iso' 
       labelStyle: { color: dark ? '#9ca3af' : '#6b7280' },
       itemStyle: { color: '#60a5fa' },
       labelFormatter: (ts: unknown) => formatTooltipTime(ts as number, dateFormat),
-      formatter: (value: number | undefined, name: string | undefined) => {
+      formatter: (value: unknown, name: string | number | undefined) => {
+        const v = value as number | undefined;
         const label = hasCompare && name === 'valComp' ? (isEn ? 'Compare' : 'Vergleich') : (isEn ? 'Value' : 'Wert');
-        return [unit && value !== undefined ? `${value} ${unit}` : value ?? '', label] as [string | number, string];
+        return [unit && v !== undefined ? `${v} ${unit}` : v ?? '', label] as [string | number, string];
       },
     }),
     gridStroke: dark ? '#374151' : '#e5e7eb',
@@ -435,7 +436,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
     const xProps = axes.xAxis(effectiveRangeMs);
     const yProps = axes.yAxis(unit);
     const tooltipProps = axes.tooltip(unit, !!compareOffset);
-    const data = compareOffset ? mergedChartData : chartData;
+    const data = (compareOffset ? mergedChartData : chartData) as { ts: number; val: number }[];
     const xPropsWithZoom = {
       ...xProps,
       domain: xDomain ?? xProps.domain,
@@ -479,10 +480,10 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
             contentStyle={{ backgroundColor: dark ? '#1f2937' : '#ffffff', border: `1px solid ${dark ? '#374151' : '#e5e7eb'}`, borderRadius: 6 }}
             labelStyle={{ color: dark ? '#9ca3af' : '#6b7280' }}
             labelFormatter={(ts: unknown) => formatTooltipTime(ts as number, dateFormat)}
-            formatter={(value: unknown, name: string | undefined) => {
+            formatter={(value: unknown, name: string | number | undefined) => {
               const s = seriesMeta.find(x => x.key === name);
               const v = value as number | undefined;
-              return [s?.unit && v != null ? `${v} ${s.unit}` : (v ?? ''), s?.label ?? name ?? ''] as [string | number, string];
+              return [s?.unit && v != null ? `${v} ${s.unit}` : (v ?? ''), s?.label ?? String(name ?? '')] as [string | number, string];
             }}
           />
           {seriesMeta.map(({ key, color }) => (

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { CalendarDays, X } from 'lucide-react';
 import { TS_RANGE_PREFIX, TS_RANGE_SEP } from './stateListConstants';

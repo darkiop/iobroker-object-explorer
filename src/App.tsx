@@ -25,7 +25,7 @@ import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RotateCcw, Layers
 import { getTypeColor } from './utils/typeColor';
 import { FilterContextProvider, useFilterContext } from './context/FilterContext';
 import { SelectionContextProvider, useSelectionContext } from './context/SelectionContext';
-import { UIContextProvider, useUIContext, DEFAULT_QUICK_PATTERNS, type AppSettings } from './context/UIContext';
+import { UIContextProvider, useUIContext, DEFAULT_QUICK_PATTERNS } from './context/UIContext';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 10_000 } },
@@ -59,15 +59,15 @@ function AppContent() {
   const {
     pattern, page, setPage, historyOnly, setHistoryOnly, smartOnly, setSmartOnly,
     danglingAliasFilter, setDanglingAliasFilter,
-    colFilters, roomFilters, functionFilters, quickPatterns, setQuickPatterns,
-    treeFilter, treeSearch, treeExpandSignal, sidebarToggleSeq,
+    colFilters, roomFilters, functionFilters, quickPatterns,
+    treeFilter,
     fulltextEnabled, exactEnabled, idSuggestEnabled, setIdSuggestEnabled,
     savedFiltersList, savedFiltersOpen, setSavedFiltersOpen,
     saveFilterPromptOpen, setSaveFilterPromptOpen, saveFilterName, setSaveFilterName,
     quickOpen, setQuickOpen, roomsOpen, setRoomsOpen, functionsOpen, setFunctionsOpen,
     typesOpen, setTypesOpen,
     basePattern, roomFilter, functionFilter, typeFilter, hasAnyFilter,
-    handleSearch, handleColFilterChange, handleClearTreeFilter, handleSidebarToggle,
+    handleSearch,
     resetAllFilters, handleRoomToggle, handleFunctionToggle, handleTypeToggle,
     handleTreeScope, handleLoadSavedFilter, handleDeleteSavedFilter,
     handleSaveCurrentFilter, handleNavigateTo,
@@ -85,8 +85,7 @@ function AppContent() {
   // ── UI Context ───────────────────────────────────────────────────────────
   const {
     appSettings, settingsOpen, setSettingsOpen, shortcutsOpen, setShortcutsOpen,
-    scriptUsedIds, scriptLastUpdated, scriptsFetching, confirmScriptRefresh, setConfirmScriptRefresh,
-    openSettings, persistSettings, handleLanguageChange, handleScriptRefreshConfirmed,
+    handleScriptRefreshConfirmed,
   } = useUIContext();
 
   // ── React Query ──────────────────────────────────────────────────────────
@@ -620,12 +619,13 @@ function AppContent() {
   );
 }
 
-function AppErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
+function AppErrorFallback({ error, resetErrorBoundary }: { error: unknown; resetErrorBoundary: () => void }) {
+  const message = error instanceof Error ? error.message : String(error);
   return (
     <div className="flex flex-col items-center justify-center h-screen gap-4 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 p-8">
       <AlertTriangle size={48} className="text-red-500" />
       <h1 className="text-xl font-semibold">Unerwarteter Fehler</h1>
-      <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md text-center">{error.message}</p>
+      <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md text-center">{message}</p>
       <button onClick={resetErrorBoundary} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
         App neu laden
       </button>

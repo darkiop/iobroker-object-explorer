@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, useImperativeHandle } from 'react';
-import { X, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, Wrench, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Folder, Cpu, Layers, FileCode2, BarChart2, Copy, Check, Pencil, List } from 'lucide-react';
+import { X, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, Wrench, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Folder, Cpu, Layers, FileCode2, BarChart2, Copy, Check, Pencil, List, Zap } from 'lucide-react';
 import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch, useAllScriptSources } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
@@ -57,9 +57,8 @@ interface StateListProps {
 
 export type { SortKey, DateFormatSetting } from './stateListColumns';
 export { ALL_COLUMNS, getColumnLabel, DEFAULT_COLS } from './stateListColumns';
-import type { SortKey, DateFormatSetting } from './stateListColumns';
-import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel as _getColumnLabel, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MIN_WIDTHS, BUILTIN_MAX_WIDTHS } from './stateListColumns';
-const getColumnLabel = _getColumnLabel;
+import type { SortKey } from './stateListColumns';
+import { ALL_COLUMNS, DEFAULT_COLS, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MIN_WIDTHS, BUILTIN_MAX_WIDTHS } from './stateListColumns';
 
 const MIN_COL_WIDTHS: Partial<Record<SortKey, number>> = { id: 150, name: 120 };
 function minColWidth(key: SortKey) { return MIN_COL_WIDTHS[key] ?? 40; }
@@ -111,9 +110,9 @@ function patternToInitialId(pattern: string): string {
 
 
 function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allObjectIds, exportIds, onNavigateTo }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
-  const { colFilters, handleColFilterChange: onColFilterChange, pattern, treeFilter, handleClearTreeFilter: onClearTreeFilter, sidebarToggleSeq, fulltextEnabled } = useFilterContext();
+  const { colFilters, handleColFilterChange: onColFilterChange, pattern, treeFilter, handleClearTreeFilter: onClearTreeFilter, sidebarToggleSeq, fulltextEnabled, handleTreeScope } = useFilterContext();
   const { selectedId, setSelectedId: onSelect, setHistoryModalId: _setHistoryModalId, setEnumManagerOpen, setAliasReplaceInitialStr, setEditInitialTab } = useSelectionContext();
-  const { appSettings, expertMode, scriptUsedIds, scriptLastUpdated, scriptsFetching, handleToggleExpertMode: onToggleExpertMode, handleToggleToolbarLabels: onToggleToolbarLabels, handleToggleGroupByPath: onToggleGroupByPath, persistSettings } = useAppSettingsContext();
+  const { appSettings, expertMode, scriptUsedIds, scriptsFetching, setScriptUsedIds, setConfirmScriptRefresh, handleToggleExpertMode: onToggleExpertMode, handleToggleGroupByPath: onToggleGroupByPath, persistSettings } = useAppSettingsContext();
 
   const { language = 'en', dateFormat = 'de', visibleCols: settingsVisibleCols, toolbarLabels = true, tableFontSize = 'normal', showDesc = true, groupByPath = false, customDefaultWidths, customMinWidths, customMaxWidths, pageSize } = appSettings;
   const onOpenEnumManager = React.useCallback(() => setEnumManagerOpen(true), [setEnumManagerOpen]);

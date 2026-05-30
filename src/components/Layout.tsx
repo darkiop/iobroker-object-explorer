@@ -47,7 +47,7 @@ export default function Layout({ sidebar, children, apiConnected = true, lastUpd
   const startX = useRef(0);
   const startWidth = useRef(0);
   const sidebarWidthRef = useRef(sidebarWidth);
-  const { theme, dark, cycle } = useTheme();
+  const { theme, cycle } = useTheme();
   const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
 
   useEffect(() => {

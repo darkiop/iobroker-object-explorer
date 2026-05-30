@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import StyledCheckbox from './StyledCheckbox';
 import type { SortKey } from './stateListColumns';
