@@ -12,6 +12,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   Brush,
+  ReferenceDot,
 } from 'recharts';
 import { Trash2, CircleDot, Download, ChevronDown, ChevronRight, Table2, BarChart2 } from 'lucide-react';
 import { useHistory, useDeleteHistory } from '../hooks/useStates';
@@ -194,6 +195,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
   const [viewWindow, setViewWindow] = useState<{ start: number; end: number } | null>(null);
   const [panDrag, setPanDrag] = useState<{ anchorIdx: number; start: number; end: number } | null>(null);
   const [tablePage, setTablePage] = useState(0);
+  const [highlightPoint, setHighlightPoint] = useState<{ ts: number; val: number } | null>(null);
 
   const { deleteEntry, deleteRange, deleteAll } = useDeleteHistory();
   const isPending = deleteEntry.isPending || deleteRange.isPending || deleteAll.isPending;
@@ -246,6 +248,18 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
     const last = nums[nums.length - 1];
     return { min, max, avg, last, count: nums.length };
   }, [chartData]);
+
+  const highlightPoints = useMemo(() => {
+    if (!stats || chartData.length === 0) return { min: null, max: null, last: null };
+    const minEntry = chartData.find(p => p.val === stats.min);
+    const maxEntry = chartData.find(p => p.val === stats.max);
+    const lastEntry = chartData[chartData.length - 1];
+    return {
+      min: minEntry ?? null,
+      max: maxEntry ?? null,
+      last: lastEntry ?? null,
+    };
+  }, [stats, chartData]);
 
   const mergedChartData = useMemo(() => {
     if (!compareData || !compareOffset) return chartData.map(p => ({ ts: p.ts, val: p.val, valComp: undefined as number | undefined }));
@@ -395,6 +409,46 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
       : 'Alle History-Daten für diesen Datenpunkt unwiderruflich löschen?';
   }
 
+  function handleExportCsv() {
+    const rows: string[] = [];
+    if (hasMultiSeries && multiChartData) {
+      const seriesMeta = [
+        { key: 'val', label: stateId.split('.').slice(-2).join('.'), unit },
+        ...es.map((s, i) => ({ key: `v${i + 1}`, label: s.label, unit: s.unit })),
+      ];
+      rows.push(['timestamp', ...seriesMeta.map(s => s.unit ? `${s.label} (${s.unit})` : s.label)].join(','));
+      for (const row of multiChartData as Array<Record<string, unknown>>) {
+        rows.push([
+          new Date(row.ts as number).toISOString(),
+          ...seriesMeta.map(s => row[s.key] != null ? String(row[s.key]) : ''),
+        ].join(','));
+      }
+    } else if (compareOffset) {
+      const valueHeader = unit ? `value (${unit})` : 'value';
+      rows.push(`timestamp,${valueHeader},compare`);
+      for (const row of mergedChartData) {
+        rows.push([
+          new Date(row.ts).toISOString(),
+          row.val != null ? String(row.val) : '',
+          row.valComp != null ? String(row.valComp) : '',
+        ].join(','));
+      }
+    } else {
+      const valueHeader = unit ? `value (${unit})` : 'value';
+      rows.push(`timestamp,${valueHeader}`);
+      for (const entry of data ?? []) {
+        rows.push(`${new Date(entry.ts).toISOString()},${String(entry.val)}`);
+      }
+    }
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.download = `${stateId}_history.csv`;
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   function handleExportPng() {
     const container = chartContainerRef.current;
     if (!container) return;
@@ -459,6 +513,18 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
       />
     ) : null;
 
+    const refDot = highlightPoint ? (
+      <ReferenceDot
+        x={highlightPoint.ts}
+        y={highlightPoint.val}
+        r={7}
+        fill="#facc15"
+        stroke="#78350f"
+        strokeWidth={2}
+        ifOverflow="visible"
+      />
+    ) : null;
+
     // Multi-series mode: ComposedChart with one Line per series
     if (hasMultiSeries && multiChartData) {
       const seriesMeta = [
@@ -489,6 +555,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
           {seriesMeta.map(({ key, color }) => (
             <Line key={key} type="monotone" dataKey={key} stroke={color} strokeWidth={1.5} dot={false} activeDot={{ r: 4 }} connectNulls={false} />
           ))}
+          {refDot}
           {brush}
         </ComposedChart>
       );
@@ -512,6 +579,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
           {compareOffset && (
             <Bar dataKey="valComp" fill="#9ca3af" opacity={0.5} />
           )}
+          {refDot}
           {brush}
         </BarChart>
       );
@@ -557,6 +625,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
               activeDot={{ r: 4 }}
             />
           )}
+          {refDot}
           {brush}
         </ComposedChart>
       );
@@ -594,6 +663,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
             activeDot={{ r: 4 }}
           />
         )}
+        {refDot}
         {brush}
       </ComposedChart>
     );
@@ -850,6 +920,16 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
               <Download size={12} />
               PNG
             </button>
+            {/* Export CSV */}
+            <button
+              onClick={handleExportCsv}
+              disabled={!data || data.length === 0}
+              className="h-7 flex items-center gap-1 px-2 text-xs rounded bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed"
+              title={isEn ? 'Export data as CSV' : 'Daten als CSV exportieren'}
+            >
+              <Download size={12} />
+              CSV
+            </button>
             <button
               onClick={() => setDeleteMode(!deleteMode)}
               className={`h-7 flex items-center gap-1 px-2 text-xs rounded ${
@@ -925,12 +1005,18 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
       {stats && !isLoading && (
         <div className="flex items-center gap-2 flex-wrap mb-2">
           {([
-            { label: 'Min',   value: stats.min,   cls: 'text-blue-600 dark:text-blue-400 bg-blue-500/10' },
-            { label: 'Max',   value: stats.max,   cls: 'text-red-600 dark:text-red-400 bg-red-500/10' },
-            { label: 'Avg',   value: stats.avg,   cls: 'text-violet-600 dark:text-violet-400 bg-violet-500/10' },
-            { label: isEn ? 'Last' : 'Letzt', value: stats.last,  cls: 'text-green-600 dark:text-green-400 bg-green-500/10' },
-          ] as { label: string; value: number; cls: string }[]).map(({ label, value, cls }) => (
-            <span key={label} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono ${cls}`}>
+            { label: 'Min',   value: stats.min,   cls: 'text-blue-600 dark:text-blue-400 bg-blue-500/10',     hkey: 'min'  as const },
+            { label: 'Max',   value: stats.max,   cls: 'text-red-600 dark:text-red-400 bg-red-500/10',        hkey: 'max'  as const },
+            { label: 'Avg',   value: stats.avg,   cls: 'text-violet-600 dark:text-violet-400 bg-violet-500/10', hkey: null },
+            { label: isEn ? 'Last' : 'Letzt', value: stats.last, cls: 'text-green-600 dark:text-green-400 bg-green-500/10', hkey: 'last' as const },
+          ] as { label: string; value: number; cls: string; hkey: 'min' | 'max' | 'last' | null }[]).map(({ label, value, cls, hkey }) => (
+            <span
+              key={label}
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono ${cls} ${hkey && highlightPoints[hkey] ? 'cursor-crosshair' : ''}`}
+              title={hkey && highlightPoints[hkey] ? formatTooltipTime(highlightPoints[hkey]!.ts, dateFormat) : undefined}
+              onMouseEnter={() => { if (hkey) setHighlightPoint(highlightPoints[hkey]); }}
+              onMouseLeave={() => setHighlightPoint(null)}
+            >
               <span className="opacity-60 font-sans text-[10px] uppercase tracking-wide">{label}</span>
               {Number.isInteger(value) ? value : value.toFixed(2)}
               {unit && <span className="opacity-60">{unit}</span>}

@@ -833,6 +833,16 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
           <BarChart2 size={15} />
           {showToolbarLabels && <span>{isEn ? 'Statistics' : 'Statistik'}</span>}
         </button>
+        {checkedIds.size === 1 && allHistoryIds.has([...checkedIds][0]) && (
+          <button
+            onClick={() => setHistoryModalId([...checkedIds][0])}
+            title={isEn ? `History: ${[...checkedIds][0]}` : `Verlauf: ${[...checkedIds][0]}`}
+            className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-purple-600 hover:bg-purple-500/10 dark:text-gray-400 dark:hover:text-purple-400 dark:hover:bg-purple-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
+          >
+            <History size={15} />
+            {showToolbarLabels && <span>History</span>}
+          </button>
+        )}
         {[...checkedIds].some((id) => id.startsWith('alias.')) && (
           <button
             onClick={() => {

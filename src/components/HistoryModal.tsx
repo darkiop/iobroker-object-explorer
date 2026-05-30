@@ -97,7 +97,7 @@ export default function HistoryModal({ stateId, unit, onClose, objects, language
     >
       <div
         className="bg-white dark:bg-gray-900 animate-modal-in rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col"
-        style={{ width: '80vw', height: '75vh' }}
+        style={{ width: '92vw', height: '88vh' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
