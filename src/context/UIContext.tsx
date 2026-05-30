@@ -62,7 +62,7 @@ export function normalizeQuickPattern(input: string): string {
   return v;
 }
 
-function parseColWidthMap(raw: unknown): Partial<Record<SortKey, number>> {
+export function parseColWidthMap(raw: unknown): Partial<Record<SortKey, number>> {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return {};
   return Object.fromEntries(
     Object.entries(raw as Record<string, unknown>)

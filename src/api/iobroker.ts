@@ -19,7 +19,7 @@ async function fetchApi<T>(path: string): Promise<T> {
   return res.json();
 }
 
-function compilePattern(pattern: string): RegExp {
+export function compilePattern(pattern: string): RegExp {
   return new RegExp('^' + pattern.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$');
 }
 
@@ -28,7 +28,7 @@ export function isGlobPattern(pattern: string): boolean {
 }
 
 
-function scoreObject(id: string, obj: IoBrokerObject, query: string): number {
+export function scoreObject(id: string, obj: IoBrokerObject, query: string): number {
   const q = query.toLowerCase();
   const idLow = id.toLowerCase();
   if (idLow === q) return 100;
