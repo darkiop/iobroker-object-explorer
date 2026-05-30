@@ -385,6 +385,10 @@ export async function getObject(id: string): Promise<IoBrokerObject> {
   return fetchApi<IoBrokerObject>(`/object/${encodeURIComponent(id)}`);
 }
 
+export async function getObjectFresh(id: string): Promise<IoBrokerObject> {
+  return fetchApi<IoBrokerObject>(`/object/${encodeURIComponent(id)}`);
+}
+
 export async function getFunctionMap(): Promise<Record<string, string>> {
   const all = await getAllObjects();
   const map: Record<string, string> = {};

@@ -3,7 +3,7 @@ import { Parser as ExprParser } from 'expr-eval';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { createPortal } from 'react-dom';
 import { X, Save, AlertTriangle, Link2, Check, Wrench, Trash2, Maximize2, Copy, ChevronDown, Lock, Zap, PenLine, FolderInput, FileCode2, CircleCheck, CirclePause, RefreshCw } from 'lucide-react';
-import { usePutObject, useExtendObject, useStateDetail, useSetState, useAllRoles, useAllUnits, useDeleteObject, useAllObjects, useRoomEnums, useFunctionEnums, useUpdateRoomMembership, useUpdateFunctionMembership, useCustomSupportedInstances, useScriptUsages } from '../hooks/useStates';
+import { usePutObject, useExtendObject, useStateDetail, useSetState, useAllRoles, useAllUnits, useDeleteObject, useAllObjects, useRoomEnums, useFunctionEnums, useUpdateRoomMembership, useUpdateFunctionMembership, useCustomSupportedInstances, useObjectFresh, useScriptUsages } from '../hooks/useStates';
 import { hasHistory } from '../api/iobroker';
 import { formatTimestamp, formatValue } from '../utils/format';
 import HistoryChart from './HistoryChart';
@@ -37,15 +37,15 @@ const SQL_CUSTOM_DEFAULT: Record<string, unknown> = {
   debounceTime: 0,
   blockTime: 0,
   changesOnly: true,
-  changesRelogInterval: 0,
-  changesMinDelta: 0,
+  changesRelogInterval: '0',
+  changesMinDelta: '0',
   ignoreBelowNumber: '',
   disableSkippedValueLogging: false,
-  retention: 31536000,
+  retention: '31536000',
   customRetentionDuration: 365,
   maxLength: 0,
   enableDebugLogs: false,
-  debounce: 1000,
+  debounce: '1000',
 };
 
 const HISTORY_CUSTOM_DEFAULT: Record<string, unknown> = {
@@ -82,11 +82,59 @@ const INFLUXDB_CUSTOM_DEFAULT: Record<string, unknown> = {
   enableDebugLogs: false,
 };
 
+const SOURCEANALYTIX_CUSTOM_DEFAULT: Record<string, unknown> = {
+  enabled: false,
+  selectedUnit: 'Detect automatically',
+  deviceResetLogicEnabled: true,
+  threshold: 1,
+  start_day: 0,
+  start_week: 0,
+  start_month: 0,
+  start_quarter: 0,
+  start_year: 0,
+};
+
+const STATISTICS_CUSTOM_DEFAULT: Record<string, unknown> = {
+  enabled: false,
+  count: false,
+  fiveMin: false,
+  sumCount: false,
+  impUnitPerImpulse: 1,
+  impUnit: '',
+  timeCount: false,
+  avg: false,
+  minmax: false,
+  sumDelta: false,
+  sumIgnoreMinus: false,
+  groupFactor: 1,
+  logName: '',
+};
+
+const TELEGRAM_CUSTOM_DEFAULT: Record<string, unknown> = {
+  enabled: false,
+  alias: '',
+  recipients: '',
+  readOnly: false,
+  report: true,
+  onlyFalse: false,
+  onlyTrue: false,
+  silent: false,
+  buttons: 3,
+  writeOnly: false,
+  offCommand: '',
+  onCommand: '',
+  offStatus: '',
+  onStatus: '',
+};
+
 const ADAPTER_CUSTOM_DEFAULTS: Record<string, Record<string, unknown>> = {
   sql: SQL_CUSTOM_DEFAULT,
   history: HISTORY_CUSTOM_DEFAULT,
   influxdb: INFLUXDB_CUSTOM_DEFAULT,
   timescaledb: INFLUXDB_CUSTOM_DEFAULT,
+  telegram: TELEGRAM_CUSTOM_DEFAULT,
+  sourceanalytix: SOURCEANALYTIX_CUSTOM_DEFAULT,
+  statistics: STATISTICS_CUSTOM_DEFAULT,
 };
 
 const ADAPTER_LABELS: Record<string, string> = {
@@ -94,6 +142,9 @@ const ADAPTER_LABELS: Record<string, string> = {
   history: 'File History',
   influxdb: 'InfluxDB',
   timescaledb: 'TimescaleDB',
+  telegram: 'Telegram',
+  sourceanalytix: 'Source Analytix',
+  statistics: 'Statistics',
 };
 
 function getDefaultForAdapter(adapterName: string): Record<string, unknown> {
@@ -441,12 +492,25 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
   const [showMove, setShowMove] = useState(false);
 
   // Custom Settings tab state
+  const [customDraftLoaded, setCustomDraftLoaded] = useState(false);
   const [customDraft, setCustomDraft] = useState<NonNullable<IoBrokerObjectCommon['custom']>>(
     () => obj.common.custom ?? {}
   );
-  const [expandedAdapters, setExpandedAdapters] = useState<Set<string>>(
+  // shownAdapters: which chips are active (block rendered); expandedAdapters: which blocks are expanded
+  const [shownAdapters, setShownAdapters] = useState<Set<string>>(
     () => new Set(Object.keys(obj.common.custom ?? {}))
   );
+  const [expandedAdapters, setExpandedAdapters] = useState<Set<string>>(() => new Set());
+  const { data: freshObj, isFetching: customLoading } = useObjectFresh(id, tab === 'custom' && !customDraftLoaded);
+  useEffect(() => {
+    if (freshObj && !customDraftLoaded) {
+      const custom = freshObj.common?.custom ?? {};
+      setCustomDraft(custom);
+      setShownAdapters(new Set(Object.keys(custom)));
+      setExpandedAdapters(new Set());
+      setCustomDraftLoaded(true);
+    }
+  }, [freshObj, customDraftLoaded]);
 
   function toggleAdapter(adapterId: string) {
     setExpandedAdapters((prev) => {
@@ -977,87 +1041,130 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
             )}
 
             {tab === 'custom' && (
-              <div className="px-5 py-4 flex flex-col gap-3 overflow-y-auto flex-1">
-                {customInstances.length > 0 && (
-                  <div className="flex flex-col gap-1.5 pb-3 border-b border-gray-200 dark:border-gray-700">
-                    <div className="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                      {isEn ? 'Available adapters' : 'Verfügbare Adapter'}
-                    </div>
-                    {customInstances.map(({ id: instanceId, adapterName }) => {
-                      const alreadyConfigured = instanceId in customDraft;
-                      return (
-                        <label key={instanceId} className="inline-flex items-center gap-2 cursor-pointer select-none">
-                          <input
-                            type="checkbox"
-                            checked={alreadyConfigured}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setCustomDraft((prev) => ({ ...prev, [instanceId]: { ...getDefaultForAdapter(adapterName) } }));
-                                setExpandedAdapters((prev) => new Set([...prev, instanceId]));
-                              } else {
-                                setCustomDraft((prev) => { const next = { ...prev }; delete next[instanceId]; return next; });
-                                setExpandedAdapters((prev) => { const next = new Set(prev); next.delete(instanceId); return next; });
-                              }
-                            }}
-                            className="w-3.5 h-3.5 rounded accent-blue-500 cursor-pointer"
-                          />
-                          <span className="text-sm text-gray-700 dark:text-gray-200 font-mono">{instanceId}</span>
-                          <span className="text-xs text-gray-400 dark:text-gray-500">{getAdapterLabel(adapterName)}</span>
-                        </label>
-                      );
-                    })}
+              <div className="px-5 py-4 flex flex-col gap-4 overflow-y-auto flex-1">
+
+                {/* Loading */}
+                {customLoading && !customDraftLoaded && (
+                  <div className="flex items-center justify-center gap-2 py-10 text-gray-400 dark:text-gray-500 text-sm">
+                    <RefreshCw size={14} className="animate-spin" />
+                    {isEn ? 'Loading…' : 'Laden…'}
                   </div>
                 )}
-                {Object.keys(customDraft).length === 0 ? (
-                  <div className="text-gray-400 dark:text-gray-500 text-sm text-center py-8">
-                    {isEn ? 'No custom settings configured' : 'Keine benutzerdefinierten Einstellungen konfiguriert'}
-                  </div>
-                ) : (
-                  Object.entries(customDraft).map(([adapterId, settings]) => {
-                    const isExpanded = expandedAdapters.has(adapterId);
-                    const isEnabled = settings.enabled === true;
-                    const otherEntries = Object.entries(settings).filter(([k]) => k !== 'enabled');
-                    return (
-                      <div key={adapterId} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                        <button
-                          onClick={() => toggleAdapter(adapterId)}
-                          className="w-full flex items-center gap-2 px-3 py-2.5 bg-gray-50 dark:bg-gray-800/60 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left"
-                        >
-                          <ChevronDown
-                            size={14}
-                            className={`text-gray-400 dark:text-gray-500 transition-transform shrink-0 ${isExpanded ? '' : '-rotate-90'}`}
-                          />
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-200 flex-1">
-                            {isEn ? 'Settings' : 'Einstellungen'} {adapterId}
-                          </span>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
-                            isEnabled
-                              ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
-                              : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
-                          }`}>
-                            {isEnabled ? 'ENABLED' : 'DISABLED'}
-                          </span>
-                        </button>
-                        {isExpanded && (
-                          <div className="px-3 py-1">
-                            <CustomSettingRow
-                              fieldKey="enabled"
-                              value={settings.enabled ?? false}
-                              onChange={(v) => setCustomField(adapterId, 'enabled', v)}
-                            />
-                            {otherEntries.map(([key, val]) => (
-                              <CustomSettingRow
-                                key={key}
-                                fieldKey={key}
-                                value={val}
-                                onChange={(v) => setCustomField(adapterId, key, v)}
-                              />
-                            ))}
+
+                {(!customLoading || customDraftLoaded) && (
+                  <>
+                    {/* Adapter chips — control which blocks are visible */}
+                    {(() => {
+                      const instanceIds = new Set(customInstances.map((c) => c.id));
+                      const extraFromDraft = Object.keys(customDraft)
+                        .filter((id) => !instanceIds.has(id))
+                        .map((id) => ({ id, adapterName: id.replace(/\.\d+$/, '') }));
+                      const allChips = [...customInstances, ...extraFromDraft];
+                      if (allChips.length === 0) return null;
+                      return (
+                        <div className="flex flex-col gap-2">
+                          <div className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+                            {isEn ? 'Adapter' : 'Adapter'}
                           </div>
-                        )}
+                          <div className="flex flex-wrap gap-2">
+                            {allChips.map(({ id: instanceId, adapterName }) => {
+                              const active = shownAdapters.has(instanceId);
+                              return (
+                                <label
+                                  key={instanceId}
+                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border cursor-pointer select-none text-xs transition-colors ${
+                                    active
+                                      ? 'bg-blue-50 border-blue-300 text-blue-700 dark:bg-blue-900/30 dark:border-blue-600 dark:text-blue-300'
+                                      : 'bg-gray-50 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400'
+                                  }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={active}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setCustomDraft((prev) => {
+                                          const existing = prev[instanceId] ?? { ...getDefaultForAdapter(adapterName) };
+                                          return { ...prev, [instanceId]: { ...existing, enabled: true } };
+                                        });
+                                        setShownAdapters((prev) => new Set([...prev, instanceId]));
+                                      } else {
+                                        setCustomDraft((prev) => prev[instanceId]
+                                          ? { ...prev, [instanceId]: { ...prev[instanceId], enabled: false } }
+                                          : prev
+                                        );
+                                        setShownAdapters((prev) => { const next = new Set(prev); next.delete(instanceId); return next; });
+                                        setExpandedAdapters((prev) => { const next = new Set(prev); next.delete(instanceId); return next; });
+                                      }
+                                    }}
+                                    className="sr-only"
+                                  />
+                                  <span className={`w-3 h-3 rounded-full border-2 flex-shrink-0 ${active ? 'bg-blue-500 border-blue-500' : 'border-gray-300 dark:border-gray-600'}`} />
+                                  <span className="font-mono">{instanceId}</span>
+                                  <span className="opacity-60">{getAdapterLabel(adapterName)}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                          <div className="h-px bg-gray-200 dark:bg-gray-700" />
+                        </div>
+                      );
+                    })()}
+
+                    {/* Configured adapter blocks — only rendered when chip is active */}
+                    {shownAdapters.size === 0 && Object.keys(customDraft).length === 0 ? (
+                      <div className="flex items-center justify-center py-10 text-gray-400 dark:text-gray-500 text-sm">
+                        {isEn ? 'No custom settings configured' : 'Keine benutzerdefinierten Einstellungen konfiguriert'}
                       </div>
-                    );
-                  })
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        {Object.entries(customDraft)
+                          .filter(([adapterId]) => shownAdapters.has(adapterId))
+                          .map(([adapterId, settings]) => {
+                            const isExpanded = expandedAdapters.has(adapterId);
+                            const isEnabled = settings.enabled === true;
+                            const adapterName = adapterId.replace(/\.\d+$/, '');
+                            const otherEntries = Object.entries(settings).filter(([k]) => k !== 'enabled');
+                            return (
+                              <div key={adapterId} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                                <button
+                                  onClick={() => toggleAdapter(adapterId)}
+                                  className="w-full flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800/60 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left"
+                                >
+                                  <ChevronDown size={13} className={`text-gray-400 dark:text-gray-500 transition-transform shrink-0 ${isExpanded ? '' : '-rotate-90'}`} />
+                                  <span className="text-sm font-semibold text-gray-700 dark:text-gray-200 shrink-0">{getAdapterLabel(adapterName)}</span>
+                                  <span className="text-xs text-gray-400 dark:text-gray-500 font-mono flex-1">{adapterId}</span>
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                                    isEnabled
+                                      ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
+                                      : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                                  }`}>
+                                    {isEnabled ? (isEn ? 'ON' : 'AN') : (isEn ? 'OFF' : 'AUS')}
+                                  </span>
+                                </button>
+                                {isExpanded && (
+                                  <div className="px-3 py-2 flex flex-col">
+                                    <CustomSettingRow
+                                      fieldKey="enabled"
+                                      value={settings.enabled ?? false}
+                                      onChange={(v) => setCustomField(adapterId, 'enabled', v)}
+                                    />
+                                    {otherEntries.map(([key, val]) => (
+                                      <CustomSettingRow
+                                        key={key}
+                                        fieldKey={key}
+                                        value={val}
+                                        onChange={(v) => setCustomField(adapterId, key, v)}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )}

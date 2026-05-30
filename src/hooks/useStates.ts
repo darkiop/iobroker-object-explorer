@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
-import { getObjectsByPattern, getStatesBatch, getState, getObject, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, putFullObject, createObject, deleteObject, deleteObjectsMany, renameDatapoint, getAllRoles, getAllUnits, setState, getRoomMap, getAllObjects, getRoomEnums, updateRoomMembership, updateRoomMembershipBatch, getFunctionMap, getFunctionEnums, updateFunctionMembership, updateFunctionMembershipBatch, buildAliasReverseMap, importDatapoints, getCustomSupportedInstances, createEnumObject, renameEnumObject, findScriptsUsingObject, getAllScriptSources, getScriptUsedIds, clearScriptUsedIdsCache } from '../api/iobroker';
+import { getObjectsByPattern, getStatesBatch, getState, getObject, getObjectFresh, getHistory, deleteHistoryEntry, deleteHistoryRange, deleteHistoryAll, extendObject, putFullObject, createObject, deleteObject, deleteObjectsMany, renameDatapoint, getAllRoles, getAllUnits, setState, getRoomMap, getAllObjects, getRoomEnums, updateRoomMembership, updateRoomMembershipBatch, getFunctionMap, getFunctionEnums, updateFunctionMembership, updateFunctionMembershipBatch, buildAliasReverseMap, importDatapoints, getCustomSupportedInstances, createEnumObject, renameEnumObject, findScriptsUsingObject, getAllScriptSources, getScriptUsedIds, clearScriptUsedIdsCache } from '../api/iobroker';
 import type { IoBrokerObject, IoBrokerObjectCommon, IoBrokerState, HistoryOptions } from '../types/iobroker';
 
 const queryKeys = {
@@ -106,6 +106,15 @@ export function useObjectDetail(id: string | null) {
     queryKey: id ? queryKeys.objects.detail(id) : [...queryKeys.objects.detail('__none__')] as const,
     queryFn: () => getObject(id!),
     enabled: !!id,
+  });
+}
+
+export function useObjectFresh(id: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: id ? [...queryKeys.objects.detail(id), 'fresh'] as const : [...queryKeys.objects.detail('__none__'), 'fresh'] as const,
+    queryFn: () => getObjectFresh(id!),
+    enabled: !!id && enabled,
+    staleTime: 0,
   });
 }
 
