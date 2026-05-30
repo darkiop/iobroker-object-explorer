@@ -226,14 +226,15 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const deleteSubtree = useDeleteSubtree();
   const { deleteCount, deleteStateCount } = useMemo(() => {
+    if (!confirmDelete) return { deleteCount: 0, deleteStateCount: 0 };
     if (node.isLeaf) return { deleteCount: 1, deleteStateCount: 1 };
     const prefix = node.fullPath + '.';
     const ids = Object.keys(allObjects).filter((id) => id === node.fullPath || id.startsWith(prefix));
     const stateCount = ids.filter((id) => allObjects[id]?.type === 'state').length;
     return { deleteCount: ids.length, deleteStateCount: stateCount };
-  }, [node.isLeaf, node.fullPath, allObjects]);
+  }, [confirmDelete, node.isLeaf, node.fullPath, allObjects]);
 
-  function exportSubtree() {
+  const exportSubtree = useCallback(() => {
     const prefix = node.fullPath + '.';
     const idsToExport = node.isLeaf
       ? [node.fullPath]
@@ -248,7 +249,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
     a.href = URL.createObjectURL(new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' }));
     a.download = `iobroker-export-${node.fullPath.replace(/\./g, '_')}-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
-  }
+  }, [node.isLeaf, node.fullPath, allObjects]);
   const hasChildren = node.children.size > 0;
   const objectType = !node.isLeaf ? allObjects[node.fullPath]?.type : undefined;
   const isFolder = !node.isLeaf && (hasChildren || objectType === 'folder' || objectType === 'device' || objectType === 'channel' || objectType === 'instance');
@@ -559,6 +560,40 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
         ))}
     </div>
   );
+}, (prev, next) => {
+  // Structural changes always require re-render
+  if (
+    prev.node !== next.node ||
+    prev.depth !== next.depth ||
+    prev.allObjects !== next.allObjects ||
+    prev.historyIds !== next.historyIds ||
+    prev.smartIds !== next.smartIds ||
+    prev.expandSignal !== next.expandSignal ||
+    prev.showFolders !== next.showFolders ||
+    prev.showDevices !== next.showDevices ||
+    prev.showChannels !== next.showChannels ||
+    prev.treeFilter !== next.treeFilter ||
+    prev.pattern !== next.pattern ||
+    prev.language !== next.language ||
+    prev.onSelect !== next.onSelect ||
+    prev.onSearch !== next.onSearch ||
+    prev.onTreeScope !== next.onTreeScope ||
+    prev.onCreateAtPath !== next.onCreateAtPath ||
+    prev.onOpenAliasReplace !== next.onOpenAliasReplace ||
+    prev.onAutoCreateAlias !== next.onAutoCreateAlias ||
+    prev.onAddToTreeFilter !== next.onAddToTreeFilter ||
+    prev.nodeFontClass !== next.nodeFontClass ||
+    prev.treeCountMode !== next.treeCountMode
+  ) return false;
+
+  if (prev.selectedId === next.selectedId) return true;
+
+  // selectedId changed: skip re-render if neither old nor new selection is in this subtree
+  if (prev.node.isLeaf) return true; // leaf nodes render null, never need re-render
+  const path = prev.node.fullPath;
+  const inSubtree = (id: string | null) => id !== null && (id === path || id.startsWith(path + '.'));
+  if (!inSubtree(prev.selectedId) && !inSubtree(next.selectedId)) return true;
+  return false;
 });
 
 
