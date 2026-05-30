@@ -46,10 +46,8 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
   const deleteSubtree = useDeleteSubtree();
 
   const scriptUsedIds = scriptUsedIdsProp ?? null;
-  const includeScripts = includeScriptsProp ?? false;
   const scriptsFetching = scriptsFetchingProp;
   const [localScriptUsedIds, setLocalScriptUsedIds] = useState<Set<string> | null>(null);
-  const [localIncludeScripts, setLocalIncludeScripts] = useState(false);
   const [localScriptsFetching, setLocalScriptsFetching] = useState(false);
   const [confirmScriptRefresh, setConfirmScriptRefresh] = useState(false);
 
