@@ -15,6 +15,7 @@ import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
 import EnumManagerModal from './components/EnumManagerModal';
 import AliasReplaceModal from './components/AliasReplaceModal';
 import AutoCreateAliasModal from './components/AutoCreateAliasModal';
+import HostConnectedButton from './components/HostConnectedButton';
 import SettingsModal from './components/SettingsModal';
 import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunctionMap, useRoomEnums, useFunctionEnums, useAliasMap } from './hooks/useStates';
 import { useApiConnectivity } from './hooks/useApiConnectivity';
@@ -588,6 +589,13 @@ function AppContent() {
             allObjectIds={existingIds}
             exportIds={tableIds}
             onNavigateTo={handleNavigateTo}
+            connectedInfo={
+              <HostConnectedButton
+                apiConnected={!objectsError && isOnline}
+                lastUpdated={lastValidUpdatedAt.current > 0 ? lastValidUpdatedAt.current : undefined}
+                onManualRefresh={handleManualRefresh}
+              />
+            }
           />
         </div>
 

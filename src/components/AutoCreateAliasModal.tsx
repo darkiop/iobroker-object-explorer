@@ -1,12 +1,13 @@
 import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Link2, Check, AlertTriangle, RefreshCw } from 'lucide-react';
+import { X, Link2, Check, AlertTriangle, RefreshCw, Search } from 'lucide-react';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { useQueryClient } from '@tanstack/react-query';
 import { createObject, updateRoomMembership, updateFunctionMembership } from '../api/iobroker';
 import { useRoomEnums, useFunctionEnums } from '../hooks/useStates';
 import type { IoBrokerObject, IoBrokerObjectCommon } from '../types/iobroker';
 import { isValidIoBrokerId } from '../utils/validation';
+import { compilePattern, isGlobPattern } from '../api/iobroker';
 
 interface Props {
   deviceId: string;
@@ -48,6 +49,7 @@ export default function AutoCreateAliasModal({ deviceId, allObjects, existingIds
   const [basePath, setBasePath] = useState(defaultBasePath);
   const [roomEnumId, setRoomEnumId] = useState<string>('');
   const [functionEnumId, setFunctionEnumId] = useState<string>('');
+  const [rowFilter, setRowFilter] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [createdCount, setCreatedCount] = useState(0);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -62,7 +64,7 @@ export default function AutoCreateAliasModal({ deviceId, allObjects, existingIds
   // Build rows from child state objects of the device
   const initialRows = useMemo<AliasRow[]>(() => {
     return Object.entries(allObjects)
-      .filter(([id, obj]) => id.startsWith(prefix) && obj.type === 'state')
+      .filter(([id, obj]) => id.startsWith(prefix) && obj.type === 'state' && !id.startsWith('alias.'))
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([id, obj]) => {
         const suffix = id.slice(prefix.length);
@@ -89,6 +91,15 @@ export default function AutoCreateAliasModal({ deviceId, allObjects, existingIds
     basePathTrimmed ? `${basePathTrimmed}.${row.suffix}` : `alias.0.${row.suffix}`;
 
   const checkedRows = rows.filter((r) => r.checked);
+  const visibleRows = useMemo(() => {
+    if (!rowFilter) return rows;
+    if (isGlobPattern(rowFilter)) {
+      const regex = compilePattern(rowFilter);
+      return rows.filter((r) => regex.test(r.suffix) || regex.test(r.name));
+    }
+    const lower = rowFilter.toLowerCase();
+    return rows.filter((r) => r.suffix.toLowerCase().includes(lower) || r.name.toLowerCase().includes(lower));
+  }, [rows, rowFilter]);
 
   const rowErrors = useMemo(() => {
     const errors = new Map<string, string>();
@@ -239,12 +250,23 @@ export default function AutoCreateAliasModal({ deviceId, allObjects, existingIds
             </div>
           ) : (
             <div className="flex flex-col gap-1">
-              <div className="flex items-center justify-between">
-                <span className={labelCls}>
+              <div className="flex items-center justify-between gap-2">
+                <span className={`${labelCls} shrink-0`}>
                   {isEn ? 'Datapoints' : 'Datenpunkte'}
                   <span className="ml-1.5 text-gray-400 font-normal">({checkedRows.length}/{rows.length})</span>
                 </span>
-                <div className="flex gap-2">
+                <div className="relative flex-1 max-w-xs">
+                  <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={rowFilter}
+                    onChange={(e) => setRowFilter(e.target.value)}
+                    placeholder={isEn ? 'Filter…' : 'Filtern…'}
+                    className={`${inputCls} pl-6 py-1 w-full text-[11px]`}
+                    disabled={isCreating || done}
+                  />
+                </div>
+                <div className="flex gap-2 shrink-0">
                   <button type="button" onClick={() => toggleAll(true)} className="text-[10px] text-blue-500 hover:text-blue-700 dark:text-blue-400 transition-colors">{isEn ? 'All' : 'Alle'}</button>
                   <button type="button" onClick={() => toggleAll(false)} className="text-[10px] text-gray-400 hover:text-gray-600 dark:text-gray-500 transition-colors">{isEn ? 'None' : 'Keine'}</button>
                 </div>
@@ -263,7 +285,7 @@ export default function AutoCreateAliasModal({ deviceId, allObjects, existingIds
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700/60">
-                      {rows.map((row) => {
+                      {visibleRows.map((row) => {
                         const aliasId = aliasIdForRow(row);
                         const err = rowErrors.get(row.sourceId);
                         return (

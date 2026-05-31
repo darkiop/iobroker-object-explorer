@@ -250,8 +250,8 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
           items.push({ icon: <Copy size={13} />, label: isEn ? 'Copy pattern' : 'Muster kopieren', onClick: () => copyText(`${node.fullPath}.*`) });
           items.push({ separator: true } as const);
           items.push({ icon: <Pencil size={13} />, label: isEn ? 'Edit object' : 'Objekt bearbeiten', onClick: () => setEditOpen(true) });
-          // Auto-create aliases for device/channel nodes
-          if (onAutoCreateAlias && (objectType === 'device' || objectType === 'channel')) {
+          // Auto-create aliases for any non-leaf node that has child states
+          if (onAutoCreateAlias && node.count > 0 && !node.fullPath.startsWith('alias.')) {
             items.push({ separator: true } as const);
             items.push({ icon: <Link2 size={13} />, label: isEn ? 'Auto-create aliases…' : 'Aliases auto-erstellen…', onClick: () => onAutoCreateAlias(node.fullPath) });
           }

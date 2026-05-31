@@ -54,6 +54,7 @@ interface StateListProps {
   allObjectIds: Set<string>;
   exportIds: string[];
   onNavigateTo: (ids: string[]) => void;
+  connectedInfo?: React.ReactNode;
 }
 
 
@@ -72,9 +73,9 @@ function patternToInitialId(pattern: string): string {
 }
 
 
-function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allObjectIds, exportIds, onNavigateTo }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
+function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allObjectIds, exportIds, onNavigateTo, connectedInfo }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
   const { colFilters, handleColFilterChange: onColFilterChange, pattern, treeFilter, handleClearTreeFilter: onClearTreeFilter, sidebarToggleSeq, fulltextEnabled, handleTreeScope } = useFilterContext();
-  const { selectedId, setSelectedId: onSelect, setHistoryModalId: _setHistoryModalId, setEnumManagerOpen, setAliasReplaceInitialStr, setEditInitialTab } = useSelectionContext();
+  const { selectedId, setSelectedId: onSelect, setHistoryModalId: _setHistoryModalId, setEnumManagerOpen, setAliasReplaceInitialStr, setEditInitialTab, setAutoAliasDeviceId } = useSelectionContext();
   const { appSettings, expertMode, scriptUsedIds, scriptsFetching, scriptLastUpdated, setScriptUsedIds, setConfirmScriptRefresh, handleToggleExpertMode: onToggleExpertMode, handleToggleGroupByPath: onToggleGroupByPath, persistSettings } = useAppSettingsContext();
 
   const { language = 'en', dateFormat = 'de', visibleCols: settingsVisibleCols, toolbarLabels = true, tableFontSize = 'normal', showDesc = true, groupByPath = false, customDefaultWidths, customMinWidths, customMaxWidths, pageSize } = appSettings;
@@ -154,6 +155,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   });
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; id: string } | null>(null);
   const [sepCtxMenu, setSepCtxMenu] = useState<{ x: number; y: number; prefix: string } | null>(null);
+  const [checkedSepPrefix, setCheckedSepPrefix] = useState<string | null>(null);
   const [roomEditId, setRoomEditId] = useState<string | null>(null);
   const [fnEditId, setFnEditId] = useState<string | null>(null);
   const [aliasSourceId, setAliasSourceId] = useState<string | null>(null);
@@ -607,10 +609,12 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const toolbar = (
     <div className="flex items-center justify-between pl-1 pr-3 py-1 shrink-0 border-b border-gray-200 dark:border-gray-800">
       <div className="flex items-center gap-2">
+        {connectedInfo && <div className="shrink-0">{connectedInfo}</div>}
+        {connectedInfo && <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 shrink-0" />}
         <button
           onClick={() => setNewDatapointOpen(true)}
           title={isEn ? 'New datapoint' : 'Neuer Datenpunkt'}
-          className={`flex items-center gap-1.5 rounded-lg text-green-600 bg-green-500/10 hover:bg-green-500/20 dark:text-green-400 dark:hover:bg-green-500/20 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
+          className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-green-600 hover:bg-green-500/10 dark:text-gray-400 dark:hover:text-green-400 dark:hover:bg-green-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
         >
           <Plus size={16} />
           {showToolbarLabels && <span>{isEn ? 'New' : 'Neu'}</span>}
@@ -656,6 +660,28 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
           <Upload size={16} />
           {showToolbarLabels && <span>Import</span>}
         </button>
+        {(() => {
+          const idFilter = colFilters.id?.trim() ?? '';
+          const autoAliasTarget = (() => {
+            const t = checkedSepPrefix
+              ?? (treeFilter ? treeFilter.replace(/\.$/, '') : null)
+              ?? (!isGlobPattern(idFilter) && idFilter.includes('.') ? idFilter : null);
+            return t && t.startsWith('alias.') ? null : t;
+          })();
+          return (
+            <button
+              onClick={() => autoAliasTarget && setAutoAliasDeviceId(autoAliasTarget)}
+              disabled={!autoAliasTarget}
+              title={autoAliasTarget
+                ? (isEn ? `Auto-create aliases for: ${autoAliasTarget}` : `Aliases auto-erstellen für: ${autoAliasTarget}`)
+                : (isEn ? 'Set a tree filter or ID filter to a device path first' : 'Zuerst einen Baum- oder ID-Filter auf einen Gerätepfad setzen')}
+              className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-emerald-600 hover:bg-emerald-500/10 dark:text-gray-400 dark:hover:text-emerald-400 dark:hover:bg-emerald-500/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
+            >
+              <Link2 size={15} />
+              {showToolbarLabels && <span>{isEn ? 'Auto Alias' : 'Auto Alias'}</span>}
+            </button>
+          );
+        })()}
         <button
           onClick={() => onOpenEnumManager?.()}
           title={isEn ? 'Manage enums (rooms & functions)' : 'Enums verwalten (Räume & Funktionen)'}
@@ -688,25 +714,43 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
             </>
           )}
         </button>
-        {checkedIds.size >= 1 && checkedIds.size <= 2 && [...checkedIds].every(id => allHistoryIds.has(id)) && (
-          <button
-            onClick={() => {
-              const [primary, secondary] = [...checkedIds];
-              const extra = secondary ? [{
-                id: secondary,
-                label: (() => { const n = objects[secondary]?.common?.name; return (typeof n === 'string' ? n : (n?.de || n?.en)) || secondary.split('.').slice(-2).join('.'); })(),
-                unit: objects[secondary]?.common?.unit,
-              }] : [];
-              setHistoryInitialExtra(extra);
-              setHistoryModalId(primary);
-            }}
-            title={isEn ? 'History' : 'Verlauf'}
-            className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-purple-600 hover:bg-purple-500/10 dark:text-gray-400 dark:hover:text-purple-400 dark:hover:bg-purple-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
-          >
-            <History size={15} />
-            {showToolbarLabels && <span>History</span>}
-          </button>
-        )}
+        {(() => {
+          const checkedArr = [...checkedIds];
+          const historyChecked = checkedArr.filter(id => allHistoryIds.has(id));
+          const enabled = checkedArr.length >= 1 && checkedArr.length <= 2 && checkedArr.every(id => allHistoryIds.has(id));
+          const hasAnyHistory = historyChecked.length > 0;
+          return (
+            <button
+              disabled={!enabled}
+              onClick={() => {
+                if (!enabled) return;
+                const [primary, secondary] = checkedArr;
+                const extra = secondary ? [{
+                  id: secondary,
+                  label: (() => { const n = objects[secondary]?.common?.name; return (typeof n === 'string' ? n : (n?.de || n?.en)) || secondary.split('.').slice(-2).join('.'); })(),
+                  unit: objects[secondary]?.common?.unit,
+                }] : [];
+                setHistoryInitialExtra(extra);
+                setHistoryModalId(primary);
+              }}
+              title={
+                enabled
+                  ? (isEn ? 'History' : 'Verlauf')
+                  : hasAnyHistory
+                    ? (isEn ? 'Select 1–2 datapoints with history' : '1–2 Datenpunkte mit History auswählen')
+                    : (isEn ? 'No datapoint with history selected' : 'Kein Datenpunkt mit History ausgewählt')
+              }
+              className={`flex items-center gap-1.5 rounded-lg transition-colors disabled:cursor-not-allowed ${
+                enabled
+                  ? `text-gray-500 hover:text-purple-600 hover:bg-purple-500/10 dark:text-gray-400 dark:hover:text-purple-400 dark:hover:bg-purple-500/10`
+                  : `text-gray-300 dark:text-gray-600`
+              } ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
+            >
+              <History size={15} />
+              {showToolbarLabels && <span>History</span>}
+            </button>
+          );
+        })()}
         {[...checkedIds].some((id) => id.startsWith('alias.')) && (
           <button
             onClick={() => {
@@ -1199,6 +1243,10 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
             return next;
           }),
         });
+        if (prefix) {
+          sepItems.push({ separator: true } as const);
+          sepItems.push({ icon: <Link2 size={13} />, label: isEn ? 'Auto-create aliases…' : 'Aliases auto-erstellen…', onClick: () => setAutoAliasDeviceId(prefix) });
+        }
         sepItems.push({ separator: true } as const);
         sepItems.push({
           icon: <Trash2 size={13} />,
@@ -1435,7 +1483,16 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                       base.has(item.prefix) ? base.delete(item.prefix) : base.add(item.prefix);
                       return base;
                     })}>
-                    <td colSpan={_sepMainSpan || rowColSpan + 1} className="py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-100/50 dark:group-hover/sep:bg-gray-700/60 transition-colors" style={{ paddingLeft: 12 + item.depth * 10, paddingRight: 12 }}>
+                    <td className="py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-100/50 dark:group-hover/sep:bg-gray-700/60 transition-colors text-center" style={{ width: DEL_COL_WIDTH, minWidth: DEL_COL_WIDTH }}>
+                      {item.prefix && (
+                        <StyledCheckbox
+                          checked={checkedSepPrefix === item.prefix}
+                          onChange={() => setCheckedSepPrefix(checkedSepPrefix === item.prefix ? null : item.prefix)}
+                          title={isEn ? 'Select as alias source' : 'Als Alias-Quelle auswählen'}
+                        />
+                      )}
+                    </td>
+                    <td colSpan={(_sepMainSpan || rowColSpan + 1) - 1} className="py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-100/50 dark:group-hover/sep:bg-gray-700/60 transition-colors" style={{ paddingLeft: 12 + item.depth * 10, paddingRight: 12 }}>
                       <div className="flex items-center gap-2">
                         {(collapsedPrefixes === null || collapsedPrefixes.has(item.prefix))
                           ? <ChevronRight size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
