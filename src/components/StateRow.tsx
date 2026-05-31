@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Trash2, History, Mic2, Link2, Wrench, Lock, FileCode2 } from 'lucide-react';
 import type { IoBrokerState, IoBrokerObject } from '../types/iobroker';
 import type { SortKey, DateFormatSetting } from './stateListColumns';
@@ -95,10 +96,54 @@ const StateRow = React.memo(function StateRow({
         ? (isEn ? 'Alias without source' : 'Alias ohne Quelle')
         : undefined;
 
+  const tooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
+
+  const handleMouseEnter = useCallback((e: React.MouseEvent) => {
+    if (!state) return;
+    const x = e.clientX;
+    const y = e.clientY;
+    tooltipTimerRef.current = setTimeout(() => setTooltipPos({ x, y }), 600);
+  }, [state]);
+
+  const handleMouseLeave = useCallback(() => {
+    if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
+    setTooltipPos(null);
+  }, []);
+
+  const tooltipRows = state ? [
+    ['Timestamp',    formatTimestamp(state.ts, dateFormat)],
+    ['Last Change',  formatTimestamp(state.lc, dateFormat)],
+    ['Acknowledged', state.ack ? 'Yes' : 'No'],
+    ['Quality',      String(state.q)],
+    ['From',         state.from || '–'],
+  ] : [];
+
   return (
+    <>
+    {tooltipPos && state && createPortal(
+      <div
+        className="fixed z-[9999] pointer-events-none px-2.5 py-1.5 rounded shadow-lg border text-xs font-mono bg-gray-900 border-gray-600 text-gray-100 dark:bg-gray-950 dark:border-gray-700"
+        style={{ left: tooltipPos.x + 14, top: tooltipPos.y + 10 }}
+      >
+        <table className="border-separate" style={{ borderSpacing: '0 1px' }}>
+          <tbody>
+            {tooltipRows.map(([label, value]) => (
+              <tr key={label}>
+                <td className="pr-3 text-gray-400 whitespace-nowrap">{label}</td>
+                <td className="text-gray-100 whitespace-nowrap">{value}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>,
+      document.body
+    )}
     <tr
       onClick={() => onSelect(id)}
       onContextMenu={(e) => { e.preventDefault(); onContextMenu(e.clientX, e.clientY, id); }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       className={`group border-b border-gray-200 dark:border-gray-800 cursor-pointer transition-colors ${
         isSelected
           ? 'bg-blue-600/20 text-blue-700 dark:text-blue-200'
@@ -320,6 +365,7 @@ const StateRow = React.memo(function StateRow({
         ><Trash2 size={13} /></button>
       </td>
     </tr>
+    </>
   );
 }, (prev, next) => {
   const prevState = prev.state;
