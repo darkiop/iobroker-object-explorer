@@ -1,11 +1,7 @@
 import { useState, useRef, useEffect, useLayoutEffect, useMemo } from 'react';
-import { Parser as ExprParser } from 'expr-eval';
 import { createPortal } from 'react-dom';
-import { X, Save, AlertTriangle, Link2, Check, Wrench, Trash2, Maximize2, Copy, ChevronDown, Lock, Zap, PenLine, FolderInput, FileCode2, CircleCheck, CirclePause, RefreshCw, ExternalLink } from 'lucide-react';
+import { X, Save, Wrench, Trash2, Copy, PenLine, FolderInput, Lock } from 'lucide-react';
 import { usePutObject, useExtendObject, useStateDetail, useSetState, useAllRoles, useAllUnits, useDeleteObject, useAllObjects, useRoomEnums, useFunctionEnums, useUpdateRoomMembership, useUpdateFunctionMembership, useCustomSupportedInstances, useObjectFresh, useScriptUsages } from '../hooks/useStates';
-import { hasHistory } from '../api/iobroker';
-import { formatTimestamp, formatValue } from '../utils/format';
-import HistoryChart from './HistoryChart';
 import ConfirmDialog from './ConfirmDialog';
 import CopyDatapointModal from './CopyDatapointModal';
 import RenameDatapointModal from './RenameDatapointModal';
@@ -13,9 +9,12 @@ import MoveDatapointModal from './MoveDatapointModal';
 import type { IoBrokerObject, IoBrokerObjectCommon } from '../types/iobroker';
 import { useToast } from '../context/ToastContext';
 import { useAppSettingsContext } from '../context/UIContext';
-import { copyToClipboard } from '../utils/clipboard';
 import { ColoredId } from '../utils/coloredId';
-import { getRoleColor } from '../utils/roleColor';
+import DetailsTab from './tabs/DetailsTab';
+import JsonTab from './tabs/JsonTab';
+import AliasTab from './tabs/AliasTab';
+import CustomTab from './tabs/CustomTab';
+import ScriptsTab from './tabs/ScriptsTab';
 
 interface Props {
   id: string;
@@ -28,457 +27,6 @@ interface Props {
 }
 
 type Tab = 'details' | 'json' | 'alias' | 'custom' | 'scripts';
-const STATE_TYPES = ['number', 'string', 'boolean', 'array', 'object', 'mixed'] as const;
-
-const SQL_CUSTOM_DEFAULT: Record<string, unknown> = {
-  enabled: false,
-  storageType: '',
-  counter: false,
-  aliasId: '',
-  debounceTime: 0,
-  blockTime: 0,
-  changesOnly: true,
-  changesRelogInterval: '0',
-  changesMinDelta: '0',
-  ignoreBelowNumber: '',
-  disableSkippedValueLogging: false,
-  retention: '31536000',
-  customRetentionDuration: 365,
-  maxLength: 0,
-  enableDebugLogs: false,
-  debounce: '1000',
-};
-
-const HISTORY_CUSTOM_DEFAULT: Record<string, unknown> = {
-  enabled: false,
-  changesOnly: true,
-  debounce: 1000,
-  debounceTime: 0,
-  maxLength: 960,
-  retention: 31536000,
-  counter: false,
-  aliasId: '',
-  blockTime: 0,
-  changesRelogInterval: 0,
-  changesMinDelta: 0,
-  ignoreBelowNumber: '',
-  disableSkippedValueLogging: false,
-  enableDebugLogs: false,
-};
-
-const INFLUXDB_CUSTOM_DEFAULT: Record<string, unknown> = {
-  enabled: false,
-  changesOnly: true,
-  debounce: 1000,
-  debounceTime: 0,
-  maxLength: 0,
-  retention: 0,
-  counter: false,
-  aliasId: '',
-  blockTime: 0,
-  changesRelogInterval: 0,
-  changesMinDelta: 0,
-  ignoreBelowNumber: '',
-  disableSkippedValueLogging: false,
-  enableDebugLogs: false,
-};
-
-const SOURCEANALYTIX_CUSTOM_DEFAULT: Record<string, unknown> = {
-  enabled: false,
-  selectedUnit: 'Detect automatically',
-  deviceResetLogicEnabled: true,
-  threshold: 1,
-  start_day: 0,
-  start_week: 0,
-  start_month: 0,
-  start_quarter: 0,
-  start_year: 0,
-};
-
-const STATISTICS_CUSTOM_DEFAULT: Record<string, unknown> = {
-  enabled: false,
-  count: false,
-  fiveMin: false,
-  sumCount: false,
-  impUnitPerImpulse: 1,
-  impUnit: '',
-  timeCount: false,
-  avg: false,
-  minmax: false,
-  sumDelta: false,
-  sumIgnoreMinus: false,
-  groupFactor: 1,
-  logName: '',
-};
-
-const TELEGRAM_CUSTOM_DEFAULT: Record<string, unknown> = {
-  enabled: false,
-  alias: '',
-  recipients: '',
-  readOnly: false,
-  report: true,
-  onlyFalse: false,
-  onlyTrue: false,
-  silent: false,
-  buttons: 3,
-  writeOnly: false,
-  offCommand: '',
-  onCommand: '',
-  offStatus: '',
-  onStatus: '',
-};
-
-const ADAPTER_CUSTOM_DEFAULTS: Record<string, Record<string, unknown>> = {
-  sql: SQL_CUSTOM_DEFAULT,
-  history: HISTORY_CUSTOM_DEFAULT,
-  influxdb: INFLUXDB_CUSTOM_DEFAULT,
-  timescaledb: INFLUXDB_CUSTOM_DEFAULT,
-  telegram: TELEGRAM_CUSTOM_DEFAULT,
-  sourceanalytix: SOURCEANALYTIX_CUSTOM_DEFAULT,
-  statistics: STATISTICS_CUSTOM_DEFAULT,
-};
-
-const ADAPTER_LABELS: Record<string, string> = {
-  sql: 'SQL History',
-  history: 'File History',
-  influxdb: 'InfluxDB',
-  timescaledb: 'TimescaleDB',
-  telegram: 'Telegram',
-  sourceanalytix: 'Source Analytix',
-  statistics: 'Statistics',
-};
-
-function getDefaultForAdapter(adapterName: string): Record<string, unknown> {
-  return ADAPTER_CUSTOM_DEFAULTS[adapterName] ?? { enabled: false };
-}
-
-function getAdapterLabel(adapterName: string): string {
-  return ADAPTER_LABELS[adapterName] ?? adapterName;
-}
-
-// ── helpers ────────────────────────────────────────────────────────────────
-
-
-function getObjectName(common: { name: string | Record<string, string> } | undefined): string {
-  if (!common?.name) return '';
-  if (typeof common.name === 'string') return common.name;
-  return common.name.de || common.name.en || Object.values(common.name)[0] || '';
-}
-
-const SELECT_CLS = 'w-full bg-gray-50/70 text-gray-700 text-sm rounded-md px-2.5 py-1.5 border border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300/70 disabled:opacity-50 dark:bg-gray-800/70 dark:text-gray-200 dark:border-gray-700 dark:focus:border-gray-600 dark:focus:ring-gray-600/60 transition-colors';
-
-function InlineInputRow({ label, value, onSave, isPending }: { label: string; value: string; onSave: (v: string) => void; isPending: boolean }) {
-  const [draft, setDraft] = useState(value);
-  useEffect(() => { setDraft(value); }, [value]);
-  return (
-    <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800 items-center">
-      <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{label}</span>
-      <input
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={() => { if (draft !== value) onSave(draft); }}
-        onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); else if (e.key === 'Escape') setDraft(value); }}
-        disabled={isPending}
-        className={SELECT_CLS}
-      />
-    </div>
-  );
-}
-
-function InlineNumberRow({ label, value, onSave, onClear, isPending }: { label: string; value: number | undefined; onSave: (v: number) => void; onClear: () => void; isPending: boolean }) {
-  const [draft, setDraft] = useState(value !== undefined ? String(value) : '');
-  useEffect(() => { setDraft(value !== undefined ? String(value) : ''); }, [value]);
-  function commit() {
-    if (draft === '') { onClear(); return; }
-    const n = parseFloat(draft);
-    if (!isNaN(n) && n !== value) onSave(n);
-  }
-  return (
-    <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800 items-center">
-      <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{label}</span>
-      <input
-        type="number"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); else if (e.key === 'Escape') setDraft(value !== undefined ? String(value) : ''); }}
-        disabled={isPending}
-        placeholder="—"
-        className={SELECT_CLS + ' [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'}
-      />
-    </div>
-  );
-}
-
-function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex gap-4 py-1.5 border-b border-gray-200 dark:border-gray-800">
-      <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide flex items-center gap-1">
-        <Lock size={9} className="shrink-0 opacity-50" />
-        {label}
-      </span>
-      <span className="text-gray-800 dark:text-gray-200 text-sm break-all">{value}</span>
-    </div>
-  );
-}
-
-function BooleanSelectControl({ val, onSet, isPending, disabled }: { val: unknown; onSet: (v: unknown) => void; isPending: boolean; disabled?: boolean }) {
-  const draft = String(Boolean(val));
-  return (
-    <select
-      value={draft}
-      onChange={(e) => onSet(e.target.value === 'true')}
-      disabled={isPending || disabled}
-      className="bg-white text-gray-800 text-sm rounded px-2 py-0.5 border border-gray-300 focus:border-blue-500 focus:outline-none disabled:opacity-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600"
-    >
-      <option value="true">true</option>
-      <option value="false">false</option>
-    </select>
-  );
-}
-
-function ButtonControl({ onSet, isPending, disabled, language = 'en' }: { onSet: (v: unknown) => void; isPending: boolean; disabled?: boolean; language?: 'en' | 'de' }) {
-  const isEn = language === 'en';
-  return (
-    <button
-      onClick={() => onSet(true)}
-      disabled={isPending || disabled}
-      title={isEn ? 'Trigger' : 'Auslösen'}
-      className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded disabled:opacity-50 transition-colors"
-    >
-      <Zap size={13} />
-    </button>
-  );
-}
-
-function NumberControl({ val, onSet, isPending, unit }: { val: unknown; onSet: (v: unknown) => void; isPending: boolean; unit?: string }) {
-  const [draft, setDraft] = useState(String(val ?? ''));
-  useEffect(() => { setDraft(String(val ?? '')); }, [val]);
-  function commit() { const n = Number(draft); if (!isNaN(n)) onSet(n); }
-  return (
-    <div className="flex items-center gap-1.5">
-      <input type="number" value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') commit(); }} onBlur={commit} disabled={isPending} className="w-24 bg-white text-gray-800 text-sm rounded px-2 py-0.5 border border-gray-300 focus:border-blue-500 focus:outline-none disabled:opacity-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600" />
-      {unit && <span className="text-gray-500 dark:text-gray-400 text-sm">{unit}</span>}
-    </div>
-  );
-}
-
-function StringControl({ val, onSet, isPending, unit, language = 'en' }: { val: unknown; onSet: (v: unknown) => void; isPending: boolean; unit?: string; language?: 'en' | 'de' }) {
-  const isEn = language === 'en';
-  const [draft, setDraft] = useState(String(val ?? ''));
-  useEffect(() => { setDraft(String(val ?? '')); }, [val]);
-  return (
-    <div className="flex items-center gap-1.5 flex-1 min-w-0">
-      <input type="text" value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') onSet(draft); }} disabled={isPending} className="flex-1 min-w-0 bg-white text-gray-800 text-sm rounded px-2 py-0.5 border border-gray-300 focus:border-blue-500 focus:outline-none disabled:opacity-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600" />
-      <button onClick={() => onSet(draft)} disabled={isPending} className="text-green-500 hover:text-green-600 dark:text-green-400 disabled:opacity-50 shrink-0" title={isEn ? 'Send' : 'Senden'}><Check size={14} /></button>
-      {unit && <span className="text-gray-500 dark:text-gray-400 text-sm shrink-0">{unit}</span>}
-    </div>
-  );
-}
-
-function ExpertControl({ val, onSet, isPending, unit, type, language = 'en' }: { val: unknown; onSet: (v: unknown) => void; isPending: boolean; unit?: string; type?: string; language?: 'en' | 'de' }) {
-  const isEn = language === 'en';
-  const [draft, setDraft] = useState(String(val ?? ''));
-  useEffect(() => { setDraft(String(val ?? '')); }, [val]);
-  function commit(raw: string) {
-    if (type === 'boolean') onSet(raw === 'true');
-    else if (type === 'number') { const n = Number(raw); if (!isNaN(n)) onSet(n); }
-    else onSet(raw);
-  }
-  if (type === 'boolean') {
-    return (
-      <div className="flex items-center gap-1.5">
-        <select value={draft} onChange={(e) => { setDraft(e.target.value); commit(e.target.value); }} disabled={isPending} className="bg-white text-gray-800 text-sm rounded px-2 py-0.5 border border-gray-300 focus:border-blue-500 focus:outline-none disabled:opacity-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600">
-          <option value="true">true</option>
-          <option value="false">false</option>
-        </select>
-      </div>
-    );
-  }
-  return (
-    <div className="flex items-center gap-1.5">
-      <input type={type === 'number' ? 'number' : 'text'} value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') commit(draft); }} disabled={isPending} className="w-32 bg-white text-gray-800 text-sm rounded px-2 py-0.5 border border-gray-300 focus:border-blue-500 focus:outline-none disabled:opacity-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600" />
-      <button onClick={() => commit(draft)} disabled={isPending} className="text-green-500 hover:text-green-600 dark:text-green-400 disabled:opacity-50" title={isEn ? 'Send' : 'Senden'}><Check size={14} /></button>
-      {unit && <span className="text-gray-500 dark:text-gray-400 text-sm">{unit}</span>}
-    </div>
-  );
-}
-
-// ── JSON syntax highlighting ────────────────────────────────────────────────
-
-type TokenType = 'key' | 'string' | 'number' | 'boolean' | 'null' | 'punctuation' | 'other';
-interface Token { type: TokenType; value: string }
-
-function tokenizeJson(raw: string): Token[] {
-  const tokens: Token[] = [];
-  let i = 0;
-  while (i < raw.length) {
-    const ch = raw[i];
-    if (/\s/.test(ch)) {
-      let j = i; while (j < raw.length && /\s/.test(raw[j])) j++;
-      tokens.push({ type: 'other', value: raw.slice(i, j) }); i = j; continue;
-    }
-    if (ch === '"') {
-      let j = i + 1;
-      while (j < raw.length) {
-        if (raw[j] === '\\') j += 2;
-        else if (raw[j] === '"') { j++; break; }
-        else j++;
-      }
-      const value = raw.slice(i, j);
-      let k = j; while (k < raw.length && (raw[k] === ' ' || raw[k] === '\t')) k++;
-      tokens.push({ type: raw[k] === ':' ? 'key' : 'string', value });
-      i = j; continue;
-    }
-    if (ch === '-' || (ch >= '0' && ch <= '9')) {
-      let j = i; if (raw[j] === '-') j++;
-      while (j < raw.length && /[0-9]/.test(raw[j])) j++;
-      if (j < raw.length && raw[j] === '.') { j++; while (j < raw.length && /[0-9]/.test(raw[j])) j++; }
-      if (j < raw.length && (raw[j] === 'e' || raw[j] === 'E')) { j++; if (raw[j] === '+' || raw[j] === '-') j++; while (j < raw.length && /[0-9]/.test(raw[j])) j++; }
-      tokens.push({ type: 'number', value: raw.slice(i, j) }); i = j; continue;
-    }
-    if (raw.startsWith('true', i))  { tokens.push({ type: 'boolean', value: 'true'  }); i += 4; continue; }
-    if (raw.startsWith('false', i)) { tokens.push({ type: 'boolean', value: 'false' }); i += 5; continue; }
-    if (raw.startsWith('null', i))  { tokens.push({ type: 'null',    value: 'null'  }); i += 4; continue; }
-    if ('{}[],:'.includes(ch)) { tokens.push({ type: 'punctuation', value: ch }); i++; continue; }
-    tokens.push({ type: 'other', value: ch }); i++;
-  }
-  return tokens;
-}
-
-function tokenClass(type: TokenType): string {
-  switch (type) {
-    case 'key':         return 'text-blue-600 dark:text-blue-300';
-    case 'string':      return 'text-green-700 dark:text-green-400';
-    case 'number':      return 'text-orange-600 dark:text-orange-400';
-    case 'boolean':     return 'text-purple-600 dark:text-purple-400';
-    case 'null':        return 'text-gray-400 dark:text-gray-500';
-    case 'punctuation': return 'text-gray-500 dark:text-gray-400';
-    default:            return 'text-gray-800 dark:text-gray-200';
-  }
-}
-
-const MONO: React.CSSProperties = {
-  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-  fontSize: '12px',
-  lineHeight: '1.6',
-  padding: '16px',
-  margin: 0,
-  whiteSpace: 'pre',
-  wordBreak: 'normal',
-  overflowWrap: 'normal',
-  tabSize: 2,
-};
-
-function JsonEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const preRef  = useRef<HTMLPreElement>(null);
-  const taRef   = useRef<HTMLTextAreaElement>(null);
-  const tokens  = useMemo(() => tokenizeJson(value), [value]);
-
-  function syncScroll() {
-    if (!preRef.current || !taRef.current) return;
-    preRef.current.style.transform =
-      `translate(${-taRef.current.scrollLeft}px, ${-taRef.current.scrollTop}px)`;
-  }
-
-  return (
-    <div className="relative flex-1 min-h-0 overflow-hidden bg-gray-50 dark:bg-gray-800">
-      <pre
-        ref={preRef}
-        aria-hidden
-        className="absolute top-0 left-0 pointer-events-none select-none m-0 border-0 min-w-full min-h-full"
-        style={{ ...MONO, overflow: 'visible', transformOrigin: '0 0' }}
-      >
-        {tokens.map((t, i) => (
-          <span key={i} className={tokenClass(t.type)}>{t.value}</span>
-        ))}
-        {'\n'}
-      </pre>
-      <textarea
-        ref={taRef}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onScroll={syncScroll}
-        spellCheck={false}
-        className="absolute inset-0 w-full h-full resize-none bg-transparent text-transparent caret-gray-700 dark:caret-gray-200 focus:outline-none border-0"
-        style={MONO}
-      />
-    </div>
-  );
-}
-
-// ── Custom Settings helpers ─────────────────────────────────────────────────
-
-function CustomNumberInput({ value, onChange }: { value: number; onChange: (v: unknown) => void }) {
-  const [draft, setDraft] = useState(String(value));
-  useEffect(() => { setDraft(String(value)); }, [value]);
-  function commit() {
-    const n = Number(draft);
-    if (!isNaN(n)) onChange(n);
-    else setDraft(String(value));
-  }
-  return (
-    <input
-      type="number"
-      value={draft}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={commit}
-      onKeyDown={(e) => { if (e.key === 'Enter') commit(); }}
-      className="w-28 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 text-sm rounded px-2 py-0.5 border border-gray-200 dark:border-gray-700 focus:border-blue-400 dark:focus:border-blue-500 focus:outline-none"
-    />
-  );
-}
-
-function CustomSettingRow({ fieldKey, value, onChange }: { fieldKey: string; value: unknown; onChange: (v: unknown) => void }) {
-  const labelCls = 'text-gray-400 dark:text-gray-500 text-xs w-52 shrink-0 font-mono';
-  const rowCls = 'flex gap-4 py-1 border-b border-gray-100 dark:border-gray-800/60 items-center';
-
-  if (typeof value === 'boolean') {
-    return (
-      <div className={rowCls}>
-        <span className={labelCls}>{fieldKey}</span>
-        <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-          <input type="checkbox" checked={value} onChange={(e) => onChange(e.target.checked)} className="sr-only peer" />
-          <span className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${value ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600'}`}>
-            {value && <Check size={11} className="text-white" strokeWidth={3} />}
-          </span>
-        </label>
-      </div>
-    );
-  }
-
-  if (typeof value === 'number') {
-    return (
-      <div className={rowCls}>
-        <span className={labelCls}>{fieldKey}</span>
-        <CustomNumberInput value={value} onChange={onChange} />
-      </div>
-    );
-  }
-
-  return (
-    <div className={rowCls}>
-      <span className={labelCls}>{fieldKey}</span>
-      <input
-        type="text"
-        value={String(value ?? '')}
-        onChange={(e) => onChange(e.target.value)}
-        className="flex-1 min-w-0 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 text-sm rounded px-2 py-0.5 border border-gray-200 dark:border-gray-700 focus:border-blue-400 dark:focus:border-blue-500 focus:outline-none"
-      />
-    </div>
-  );
-}
-
-function SectionHeader({ label, first = false }: { label: string; first?: boolean }) {
-  return (
-    <div className={`flex items-center gap-2 ${first ? 'mb-1' : 'mt-5 mb-1'}`}>
-      <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 shrink-0">{label}</span>
-      <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
-    </div>
-  );
-}
-
-// ── main component ─────────────────────────────────────────────────────────
 
 export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, language = 'en', dateFormat = 'de', initialTab }: Props) {
   const isEn = language === 'en';
@@ -503,7 +51,6 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
   const [customDraft, setCustomDraft] = useState<NonNullable<IoBrokerObjectCommon['custom']>>(
     () => obj.common.custom ?? {}
   );
-  // shownAdapters: which chips are active (block rendered); expandedAdapters: which blocks are expanded
   const [shownAdapters, setShownAdapters] = useState<Set<string>>(
     () => new Set(Object.keys(obj.common.custom ?? {}))
   );
@@ -518,22 +65,6 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
       setCustomDraftLoaded(true);
     }
   }, [freshObj, customDraftLoaded]);
-
-  function toggleAdapter(adapterId: string) {
-    setExpandedAdapters((prev) => {
-      const next = new Set(prev);
-      if (next.has(adapterId)) next.delete(adapterId);
-      else next.add(adapterId);
-      return next;
-    });
-  }
-
-  function setCustomField(adapterId: string, field: string, value: unknown) {
-    setCustomDraft((prev) => ({
-      ...prev,
-      [adapterId]: { ...prev[adapterId], [field]: value },
-    }));
-  }
 
   // Alias tab state
   const [aliasSeparateIds, setAliasSeparateIds] = useState(() => typeof obj.common.alias?.id === 'object');
@@ -550,8 +81,6 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
     const hit = Object.keys(obj.enums ?? {}).find((enumId) => enumId.startsWith('enum.functions.'));
     return hit ?? null;
   });
-  const [aliasTestInput, setAliasTestInput] = useState('');
-  const [aliasTestResult, setAliasTestResult] = useState<{ read?: string; readErr?: string; write?: string; writeErr?: string } | null>(null);
 
   const putObject = usePutObject();
   const extend = useExtendObject();
@@ -569,10 +98,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
   const { data: customInstances = [] } = useCustomSupportedInstances();
   const { data: scriptUsages, isFetching: scriptsFetching, refetch: refetchScripts } = useScriptUsages(id, tab === 'scripts');
 
-  const role = obj.common?.role ?? '';
-  const type = obj.common?.type ?? '';
   const isWritable = obj.common?.write === true;
-  const isButton = role === 'button' || role.startsWith('button.');
 
   useEffect(() => {
     const nextRoom = Object.keys(obj.enums ?? {}).find((enumId) => enumId.startsWith('enum.rooms.')) ?? null;
@@ -629,11 +155,11 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
     return () => document.removeEventListener('keydown', onKeyDown);
   }, []);
 
-  function saveField(field: string, value: string) {
-    extend.mutate({ id, common: { [field]: value } });
+  function handleExtend(common: Record<string, unknown>) {
+    extend.mutate({ id, common });
   }
 
-  function handleSet(val: unknown) {
+  function handleSetValue(val: unknown) {
     setStateMutation.mutate({ id, val });
   }
 
@@ -694,7 +220,6 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
     if (tab === 'json') { handleSaveJson(); return; }
     if (tab === 'alias') { handleSaveAlias(); return; }
     if (tab === 'custom') { handleSaveCustom(); return; }
-    // Details tab saves inline; keep a consistent primary action in footer.
     onClose();
   }
 
@@ -717,43 +242,6 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
       { onError: () => setFnEnumId(oldFnEnumId) }
     );
   }
-
-  function evalFormula(formula: string, val: unknown): { value?: string; error?: string } {
-    try {
-      const parser = new ExprParser({
-        operators: {
-          logical: true,
-          comparison: true,
-          'in': false,
-          assignment: false,
-        },
-      });
-      const expr = parser.parse(formula.trim());
-      const output = expr.evaluate({ val });
-      return { value: String(output) };
-    } catch (e) {
-      return { error: e instanceof Error ? e.message : String(e) };
-    }
-  }
-
-  function runFormulaTest() {
-    const raw = aliasTestInput.trim();
-    const val: unknown = raw === '' ? undefined : isNaN(Number(raw)) ? raw : Number(raw);
-    const result: typeof aliasTestResult = {};
-    if (aliasRead.trim()) {
-      const { value, error } = evalFormula(aliasRead, val);
-      if (error) result.readErr = error;
-      else result.read = value;
-    }
-    if (aliasWrite.trim()) {
-      const { value, error } = evalFormula(aliasWrite, val);
-      if (error) result.writeErr = error;
-      else result.write = value;
-    }
-    setAliasTestResult(result);
-  }
-
-  const inputCls = 'px-2.5 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500';
 
   return createPortal(
     <>
@@ -801,7 +289,6 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
         <ConfirmDialog
           title={isEn ? 'Discard changes?' : 'Änderungen verwerfen?'}
           message={isEn ? 'Unsaved changes will be lost.' : 'Nicht gespeicherte Änderungen gehen verloren.'}
-          confirmLabel={isEn ? 'Discard' : 'Verwerfen'}
           onConfirm={() => { cancelCloseConfirm(); onClose(); }}
           onCancel={cancelCloseConfirm}
           language={language}
@@ -864,611 +351,83 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
           {/* Content */}
           <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
             {tab === 'details' && (
-              <div className="px-5 py-4 overflow-y-auto flex-1">
-
-                {/* ── Identity ── */}
-                <SectionHeader label={isEn ? 'Identity' : 'Identität'} first />
-                <InlineInputRow label="Name" value={getObjectName(obj.common)} onSave={(v) => saveField('name', v)} isPending={extend.isPending} />
-                <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800 items-center">
-                  <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide flex items-center gap-1">
-                    <Lock size={9} className="shrink-0 opacity-50" />
-                    {isEn ? 'Object type' : 'Objekttyp'}
-                  </span>
-                  <input readOnly value={obj.type} className={SELECT_CLS + ' cursor-default'} />
-                </div>
-                <InlineInputRow
-                  label={isEn ? 'Description' : 'Beschreibung'}
-                  value={typeof obj.common?.desc === 'string' ? obj.common.desc : obj.common?.desc ? JSON.stringify(obj.common.desc) : ''}
-                  onSave={(v) => saveField('desc', v)}
-                  isPending={extend.isPending}
-                />
-
-                {/* ── Type & Role ── */}
-                <SectionHeader label={isEn ? 'Type & Role' : 'Typ & Rolle'} />
-                <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800 items-center">
-                  <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{isEn ? 'Role' : 'Rolle'}</span>
-                  <div className="flex-1 relative">
-                    <select
-                      value={obj.common?.role || ''}
-                      onChange={(e) => saveField('role', e.target.value)}
-                      disabled={extend.isPending}
-                      className={`w-full appearance-none [color-scheme:light] dark:[color-scheme:dark] [&>option]:bg-white [&>option]:text-gray-900 dark:[&>option]:bg-gray-800 dark:[&>option]:text-gray-200 bg-gray-50/70 text-sm rounded-md pl-2.5 pr-8 py-1.5 border border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300/70 disabled:opacity-50 dark:bg-gray-800/70 dark:border-gray-700 dark:focus:border-gray-600 dark:focus:ring-gray-600/60 transition-colors ${obj.common?.role ? getRoleColor(obj.common.role) : 'text-gray-700 dark:text-gray-200'}`}
-                    >
-                      <option value="">{isEn ? 'No role' : 'Keine Rolle'}</option>
-                      {(roles ?? []).map((roleEntry) => (
-                        <option key={roleEntry} value={roleEntry}>{roleEntry}</option>
-                      ))}
-                    </select>
-                    <ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-500" />
-                  </div>
-                </div>
-                {obj.type === 'state' && (
-                  <>
-                    <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800 items-center">
-                      <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{isEn ? 'Value type' : 'Werttyp'}</span>
-                      <div className="flex-1 relative">
-                        <select
-                          value={obj.common?.type || ''}
-                          onChange={(e) => saveField('type', e.target.value)}
-                          disabled={extend.isPending}
-                          className="w-full appearance-none [color-scheme:light] dark:[color-scheme:dark] [&>option]:bg-white [&>option]:text-gray-900 dark:[&>option]:bg-gray-800 dark:[&>option]:text-gray-200 bg-gray-50/70 text-gray-700 text-sm rounded-md pl-2.5 pr-8 py-1.5 border border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300/70 disabled:opacity-50 dark:bg-gray-800/70 dark:text-gray-200 dark:border-gray-700 dark:focus:border-gray-600 dark:focus:ring-gray-600/60 transition-colors"
-                        >
-                          <option value="">{isEn ? 'No type' : 'Kein Typ'}</option>
-                          {STATE_TYPES.map((stateType) => (
-                            <option key={stateType} value={stateType}>{stateType}</option>
-                          ))}
-                        </select>
-                        <ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-500" />
-                      </div>
-                    </div>
-                    <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800 items-center">
-                      <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{isEn ? 'Unit' : 'Einheit'}</span>
-                      <div className="flex-1 relative">
-                        <select
-                          value={obj.common?.unit || ''}
-                          onChange={(e) => saveField('unit', e.target.value)}
-                          disabled={extend.isPending}
-                          className="w-full appearance-none [color-scheme:light] dark:[color-scheme:dark] [&>option]:bg-white [&>option]:text-gray-900 dark:[&>option]:bg-gray-800 dark:[&>option]:text-gray-200 bg-gray-50/70 text-gray-700 text-sm rounded-md pl-2.5 pr-8 py-1.5 border border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300/70 disabled:opacity-50 dark:bg-gray-800/70 dark:text-gray-200 dark:border-gray-700 dark:focus:border-gray-600 dark:focus:ring-gray-600/60 transition-colors"
-                        >
-                          <option value="">{isEn ? 'No unit' : 'Keine Einheit'}</option>
-                          {(units ?? []).map((unitEntry) => (
-                            <option key={unitEntry} value={unitEntry}>{unitEntry}</option>
-                          ))}
-                        </select>
-                        <ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-500" />
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* ── Permissions & Range (state only) ── */}
-                {obj.type === 'state' && (
-                  <>
-                    <SectionHeader label={isEn ? 'Permissions & Range' : 'Berechtigungen & Bereich'} />
-                    <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800 items-center">
-                      <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{isEn ? 'Read / Write' : 'Lesen / Schreiben'}</span>
-                      <div className="flex items-center gap-4 text-sm text-gray-700 dark:text-gray-200">
-                        <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-                          <input
-                            type="checkbox"
-                            checked={obj.common?.read !== false}
-                            onChange={(e) => extend.mutate({ id, common: { read: e.target.checked } })}
-                            disabled={extend.isPending}
-                            className="sr-only peer"
-                          />
-                          <span className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-                            obj.common?.read !== false ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600'
-                          } ${extend.isPending ? 'opacity-50' : 'peer-focus:ring-1 peer-focus:ring-blue-400 dark:peer-focus:ring-blue-500'}`}>
-                            {obj.common?.read !== false && <Check size={11} className="text-white" strokeWidth={3} />}
-                          </span>
-                          <span>{isEn ? 'Read' : 'Lesen'}</span>
-                        </label>
-                        <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-                          <input
-                            type="checkbox"
-                            checked={obj.common?.write === true}
-                            onChange={(e) => extend.mutate({ id, common: { write: e.target.checked } })}
-                            disabled={extend.isPending}
-                            className="sr-only peer"
-                          />
-                          <span className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-                            obj.common?.write === true ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600'
-                          } ${extend.isPending ? 'opacity-50' : 'peer-focus:ring-1 peer-focus:ring-blue-400 dark:peer-focus:ring-blue-500'}`}>
-                            {obj.common?.write === true && <Check size={11} className="text-white" strokeWidth={3} />}
-                          </span>
-                          <span>{isEn ? 'Write' : 'Schreiben'}</span>
-                        </label>
-                      </div>
-                    </div>
-                    {type === 'number' && (
-                      <>
-                        <InlineNumberRow label="Min" value={obj.common?.min} onSave={(v) => extend.mutate({ id, common: { min: v } })} onClear={() => extend.mutate({ id, common: { min: undefined } })} isPending={extend.isPending} />
-                        <InlineNumberRow label="Max" value={obj.common?.max} onSave={(v) => extend.mutate({ id, common: { max: v } })} onClear={() => extend.mutate({ id, common: { max: undefined } })} isPending={extend.isPending} />
-                        <InlineNumberRow label="Step" value={obj.common?.step} onSave={(v) => extend.mutate({ id, common: { step: v } })} onClear={() => extend.mutate({ id, common: { step: undefined } })} isPending={extend.isPending} />
-                      </>
-                    )}
-                  </>
-                )}
-
-                {/* ── Smart Home Classification ── */}
-                <SectionHeader label="Smart Home" />
-                <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800 items-center">
-                  <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{isEn ? 'Room' : 'Raum'}</span>
-                  <div className="flex-1 relative">
-                    <select
-                      value={roomEnumId ?? ''}
-                      onChange={(e) => handleSetRoom(e.target.value || null)}
-                      disabled={updateRoom.isPending}
-                      className="w-full appearance-none [color-scheme:light] dark:[color-scheme:dark] [&>option]:bg-white [&>option]:text-gray-900 dark:[&>option]:bg-gray-800 dark:[&>option]:text-gray-200 bg-gray-50/70 text-gray-700 text-sm rounded-md pl-2.5 pr-8 py-1.5 border border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300/70 disabled:opacity-50 dark:bg-gray-800/70 dark:text-gray-200 dark:border-gray-700 dark:focus:border-gray-600 dark:focus:ring-gray-600/60 transition-colors"
-                    >
-                      <option value="">{isEn ? 'No room' : 'Kein Raum'}</option>
-                      {roomEnums.map((roomEntry) => (
-                        <option key={roomEntry.id} value={roomEntry.id}>{roomEntry.name}</option>
-                      ))}
-                    </select>
-                    <ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-500" />
-                  </div>
-                </div>
-                <div className="flex gap-4 py-1 border-b border-gray-200 dark:border-gray-800 items-center">
-                  <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{isEn ? 'Function' : 'Funktion'}</span>
-                  <div className="flex-1 relative">
-                    <select
-                      value={fnEnumId ?? ''}
-                      onChange={(e) => handleSetFunction(e.target.value || null)}
-                      disabled={updateFn.isPending}
-                      className="w-full appearance-none [color-scheme:light] dark:[color-scheme:dark] [&>option]:bg-white [&>option]:text-gray-900 dark:[&>option]:bg-gray-800 dark:[&>option]:text-gray-200 bg-gray-50/70 text-gray-700 text-sm rounded-md pl-2.5 pr-8 py-1.5 border border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300/70 disabled:opacity-50 dark:bg-gray-800/70 dark:text-gray-200 dark:border-gray-700 dark:focus:border-gray-600 dark:focus:ring-gray-600/60 transition-colors"
-                    >
-                      <option value="">{isEn ? 'No function' : 'Keine Funktion'}</option>
-                      {fnEnums.map((fnEntry) => (
-                        <option key={fnEntry.id} value={fnEntry.id}>{fnEntry.name}</option>
-                      ))}
-                    </select>
-                    <ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-500" />
-                  </div>
-                </div>
-
-                {/* ── Live Value ── */}
-                {state && (
-                  <>
-                    <SectionHeader label={isEn ? 'Live value' : 'Aktueller Wert'} />
-                    <div className="flex gap-4 py-1.5 border-b border-gray-200 dark:border-gray-800 items-center">
-                      <span className="text-gray-400 dark:text-gray-500 text-xs w-32 shrink-0 uppercase tracking-wide">{isEn ? 'Value' : 'Wert'}</span>
-                      <div className="flex-1 flex items-center gap-2 min-w-0">
-                        {expertMode ? (
-                          <ExpertControl val={state.val} onSet={handleSet} isPending={setStateMutation.isPending} unit={obj.common?.unit} type={type} language={language} />
-                        ) : isButton ? (
-                          <ButtonControl onSet={handleSet} isPending={setStateMutation.isPending} disabled={!isWritable} language={language} />
-                        ) : isWritable && type === 'number' ? (
-                          <NumberControl val={state.val} onSet={handleSet} isPending={setStateMutation.isPending} unit={obj.common?.unit} />
-                        ) : isWritable && type === 'boolean' ? (
-                          <BooleanSelectControl val={state.val} onSet={handleSet} isPending={setStateMutation.isPending} disabled={!isWritable} />
-                        ) : isWritable && (type === 'string' || type === 'mixed') ? (
-                          <StringControl val={state.val} onSet={handleSet} isPending={setStateMutation.isPending} unit={obj.common?.unit} language={language} />
-                        ) : role === 'url' && typeof state.val === 'string' && state.val.startsWith('http') ? (
-                          <a href={state.val} target="_blank" rel="noopener noreferrer" className="font-mono font-bold text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 underline break-all text-base">
-                            {formatValue(state.val, true)}
-                          </a>
-                        ) : (
-                          <span className="font-mono font-bold text-gray-900 dark:text-white text-base">
-                            {formatValue(state.val, true)}
-                            {obj.common?.unit && <span className="text-gray-500 dark:text-gray-400 ml-1 text-sm font-normal">{obj.common.unit}</span>}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <DetailRow
-                      label="Acknowledged"
-                      value={<span className={state.ack ? 'text-green-500 dark:text-green-400' : 'text-yellow-500 dark:text-yellow-400'}>{state.ack ? (isEn ? 'Yes' : 'Ja') : (isEn ? 'No' : 'Nein')}</span>}
-                    />
-                    <DetailRow label={isEn ? 'Quality' : 'Qualität'} value={state.q} />
-                    <DetailRow label={isEn ? 'Timestamp' : 'Zeitstempel'} value={formatTimestamp(state.ts, dateFormat)} />
-                    <DetailRow label={isEn ? 'Last change' : 'Letzte Änderung'} value={formatTimestamp(state.lc, dateFormat)} />
-                    <DetailRow label={isEn ? 'From' : 'Von'} value={state.from || '—'} />
-                    {state.c && <DetailRow label={isEn ? 'Comment' : 'Kommentar'} value={state.c} />}
-                  </>
-                )}
-
-                {/* ── History ── */}
-                {hasHistory(obj) && (
-                  <>
-                    <SectionHeader label="History" />
-                    <div className="flex items-center gap-2 mb-2">
-                      {onOpenHistory && (
-                        <button
-                          onClick={() => { onClose(); onOpenHistory(); }}
-                          className="flex items-center gap-0.5 text-[11px] text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                          title={isEn ? 'Open in history modal' : 'Im History-Modal öffnen'}
-                        >
-                          <Maximize2 size={11} />
-                          {isEn ? 'Fullscreen' : 'Vollbild'}
-                        </button>
-                      )}
-                    </div>
-                    <HistoryChart stateId={id} unit={obj.common?.unit} settingsCollapsible language={language} dateFormat={dateFormat} />
-                  </>
-                )}
-
-              </div>
+              <DetailsTab
+                id={id}
+                obj={obj}
+                language={language}
+                dateFormat={dateFormat}
+                expertMode={expertMode}
+                roomEnumId={roomEnumId}
+                fnEnumId={fnEnumId}
+                roles={roles ?? []}
+                units={units ?? []}
+                roomEnums={roomEnums}
+                fnEnums={fnEnums}
+                state={state}
+                extendPending={extend.isPending}
+                setValuePending={setStateMutation.isPending}
+                setRoomPending={updateRoom.isPending}
+                setFunctionPending={updateFn.isPending}
+                onExtend={handleExtend}
+                onSetValue={handleSetValue}
+                onSetRoom={handleSetRoom}
+                onSetFunction={handleSetFunction}
+                onOpenHistory={onOpenHistory}
+                onClose={onClose}
+              />
             )}
 
             {tab === 'json' && (
-              <>
-                <JsonEditor value={draft} onChange={(v) => { setDraft(v); setJsonError(null); }} />
-                {jsonError && (
-                  <div className="px-5 py-2 flex items-center gap-2 text-xs text-red-500 bg-red-50 dark:bg-red-900/20 shrink-0">
-                    <AlertTriangle size={13} className="shrink-0" />
-                    {jsonError}
-                  </div>
-                )}
-              </>
-            )}
-
-            {tab === 'custom' && (
-              <div className="px-5 py-4 flex flex-col gap-4 overflow-y-auto flex-1">
-
-                {/* Loading */}
-                {customLoading && !customDraftLoaded && (
-                  <div className="flex items-center justify-center gap-2 py-10 text-gray-400 dark:text-gray-500 text-sm">
-                    <RefreshCw size={14} className="animate-spin" />
-                    {isEn ? 'Loading…' : 'Laden…'}
-                  </div>
-                )}
-
-                {(!customLoading || customDraftLoaded) && (
-                  <>
-                    {/* Adapter chips — control which blocks are visible */}
-                    {(() => {
-                      const instanceIds = new Set(customInstances.map((c) => c.id));
-                      const extraFromDraft = Object.keys(customDraft)
-                        .filter((id) => !instanceIds.has(id))
-                        .map((id) => ({ id, adapterName: id.replace(/\.\d+$/, '') }));
-                      const allChips = [...customInstances, ...extraFromDraft];
-                      if (allChips.length === 0) return null;
-                      return (
-                        <div className="flex flex-col gap-2">
-                          <div className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
-                            {isEn ? 'Adapter' : 'Adapter'}
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {allChips.map(({ id: instanceId, adapterName }) => {
-                              const active = shownAdapters.has(instanceId);
-                              return (
-                                <label
-                                  key={instanceId}
-                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border cursor-pointer select-none text-xs transition-colors ${
-                                    active
-                                      ? 'bg-blue-50 border-blue-300 text-blue-700 dark:bg-blue-900/30 dark:border-blue-600 dark:text-blue-300'
-                                      : 'bg-gray-50 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400'
-                                  }`}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={active}
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        setCustomDraft((prev) => {
-                                          const existing = prev[instanceId] ?? { ...getDefaultForAdapter(adapterName) };
-                                          return { ...prev, [instanceId]: { ...existing, enabled: true } };
-                                        });
-                                        setShownAdapters((prev) => new Set([...prev, instanceId]));
-                                      } else {
-                                        setCustomDraft((prev) => prev[instanceId]
-                                          ? { ...prev, [instanceId]: { ...prev[instanceId], enabled: false } }
-                                          : prev
-                                        );
-                                        setShownAdapters((prev) => { const next = new Set(prev); next.delete(instanceId); return next; });
-                                        setExpandedAdapters((prev) => { const next = new Set(prev); next.delete(instanceId); return next; });
-                                      }
-                                    }}
-                                    className="sr-only"
-                                  />
-                                  <span className={`w-3 h-3 rounded-full border-2 flex-shrink-0 ${active ? 'bg-blue-500 border-blue-500' : 'border-gray-300 dark:border-gray-600'}`} />
-                                  <span className="font-mono">{instanceId}</span>
-                                  <span className="opacity-60">{getAdapterLabel(adapterName)}</span>
-                                </label>
-                              );
-                            })}
-                          </div>
-                          <div className="h-px bg-gray-200 dark:bg-gray-700" />
-                        </div>
-                      );
-                    })()}
-
-                    {/* Configured adapter blocks — only rendered when chip is active */}
-                    {shownAdapters.size === 0 && Object.keys(customDraft).length === 0 ? (
-                      <div className="flex items-center justify-center py-10 text-gray-400 dark:text-gray-500 text-sm">
-                        {isEn ? 'No custom settings configured' : 'Keine benutzerdefinierten Einstellungen konfiguriert'}
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-2">
-                        {Object.entries(customDraft)
-                          .filter(([adapterId]) => shownAdapters.has(adapterId))
-                          .map(([adapterId, settings]) => {
-                            const isExpanded = expandedAdapters.has(adapterId);
-                            const isEnabled = settings.enabled === true;
-                            const adapterName = adapterId.replace(/\.\d+$/, '');
-                            const otherEntries = Object.entries(settings).filter(([k]) => k !== 'enabled');
-                            return (
-                              <div key={adapterId} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                                <button
-                                  onClick={() => toggleAdapter(adapterId)}
-                                  className="w-full flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800/60 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left"
-                                >
-                                  <ChevronDown size={13} className={`text-gray-400 dark:text-gray-500 transition-transform shrink-0 ${isExpanded ? '' : '-rotate-90'}`} />
-                                  <span className="text-sm font-semibold text-gray-700 dark:text-gray-200 shrink-0">{getAdapterLabel(adapterName)}</span>
-                                  <span className="text-xs text-gray-400 dark:text-gray-500 font-mono flex-1">{adapterId}</span>
-                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
-                                    isEnabled
-                                      ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
-                                      : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
-                                  }`}>
-                                    {isEnabled ? (isEn ? 'ON' : 'AN') : (isEn ? 'OFF' : 'AUS')}
-                                  </span>
-                                </button>
-                                {isExpanded && (
-                                  <div className="px-3 py-2 flex flex-col">
-                                    <CustomSettingRow
-                                      fieldKey="enabled"
-                                      value={settings.enabled ?? false}
-                                      onChange={(v) => setCustomField(adapterId, 'enabled', v)}
-                                    />
-                                    {otherEntries.map(([key, val]) => (
-                                      <CustomSettingRow
-                                        key={key}
-                                        fieldKey={key}
-                                        value={val}
-                                        onChange={(v) => setCustomField(adapterId, key, v)}
-                                      />
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
+              <JsonTab
+                draft={draft}
+                jsonError={jsonError}
+                onDraftChange={(v) => { setDraft(v); setJsonError(null); }}
+              />
             )}
 
             {tab === 'alias' && (
-              <div className="px-5 py-4 flex flex-col gap-5 overflow-y-auto flex-1">
-                <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={aliasSeparateIds}
-                    onChange={(e) => setAliasSeparateIds(e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <span className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${aliasSeparateIds ? 'bg-amber-500 border-amber-500' : 'bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600'}`}>
-                    {aliasSeparateIds && <Check size={11} className="text-white" strokeWidth={3} />}
-                  </span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                    {isEn ? 'Separate source IDs for read and write (alias.id.read / alias.id.write)' : 'Separate Quell-IDs für Lesen und Schreiben (alias.id.read / alias.id.write)'}
-                  </span>
-                </label>
-
-                {aliasSeparateIds ? (
-                  <>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-                        <Link2 size={11} className="text-amber-500" />
-                        {isEn ? 'Read source ID (alias.id.read)' : 'Lese-Quell-ID (alias.id.read)'}
-                        <span className="font-normal text-gray-400 dark:text-gray-500">- {isEn ? 'optional' : 'optional'}</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={aliasReadId}
-                        onChange={(e) => setAliasReadId(e.target.value)}
-                        className={`${inputCls} font-mono`}
-                        placeholder={isEn ? 'e.g. hm-rpc.0.ABC123.1.STATE' : 'z.B. hm-rpc.0.ABC123.1.STATE'}
-                        spellCheck={false}
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-                        <Link2 size={11} className="text-amber-500" />
-                        {isEn ? 'Write source ID (alias.id.write)' : 'Schreib-Quell-ID (alias.id.write)'}
-                        <span className="font-normal text-gray-400 dark:text-gray-500">- {isEn ? 'optional' : 'optional'}</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={aliasWriteId}
-                        onChange={(e) => setAliasWriteId(e.target.value)}
-                        className={`${inputCls} font-mono`}
-                        placeholder={isEn ? 'e.g. hm-rpc.0.ABC123.1.STATE' : 'z.B. hm-rpc.0.ABC123.1.STATE'}
-                        spellCheck={false}
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-                      <Link2 size={11} className="text-amber-500" />
-                      {isEn ? 'Target datapoint (alias.id)' : 'Ziel-Datenpunkt (alias.id)'}
-                    </label>
-                    <input
-                      type="text"
-                      value={aliasId}
-                      onChange={(e) => setAliasId(e.target.value)}
-                      className={`${inputCls} font-mono`}
-                      placeholder={isEn ? 'e.g. hm-rpc.0.ABC123.1.STATE' : 'z.B. hm-rpc.0.ABC123.1.STATE'}
-                      spellCheck={false}
-                    />
-                    <p className="text-[11px] text-gray-400 dark:text-gray-500">
-                      {isEn
-                        ? 'ID of the source datapoint this alias points to. Leave empty to remove alias.'
-                        : 'ID des Quell-Datenpunkts, auf den dieser Alias zeigt. Leer lassen, um den Alias zu entfernen.'}
-                    </p>
-                  </div>
-                )}
-
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                    {isEn ? 'Read formula' : 'Lese-Formel'} (alias.read){' '}
-                    <span className="text-gray-400 dark:text-gray-500 font-normal">- {isEn ? 'optional' : 'optional'}</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={aliasRead}
-                    onChange={(e) => setAliasRead(e.target.value)}
-                    className={`${inputCls} font-mono`}
-                    placeholder="val / 10"
-                    spellCheck={false}
-                  />
-                  <p className="text-[11px] text-gray-400 dark:text-gray-500">
-                    {isEn ? 'JavaScript expression for read conversion. Variable:' : 'JavaScript-Ausdruck zur Konvertierung beim Lesen. Variable:'}{' '}
-                    <code className="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">val</code>
-                  </p>
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                    {isEn ? 'Write formula' : 'Schreib-Formel'} (alias.write){' '}
-                    <span className="text-gray-400 dark:text-gray-500 font-normal">- {isEn ? 'optional' : 'optional'}</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={aliasWrite}
-                    onChange={(e) => setAliasWrite(e.target.value)}
-                    className={`${inputCls} font-mono`}
-                    placeholder="val * 10"
-                    spellCheck={false}
-                  />
-                  <p className="text-[11px] text-gray-400 dark:text-gray-500">
-                    {isEn ? 'JavaScript expression for write conversion. Variable:' : 'JavaScript-Ausdruck zur Konvertierung beim Schreiben. Variable:'}{' '}
-                    <code className="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">val</code>
-                  </p>
-                </div>
-
-                {(aliasRead.trim() || aliasWrite.trim()) && (
-                  <div className="flex flex-col gap-2 pt-1">
-                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                      {isEn ? 'Formula tester' : 'Formel-Tester'}
-                    </span>
-                    <div className="flex gap-2 items-center">
-                      <input
-                        type="text"
-                        value={aliasTestInput}
-                        onChange={(e) => { setAliasTestInput(e.target.value); setAliasTestResult(null); }}
-                        onKeyDown={(e) => { if (e.key === 'Enter') runFormulaTest(); }}
-                        className={`${inputCls} font-mono flex-1`}
-                        placeholder={isEn ? 'Test value (val)' : 'Testwert (val)'}
-                        spellCheck={false}
-                      />
-                      <button
-                        onClick={runFormulaTest}
-                        disabled={!aliasTestInput.trim()}
-                        className="px-3 py-1.5 text-xs rounded border border-blue-400 dark:border-blue-600 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors shrink-0 font-medium disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-                      >
-                        {isEn ? 'Test' : 'Testen'}
-                      </button>
-                    </div>
-                    {aliasTestResult && (
-                      <div className="flex flex-col gap-1 font-mono text-xs">
-                        {aliasRead.trim() && (
-                          aliasTestResult.readErr
-                            ? <div className="text-red-500 dark:text-red-400">Read: <span className="text-red-600 dark:text-red-300">{aliasTestResult.readErr}</span></div>
-                            : <div className="text-gray-600 dark:text-gray-300">Read: <span className="text-green-700 dark:text-green-400 font-semibold">{aliasTestResult.read}</span></div>
-                        )}
-                        {aliasWrite.trim() && (
-                          aliasTestResult.writeErr
-                            ? <div className="text-red-500 dark:text-red-400">Write: <span className="text-red-600 dark:text-red-300">{aliasTestResult.writeErr}</span></div>
-                            : <div className="text-gray-600 dark:text-gray-300">Write: <span className="text-green-700 dark:text-green-400 font-semibold">{aliasTestResult.write}</span></div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {obj.common.alias && (
-                  <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2.5 text-xs border border-amber-200 dark:border-amber-800/40">
-                    <div className="text-amber-600 dark:text-amber-400 font-medium mb-1.5 flex items-center gap-1.5">
-                      <Link2 size={11} />
-                      {isEn ? 'Currently saved alias' : 'Aktuell gespeicherter Alias'}
-                    </div>
-                    <pre className="font-mono text-gray-600 dark:text-gray-300 whitespace-pre-wrap break-all">
-                      {JSON.stringify(obj.common.alias, null, 2)}
-                    </pre>
-                  </div>
-                )}
-              </div>
+              <AliasTab
+                obj={obj}
+                language={language}
+                aliasSeparateIds={aliasSeparateIds}
+                setAliasSeparateIds={setAliasSeparateIds}
+                aliasId={aliasId}
+                setAliasId={setAliasId}
+                aliasReadId={aliasReadId}
+                setAliasReadId={setAliasReadId}
+                aliasWriteId={aliasWriteId}
+                setAliasWriteId={setAliasWriteId}
+                aliasRead={aliasRead}
+                setAliasRead={setAliasRead}
+                aliasWrite={aliasWrite}
+                setAliasWrite={setAliasWrite}
+              />
             )}
 
+            {tab === 'custom' && (
+              <CustomTab
+                language={language}
+                customDraft={customDraft}
+                setCustomDraft={setCustomDraft}
+                shownAdapters={shownAdapters}
+                setShownAdapters={setShownAdapters}
+                expandedAdapters={expandedAdapters}
+                setExpandedAdapters={setExpandedAdapters}
+                customLoading={customLoading}
+                customDraftLoaded={customDraftLoaded}
+                customInstances={customInstances}
+              />
+            )}
 
             {tab === 'scripts' && (
-              <div className="px-5 py-4 flex flex-col gap-3 overflow-y-auto flex-1">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {isEn
-                      ? `ioBroker scripts that reference "${id}" in their source code.`
-                      : `ioBroker-Skripte, die "${id}" im Quellcode referenzieren.`}
-                  </p>
-                  <button
-                    onClick={() => refetchScripts()}
-                    disabled={scriptsFetching}
-                    className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-40"
-                    title={isEn ? 'Reload' : 'Neu laden'}
-                  >
-                    <RefreshCw size={11} className={scriptsFetching ? 'animate-spin' : ''} />
-                    {isEn ? 'Reload' : 'Neu laden'}
-                  </button>
-                </div>
-                {scriptsFetching && !scriptUsages && (
-                  <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
-                    <RefreshCw size={13} className="animate-spin" />
-                    {isEn ? 'Searching scripts…' : 'Skripte werden durchsucht…'}
-                  </div>
-                )}
-                {scriptUsages && scriptUsages.length === 0 && (
-                  <div className="flex flex-col items-center gap-2 py-8 text-gray-400 dark:text-gray-500">
-                    <FileCode2 size={28} className="opacity-30" />
-                    <span className="text-xs">{isEn ? 'No scripts found that reference this ID.' : 'Keine Skripte gefunden, die diese ID referenzieren.'}</span>
-                    <span className="text-[11px] text-gray-400/70 dark:text-gray-600">{isEn ? 'Note: only script source code is searched (text match).' : 'Hinweis: nur der Quellcode wird durchsucht (Textsuche).'}</span>
-                  </div>
-                )}
-                {scriptUsages && scriptUsages.length > 0 && (
-                  <div className="flex flex-col gap-1.5">
-                    {scriptUsages.map((s) => (
-                      <div key={s.scriptId} className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                        {s.enabled
-                          ? <CircleCheck size={14} className="text-green-500 shrink-0" />
-                          : <CirclePause size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
-                        }
-                        <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-                          <span className="text-xs font-medium text-gray-700 dark:text-gray-200 truncate">{s.scriptName}</span>
-                          <span className="font-mono text-[11px] text-gray-400 dark:text-gray-500 truncate">{s.scriptId}</span>
-                          {s.engineType && (
-                            <span className="text-[10px] text-gray-400 dark:text-gray-600">{s.engineType}</span>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => { const name = s.scriptId.split('.').pop() ?? s.scriptId; copyToClipboard(name).then(() => showToast(name, 'success')).catch(() => {}); }}
-                          className="shrink-0 p-1.5 rounded text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                          title={isEn ? 'Copy script ID' : 'Skript-ID kopieren'}
-                        >
-                          <Copy size={13} />
-                        </button>
-                        <a
-                          href={`${adminBaseUrl}/#tab-javascript`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="shrink-0 p-1.5 rounded text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                          title={isEn ? 'Open JavaScript tab in Admin' : 'JavaScript-Tab im Admin öffnen'}
-                        >
-                          <ExternalLink size={13} />
-                        </a>
-                      </div>
-                    ))}
-                    <p className="text-[11px] text-gray-400 dark:text-gray-600 pt-1">
-                      {isEn
-                        ? 'Results are text matches — false positives possible (comments, strings, dead code).'
-                        : 'Ergebnisse sind Textsuchen — falsch-positive möglich (Kommentare, Strings, toter Code).'}
-                    </p>
-                  </div>
-                )}
-              </div>
+              <ScriptsTab
+                id={id}
+                language={language}
+                adminBaseUrl={adminBaseUrl}
+                scriptUsages={scriptUsages}
+                scriptsFetching={scriptsFetching}
+                refetchScripts={refetchScripts}
+              />
             )}
           </div>
 
