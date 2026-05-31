@@ -1,6 +1,5 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useMemo } from 'react';
 import { Parser as ExprParser } from 'expr-eval';
-import { useEscapeKey } from '../hooks/useEscapeKey';
 import { createPortal } from 'react-dom';
 import { X, Save, AlertTriangle, Link2, Check, Wrench, Trash2, Maximize2, Copy, ChevronDown, Lock, Zap, PenLine, FolderInput, FileCode2, CircleCheck, CirclePause, RefreshCw, ExternalLink } from 'lucide-react';
 import { usePutObject, useExtendObject, useStateDetail, useSetState, useAllRoles, useAllUnits, useDeleteObject, useAllObjects, useRoomEnums, useFunctionEnums, useUpdateRoomMembership, useUpdateFunctionMembership, useCustomSupportedInstances, useObjectFresh, useScriptUsages } from '../hooks/useStates';
@@ -582,7 +581,53 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
     setFnEnumId(nextFn);
   }, [id, obj.enums]);
 
-  useEscapeKey(onClose);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  const showCloseConfirmRef = useRef(false);
+
+  const isDirty = useMemo(() => {
+    if (tab === 'json') return draft !== JSON.stringify(obj, null, 2);
+    if (tab === 'alias') {
+      const orig = obj.common.alias;
+      if (aliasSeparateIds) {
+        return aliasReadId !== (typeof orig?.id === 'object' ? (orig.id.read ?? '') : '')
+          || aliasWriteId !== (typeof orig?.id === 'object' ? (orig.id.write ?? '') : '')
+          || aliasRead !== (orig?.read ?? '')
+          || aliasWrite !== (orig?.write ?? '');
+      }
+      return aliasId !== (typeof orig?.id === 'string' ? orig.id : '')
+        || aliasRead !== (orig?.read ?? '')
+        || aliasWrite !== (orig?.write ?? '');
+    }
+    if (tab === 'custom') {
+      return JSON.stringify(customDraft) !== JSON.stringify(obj.common.custom ?? {});
+    }
+    return false;
+  }, [tab, draft, obj, aliasSeparateIds, aliasId, aliasReadId, aliasWriteId, aliasRead, aliasWrite, customDraft]);
+  const isDirtyRef = useRef(isDirty);
+  const onCloseRef = useRef(onClose);
+  // useLayoutEffect: runs synchronously after commit, before paint — guaranteed up-to-date
+  useLayoutEffect(() => { isDirtyRef.current = isDirty; }, [isDirty]);
+  useLayoutEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+
+  function openCloseConfirm() {
+    showCloseConfirmRef.current = true;
+    setShowCloseConfirm(true);
+  }
+  function cancelCloseConfirm() {
+    showCloseConfirmRef.current = false;
+    setShowCloseConfirm(false);
+  }
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return;
+      if (showCloseConfirmRef.current) return;
+      if (isDirtyRef.current) { showCloseConfirmRef.current = true; setShowCloseConfirm(true); return; }
+      onCloseRef.current();
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   function saveField(field: string, value: string) {
     extend.mutate({ id, common: { [field]: value } });
@@ -752,9 +797,19 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
           language={language}
         />
       )}
+      {showCloseConfirm && (
+        <ConfirmDialog
+          title={isEn ? 'Discard changes?' : 'Änderungen verwerfen?'}
+          message={isEn ? 'Unsaved changes will be lost.' : 'Nicht gespeicherte Änderungen gehen verloren.'}
+          confirmLabel={isEn ? 'Discard' : 'Verwerfen'}
+          onConfirm={() => { cancelCloseConfirm(); onClose(); }}
+          onCancel={cancelCloseConfirm}
+          language={language}
+        />
+      )}
       <div
         className="fixed inset-0 z-50 flex items-center justify-center animate-backdrop-in bg-black/60 backdrop-blur-sm p-4"
-        onClick={onClose}
+        onClick={() => { if (isDirtyRef.current) { openCloseConfirm(); } else { onClose(); } }}
       >
         <div
           className="bg-white dark:bg-gray-900 animate-modal-in rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-2xl flex flex-col h-[90vh]"
@@ -783,7 +838,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                   <Wrench size={15} />
                 </button>
               )}
-              <button onClick={onClose} className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
+              <button onClick={() => { if (isDirtyRef.current) { openCloseConfirm(); } else { onClose(); } }} className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
                 <X size={15} />
               </button>
             </div>
@@ -1459,7 +1514,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={onClose}
+                onClick={() => { if (isDirtyRef.current) { openCloseConfirm(); } else { onClose(); } }}
                 className="px-4 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
                 {isEn ? 'Cancel' : 'Abbrechen'}
