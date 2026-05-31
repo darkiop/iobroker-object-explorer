@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Sun, Moon, Gem, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Pencil, Loader2, AlertCircle, Check, Maximize, Minimize, RefreshCw, ExternalLink, RotateCcw, Info } from 'lucide-react';
+import { Sun, Moon, Gem, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Pencil, Loader2, AlertCircle, Check, Maximize, Minimize, RefreshCw, ExternalLink, Info } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import LanguageDropdown from './LanguageDropdown';
 import { validateHost, validatePort } from '../utils/validation';
@@ -24,7 +24,7 @@ const LS_SIDEBAR_COLLAPSED = 'iobroker-explorer-sidebar-collapsed';
 
 export default function Layout({ sidebar, children, apiConnected = true, browserOffline = false, lastUpdated, onManualRefresh, onConfirmScriptRefresh }: LayoutProps) {
   const {
-    appSettings, scriptsFetching, confirmScriptRefresh, scriptLastUpdated,
+    appSettings, confirmScriptRefresh,
     setConfirmScriptRefresh, handleLanguageChange, openSettings, setShortcutsOpen,
   } = useUIContext();
   const { handleSidebarToggle } = useFilterContext();
@@ -35,7 +35,6 @@ export default function Layout({ sidebar, children, apiConnected = true, browser
   const onOpenSettings = openSettings;
   const onLanguageChange = handleLanguageChange;
   const onShowShortcuts = () => setShortcutsOpen(true);
-  const onRequestRefreshScripts = () => setConfirmScriptRefresh(true);
   const onCancelScriptRefresh = () => setConfirmScriptRefresh(false);
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const stored = parseInt(localStorage.getItem(LS_SIDEBAR_WIDTH) ?? '', 10);
@@ -251,22 +250,6 @@ export default function Layout({ sidebar, children, apiConnected = true, browser
                 )}
                 <Pencil size={11} className="opacity-50" />
               </button>
-              {onRequestRefreshScripts && (
-                <button
-                  onClick={onRequestRefreshScripts}
-                  disabled={scriptsFetching}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-sm font-semibold font-mono shadow-sm border transition-colors border-gray-300/80 dark:border-gray-600/70 bg-gray-100/80 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 hover:border-blue-300/80 dark:hover:border-blue-600/70 hover:bg-blue-50/80 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 disabled:opacity-40 disabled:cursor-not-allowed"
-                  title={language === 'en' ? 'Refresh script usage index' : 'Skript-Index aktualisieren'}
-                >
-                  <RotateCcw size={11} className={scriptsFetching ? 'animate-spin' : ''} />
-                  <span className="text-xs">Rescan Scripts</span>
-                  {scriptLastUpdated && (
-                    <span className="text-[10px] font-mono opacity-60">
-                      {new Date(scriptLastUpdated).toLocaleTimeString()}
-                    </span>
-                  )}
-                </button>
-              )}
 {objectsRefreshInterval && objectsRefreshInterval !== 'off' && (
                 <span
                   className="inline-flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400"

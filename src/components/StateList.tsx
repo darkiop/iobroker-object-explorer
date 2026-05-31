@@ -113,7 +113,7 @@ function patternToInitialId(pattern: string): string {
 function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allObjectIds, exportIds, onNavigateTo }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
   const { colFilters, handleColFilterChange: onColFilterChange, pattern, treeFilter, handleClearTreeFilter: onClearTreeFilter, sidebarToggleSeq, fulltextEnabled, handleTreeScope } = useFilterContext();
   const { selectedId, setSelectedId: onSelect, setHistoryModalId: _setHistoryModalId, setEnumManagerOpen, setAliasReplaceInitialStr, setEditInitialTab } = useSelectionContext();
-  const { appSettings, expertMode, scriptUsedIds, scriptsFetching, setScriptUsedIds, setConfirmScriptRefresh, handleToggleExpertMode: onToggleExpertMode, handleToggleGroupByPath: onToggleGroupByPath, persistSettings } = useAppSettingsContext();
+  const { appSettings, expertMode, scriptUsedIds, scriptsFetching, scriptLastUpdated, setScriptUsedIds, setConfirmScriptRefresh, handleToggleExpertMode: onToggleExpertMode, handleToggleGroupByPath: onToggleGroupByPath, persistSettings } = useAppSettingsContext();
 
   const { language = 'en', dateFormat = 'de', visibleCols: settingsVisibleCols, toolbarLabels = true, tableFontSize = 'normal', showDesc = true, groupByPath = false, customDefaultWidths, customMinWidths, customMaxWidths, pageSize } = appSettings;
   const onOpenEnumManager = React.useCallback(() => setEnumManagerOpen(true), [setEnumManagerOpen]);
@@ -833,6 +833,22 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
         >
           <BarChart2 size={15} />
           {showToolbarLabels && <span>{isEn ? 'Statistics' : 'Statistik'}</span>}
+        </button>
+        <button
+          onClick={() => setConfirmScriptRefresh(true)}
+          disabled={scriptsFetching}
+          title={isEn ? 'Refresh script usage index' : 'Skript-Index aktualisieren'}
+          className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
+        >
+          <RotateCcw size={15} className={scriptsFetching ? 'animate-spin' : ''} />
+          {showToolbarLabels && (
+            <>
+              <span>Rescan Script Index</span>
+              {scriptLastUpdated && (
+                <span className="text-[10px] font-mono opacity-60">{new Date(scriptLastUpdated).toLocaleTimeString()}</span>
+              )}
+            </>
+          )}
         </button>
         {checkedIds.size >= 1 && checkedIds.size <= 2 && [...checkedIds].every(id => allHistoryIds.has(id)) && (
           <button
