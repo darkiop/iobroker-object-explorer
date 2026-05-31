@@ -17,12 +17,13 @@ import {
 import { Trash2, CircleDot, Download, ChevronDown, ChevronRight, Table2, BarChart2 } from 'lucide-react';
 import { useHistory, useDeleteHistory } from '../hooks/useStates';
 import type { HistoryOptions } from '../types/iobroker';
+import {
+  ExtraSeries, SERIES_COLORS, ChartType, ViewMode, CompareOffset, ConfirmAction,
+  CHART_TYPES, PRESETS, AGGREGATES, COMPARE_OFFSETS,
+  toLocalDatetime, formatTime, formatTooltipTime, makeAxes,
+} from './historyChartUtils';
 
-export interface ExtraSeries {
-  id: string;
-  label: string;
-  unit?: string;
-}
+export type { ExtraSeries };
 
 interface HistoryChartProps {
   stateId: string;
@@ -32,115 +33,6 @@ interface HistoryChartProps {
   settingsCollapsible?: boolean;
   language?: 'en' | 'de';
   dateFormat?: 'de' | 'us' | 'iso';
-}
-
-const SERIES_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
-
-type ChartType = 'line' | 'area' | 'bar';
-type ViewMode = 'chart' | 'table';
-type CompareOffset = null | '1w' | '1m';
-
-type ConfirmAction =
-  | { type: 'entry'; ts: number; val: number }
-  | { type: 'range'; start: number; end: number }
-  | { type: 'all' };
-
-const CHART_TYPES: { value: ChartType; labelDe: string; labelEn: string }[] = [
-  { value: 'line', labelDe: 'Linie', labelEn: 'Line' },
-  { value: 'area', labelDe: 'Fläche', labelEn: 'Area' },
-  { value: 'bar', labelDe: 'Balken', labelEn: 'Bar' },
-];
-
-const PRESETS = [
-  { label: '1h', ms: 60 * 60 * 1000 },
-  { label: '6h', ms: 6 * 60 * 60 * 1000 },
-  { label: '24h', ms: 24 * 60 * 60 * 1000 },
-  { label: '7d', ms: 7 * 24 * 60 * 60 * 1000 },
-  { label: '30d', ms: 30 * 24 * 60 * 60 * 1000 },
-  { label: '1y', ms: 365 * 24 * 60 * 60 * 1000 },
-] as const;
-
-const AGGREGATES = [
-  { value: 'none', labelDe: 'Keine', labelEn: 'None' },
-  { value: 'average', labelDe: 'Durchschnitt', labelEn: 'Average' },
-  { value: 'minmax', labelDe: 'Min/Max', labelEn: 'Min/Max' },
-  { value: 'min', labelDe: 'Min', labelEn: 'Min' },
-  { value: 'max', labelDe: 'Max', labelEn: 'Max' },
-] as const;
-
-const COMPARE_OFFSETS: { value: CompareOffset; labelDe: string; labelEn: string }[] = [
-  { value: '1w', labelDe: 'Vorwoche', labelEn: 'Previous week' },
-  { value: '1m', labelDe: 'Vormonat', labelEn: 'Previous month' },
-];
-
-function toLocalDatetime(ts: number): string {
-  const d = new Date(ts);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function formatTime(ts: number, rangeMs: number, dateFormat: 'de' | 'us' | 'iso' = 'de'): string {
-  const d = new Date(ts);
-  const p = (n: number) => String(n).padStart(2, '0');
-  const time = `${p(d.getHours())}:${p(d.getMinutes())}`;
-  if (rangeMs <= 24 * 60 * 60 * 1000) {
-    return time;
-  }
-  const day = p(d.getDate());
-  const month = p(d.getMonth() + 1);
-  const year = d.getFullYear();
-  if (dateFormat === 'iso') return `${year}-${month}-${day} ${time}`;
-  if (dateFormat === 'us') return `${month}/${day} ${time}`;
-  return `${day}.${month}. ${time}`;
-}
-
-function formatTooltipTime(ts: number, dateFormat: 'de' | 'us' | 'iso' = 'de'): string {
-  const d = new Date(ts);
-  const p = (n: number) => String(n).padStart(2, '0');
-  const day = p(d.getDate());
-  const month = p(d.getMonth() + 1);
-  const year = d.getFullYear();
-  const time = `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
-  if (dateFormat === 'iso') return `${year}-${month}-${day} ${time}`;
-  if (dateFormat === 'us') return `${month}/${day}/${year} ${time}`;
-  return `${day}.${month}.${year} ${time}`;
-}
-
-function makeAxes(dark: boolean, isEn: boolean, dateFormat: 'de' | 'us' | 'iso' = 'de') {
-  const axisStroke = dark ? '#6b7280' : '#9ca3af';
-  const tickColor = dark ? '#6b7280' : '#4b5563';
-  return {
-    xAxis: (rangeMs: number) => ({
-      dataKey: 'ts' as const,
-      type: 'number' as const,
-      domain: ['dataMin', 'dataMax'] as [string, string],
-      tickFormatter: (ts: number) => formatTime(ts, rangeMs, dateFormat),
-      stroke: axisStroke,
-      tick: { fontSize: 11, fill: tickColor },
-    }),
-    yAxis: (unit?: string) => ({
-      stroke: axisStroke,
-      tick: { fontSize: 11, fill: tickColor },
-      tickFormatter: (v: number) => unit ? `${v} ${unit}` : String(v),
-      width: 70,
-    }),
-    tooltip: (unit?: string, hasCompare?: boolean) => ({
-      contentStyle: {
-        backgroundColor: dark ? '#1f2937' : '#ffffff',
-        border: `1px solid ${dark ? '#374151' : '#e5e7eb'}`,
-        borderRadius: 6,
-      },
-      labelStyle: { color: dark ? '#9ca3af' : '#6b7280' },
-      itemStyle: { color: '#60a5fa' },
-      labelFormatter: (ts: unknown) => formatTooltipTime(ts as number, dateFormat),
-      formatter: (value: unknown, name: string | number | undefined) => {
-        const v = value as number | undefined;
-        const label = hasCompare && name === 'valComp' ? (isEn ? 'Compare' : 'Vergleich') : (isEn ? 'Value' : 'Wert');
-        return [unit && v !== undefined ? `${v} ${unit}` : v ?? '', label] as [string | number, string];
-      },
-    }),
-    gridStroke: dark ? '#374151' : '#e5e7eb',
-  };
 }
 
 function ConfirmDialog({ message, onConfirm, onCancel, isPending, language = 'en' }: {

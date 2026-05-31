@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef, memo } from 'react';
+import { useState, useMemo, useEffect, useCallback, memo } from 'react';
 import { ChevronRight, ChevronDown, ChevronsUpDown, ChevronsDownUp, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil, LayoutList, LayoutGrid, Plus, FileCode2, Link2, UserRound, ShieldAlert, Download, Trash2, Filter } from 'lucide-react';
 import type { TreeNode, IoBrokerObject } from '../types/iobroker';
 import ObjectEditModal from './ObjectEditModal';
@@ -7,6 +7,7 @@ import type { ContextMenuEntry } from './ContextMenu';
 import ConfirmDialog from './ConfirmDialog';
 import { useDeleteSubtree } from '../hooks/useStates';
 import { copyText } from '../utils/clipboard';
+import { useTreeState } from '../hooks/useTreeState';
 import { useFilterContext } from '../context/FilterContext';
 import { useSelectionContext } from '../context/SelectionContext';
 import { useAppSettingsContext } from '../context/UIContext';
@@ -21,126 +22,6 @@ interface StateTreeProps {
   onTreeScope: (prefix: string) => void;
 }
 
-function buildTree(ids: string[], structureIds: string[] = []): TreeNode {
-  const root: TreeNode = { name: 'root', fullPath: '', children: new Map(), isLeaf: false, count: 0, totalCount: 0 };
-
-  for (const id of ids) {
-    root.count = (root.count ?? 0) + 1;
-    root.totalCount = (root.totalCount ?? 0) + 1;
-    const parts = id.split('.');
-    let current = root;
-    for (let i = 0; i < parts.length; i++) {
-      const part = parts[i];
-      const fullPath = parts.slice(0, i + 1).join('.');
-      if (!current.children.has(part)) {
-        current.children.set(part, {
-          name: part,
-          fullPath,
-          children: new Map(),
-          isLeaf: i === parts.length - 1,
-          count: 0,
-          totalCount: 0,
-        });
-      }
-      current = current.children.get(part)!;
-      current.count = (current.count ?? 0) + 1;
-      current.totalCount = (current.totalCount ?? 0) + 1;
-      if (i === parts.length - 1) {
-        current.isLeaf = true;
-      }
-    }
-  }
-
-  // Add folder/device/channel objects that may have no child states
-  for (const id of structureIds) {
-    const parts = id.split('.');
-    let current = root;
-    root.totalCount = (root.totalCount ?? 0) + 1;
-    for (let i = 0; i < parts.length; i++) {
-      const part = parts[i];
-      const fullPath = parts.slice(0, i + 1).join('.');
-      if (!current.children.has(part)) {
-        current.children.set(part, {
-          name: part,
-          fullPath,
-          children: new Map(),
-          isLeaf: false,
-          count: 0,
-          totalCount: 0,
-        });
-      }
-      current = current.children.get(part)!;
-      current.totalCount = (current.totalCount ?? 0) + 1;
-      // Never mark as leaf for structure nodes
-    }
-  }
-
-  return root;
-}
-
-function buildAdapterTree(ids: string[], structureIds: string[] = []): TreeNode {
-  const root: TreeNode = { name: 'root', fullPath: '', children: new Map(), isLeaf: false, count: 0, totalCount: 0 };
-
-  for (const id of ids) {
-    root.count = (root.count ?? 0) + 1;
-    root.totalCount = (root.totalCount ?? 0) + 1;
-    const parts = id.split('.');
-    const adapterKey = parts.length >= 2 ? `${parts[0]}.${parts[1]}` : parts[0];
-    if (!root.children.has(adapterKey)) {
-      root.children.set(adapterKey, {
-        name: adapterKey, fullPath: adapterKey, children: new Map(), isLeaf: false, count: 0, totalCount: 0,
-      });
-    }
-    const adapterNode = root.children.get(adapterKey)!;
-    adapterNode.count = (adapterNode.count ?? 0) + 1;
-    adapterNode.totalCount = (adapterNode.totalCount ?? 0) + 1;
-    const remaining = parts.slice(parts.length >= 2 ? 2 : 1);
-    let current = adapterNode;
-    for (let i = 0; i < remaining.length; i++) {
-      const seg = remaining[i];
-      const childPath = `${current.fullPath}.${seg}`;
-      if (!current.children.has(seg)) {
-        current.children.set(seg, {
-          name: seg, fullPath: childPath, children: new Map(), isLeaf: i === remaining.length - 1, count: 0, totalCount: 0,
-        });
-      }
-      current = current.children.get(seg)!;
-      current.count = (current.count ?? 0) + 1;
-      current.totalCount = (current.totalCount ?? 0) + 1;
-      if (i === remaining.length - 1) current.isLeaf = true;
-    }
-  }
-
-  // Add folder/device/channel objects that may have no child states
-  for (const id of structureIds) {
-    root.totalCount = (root.totalCount ?? 0) + 1;
-    const parts = id.split('.');
-    const adapterKey = parts.length >= 2 ? `${parts[0]}.${parts[1]}` : parts[0];
-    if (!root.children.has(adapterKey)) {
-      root.children.set(adapterKey, {
-        name: adapterKey, fullPath: adapterKey, children: new Map(), isLeaf: false, count: 0, totalCount: 0,
-      });
-    }
-    const adapterNode = root.children.get(adapterKey)!;
-    adapterNode.totalCount = (adapterNode.totalCount ?? 0) + 1;
-    const remaining = parts.slice(parts.length >= 2 ? 2 : 1);
-    let current = adapterNode;
-    for (let i = 0; i < remaining.length; i++) {
-      const seg = remaining[i];
-      const childPath = `${current.fullPath}.${seg}`;
-      if (!current.children.has(seg)) {
-        current.children.set(seg, {
-          name: seg, fullPath: childPath, children: new Map(), isLeaf: false, count: 0, totalCount: 0,
-        });
-      }
-      current = current.children.get(seg)!;
-      current.totalCount = (current.totalCount ?? 0) + 1;
-      // Never mark as leaf for structure nodes
-    }
-  }
-
-  return root;
-}
 
 function shouldShowNodeType(
   node: TreeNode,
@@ -607,15 +488,6 @@ function StateTree({ stateIds, allObjects, historyIds, smartIds, onCreateAtPath,
   const treeFontSize = appSettings.treeFontSize;
   const treeCountMode = appSettings.treeCountMode;
   const nodeFontClass = treeFontSize === 'small' ? 'text-xs' : treeFontSize === 'large' ? 'text-base' : treeFontSize === 'xl' ? 'text-lg' : 'text-sm';
-  const [expandSignal, setExpandSignal] = useState<{ depth: number; seq: number }>({ depth: 0, seq: 0 });
-  const [showFolders,  setShowFolders]  = useState(true);
-  const [showDevices,  setShowDevices]  = useState(true);
-  const [showChannels, setShowChannels] = useState(true);
-  const [treeViewMode, setTreeViewMode] = useState<'path' | 'adapter'>(appSettings.treeViewMode);
-  const handleTreeViewModeChange = (m: 'adapter' | 'path') => {
-    setTreeViewMode(m);
-    persistSettings({ ...appSettings, treeViewMode: m });
-  };
   const onOpenAliasReplace = useCallback((initialStr?: string) => {
     setAliasReplaceInitialStr(initialStr ?? null);
   }, [setAliasReplaceInitialStr]);
@@ -623,58 +495,20 @@ function StateTree({ stateIds, allObjects, historyIds, smartIds, onCreateAtPath,
     setAutoAliasDeviceId(deviceId);
   }, [setAutoAliasDeviceId]);
 
-  const prevExpandSeqRef = useRef<number | undefined>(undefined);
-  useEffect(() => {
-    if (!treeExpandSignal) return;
-    if (treeExpandSignal.seq === prevExpandSeqRef.current) return;
-    prevExpandSeqRef.current = treeExpandSignal.seq;
-    setExpandSignal(s => ({ depth: treeExpandSignal.depth, seq: s.seq + 1 }));
-  }, [treeExpandSignal]);
-
-  function matchesTreeSearch(id: string, lower: string): boolean {
-    if (!lower) return true;
-    const idLower = id.toLowerCase();
-    // Dot in search → treat as full path prefix (e.g. from context menu)
-    if (lower.includes('.')) {
-      return idLower === lower || idLower.startsWith(lower + '.');
-    }
-    // No dot → partial match on top-level segment (adapter.instance or first segment)
-    const parts = id.split('.');
-    const topLevel = treeViewMode === 'adapter'
-      ? (parts.length >= 2 ? `${parts[0]}.${parts[1]}` : parts[0])
-      : parts[0];
-    return topLevel.toLowerCase().includes(lower);
-  }
-
-  const filteredIds = useMemo(() => {
-    const lower = treeSearch.toLowerCase();
-    return stateIds.filter((id) =>
-      (!historyOnly || historyIds.has(id)) &&
-      (!smartOnly || smartIds.has(id)) &&
-      matchesTreeSearch(id, lower)
-    );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stateIds, historyOnly, historyIds, smartOnly, smartIds, treeSearch, treeViewMode]);
-
-
-  const structureIds = useMemo(() => {
-    const lower = treeSearch.toLowerCase();
-    return Object.keys(allObjects).filter(id => {
-      const t = allObjects[id]?.type;
-      if (!(t === 'folder' || t === 'device' || t === 'channel' || t === 'instance')) return false;
-      return matchesTreeSearch(id, lower);
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allObjects, treeSearch, treeViewMode]);
-
-  const tree = useMemo(
-    () => treeViewMode === 'adapter' ? buildAdapterTree(filteredIds, structureIds) : buildTree(filteredIds, structureIds),
-    [filteredIds, structureIds, treeViewMode]
-  );
-  const sortedChildren = useMemo(
-    () => [...tree.children.values()].sort((a, b) => a.name.localeCompare(b.name)),
-    [tree.children]
-  );
+  const {
+    expandSignal,
+    showFolders, setShowFolders,
+    showDevices, setShowDevices,
+    showChannels, setShowChannels,
+    treeViewMode, handleTreeViewModeChange,
+    filteredIds,
+    tree,
+    sortedChildren,
+  } = useTreeState({
+    stateIds, allObjects, historyIds, smartIds,
+    treeSearch, historyOnly, smartOnly, treeExpandSignal,
+    appSettings, persistSettings,
+  });
 
   const typeItems = [
     { key: 'folders',  label: 'Folder',  active: showFolders,  set: setShowFolders,  icon: <Folder   size={11} />, color: 'text-yellow-600 dark:text-yellow-500' },

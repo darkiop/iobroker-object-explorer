@@ -346,7 +346,7 @@ export default function Layout({ sidebar, children, apiConnected = true, browser
               }
             </div>
           )}
-          <div className="flex-1 overflow-hidden p-4 flex flex-col">{children}</div>
+          <div className="flex-1 overflow-hidden p-0 flex flex-col">{children}</div>
         </main>
       </div>
     </div>
