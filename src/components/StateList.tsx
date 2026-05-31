@@ -37,6 +37,8 @@ import StyledCheckbox from './StyledCheckbox';
 import StateRow from './StateRow';
 import { getObjectName } from './stateListUtils';
 import { DEL_COL_WIDTH, VIRTUAL_ROW_HEIGHT, VIRTUAL_OVERSCAN } from './stateListConstants';
+import { useColumnResize, loadColWidths, LS_WIDTHS_KEY } from '../hooks/useColumnResize';
+import { useBatchEdit } from '../hooks/useBatchEdit';
 
 export interface StateListHandle {
   fitToContainer: () => void;
@@ -61,46 +63,6 @@ export { ALL_COLUMNS, getColumnLabel, DEFAULT_COLS } from './stateListColumns';
 import type { SortKey } from './stateListColumns';
 import { ALL_COLUMNS, DEFAULT_COLS, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MIN_WIDTHS, BUILTIN_MAX_WIDTHS } from './stateListColumns';
 
-const MIN_COL_WIDTHS: Partial<Record<SortKey, number>> = { id: 150, name: 120 };
-function minColWidth(key: SortKey) { return MIN_COL_WIDTHS[key] ?? 40; }
-const LS_WIDTHS_KEY = 'iobroker-col-widths';
-
-function clampColWidthsWith(
-  widths: Record<SortKey, number>,
-  effectiveMin: Partial<Record<SortKey, number>>,
-  effectiveMax: Partial<Record<SortKey, number>>,
-): Record<SortKey, number> {
-  const result = { ...widths };
-  for (const k of Object.keys(result) as SortKey[]) {
-    const mn = effectiveMin[k] ?? minColWidth(k);
-    const mx = effectiveMax[k] ?? Infinity;
-    result[k] = Math.min(mx, Math.max(mn, result[k]));
-  }
-  return result;
-}
-
-function loadColWidths(
-  effectiveDefaults: Record<SortKey, number>,
-  effectiveMin: Partial<Record<SortKey, number>>,
-  effectiveMax: Partial<Record<SortKey, number>>,
-): Record<SortKey, number> {
-  try {
-    const raw = localStorage.getItem(LS_WIDTHS_KEY);
-    if (raw) {
-      const parsedWidths: unknown = JSON.parse(raw);
-      if (typeof parsedWidths === 'object' && parsedWidths !== null && !Array.isArray(parsedWidths)) {
-        const validated = Object.fromEntries(
-          Object.entries(parsedWidths as Record<string, unknown>)
-            .filter(([k, v]) => ALL_COLUMNS.some((c) => c.key === k) && typeof v === 'number')
-            .map(([k, v]) => [k, v as number])
-        ) as Partial<Record<SortKey, number>>;
-        return clampColWidthsWith({ ...effectiveDefaults, ...validated }, effectiveMin, effectiveMax);
-      }
-    }
-  } catch { /* ignore */ }
-  return clampColWidthsWith({ ...effectiveDefaults }, effectiveMin, effectiveMax);
-}
-
 
 function patternToInitialId(pattern: string): string {
   if (!pattern || pattern === '*') return '';
@@ -124,10 +86,6 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const effectiveDefaults: Record<SortKey, number> = { ...BUILTIN_DEFAULT_WIDTHS, ...(customDefaultWidths ?? {}) };
   const effectiveMin: Partial<Record<SortKey, number>> = { ...BUILTIN_MIN_WIDTHS, ...(customMinWidths ?? {}) };
   const effectiveMax: Partial<Record<SortKey, number>> = { ...BUILTIN_MAX_WIDTHS, ...(customMaxWidths ?? {}) };
-  const effectiveMinRef = useRef(effectiveMin);
-  effectiveMinRef.current = effectiveMin;
-  const effectiveMaxRef = useRef(effectiveMax);
-  effectiveMaxRef.current = effectiveMax;
   const isEn = language === 'en';
   const [sortKey, setSortKey] = useState<SortKey>('id');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
@@ -138,11 +96,12 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const allObjects = allObjectsData ?? {} as Record<string, IoBrokerObject>;
   const allHistoryIds = useMemo(() => { const s = new Set<string>(); for (const [id, obj] of Object.entries(allObjects)) { if (hasHistory(obj)) s.add(id); } return s; }, [allObjects]);
   const allSmartIds = useMemo(() => { const s = new Set<string>(); for (const [id, obj] of Object.entries(allObjects)) { if (hasSmartName(obj)) s.add(id); } return s; }, [allObjects]);
-  const [colWidths, setColWidths] = useState<Record<SortKey, number>>(() => loadColWidths(effectiveDefaults, effectiveMin, effectiveMax));
   const containerRef = useRef<HTMLDivElement>(null);
   const theadRef = useRef<HTMLTableSectionElement>(null);
   const autoFitRef = useRef(true);
-  const saveWidthsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { colWidths, setColWidths, handleResizeStart, handleAutoFit, fitToContainer } = useColumnResize({
+    effectiveDefaults, effectiveMin, effectiveMax, visibleCols, containerRef,
+  });
 
   const isFilterActive = !!(pattern && pattern !== '*') || !!treeFilter;
   // null = "all collapsed". new Set() = all expanded.
@@ -178,10 +137,21 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const updateFn = useUpdateFunctionMembership();
   const updateRoomBatch = useUpdateRoomMembershipBatch();
   const updateFnBatch = useUpdateFunctionMembershipBatch();
-  const [batchRole, setBatchRole] = useState('');
-  const [batchUnit, setBatchUnit] = useState('');
-  const [batchRoomEnumId, setBatchRoomEnumId] = useState('');
-  const [batchFnEnumId, setBatchFnEnumId] = useState('');
+  const {
+    batchRole, setBatchRole,
+    batchUnit, setBatchUnit,
+    batchRoomEnumId, setBatchRoomEnumId,
+    batchFnEnumId, setBatchFnEnumId,
+    batchCanApply,
+    handleBatchApply,
+  } = useBatchEdit({
+    checkedIds,
+    extendMutate: extend.mutate,
+    updateRoomBatchMutate: updateRoomBatch.mutate,
+    updateFnBatchMutate: updateFnBatch.mutate,
+    showToast,
+    isEn,
+  });
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; id: string } | null>(null);
   const [sepCtxMenu, setSepCtxMenu] = useState<{ x: number; y: number; prefix: string } | null>(null);
   const [roomEditId, setRoomEditId] = useState<string | null>(null);
@@ -222,119 +192,6 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
 
   function handleHideCol(key: SortKey) {
     handleColChange(visibleCols.filter((k) => k !== key));
-  }
-
-  function handleResizeStart(e: React.MouseEvent, key: SortKey) {
-    const startX = e.clientX;
-    const startWidth = colWidths[key];
-    let latestWidths: Record<SortKey, number> = colWidths;
-
-    function clampWidth(w: number) {
-      const mn = effectiveMinRef.current[key] ?? minColWidth(key);
-      return Math.min(effectiveMaxRef.current[key] ?? Infinity, Math.max(mn, w));
-    }
-
-    function onMouseMove(ev: MouseEvent) {
-      const newWidth = clampWidth(startWidth + ev.clientX - startX);
-      setColWidths((prev) => {
-        latestWidths = { ...prev, [key]: newWidth };
-        return latestWidths;
-      });
-      if (saveWidthsTimerRef.current !== null) clearTimeout(saveWidthsTimerRef.current);
-      saveWidthsTimerRef.current = setTimeout(() => {
-        localStorage.setItem(LS_WIDTHS_KEY, JSON.stringify(latestWidths));
-        saveWidthsTimerRef.current = null;
-      }, 500);
-    }
-
-    function onMouseUp(ev: MouseEvent) {
-      if (saveWidthsTimerRef.current !== null) {
-        clearTimeout(saveWidthsTimerRef.current);
-        saveWidthsTimerRef.current = null;
-      }
-      const newWidth = clampWidth(startWidth + ev.clientX - startX);
-      const finalWidths = { ...latestWidths, [key]: newWidth };
-      setColWidths(finalWidths);
-      localStorage.setItem(LS_WIDTHS_KEY, JSON.stringify(finalWidths));
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-    }
-
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-  }
-
-  function handleAutoFit(key: SortKey) {
-    if (!containerRef.current) return;
-    const cells = containerRef.current.querySelectorAll<HTMLElement>(`[data-col="${key}"]`);
-    let maxWidth = 0;
-    cells.forEach((cell) => {
-      const inner = cell.firstElementChild as HTMLElement | null;
-      maxWidth = Math.max(maxWidth, inner ? inner.scrollWidth : cell.scrollWidth);
-    });
-    if (maxWidth === 0) return;
-    const newWidth = Math.max(40, maxWidth + 24); // 24px = px-3 beidseitig
-    setColWidths((prev) => {
-      const next = { ...prev, [key]: newWidth };
-      localStorage.setItem(LS_WIDTHS_KEY, JSON.stringify(next));
-      return next;
-    });
-  }
-
-  function fitToContainer() {
-    const containerWidth = containerRef.current?.clientWidth;
-    if (!containerWidth) return;
-    const ICON_COLS: SortKey[] = ['checkbox', 'write', 'history', 'custom', 'smart', 'alias', 'scripts'];
-    const scalable = visibleCols.filter((k) => !ICON_COLS.includes(k));
-    const iconWidth = ICON_COLS.filter((k) => show(k)).reduce((s, k) => s + colWidths[k], 0);
-    const available = containerWidth - iconWidth - DEL_COL_WIDTH;
-    const next = { ...colWidths };
-
-    // Iteratively lock columns that hit their maxColWidth, redistribute remaining
-    // space to uncapped columns. Columns with no defined max expand freely.
-    const capped = new Set<SortKey>();
-    let remaining = available;
-    let prevSize = -1;
-    while (capped.size !== prevSize) {
-      prevSize = capped.size;
-      const free = scalable.filter((k) => !capped.has(k));
-      const freeTotal = free.reduce((sum, k) => sum + colWidths[k], 0);
-      if (freeTotal === 0) break;
-      const scale = remaining / freeTotal;
-      for (const k of free) {
-        const max = effectiveMax[k] ?? Infinity;
-        if (max !== Infinity && colWidths[k] * scale >= max) {
-          next[k] = max;
-          capped.add(k);
-        }
-      }
-      remaining = available - scalable.filter((k) => capped.has(k)).reduce((sum, k) => sum + next[k], 0);
-    }
-
-    // Distribute remaining space proportionally among uncapped columns
-    const free = scalable.filter((k) => !capped.has(k));
-    if (free.length > 0) {
-      const freeTotal = free.reduce((sum, k) => sum + colWidths[k], 0);
-      const scale = freeTotal > 0 ? remaining / freeTotal : 0;
-      let allocated = 0;
-      for (let i = 0; i < free.length; i++) {
-        const k = free[i];
-        if (i === free.length - 1) {
-          next[k] = Math.max(effectiveMinRef.current[k] ?? minColWidth(k), remaining - allocated);
-        } else {
-          const w = Math.max(effectiveMinRef.current[k] ?? minColWidth(k), Math.floor(colWidths[k] * scale));
-          next[k] = w;
-          allocated += w;
-        }
-      }
-    }
-
-    // Icon cols stay at their fixed default width — never modified by fitToContainer
-    for (const k of ICON_COLS) {
-      next[k] = effectiveDefaults[k];
-    }
-    setColWidths(next);
-    localStorage.setItem(LS_WIDTHS_KEY, JSON.stringify(next));
   }
 
   useImperativeHandle(ref, () => ({ fitToContainer }), []);
@@ -528,13 +385,17 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
     if (!groupByPath) return new Set();
     const result = new Set<string>();
     for (const id of filteredIds) {
+      const t = allObjects[id]?.type;
+      if (t === 'folder' || t === 'device' || t === 'channel') {
+        result.add(id);
+      }
       const parts = id.split('.');
       for (let i = 1; i < parts.length; i++) {
         result.add(parts.slice(0, i).join('.'));
       }
     }
     return result;
-  }, [filteredIds, groupByPath]);
+  }, [filteredIds, groupByPath, allObjects]);
 
   const displayItems = useMemo((): DisplayItem[] => {
     if (!groupByPath) return filteredIds.map((id) => ({ kind: 'row' as const, id, depth: 0 }));
@@ -667,29 +528,6 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
 
   const handleRoomEditEnd = React.useCallback(() => setRoomEditId(null), []);
   const handleFnEditEnd = React.useCallback(() => setFnEditId(null), []);
-
-  function handleBatchApply() {
-    const ids = [...checkedIds];
-    const onErr = (err: unknown) => showToast((isEn ? 'Save failed: ' : 'Speichern fehlgeschlagen: ') + String(err));
-    if (batchRole.trim()) {
-      ids.forEach((id) => extend.mutate({ id, common: { role: batchRole.trim() } }, { onError: onErr }));
-    }
-    if (batchUnit.trim()) {
-      ids.forEach((id) => extend.mutate({ id, common: { unit: batchUnit.trim() } }, { onError: onErr }));
-    }
-    if (batchRoomEnumId !== '') {
-      const newRoomEnumId = batchRoomEnumId === '__none__' ? null : batchRoomEnumId;
-      updateRoomBatch.mutate({ objectIds: ids, newRoomEnumId }, { onError: onErr });
-    }
-    if (batchFnEnumId !== '') {
-      const newFnEnumId = batchFnEnumId === '__none__' ? null : batchFnEnumId;
-      updateFnBatch.mutate({ objectIds: ids, newFnEnumId }, { onError: onErr });
-    }
-    setBatchRole('');
-    setBatchUnit('');
-    setBatchRoomEnumId('');
-    setBatchFnEnumId('');
-  }
 
   function handleExport(format: 'json' | 'csv') {
     const allIds = exportIds ?? ids;
@@ -992,8 +830,6 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
     () => [...new Set(Object.values(objects).map((obj) => obj?.common?.type || obj?.type || '').filter((v) => v.trim() !== ''))],
     [objects]
   );
-
-  const batchCanApply = batchRole.trim() !== '' || batchUnit.trim() !== '' || batchRoomEnumId !== '' || batchFnEnumId !== '';
 
   const rowVirtualizer = useVirtualizer({
     count: activeDisplayItems.length,
@@ -1615,6 +1451,11 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                           ? <ColoredId id={item.prefix} className="text-sm font-mono font-bold" />
                           : <span className="text-sm text-gray-400 dark:text-gray-500 font-mono font-bold italic">root</span>
                         }
+                        {item.prefix && allObjects[item.prefix]?.common?.name && (() => {
+                          const n = allObjects[item.prefix].common.name;
+                          const label = typeof n === 'string' ? n : (isEn ? (n.en || n.de || '') : (n.de || n.en || ''));
+                          return label ? <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{label}</span> : null;
+                        })()}
                         {sepCountMap.get(item.prefix) != null && (
                           <span className="text-xs text-gray-400 dark:text-gray-500 font-mono shrink-0">({sepCountMap.get(item.prefix)})</span>
                         )}
