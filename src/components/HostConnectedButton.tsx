@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Pencil, Loader2, AlertCircle, Check, RefreshCw } from 'lucide-react';
+import { Pencil, Loader2, AlertCircle, Check, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import { validateHost, validatePort } from '../utils/validation';
 import { useUIContext } from '../context/UIContext';
 
@@ -109,9 +109,10 @@ export default function HostConnectedButton({ apiConnected, lastUpdated, onManua
         title={language === 'en' ? 'Click to change host' : 'Klicken zum Ändern'}
       >
         {apiConnected
-          ? (language === 'en' ? 'Connected to' : 'Verbunden mit')
-          : (language === 'en' ? 'Not connected' : 'Nicht verbunden')
-        }: {currentHost || '—'}
+          ? <Wifi size={13} className="shrink-0" />
+          : <WifiOff size={13} className="shrink-0" />
+        }
+        {apiConnected ? currentHost || '—' : (currentHost || '—')}
         {lastUpdated && (
           <span className="ml-1 text-[10px] font-mono opacity-60">
             {new Date(lastUpdated).toLocaleTimeString()}
