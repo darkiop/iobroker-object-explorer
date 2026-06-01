@@ -124,6 +124,7 @@ export default function SettingsModal() {
       adminPort: settingsDraft.adminPort,
       objectsRefreshInterval: settingsDraft.objectsRefreshInterval,
       includeScripts: settingsDraft.includeScripts,
+      showObjectIcons: settingsDraft.showObjectIcons,
     };
     applySettings(next);
   }, [settingsDraft, applySettings]);
@@ -382,6 +383,7 @@ export default function SettingsModal() {
                 { key: 'toolbarLabels',        labelEn: 'Toolbar button labels',             labelDe: 'Beschriftungen in der Toolbar' },
                 { key: 'showDesc',             labelEn: 'Description below name',            labelDe: 'Beschreibung unter Name' },
                 { key: 'groupByPath',          labelEn: 'Group table by path',               labelDe: 'Tabelle nach Pfad gruppieren' },
+                { key: 'showObjectIcons',      labelEn: 'Show object icons in Name column',   labelDe: 'Objekt-Icons in der Name-Spalte anzeigen' },
               ] as const).map(({ key, labelEn, labelDe }) => (
                 <div key={key} className="flex items-center justify-between">
                   <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? labelEn : labelDe}</span>

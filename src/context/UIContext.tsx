@@ -25,6 +25,7 @@ export interface AppSettings {
   objectsRefreshInterval: 'off' | '30s' | '1m' | '5m' | '10m';
   includeScripts: boolean;
   shortenGroupPaths: boolean;
+  showObjectIcons: boolean;
 }
 
 const PAGE_SIZE_OPTIONS = [200, 500, 1000, 3000];
@@ -53,6 +54,7 @@ export function getDefaultAppSettings(): AppSettings {
     objectsRefreshInterval: 'off',
     includeScripts: false,
     shortenGroupPaths: true,
+    showObjectIcons: false,
   };
 }
 
@@ -123,6 +125,7 @@ export function loadAppSettings(): AppSettings {
       objectsRefreshInterval: (['off','30s','1m','5m','10m'] as const).includes(parsed.objectsRefreshInterval as 'off'|'30s'|'1m'|'5m'|'10m') ? parsed.objectsRefreshInterval as 'off'|'30s'|'1m'|'5m'|'10m' : 'off',
       includeScripts: parsed.includeScripts === true,
       shortenGroupPaths: parsed.shortenGroupPaths !== false,
+      showObjectIcons: parsed.showObjectIcons === true,
     };
   } catch { return fallback; }
 }

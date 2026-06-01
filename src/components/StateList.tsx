@@ -78,7 +78,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const { selectedId, setSelectedId: onSelect, setHistoryModalId: _setHistoryModalId, setEnumManagerOpen, setAliasReplaceInitialStr, setEditInitialTab, setAutoAliasDeviceId } = useSelectionContext();
   const { appSettings, expertMode, scriptUsedIds, scriptsFetching, scriptLastUpdated, setScriptUsedIds, setConfirmScriptRefresh, handleToggleExpertMode: onToggleExpertMode, handleToggleGroupByPath: onToggleGroupByPath, persistSettings } = useAppSettingsContext();
 
-  const { language = 'en', dateFormat = 'de', visibleCols: settingsVisibleCols, toolbarLabels = true, tableFontSize = 'normal', showDesc = true, groupByPath = false, shortenGroupPaths = true, customDefaultWidths, customMinWidths, customMaxWidths, pageSize } = appSettings;
+  const { language = 'en', dateFormat = 'de', visibleCols: settingsVisibleCols, toolbarLabels = true, tableFontSize = 'normal', showDesc = true, groupByPath = false, shortenGroupPaths = true, showObjectIcons = false, customDefaultWidths, customMinWidths, customMaxWidths, pageSize } = appSettings;
   const onOpenEnumManager = React.useCallback(() => setEnumManagerOpen(true), [setEnumManagerOpen]);
   const onOpenAliasReplace = React.useCallback((initialStr?: string) => setAliasReplaceInitialStr(initialStr ?? null), [setAliasReplaceInitialStr]);
   const onScriptsClick = React.useCallback((id: string) => { onSelect(id); setEditInitialTab('scripts'); }, [onSelect, setEditInitialTab]);
@@ -1576,8 +1576,24 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                       const nw = colWidths['name'];
                       const n = sepObj?.common?.name;
                       const label = n ? (typeof n === 'string' ? n : (isEn ? (n.en || n.de || '') : (n.de || n.en || ''))) : '';
+                      const _iconRaw = showObjectIcons ? sepObj?.common?.icon : undefined;
+                      const iconUrl = _iconRaw
+                        ? (() => {
+                            if (_iconRaw.startsWith('data:') || _iconRaw.startsWith('http')) return _iconRaw;
+                            const host = (localStorage.getItem('ioBrokerHost') ?? window.__CONFIG__?.ioBrokerHost ?? '').split(':')[0];
+                            if (!host) return _iconRaw;
+                            const adapterName = item.prefix.split('.')[0];
+                            const iconPath = _iconRaw.startsWith('/') ? _iconRaw : `/${_iconRaw}`;
+                            return `http://${host}:${appSettings.adminPort}/adapter/${adapterName}${iconPath}`;
+                          })()
+                        : undefined;
                       return <>
-                        <td key="name" style={{ width: nw, minWidth: nw }} className="px-3 py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-100/50 dark:group-hover/sep:bg-gray-700/60 transition-colors text-xs align-middle text-gray-600 dark:text-gray-300 truncate">{label}</td>
+                        <td key="name" style={{ width: nw, minWidth: nw }} className="px-3 py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-100/50 dark:group-hover/sep:bg-gray-700/60 transition-colors text-xs align-middle text-gray-600 dark:text-gray-300">
+                          <div className="flex items-center gap-1.5 truncate">
+                            {iconUrl && <img src={iconUrl} alt="" className="w-4 h-4 shrink-0 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
+                            <span className="truncate">{label}</span>
+                          </div>
+                        </td>
                         {_sepFillerSpan > 0 && <td colSpan={_sepFillerSpan} className="bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-100/50 dark:group-hover/sep:bg-gray-700/60 transition-colors" />}
                       </>;
                     })()}
