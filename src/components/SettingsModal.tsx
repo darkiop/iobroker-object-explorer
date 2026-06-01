@@ -289,6 +289,17 @@ export default function SettingsModal() {
                     className="w-full px-2 py-1.5 text-xs rounded border font-mono bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none border-gray-300 dark:border-gray-600 focus:ring-1 focus:ring-blue-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                   <span className="text-[11px] text-gray-400 dark:text-gray-500">{isEn ? 'Used for object icons and admin links.' : 'Wird für Objekt-Icons und Admin-Links verwendet.'}</span>
+                  {settingsHostIp.trim() && (
+                    <a
+                      href={`http://${settingsHostIp.trim()}:${settingsDraft.adminPort}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="self-start flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                    >
+                      <ExternalLink size={11} />
+                      ioBroker Admin
+                    </a>
+                  )}
                 </div>
               </div>
 
