@@ -441,7 +441,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
         );
         for (const child of children) visit(child, depth + 1, prefix);
         for (const id of (directLeavesMap.get(prefix) ?? [])) {
-          items.push({ kind: 'row', id, depth, parentPrefix: prefix });
+          items.push({ kind: 'row', id, depth: depth + 1, parentPrefix: prefix });
         }
       }
     }
