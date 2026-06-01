@@ -919,8 +919,10 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   }, [filteredIds, groupByPath]);
 
   // Sep row column split: main cell spans up to first of type/role; trailing spans remainder + DEL_COL
+  const _sepNameIdx  = visibleCols.indexOf('name');
   const _sepTypeIdx  = visibleCols.indexOf('type');
   const _sepRoleIdx  = visibleCols.indexOf('role');
+  const _sepNameVis  = _sepNameIdx >= 0;
   const _sepTypeVis  = _sepTypeIdx >= 0;
   const _sepRoleVis  = _sepRoleIdx >= 0;
   const _sepSplitIdx = _sepTypeVis || _sepRoleVis
@@ -932,6 +934,10 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   // type/role tds in visibleCols order
   const _sepDetailCols = ([['type', _sepTypeIdx], ['role', _sepRoleIdx]] as [SortKey, number][])
     .filter(([, i]) => i >= 0).sort((a, b) => a[1] - b[1]).map(([k]) => k);
+  // name split: main td stops before name col; filler td covers cols between name and first type/role
+  const _sepNameBeforeType = _sepNameVis && (_sepNameIdx < _sepSplitIdx);
+  const _sepMainSpanWithName = _sepNameBeforeType ? _sepNameIdx - 1 : _sepMainSpan;
+  const _sepFillerSpan = _sepNameBeforeType ? _sepSplitIdx - _sepNameIdx - 1 : 0;
 
   function scrollRowIntoView(index: number) {
     rowVirtualizer.scrollToIndex(index, { align: 'auto' });
@@ -1505,7 +1511,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                         />
                       )}
                     </td>
-                    <td colSpan={(_sepMainSpan || rowColSpan + 1) - 1} className="py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-100/50 dark:group-hover/sep:bg-gray-700/60 transition-colors" style={{ paddingLeft: 12 + item.depth * 10, paddingRight: 12 }}>
+                    <td colSpan={(_sepNameBeforeType ? (_sepMainSpanWithName || 1) : (_sepMainSpan || rowColSpan + 1)) - 1} className="py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-100/50 dark:group-hover/sep:bg-gray-700/60 transition-colors" style={{ paddingLeft: 12 + item.depth * 10, paddingRight: 12 }}>
                       <div className="flex items-center gap-2">
                         {(collapsedPrefixes === null || collapsedPrefixes.has(item.prefix))
                           ? <ChevronRight size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
@@ -1521,7 +1527,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                           ? <ColoredId id={shortenGroupPaths && item.parentPrefix ? item.prefix.slice(item.parentPrefix.length + 1) : item.prefix} className="text-sm font-mono font-bold" />
                           : <span className="text-sm text-gray-400 dark:text-gray-500 font-mono font-bold italic">root</span>
                         }
-                        {item.prefix && allObjects[item.prefix]?.common?.name && (() => {
+                        {!_sepNameBeforeType && item.prefix && allObjects[item.prefix]?.common?.name && (() => {
                           const n = allObjects[item.prefix].common.name;
                           const label = typeof n === 'string' ? n : (isEn ? (n.en || n.de || '') : (n.de || n.en || ''));
                           return label ? <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{label}</span> : null;
@@ -1565,10 +1571,24 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                         )}
                       </div>
                     </td>
+                    {_sepNameBeforeType && (() => {
+                      const sepObj = allObjects[item.prefix];
+                      const nw = colWidths['name'];
+                      const n = sepObj?.common?.name;
+                      const label = n ? (typeof n === 'string' ? n : (isEn ? (n.en || n.de || '') : (n.de || n.en || ''))) : '';
+                      return <>
+                        <td key="name" style={{ width: nw, minWidth: nw }} className="px-3 py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-100/50 dark:group-hover/sep:bg-gray-700/60 transition-colors text-xs align-middle text-gray-600 dark:text-gray-300 truncate">{label}</td>
+                        {_sepFillerSpan > 0 && <td colSpan={_sepFillerSpan} className="bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-100/50 dark:group-hover/sep:bg-gray-700/60 transition-colors" />}
+                      </>;
+                    })()}
                     {_sepDetailCols.length > 0 && (() => {
-                      const sepObj = objects[item.prefix];
+                      const sepObj = allObjects[item.prefix];
                       return _sepDetailCols.map((k) => {
                         const w = colWidths[k];
+                        if (k === 'name') {
+                          // handled separately above
+                          return null;
+                        }
                         if (k === 'type') {
                           const t = item.prefix.split('.').length > 2 ? (sepObj?.type ?? 'folder') : sepObj?.type;
                           return <td key="type" style={{ width: w, minWidth: w }} className="px-3 py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-100/50 dark:group-hover/sep:bg-gray-700/60 transition-colors text-xs font-mono align-middle">{t && <span className={`font-semibold ${getTypeColor(t)}`}>{t}</span>}</td>;

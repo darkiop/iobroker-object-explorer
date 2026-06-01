@@ -70,13 +70,15 @@ export async function getAllObjects(): Promise<Record<string, IoBrokerObject>> {
     fetchApi<Record<string, IoBrokerObject>>('/objects'),
     fetchApi<Record<string, IoBrokerObject>>('/objects?type=enum'),
     fetchApi<Record<string, IoBrokerObject>>('/objects?type=folder'),
-  ]).then(([all, enums, folders]) => {
+    fetchApi<Record<string, IoBrokerObject>>('/objects?type=device'),
+    fetchApi<Record<string, IoBrokerObject>>('/objects?type=channel'),
+  ]).then(([all, enums, folders, devices, channels]) => {
     _objectsFetchPromise = null;
     _fastObjectsPromise = null;
     const foldersTyped = Object.fromEntries(
       Object.entries(folders).map(([k, v]) => [k, { ...v, type: v.type ?? 'folder' }])
     ) as Record<string, IoBrokerObject>;
-    return { ...all, ...enums, ...foldersTyped };
+    return { ...all, ...enums, ...foldersTyped, ...devices, ...channels };
   }).catch(err => {
     _objectsFetchPromise = null;
     throw err;
