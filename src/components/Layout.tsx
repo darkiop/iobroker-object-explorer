@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Sun, Moon, Gem, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Maximize, Minimize, RefreshCw, ExternalLink, Info } from 'lucide-react';
+import { Sun, Moon, Gem, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Maximize, Minimize, RefreshCw, ExternalLink, Info, WifiOff, Wifi } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import LanguageDropdown from './LanguageDropdown';
 import { useUIContext } from '../context/UIContext';
@@ -213,19 +213,6 @@ export default function Layout({ sidebar, children, apiConnected = true, browser
 
         {/* Main Content */}
         <main className="flex-1 overflow-hidden flex flex-col bg-white dark:bg-gray-900">
-          {(browserOffline || !apiConnected) && (
-            <div className={`shrink-0 flex items-center gap-2 px-4 py-2 text-sm font-medium animate-pulse ${
-              browserOffline
-                ? 'bg-gray-800 text-gray-100 dark:bg-gray-950 dark:text-gray-200'
-                : 'bg-amber-500/90 text-white dark:bg-amber-600/90'
-            }`}>
-              <span className="inline-block w-2 h-2 rounded-full bg-current shrink-0" />
-              {browserOffline
-                ? (language === 'en' ? 'No internet connection' : 'Keine Internetverbindung')
-                : (language === 'en' ? 'ioBroker unreachable — retrying…' : 'ioBroker nicht erreichbar — Verbindung wird wiederhergestellt…')
-              }
-            </div>
-          )}
           <div className="flex-1 overflow-hidden p-0 flex flex-col">{children}</div>
         </main>
       </div>
@@ -260,6 +247,37 @@ export default function Layout({ sidebar, children, apiConnected = true, browser
               {language === 'en' ? 'Continue' : 'Fortfahren'}
             </button>
           </div>
+        </div>
+      </div>,
+      document.body
+    )}
+    {(browserOffline || !apiConnected) && createPortal(
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div className="flex flex-col items-center gap-4 px-8 py-7 rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl max-w-sm w-full mx-4 text-center">
+          {browserOffline
+            ? <WifiOff size={36} className="text-gray-400 dark:text-gray-500" />
+            : <WifiOff size={36} className="text-amber-500 animate-pulse" />
+          }
+          <div>
+            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">
+              {browserOffline
+                ? (language === 'en' ? 'No internet connection' : 'Keine Internetverbindung')
+                : (language === 'en' ? 'ioBroker unreachable' : 'ioBroker nicht erreichbar')
+              }
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {browserOffline
+                ? (language === 'en' ? 'Check your network and try again.' : 'Netzwerkverbindung prüfen und erneut versuchen.')
+                : (language === 'en' ? 'Retrying in the background…' : 'Verbindung wird im Hintergrund wiederhergestellt…')
+              }
+            </p>
+          </div>
+          {!browserOffline && (
+            <div className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 font-mono">
+              <RefreshCw size={11} className="animate-spin" style={{ animationDuration: '2s' }} />
+              {currentHost}
+            </div>
+          )}
         </div>
       </div>,
       document.body
