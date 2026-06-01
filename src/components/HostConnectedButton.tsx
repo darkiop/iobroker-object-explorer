@@ -101,10 +101,10 @@ export default function HostConnectedButton({ apiConnected, lastUpdated, onManua
     <div className="flex items-center gap-1.5 shrink-0">
       <button
         onClick={() => setEditingHost(true)}
-        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold font-mono shadow-sm border transition-colors ${
+        className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-mono transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 ${
           apiConnected
-            ? 'border-emerald-300/80 dark:border-emerald-700/70 bg-emerald-100/80 dark:bg-emerald-900/35 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200/80 dark:hover:bg-emerald-800/50'
-            : 'border-red-300/80 dark:border-red-700/70 bg-red-100/80 dark:bg-red-900/35 text-red-700 dark:text-red-300 hover:bg-red-200/80 dark:hover:bg-red-800/50'
+            ? 'text-emerald-600 dark:text-emerald-400'
+            : 'text-red-500 dark:text-red-400'
         }`}
         title={language === 'en' ? 'Click to change host' : 'Klicken zum Ändern'}
       >
