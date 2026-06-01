@@ -195,34 +195,77 @@ export default function SettingsModal() {
         <div className="p-4 flex flex-col gap-4 h-[65vh] overflow-y-auto">
           {/* Tab: Verbindung */}
           {settingsTab === 'connection' && (
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{'ioBroker IP address'}</span>
-                <input
-                  value={settingsHostIp}
-                  onChange={(e) => { setSettingsHostIp(e.target.value); setSettingsHostError(null); }}
-                  disabled={settingsHostTesting}
-                  placeholder="10.4.0.33"
-                  className={`px-2 py-1.5 text-xs rounded border font-mono bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none transition-colors ${
-                    settingsHostTesting ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20' : settingsHostError ? 'border-red-400' : 'border-gray-300 dark:border-gray-600 focus:ring-1 focus:ring-blue-400'
-                  }`}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-5">
+
+              {/* ── REST API ── */}
+              <div className="flex flex-col gap-3">
+                <SettingsGroupLabel isEn={isEn} en="REST API" de="REST API" />
                 <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{'ioBroker.rest-api Port'}</span>
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'IP address' : 'IP-Adresse'}</span>
                   <input
-                    value={settingsHostPort}
-                    onChange={(e) => { setSettingsHostPort(e.target.value); setSettingsHostError(null); }}
+                    value={settingsHostIp}
+                    onChange={(e) => { setSettingsHostIp(e.target.value); setSettingsHostError(null); }}
                     disabled={settingsHostTesting}
-                    placeholder="8093"
-                    className={`w-full px-2 py-1.5 text-xs rounded border font-mono bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none transition-colors ${
+                    placeholder="10.4.0.33"
+                    className={`px-2 py-1.5 text-xs rounded border font-mono bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none transition-colors ${
                       settingsHostTesting ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20' : settingsHostError ? 'border-red-400' : 'border-gray-300 dark:border-gray-600 focus:ring-1 focus:ring-blue-400'
                     }`}
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{'ioBroker Admin Port'}</span>
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Port (ioBroker.rest-api)' : 'Port (ioBroker.rest-api)'}</span>
+                  <input
+                    value={settingsHostPort}
+                    onChange={(e) => { setSettingsHostPort(e.target.value); setSettingsHostError(null); }}
+                    disabled={settingsHostTesting}
+                    placeholder="8093"
+                    className={`px-2 py-1.5 text-xs rounded border font-mono bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none transition-colors ${
+                      settingsHostTesting ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20' : settingsHostError ? 'border-red-400' : 'border-gray-300 dark:border-gray-600 focus:ring-1 focus:ring-blue-400'
+                    }`}
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    disabled={settingsHostTesting}
+                    onClick={async () => {
+                      const ip = settingsHostIp.trim();
+                      const port = settingsHostPort.trim();
+                      if (!ip) return;
+                      const val = port ? `${ip}:${port}` : ip;
+                      setSettingsHostTesting(true);
+                      setSettingsHostError(null);
+                      try {
+                        const res = await fetch(`http://${val}/v1/objects?limit=1`);
+                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                        localStorage.setItem('ioBrokerHost', val);
+                        window.location.reload();
+                      } catch {
+                        setSettingsHostError(isEn ? 'Host not reachable' : 'Host nicht erreichbar');
+                        setSettingsHostTesting(false);
+                      }
+                    }}
+                    className="px-2.5 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 transition-colors flex items-center gap-1.5"
+                  >
+                    {settingsHostTesting
+                      ? <><Loader2 size={12} className="animate-spin" />{isEn ? 'Testing…' : 'Teste…'}</>
+                      : isEn ? 'Test & Connect' : 'Test & Verbinden'
+                    }
+                  </button>
+                  {settingsHostError && (
+                    <span className="flex items-center gap-1 text-xs text-red-500">
+                      <AlertCircle size={12} /> {settingsHostError}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="border-t border-gray-200 dark:border-gray-700" />
+
+              {/* ── Admin ── */}
+              <div className="flex flex-col gap-3">
+                <SettingsGroupLabel isEn={isEn} en="Admin UI" de="Admin-Oberfläche" />
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Port (ioBroker Admin)' : 'Port (ioBroker Admin)'}</span>
                   <input
                     type="number"
                     min={1}
@@ -234,41 +277,10 @@ export default function SettingsModal() {
                     }}
                     className="w-full px-2 py-1.5 text-xs rounded border font-mono bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none border-gray-300 dark:border-gray-600 focus:ring-1 focus:ring-blue-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
+                  <span className="text-[11px] text-gray-400 dark:text-gray-500">{isEn ? 'Used for object icons and admin links.' : 'Wird für Objekt-Icons und Admin-Links verwendet.'}</span>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  disabled={settingsHostTesting}
-                  onClick={async () => {
-                    const ip = settingsHostIp.trim();
-                    const port = settingsHostPort.trim();
-                    if (!ip) return;
-                    const val = port ? `${ip}:${port}` : ip;
-                    setSettingsHostTesting(true);
-                    setSettingsHostError(null);
-                    try {
-                      const res = await fetch(`http://${val}/v1/objects?limit=1`);
-                      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                      localStorage.setItem('ioBrokerHost', val);
-                      window.location.reload();
-                    } catch {
-                      setSettingsHostError(isEn ? 'Host not reachable' : 'Host nicht erreichbar');
-                      setSettingsHostTesting(false);
-                    }
-                  }}
-                  className="px-2.5 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 transition-colors flex items-center gap-1.5"
-                >
-                  {settingsHostTesting
-                    ? <><Loader2 size={12} className="animate-spin" />{isEn ? 'Testing…' : 'Teste…'}</>
-                    : isEn ? 'Test & Connect' : 'Test & Verbinden'
-                  }
-                </button>
-                {settingsHostError && (
-                  <span className="flex items-center gap-1 text-xs text-red-500">
-                    <AlertCircle size={12} /> {settingsHostError}
-                  </span>
-                )}
-              </div>
+
             </div>
           )}
           {/* Tab: Anzeige */}
