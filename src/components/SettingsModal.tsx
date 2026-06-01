@@ -273,63 +273,89 @@ export default function SettingsModal() {
           )}
           {/* Tab: Anzeige */}
           {settingsTab === 'display' && (
-            <div className="flex flex-col gap-4">
-              {/* Theme */}
-              <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Theme' : 'Farbschema'}</span>
-                <div className="flex gap-2">
-                  {([
-                    { value: 'light',   labelEn: 'Light',   labelDe: 'Hell',     preview: 'bg-white border-gray-300 text-gray-800' },
-                    { value: 'dark',    labelEn: 'Dark',    labelDe: 'Dunkel',   preview: 'bg-gray-800 border-gray-600 text-gray-100' },
-                    { value: 'obsidian',labelEn: 'Obsidian',labelDe: 'Obsidian', preview: 'bg-[#1e1e2e] border-[#45475a] text-[#cdd6f4]' },
-                  ] as { value: Theme; labelEn: string; labelDe: string; preview: string }[]).map(({ value, labelEn, labelDe, preview }) => (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => setTheme(value)}
-                      className={`flex-1 flex flex-col items-center gap-1.5 py-2 px-3 rounded border-2 transition-colors ${
-                        theme === value
-                          ? 'border-blue-500 ring-1 ring-blue-400/50'
-                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500'
-                      }`}
-                    >
-                      <span className={`w-full h-6 rounded text-[10px] flex items-center justify-center font-medium border ${preview}`}>
-                        Aa
-                      </span>
-                      <span className="text-xs text-gray-700 dark:text-gray-300">{isEn ? labelEn : labelDe}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {/* Language + Date format nebeneinander */}
-              <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-5">
+
+              {/* ── Appearance ── */}
+              <div className="flex flex-col gap-3">
+                <SettingsGroupLabel isEn={isEn} en="Appearance" de="Erscheinungsbild" />
                 <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Language' : 'Sprache'}</span>
-                  <LanguageDropdown value={settingsDraft.language} onChange={handleLanguageChangeDraft} fullWidth />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Date format' : 'Datumsformat'}</span>
-                  <DateFormatDropdown
-                    value={settingsDraft.dateFormat}
-                    onChange={(dateFormat) => setSettingsDraft((prev) => ({ ...prev, dateFormat }))}
-                  />
-                </div>
-              </div>
-              {/* Table font size + Tree font size nebeneinander */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Table font size' : 'Schriftgröße Tabelle'}</span>
-                  <div className="flex gap-1.5">
-                    {(['small', 'normal', 'large', 'xl'] as UiFontSize[]).map((s) => (
-                      <button key={s} type="button" onClick={() => setSettingsDraft((prev) => ({ ...prev, tableFontSize: s }))}
-                        className={`flex-1 py-1 text-xs rounded border transition-colors ${settingsDraft.tableFontSize === s ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
-                        {s === 'small' ? (isEn ? 'S' : 'K') : s === 'large' ? (isEn ? 'L' : 'G') : s === 'xl' ? 'XL' : 'M'}
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Theme' : 'Farbschema'}</span>
+                  <div className="flex gap-2">
+                    {([
+                      { value: 'light',   labelEn: 'Light',   labelDe: 'Hell',     preview: 'bg-white border-gray-300 text-gray-800' },
+                      { value: 'dark',    labelEn: 'Dark',    labelDe: 'Dunkel',   preview: 'bg-gray-800 border-gray-600 text-gray-100' },
+                      { value: 'obsidian',labelEn: 'Obsidian',labelDe: 'Obsidian', preview: 'bg-[#1e1e2e] border-[#45475a] text-[#cdd6f4]' },
+                    ] as { value: Theme; labelEn: string; labelDe: string; preview: string }[]).map(({ value, labelEn, labelDe, preview }) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setTheme(value)}
+                        className={`flex-1 flex flex-col items-center gap-1.5 py-2 px-3 rounded border-2 transition-colors ${
+                          theme === value
+                            ? 'border-blue-500 ring-1 ring-blue-400/50'
+                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500'
+                        }`}
+                      >
+                        <span className={`w-full h-6 rounded text-[10px] flex items-center justify-center font-medium border ${preview}`}>Aa</span>
+                        <span className="text-xs text-gray-700 dark:text-gray-300">{isEn ? labelEn : labelDe}</span>
                       </button>
                     ))}
                   </div>
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Language' : 'Sprache'}</span>
+                    <LanguageDropdown value={settingsDraft.language} onChange={handleLanguageChangeDraft} fullWidth />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Date format' : 'Datumsformat'}</span>
+                    <DateFormatDropdown value={settingsDraft.dateFormat} onChange={(dateFormat) => setSettingsDraft((prev) => ({ ...prev, dateFormat }))} />
+                  </div>
+                </div>
+                <SettingsToggleRow isEn={isEn} labelEn="Toolbar button labels" labelDe="Beschriftungen in der Toolbar"
+                  value={settingsDraft.toolbarLabels} onToggle={() => setSettingsDraft((prev) => ({ ...prev, toolbarLabels: !prev.toolbarLabels }))} />
+              </div>
+
+              <div className="border-t border-gray-200 dark:border-gray-700" />
+
+              {/* ── Table ── */}
+              <div className="flex flex-col gap-3">
+                <SettingsGroupLabel isEn={isEn} en="Table" de="Tabelle" />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Font size' : 'Schriftgröße'}</span>
+                    <div className="flex gap-1.5">
+                      {(['small', 'normal', 'large', 'xl'] as UiFontSize[]).map((s) => (
+                        <button key={s} type="button" onClick={() => setSettingsDraft((prev) => ({ ...prev, tableFontSize: s }))}
+                          className={`flex-1 py-1 text-xs rounded border transition-colors ${settingsDraft.tableFontSize === s ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
+                          {s === 'small' ? (isEn ? 'S' : 'K') : s === 'large' ? (isEn ? 'L' : 'G') : s === 'xl' ? 'XL' : 'M'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Rows per page' : 'Zeilen pro Seite'}</span>
+                    <select value={settingsDraft.pageSize} onChange={(e) => setSettingsDraft((prev) => ({ ...prev, pageSize: parseInt(e.target.value, 10) }))}
+                      className="h-7 px-2 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400">
+                      {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <SettingsToggleRow isEn={isEn} labelEn="Group table by path" labelDe="Tabelle nach Pfad gruppieren"
+                  value={settingsDraft.groupByPath} onToggle={() => setSettingsDraft((prev) => ({ ...prev, groupByPath: !prev.groupByPath }))} />
+                <SettingsToggleRow isEn={isEn} labelEn="Description below name" labelDe="Beschreibung unter Name"
+                  value={settingsDraft.showDesc} onToggle={() => setSettingsDraft((prev) => ({ ...prev, showDesc: !prev.showDesc }))} />
+                <SettingsToggleRow isEn={isEn} labelEn="Show object icons in Name column" labelDe="Objekt-Icons in der Name-Spalte anzeigen"
+                  value={settingsDraft.showObjectIcons} onToggle={() => setSettingsDraft((prev) => ({ ...prev, showObjectIcons: !prev.showObjectIcons }))} />
+              </div>
+
+              <div className="border-t border-gray-200 dark:border-gray-700" />
+
+              {/* ── Tree ── */}
+              <div className="flex flex-col gap-3">
+                <SettingsGroupLabel isEn={isEn} en="Sidebar tree" de="Seitenbaum" />
                 <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Tree font size' : 'Schriftgröße Baum'}</span>
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Font size' : 'Schriftgröße'}</span>
                   <div className="flex gap-1.5">
                     {(['small', 'normal', 'large', 'xl'] as UiFontSize[]).map((s) => (
                       <button key={s} type="button" onClick={() => setSettingsDraft((prev) => ({ ...prev, treeFontSize: s }))}
@@ -339,63 +365,36 @@ export default function SettingsModal() {
                     ))}
                   </div>
                 </div>
-              </div>
-              {/* Rows per page */}
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Rows per page' : 'Zeilen pro Seite'}</span>
-                <select
-                  value={settingsDraft.pageSize}
-                  onChange={(e) => setSettingsDraft((prev) => ({ ...prev, pageSize: parseInt(e.target.value, 10) }))}
-                  className="h-7 px-2 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                >
-                  {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
-                </select>
-              </div>
-              {/* Toggles */}
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Count badge in tree' : 'Anzahl-Badge im Baum'}</span>
-                <select
-                  value={settingsDraft.treeCountMode}
-                  onChange={(e) => setSettingsDraft((prev) => ({ ...prev, treeCountMode: e.target.value as 'off'|'states'|'objects'|'both' }))}
-                  className="h-7 px-2 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                >
-                  <option value="off">{isEn ? 'Off' : 'Aus'}</option>
-                  <option value="objects">{isEn ? 'Objects only' : 'Nur Objekte'}</option>
-                  <option value="states">{isEn ? 'States only' : 'Nur States'}</option>
-                  <option value="both">{isEn ? 'Both (States / Objects)' : 'Beides (States / Objekte)'}</option>
-                </select>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Auto-refresh objects' : 'Objekte auto-aktualisieren'}</span>
-                <select
-                  value={settingsDraft.objectsRefreshInterval}
-                  onChange={(e) => setSettingsDraft((prev) => ({ ...prev, objectsRefreshInterval: e.target.value as 'off'|'30s'|'1m'|'5m'|'10m' }))}
-                  className="h-7 px-2 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                >
-                  <option value="off">{isEn ? 'Off' : 'Aus'}</option>
-                  <option value="30s">30s</option>
-                  <option value="1m">1m</option>
-                  <option value="5m">5m</option>
-                  <option value="10m">10m</option>
-                </select>
-              </div>
-              {([
-                { key: 'toolbarLabels',        labelEn: 'Toolbar button labels',             labelDe: 'Beschriftungen in der Toolbar' },
-                { key: 'showDesc',             labelEn: 'Description below name',            labelDe: 'Beschreibung unter Name' },
-                { key: 'groupByPath',          labelEn: 'Group table by path',               labelDe: 'Tabelle nach Pfad gruppieren' },
-                { key: 'showObjectIcons',      labelEn: 'Show object icons in Name column',   labelDe: 'Objekt-Icons in der Name-Spalte anzeigen' },
-              ] as const).map(({ key, labelEn, labelDe }) => (
-                <div key={key} className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? labelEn : labelDe}</span>
-                  <button
-                    type="button"
-                    onClick={() => setSettingsDraft((prev) => ({ ...prev, [key]: !prev[key] }))}
-                    className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${settingsDraft[key] ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'}`}
-                  >
-                    <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${settingsDraft[key] ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                  </button>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Count badge' : 'Anzahl-Badge'}</span>
+                  <select value={settingsDraft.treeCountMode} onChange={(e) => setSettingsDraft((prev) => ({ ...prev, treeCountMode: e.target.value as 'off'|'states'|'objects'|'both' }))}
+                    className="h-7 px-2 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400">
+                    <option value="off">{isEn ? 'Off' : 'Aus'}</option>
+                    <option value="objects">{isEn ? 'Objects only' : 'Nur Objekte'}</option>
+                    <option value="states">{isEn ? 'States only' : 'Nur States'}</option>
+                    <option value="both">{isEn ? 'Both (States / Objects)' : 'Beides (States / Objekte)'}</option>
+                  </select>
                 </div>
-              ))}
+              </div>
+
+              <div className="border-t border-gray-200 dark:border-gray-700" />
+
+              {/* ── Data ── */}
+              <div className="flex flex-col gap-3">
+                <SettingsGroupLabel isEn={isEn} en="Data" de="Daten" />
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Auto-refresh objects' : 'Objekte auto-aktualisieren'}</span>
+                  <select value={settingsDraft.objectsRefreshInterval} onChange={(e) => setSettingsDraft((prev) => ({ ...prev, objectsRefreshInterval: e.target.value as 'off'|'30s'|'1m'|'5m'|'10m' }))}
+                    className="h-7 px-2 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400">
+                    <option value="off">{isEn ? 'Off' : 'Aus'}</option>
+                    <option value="30s">30s</option>
+                    <option value="1m">1m</option>
+                    <option value="5m">5m</option>
+                    <option value="10m">10m</option>
+                  </select>
+                </div>
+              </div>
+
             </div>
           )}
           {/* Tab: Spalten */}
@@ -583,5 +582,27 @@ export default function SettingsModal() {
       </div>
     </div>,
     document.body
+  );
+}
+
+function SettingsGroupLabel({ isEn, en, de }: { isEn: boolean; en: string; de: string }) {
+  return (
+    <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+      {isEn ? en : de}
+    </div>
+  );
+}
+
+function SettingsToggleRow({ isEn, labelEn, labelDe, value, onToggle }: {
+  isEn: boolean; labelEn: string; labelDe: string; value: boolean; onToggle: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? labelEn : labelDe}</span>
+      <button type="button" onClick={onToggle}
+        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${value ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
+        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${value ? 'translate-x-5' : 'translate-x-0.5'}`} />
+      </button>
+    </div>
   );
 }
