@@ -1037,7 +1037,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
           <button
             onClick={handleBatchApply}
             disabled={!batchCanApply}
-            className="px-2.5 py-0.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="h-7 px-2.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             {isEn ? 'Apply' : 'Anwenden'}
           </button>
