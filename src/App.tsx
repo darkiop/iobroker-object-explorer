@@ -11,7 +11,7 @@ import StateList from './components/StateList';
 import ObjectEditModal from './components/ObjectEditModal';
 const HistoryModal = lazy(() => import('./components/HistoryModal'));
 import NewDatapointModal from './components/NewDatapointModal';
-import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
+import HelpModal from './components/HelpModal';
 import EnumManagerModal from './components/EnumManagerModal';
 import AliasReplaceModal from './components/AliasReplaceModal';
 import AutoCreateAliasModal from './components/AutoCreateAliasModal';
@@ -561,7 +561,7 @@ function AppContent() {
           />
         )}
         {shortcutsOpen && (
-          <KeyboardShortcutsModal
+          <HelpModal
             language={appSettings.language}
             onClose={() => setShortcutsOpen(false)}
           />
