@@ -23,8 +23,13 @@ export function useBatchEdit({
   const [batchUnit, setBatchUnit] = useState('');
   const [batchRoomEnumId, setBatchRoomEnumId] = useState('');
   const [batchFnEnumId, setBatchFnEnumId] = useState('');
+  const [batchMin, setBatchMin] = useState('');
+  const [batchMax, setBatchMax] = useState('');
 
-  const batchCanApply = batchRole.trim() !== '' || batchUnit.trim() !== '' || batchRoomEnumId !== '' || batchFnEnumId !== '';
+  const batchCanApply =
+    batchRole.trim() !== '' || batchUnit.trim() !== '' ||
+    batchRoomEnumId !== '' || batchFnEnumId !== '' ||
+    batchMin.trim() !== '' || batchMax.trim() !== '';
 
   function handleBatchApply() {
     const ids = [...checkedIds];
@@ -34,6 +39,14 @@ export function useBatchEdit({
     }
     if (batchUnit.trim()) {
       ids.forEach((id) => extendMutate({ id, common: { unit: batchUnit.trim() } }, { onError: onErr }));
+    }
+    if (batchMin.trim() !== '') {
+      const v = parseFloat(batchMin.trim());
+      if (!isNaN(v)) ids.forEach((id) => extendMutate({ id, common: { min: v } }, { onError: onErr }));
+    }
+    if (batchMax.trim() !== '') {
+      const v = parseFloat(batchMax.trim());
+      if (!isNaN(v)) ids.forEach((id) => extendMutate({ id, common: { max: v } }, { onError: onErr }));
     }
     if (batchRoomEnumId !== '') {
       const newRoomEnumId = batchRoomEnumId === '__none__' ? null : batchRoomEnumId;
@@ -47,6 +60,8 @@ export function useBatchEdit({
     setBatchUnit('');
     setBatchRoomEnumId('');
     setBatchFnEnumId('');
+    setBatchMin('');
+    setBatchMax('');
   }
 
   return {
@@ -54,6 +69,8 @@ export function useBatchEdit({
     batchUnit, setBatchUnit,
     batchRoomEnumId, setBatchRoomEnumId,
     batchFnEnumId, setBatchFnEnumId,
+    batchMin, setBatchMin,
+    batchMax, setBatchMax,
     batchCanApply,
     handleBatchApply,
   };

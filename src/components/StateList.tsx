@@ -143,6 +143,8 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
     batchUnit, setBatchUnit,
     batchRoomEnumId, setBatchRoomEnumId,
     batchFnEnumId, setBatchFnEnumId,
+    batchMin, setBatchMin,
+    batchMax, setBatchMax,
     batchCanApply,
     handleBatchApply,
   } = useBatchEdit({
@@ -1017,6 +1019,20 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
             options={fnNameOptions}
             className="w-32"
             language={language}
+          />
+          <input
+            type="number"
+            value={batchMin}
+            onChange={(e) => setBatchMin(e.target.value)}
+            placeholder="Min"
+            className="w-20 px-2 py-0.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
+          <input
+            type="number"
+            value={batchMax}
+            onChange={(e) => setBatchMax(e.target.value)}
+            placeholder="Max"
+            className="w-20 px-2 py-0.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
           <button
             onClick={handleBatchApply}
