@@ -411,21 +411,21 @@ export default function SettingsModal() {
           )}
           {/* Tab: Spalten */}
           {settingsTab === 'columns' && (
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-col gap-2">
-                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Visible columns' : 'Angezeigte Spalten'}</span>
+            <div className="flex flex-col gap-5">
+
+              {/* ── Visible columns ── */}
+              <div className="flex flex-col gap-3">
+                <SettingsGroupLabel isEn={isEn} en="Visible columns" de="Angezeigte Spalten" />
                 <div className="grid grid-cols-3 gap-1.5">
                   {ALL_COLUMNS.map(({ key }) => {
                     const checked = settingsDraft.visibleCols.includes(key);
                     return (
-                      <label key={key} className="flex items-center gap-2 px-2 py-1.5 rounded border border-gray-200 dark:border-gray-700 text-xs text-gray-700 dark:text-gray-300">
+                      <label key={key} className="flex items-center gap-2 px-2 py-1.5 rounded border border-gray-200 dark:border-gray-700 text-xs text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                         <input
                           type="checkbox"
                           checked={checked}
                           onChange={() => setSettingsDraft((prev) => {
-                            const next = checked
-                              ? prev.visibleCols.filter((k) => k !== key)
-                              : [...prev.visibleCols, key];
+                            const next = checked ? prev.visibleCols.filter((k) => k !== key) : [...prev.visibleCols, key];
                             return { ...prev, visibleCols: next.length > 0 ? next : prev.visibleCols };
                           })}
                           className="w-3.5 h-3.5 accent-blue-500"
@@ -436,10 +436,13 @@ export default function SettingsModal() {
                   })}
                 </div>
               </div>
-              {/* Column widths */}
-              <div className="flex flex-col gap-1.5">
+
+              <div className="border-t border-gray-200 dark:border-gray-700" />
+
+              {/* ── Column widths ── */}
+              <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Column widths (px)' : 'Spaltenbreiten (px)'}</span>
+                  <SettingsGroupLabel isEn={isEn} en="Column widths (px)" de="Spaltenbreiten (px)" />
                   <button
                     type="button"
                     onClick={() => setSettingsDraft((prev) => ({ ...prev, customDefaultWidths: {}, customMaxWidths: {} }))}
@@ -471,50 +474,20 @@ export default function SettingsModal() {
                           <tr key={col} className="border-t border-gray-100 dark:border-gray-800">
                             <td className="px-2 py-0.5 text-gray-600 dark:text-gray-400">{getColumnLabel(col, isEn ? 'en' : 'de')}</td>
                             <td className="px-1 py-0.5 text-center">
-                              <input
-                                type="number"
-                                value={currentDefault}
-                                onChange={(e) => {
-                                  const v = parseInt(e.target.value, 10);
-                                  if (!isNaN(v) && v > 0)
-                                    setSettingsDraft((prev) => ({ ...prev, customDefaultWidths: { ...prev.customDefaultWidths, [col]: v } }));
-                                }}
-                                onBlur={(e) => {
-                                  const v = parseInt(e.target.value, 10);
-                                  setSettingsDraft((prev) => ({ ...prev, customDefaultWidths: { ...prev.customDefaultWidths, [col]: isNaN(v) || v < 1 ? builtinDefault : v } }));
-                                }}
-                                className={inputCls}
-                              />
+                              <input type="number" value={currentDefault}
+                                onChange={(e) => { const v = parseInt(e.target.value, 10); if (!isNaN(v) && v > 0) setSettingsDraft((prev) => ({ ...prev, customDefaultWidths: { ...prev.customDefaultWidths, [col]: v } })); }}
+                                onBlur={(e) => { const v = parseInt(e.target.value, 10); setSettingsDraft((prev) => ({ ...prev, customDefaultWidths: { ...prev.customDefaultWidths, [col]: isNaN(v) || v < 1 ? builtinDefault : v } })); }}
+                                className={inputCls} />
                             </td>
                             <td className="px-1 py-0.5 text-center">
-                              <input
-                                type="number"
-                                placeholder="—"
-                                value={currentMin}
-                                onChange={(e) => {
-                                  const v = parseInt(e.target.value, 10);
-                                  if (!isNaN(v) && v > 0)
-                                    setSettingsDraft((prev) => ({ ...prev, customMinWidths: { ...prev.customMinWidths, [col]: v } }));
-                                  else if (e.target.value === '')
-                                    setSettingsDraft((prev) => { const next = { ...prev.customMinWidths }; delete next[col]; return { ...prev, customMinWidths: next }; });
-                                }}
-                                className={inputCls}
-                              />
+                              <input type="number" placeholder="—" value={currentMin}
+                                onChange={(e) => { const v = parseInt(e.target.value, 10); if (!isNaN(v) && v > 0) setSettingsDraft((prev) => ({ ...prev, customMinWidths: { ...prev.customMinWidths, [col]: v } })); else if (e.target.value === '') setSettingsDraft((prev) => { const next = { ...prev.customMinWidths }; delete next[col]; return { ...prev, customMinWidths: next }; }); }}
+                                className={inputCls} />
                             </td>
                             <td className="px-1 py-0.5 text-center">
-                              <input
-                                type="number"
-                                placeholder="∞"
-                                value={currentMax}
-                                onChange={(e) => {
-                                  const v = parseInt(e.target.value, 10);
-                                  if (!isNaN(v) && v > 0)
-                                    setSettingsDraft((prev) => ({ ...prev, customMaxWidths: { ...prev.customMaxWidths, [col]: v } }));
-                                  else if (e.target.value === '')
-                                    setSettingsDraft((prev) => { const next = { ...prev.customMaxWidths }; delete next[col]; return { ...prev, customMaxWidths: next }; });
-                                }}
-                                className={inputCls}
-                              />
+                              <input type="number" placeholder="∞" value={currentMax}
+                                onChange={(e) => { const v = parseInt(e.target.value, 10); if (!isNaN(v) && v > 0) setSettingsDraft((prev) => ({ ...prev, customMaxWidths: { ...prev.customMaxWidths, [col]: v } })); else if (e.target.value === '') setSettingsDraft((prev) => { const next = { ...prev.customMaxWidths }; delete next[col]; return { ...prev, customMaxWidths: next }; }); }}
+                                className={inputCls} />
                             </td>
                           </tr>
                         );
@@ -523,49 +496,59 @@ export default function SettingsModal() {
                   </table>
                 </div>
               </div>
+
             </div>
           )}
+
           {/* Tab: Filter */}
           {settingsTab === 'filters' && (
-            <div className="flex flex-col gap-2">
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Additional quick filters' : 'Zusätzliche Schnellfilter'}</span>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={newQuickFilter}
-                  onChange={(e) => setNewQuickFilter(e.target.value)}
-                  placeholder={isEn ? 'e.g. hm-rpc.0.*' : 'z.B. hm-rpc.0.*'}
-                  className="flex-1 px-2 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 font-mono"
-                />
-                <button
-                  onClick={addExtraQuickFilter}
-                  className="px-2.5 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-                >
-                  {isEn ? 'Add' : 'Hinzufügen'}
-                </button>
+            <div className="flex flex-col gap-5">
+
+              {/* ── Quick filter patterns ── */}
+              <div className="flex flex-col gap-3">
+                <SettingsGroupLabel isEn={isEn} en="Custom quick filters" de="Eigene Schnellfilter" />
+                <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
+                  {isEn
+                    ? 'Add ID patterns (wildcards supported) that appear as quick-filter buttons in the sidebar.'
+                    : 'ID-Muster hinzufügen (Wildcards unterstützt), die als Schnellfilter-Buttons in der Seitenleiste erscheinen.'}
+                </p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={newQuickFilter}
+                    onChange={(e) => setNewQuickFilter(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') addExtraQuickFilter(); }}
+                    placeholder={isEn ? 'e.g. hm-rpc.0.*' : 'z.B. hm-rpc.0.*'}
+                    className="flex-1 px-2 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 font-mono"
+                  />
+                  <button onClick={addExtraQuickFilter} className="px-2.5 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors">
+                    {isEn ? 'Add' : 'Hinzufügen'}
+                  </button>
+                </div>
+                <div className="rounded border border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/40">
+                  {settingsDraft.extraQuickFilters.length === 0 ? (
+                    <div className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">
+                      {isEn ? 'No custom filters yet' : 'Noch keine eigenen Filter'}
+                    </div>
+                  ) : (
+                    <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                      {settingsDraft.extraQuickFilters.map((patternItem) => (
+                        <li key={patternItem} className="flex items-center justify-between gap-2 px-3 py-2">
+                          <span className="text-xs font-mono text-gray-700 dark:text-gray-300 truncate">{patternItem}</span>
+                          <button
+                            onClick={() => setSettingsDraft((prev) => ({ ...prev, extraQuickFilters: prev.extraQuickFilters.filter((p) => p !== patternItem) }))}
+                            title={isEn ? 'Remove' : 'Entfernen'}
+                            className="shrink-0 p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-500/10 dark:hover:text-red-400 transition-colors"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
-              <div className="rounded border border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/40">
-                {settingsDraft.extraQuickFilters.length === 0 ? (
-                  <div className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">
-                    {isEn ? 'No additional filters' : 'Keine zusätzlichen Filter'}
-                  </div>
-                ) : (
-                  <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {settingsDraft.extraQuickFilters.map((patternItem) => (
-                      <li key={patternItem} className="flex items-center justify-between gap-2 px-3 py-2">
-                        <span className="text-xs font-mono text-gray-700 dark:text-gray-300 truncate">{patternItem}</span>
-                        <button
-                          onClick={() => setSettingsDraft((prev) => ({ ...prev, extraQuickFilters: prev.extraQuickFilters.filter((p) => p !== patternItem) }))}
-                          title={isEn ? 'Remove filter' : 'Filter entfernen'}
-                          className="shrink-0 p-1 rounded text-gray-500 hover:text-red-500 hover:bg-red-500/10 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+
             </div>
           )}
         </div>
