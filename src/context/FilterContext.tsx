@@ -139,6 +139,11 @@ interface FilterContextValue {
   handleSaveCurrentFilter: (saveFilterName: string) => void;
   handleNavigateTo: (ids: string[]) => void;
   handleCreateDatapointAtPath: (prefix: string) => void;
+  // Navigation history
+  canGoBack: boolean;
+  canGoForward: boolean;
+  goBack: () => void;
+  goForward: () => void;
 }
 
 const FilterContext = createContext<FilterContextValue | null>(null);
@@ -179,6 +184,75 @@ export function FilterContextProvider({ children }: { children: ReactNode }) {
 
   const prevTreeFilterRef = useRef<string | null>(null);
 
+  // ── Filter navigation history ──────────────────────────────────────────────
+  type FilterSnapshot = {
+    pattern: string; historyOnly: boolean; smartOnly: boolean; danglingAliasFilter: boolean;
+    colFilters: Partial<Record<SortKey, string>>; roomFilters: Set<string>;
+    functionFilters: Set<string>; quickPatterns: Set<string>; treeFilter: string | null;
+  };
+  const navHistory = useRef<FilterSnapshot[]>([]);
+  const navIdx = useRef<number>(-1);
+  const isNavigating = useRef(false);
+
+  const snapshotNow = useCallback((): FilterSnapshot => ({
+    pattern, historyOnly, smartOnly, danglingAliasFilter,
+    colFilters, roomFilters: new Set(roomFilters), functionFilters: new Set(functionFilters),
+    quickPatterns: new Set(quickPatterns), treeFilter,
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [pattern, historyOnly, smartOnly, danglingAliasFilter, colFilters, roomFilters, functionFilters, quickPatterns, treeFilter]);
+
+  const pushNavHistory = useCallback((snap: FilterSnapshot) => {
+    if (isNavigating.current) return;
+    const stack = navHistory.current;
+    // Truncate forward history
+    const next = stack.slice(0, navIdx.current + 1);
+    // Avoid duplicate consecutive entries
+    const last = next[next.length - 1];
+    if (last && last.pattern === snap.pattern && last.treeFilter === snap.treeFilter &&
+        last.historyOnly === snap.historyOnly && last.smartOnly === snap.smartOnly) return;
+    next.push(snap);
+    if (next.length > 50) next.shift();
+    navHistory.current = next;
+    navIdx.current = next.length - 1;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const applySnapshot = useCallback((snap: FilterSnapshot) => {
+    isNavigating.current = true;
+    setPatternRaw(snap.pattern);
+    setHistoryOnly(snap.historyOnly);
+    setSmartOnly(snap.smartOnly);
+    setDanglingAliasFilter(snap.danglingAliasFilter);
+    setColFilters(snap.colFilters);
+    setRoomFilters(new Set(snap.roomFilters));
+    setFunctionFilters(new Set(snap.functionFilters));
+    setQuickPatterns(new Set(snap.quickPatterns));
+    setTreeFilter(snap.treeFilter);
+    setPage(0);
+    // Reset flag after state batch settles
+    setTimeout(() => { isNavigating.current = false; }, 0);
+  }, []);
+
+  const [navState, setNavState] = useState({ canGoBack: false, canGoForward: false });
+
+  const updateNavState = useCallback(() => {
+    setNavState({ canGoBack: navIdx.current > 0, canGoForward: navIdx.current < navHistory.current.length - 1 });
+  }, []);
+
+  const goBack = useCallback(() => {
+    if (navIdx.current <= 0) return;
+    navIdx.current -= 1;
+    applySnapshot(navHistory.current[navIdx.current]);
+    updateNavState();
+  }, [applySnapshot, updateNavState]);
+
+  const goForward = useCallback(() => {
+    if (navIdx.current >= navHistory.current.length - 1) return;
+    navIdx.current += 1;
+    applySnapshot(navHistory.current[navIdx.current]);
+    updateNavState();
+  }, [applySnapshot, updateNavState]);
+
   const { basePattern, roomFilter, functionFilter, typeFilter, roleFilter } = parseEnumFilters(pattern);
 
   const hasAnyFilter =
@@ -212,6 +286,7 @@ export function FilterContextProvider({ children }: { children: ReactNode }) {
   const setPattern = useCallback((p: string) => setPatternRaw(p), []);
 
   const handleSearch = useCallback((newPattern: string) => {
+    pushNavHistory(snapshotNow());
     setPatternRaw(newPattern);
     setPage(0);
     setRoomFilters(new Set());
@@ -219,7 +294,8 @@ export function FilterContextProvider({ children }: { children: ReactNode }) {
     setQuickPatterns(new Set());
     setHistoryOnly(false);
     setSmartOnly(false);
-  }, []);
+    updateNavState();
+  }, [pushNavHistory, snapshotNow, updateNavState]);
 
   const handleColFilterChange = useCallback((filters: Partial<Record<SortKey, string>>) => {
     setColFilters(filters);
@@ -250,6 +326,8 @@ export function FilterContextProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const handleRoomToggle = useCallback((name: string) => {
+    pushNavHistory(snapshotNow());
+    updateNavState();
     setPatternRaw(prev => {
       const { basePattern: base, roomFilter: currentRoom, functionFilter: currentFunc } = parseEnumFilters(prev);
       const isActive = currentRoom?.toLowerCase() === name.toLowerCase();
@@ -263,6 +341,8 @@ export function FilterContextProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const handleFunctionToggle = useCallback((name: string) => {
+    pushNavHistory(snapshotNow());
+    updateNavState();
     setPatternRaw(prev => {
       const { basePattern: base, roomFilter: currentRoom, functionFilter: currentFunc } = parseEnumFilters(prev);
       const isActive = currentFunc?.toLowerCase() === name.toLowerCase();
@@ -276,6 +356,8 @@ export function FilterContextProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const handleTypeToggle = useCallback((typeName: string) => {
+    pushNavHistory(snapshotNow());
+    updateNavState();
     setPatternRaw(prev => {
       const parsed = parseEnumFilters(prev);
       const isActive = parsed.typeFilter?.toLowerCase() === typeName.toLowerCase();
@@ -291,6 +373,8 @@ export function FilterContextProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const handleTreeScope = useCallback((prefix: string) => {
+    pushNavHistory(snapshotNow());
+    updateNavState();
     setPatternRaw(prefix.replace(/\.$/, '') + '.*');
     setPage(0);
     setRoomFilters(new Set());
@@ -298,7 +382,7 @@ export function FilterContextProvider({ children }: { children: ReactNode }) {
     setQuickPatterns(new Set());
     setHistoryOnly(false);
     setSmartOnly(false);
-  }, []);
+  }, [pushNavHistory, snapshotNow, updateNavState]);
 
   const handleLoadSavedFilter = useCallback((f: SavedFilter) => {
     setPatternRaw(f.pattern);
@@ -376,6 +460,7 @@ export function FilterContextProvider({ children }: { children: ReactNode }) {
     resetAllFilters, handleRoomToggle, handleFunctionToggle, handleTypeToggle,
     handleTreeScope, handleLoadSavedFilter, handleDeleteSavedFilter,
     handleSaveCurrentFilter, handleNavigateTo, handleCreateDatapointAtPath,
+    canGoBack: navState.canGoBack, canGoForward: navState.canGoForward, goBack, goForward,
   }), [
     pattern, page, historyOnly, smartOnly, danglingAliasFilter,
     colFilters, roomFilters, roomsOpen, functionFilters, functionsOpen, typesOpen,
@@ -393,6 +478,7 @@ export function FilterContextProvider({ children }: { children: ReactNode }) {
     resetAllFilters, handleRoomToggle, handleFunctionToggle, handleTypeToggle,
     handleTreeScope, handleLoadSavedFilter, handleDeleteSavedFilter,
     handleSaveCurrentFilter, handleNavigateTo, handleCreateDatapointAtPath,
+    navState, goBack, goForward,
   ]);
 
   return <FilterContext.Provider value={value}>{children}</FilterContext.Provider>;

@@ -23,7 +23,7 @@ import { hasHistory, hasSmartName, hasCustomEnabled } from './api/iobroker';
 import type { StateListHandle } from './components/StateList';
 import { filterObjectIds } from './utils/filterObjectIds';
 import type { IoBrokerObject, IoBrokerState } from './types/iobroker';
-import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RotateCcw, Layers, X, Check, Bookmark, AlertTriangle, Tag } from 'lucide-react';
+import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RotateCcw, Layers, X, Check, Bookmark, AlertTriangle, Tag, ArrowLeft, ArrowRight } from 'lucide-react';
 import { getTypeColor } from './utils/typeColor';
 import { FilterContextProvider, useFilterContext } from './context/FilterContext';
 import { SelectionContextProvider, useSelectionContext } from './context/SelectionContext';
@@ -74,6 +74,7 @@ function AppContent() {
     handleTreeScope, handleLoadSavedFilter, handleDeleteSavedFilter,
     handleSaveCurrentFilter, handleNavigateTo,
     setFulltextEnabled, setExactEnabled,
+    canGoBack, canGoForward, goBack, goForward,
   } = useFilterContext();
 
   // ── Selection Context ────────────────────────────────────────────────────
@@ -590,11 +591,30 @@ function AppContent() {
             exportIds={tableIds}
             onNavigateTo={handleNavigateTo}
             connectedInfo={
-              <HostConnectedButton
-                apiConnected={!objectsError && isOnline}
-                lastUpdated={lastValidUpdatedAt.current > 0 ? lastValidUpdatedAt.current : undefined}
-                onManualRefresh={handleManualRefresh}
-              />
+              <div className="flex items-center gap-1">
+                <HostConnectedButton
+                  apiConnected={!objectsError && isOnline}
+                  lastUpdated={lastValidUpdatedAt.current > 0 ? lastValidUpdatedAt.current : undefined}
+                  onManualRefresh={handleManualRefresh}
+                />
+                <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-0.5" />
+                <button
+                  onClick={goBack}
+                  disabled={!canGoBack}
+                  title={isEn ? 'Back (filter history)' : 'Zurück (Filter-Verlauf)'}
+                  className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ArrowLeft size={15} />
+                </button>
+                <button
+                  onClick={goForward}
+                  disabled={!canGoForward}
+                  title={isEn ? 'Forward (filter history)' : 'Vorwärts (Filter-Verlauf)'}
+                  className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ArrowRight size={15} />
+                </button>
+              </div>
             }
           />
         </div>
