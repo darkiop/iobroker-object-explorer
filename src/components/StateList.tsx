@@ -653,20 +653,20 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
           )}
         </div>
         <button
-          onClick={() => onOpenEnumManager?.()}
-          title={isEn ? 'Manage enums (rooms & functions)' : 'Enums verwalten (Räume & Funktionen)'}
-          className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-amber-600 hover:bg-amber-500/10 dark:text-gray-400 dark:hover:text-amber-400 dark:hover:bg-amber-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
-        >
-          <Tag size={15} />
-          {showToolbarLabels && <span>{isEn ? 'Enum Management' : 'Enum Management'}</span>}
-        </button>
-        <button
           onClick={() => setImportOpen(true)}
           title={isEn ? 'Import datapoints (JSON)' : 'Datenpunkte importieren (JSON)'}
           className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-violet-600 hover:bg-violet-500/10 dark:text-gray-400 dark:hover:text-violet-400 dark:hover:bg-violet-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
         >
           <Upload size={16} />
           {showToolbarLabels && <span>Import</span>}
+        </button>
+        <button
+          onClick={() => onOpenEnumManager?.()}
+          title={isEn ? 'Manage enums (rooms & functions)' : 'Enums verwalten (Räume & Funktionen)'}
+          className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-amber-600 hover:bg-amber-500/10 dark:text-gray-400 dark:hover:text-amber-400 dark:hover:bg-amber-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
+        >
+          <Tag size={15} />
+          {showToolbarLabels && <span>{isEn ? 'Enum Management' : 'Enum Management'}</span>}
         </button>
         <button
           onClick={() => setShowStats(true)}
