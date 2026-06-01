@@ -1530,7 +1530,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                         {!_sepNameBeforeType && item.prefix && allObjects[item.prefix]?.common?.name && (() => {
                           const n = allObjects[item.prefix].common.name;
                           const label = typeof n === 'string' ? n : (isEn ? (n.en || n.de || '') : (n.de || n.en || ''));
-                          return label ? <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{label}</span> : null;
+                          return label ? <span title={label} className="text-xs text-gray-500 dark:text-gray-400 truncate">{label}</span> : null;
                         })()}
                         {sepCountMap.get(item.prefix) != null && (
                           <span className="text-xs text-gray-400 dark:text-gray-500 font-mono shrink-0">({sepCountMap.get(item.prefix)})</span>
@@ -1588,7 +1588,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                           })()
                         : undefined;
                       return <>
-                        <td key="name" style={{ width: nw, minWidth: nw }} className="px-3 py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-100/50 dark:group-hover/sep:bg-gray-700/60 transition-colors text-xs align-middle text-gray-600 dark:text-gray-300">
+                        <td key="name" title={label || undefined} style={{ width: nw, minWidth: nw }} className="px-3 py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-100/50 dark:group-hover/sep:bg-gray-700/60 transition-colors text-xs align-middle text-gray-600 dark:text-gray-300">
                           <div className="flex items-center gap-1.5 truncate">
                             {iconUrl && <img src={iconUrl} alt="" className="w-4 h-4 shrink-0 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
                             <span className="truncate">{label}</span>
