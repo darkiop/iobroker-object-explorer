@@ -295,9 +295,9 @@ export default function SearchBar({
         </button>
       </div>
       <div className="flex items-center gap-3 flex-wrap">
-        <CheckToggle checked={fulltextEnabled} onChange={(v) => onFulltextChange?.(v)} label={isEn ? 'Full text search' : 'Volltext-Suche'} />
-        <CheckToggle checked={exactEnabled} onChange={(v) => onExactChange?.(v)} label={isEn ? 'Exact search' : 'Exakte Suche'} />
-        <CheckToggle checked={idSuggestEnabled} onChange={(v) => onIdSuggestChange?.(v)} label={isEn ? 'ID suggestions' : 'ID-Vorschläge'} />
+        <CheckToggle checked={fulltextEnabled} onChange={(v) => onFulltextChange?.(v)} label={isEn ? 'Full text' : 'Volltext'} />
+        <CheckToggle checked={exactEnabled} onChange={(v) => onExactChange?.(v)} label={isEn ? 'Exact' : 'Exakt'} />
+        <CheckToggle checked={idSuggestEnabled} onChange={(v) => onIdSuggestChange?.(v)} label={isEn ? 'Suggestions' : 'Vorschläge'} />
       </div>
     </form>
   );
