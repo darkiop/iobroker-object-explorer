@@ -37,6 +37,9 @@ const COMMANDS: CommandDef[] = [
   { prefix: 'function:', label: 'fn',    color: 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300' },
   { prefix: 'type:',     label: 'type',  color: 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300' },
   { prefix: 'role:',     label: 'role',  color: 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300' },
+  { prefix: 'id:',       label: 'id',    color: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300' },
+  { prefix: 'name:',     label: 'name',  color: 'bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300' },
+  { prefix: 'desc:',     label: 'desc',  color: 'bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300' },
 ];
 const ID_COLOR = 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400';
 

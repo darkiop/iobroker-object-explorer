@@ -19,7 +19,7 @@ export function useStateObjectsFast() {
   });
 }
 
-export function useFilteredObjects(pattern: string, fulltext = true, exact = false) {
+export function useFilteredObjects(pattern: string, fulltext = true, exact = false, fieldFilters?: { id?: string; name?: string; desc?: string }) {
   const { data: fastObjects } = useStateObjectsFast();
 
   const placeholderData = useMemo<Record<string, import('../types/iobroker').IoBrokerObject> | undefined>(() => {
@@ -44,8 +44,8 @@ export function useFilteredObjects(pattern: string, fulltext = true, exact = fal
   }, [fastObjects, pattern]);
 
   return useQuery({
-    queryKey: queryKeys.objects.filtered(pattern, fulltext, exact),
-    queryFn: () => getObjectsByPattern(pattern, fulltext, exact),
+    queryKey: queryKeys.objects.filtered(pattern, fulltext, exact, fieldFilters),
+    queryFn: () => getObjectsByPattern(pattern, fulltext, exact, fieldFilters),
     enabled: pattern.length > 0,
     staleTime: Infinity,
     placeholderData,

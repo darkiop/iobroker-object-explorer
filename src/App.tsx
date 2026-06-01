@@ -1,4 +1,5 @@
-import { useMemo, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import { useMemo, useEffect, useCallback, useRef, lazy, Suspense, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ErrorBoundary } from 'react-error-boundary';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from './context/ThemeContext';
@@ -64,6 +65,7 @@ function AppContent() {
     colFilters, roomFilters, functionFilters, quickPatterns,
     treeFilter,
     fulltextEnabled, exactEnabled, idSuggestEnabled, setIdSuggestEnabled,
+    idFilter, nameFilter, descFilter,
     savedFiltersList, savedFiltersOpen, setSavedFiltersOpen,
     saveFilterPromptOpen, setSaveFilterPromptOpen, saveFilterName, setSaveFilterName,
     quickOpen, setQuickOpen, roomsOpen, setRoomsOpen, functionsOpen, setFunctionsOpen,
@@ -95,7 +97,8 @@ function AppContent() {
   const { isOnline, browserOnline } = useApiConnectivity();
 
   // ── React Query ──────────────────────────────────────────────────────────
-  const { data: stateObjectsData, error: objectsError, refetch: refetchFilteredObjects, isPlaceholderData: objectsIsPartial } = useFilteredObjects(basePattern, fulltextEnabled, exactEnabled);
+  const fieldFilters = (idFilter || nameFilter || descFilter) ? { id: idFilter ?? undefined, name: nameFilter ?? undefined, desc: descFilter ?? undefined } : undefined;
+  const { data: stateObjectsData, error: objectsError, refetch: refetchFilteredObjects, isPlaceholderData: objectsIsPartial } = useFilteredObjects(basePattern, fulltextEnabled, exactEnabled, fieldFilters);
   const objectsRefetchMs = useMemo(() => {
     const map: Record<string, number | false> = { 'off': false, '30s': 30_000, '1m': 60_000, '5m': 300_000, '10m': 600_000 };
     return map[appSettings.objectsRefreshInterval] ?? false;
@@ -219,11 +222,14 @@ function AppContent() {
   if (statesUpdatedAt > 0) lastValidUpdatedAt.current = statesUpdatedAt;
 
   // ── Cross-context handlers ───────────────────────────────────────────────
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   const handleManualRefresh = useCallback(() => {
+    setIsRefreshing(true);
     void Promise.all([
       refetchFilteredObjects(), refetchAllObjects(), refetchRoomMap(),
       refetchFunctionMap(), refetchStateValues(), refetchRoomEnums(), refetchFunctionEnums(),
-    ]);
+    ]).finally(() => setIsRefreshing(false));
   }, [refetchFilteredObjects, refetchAllObjects, refetchRoomMap, refetchFunctionMap, refetchStateValues, refetchRoomEnums, refetchFunctionEnums]);
 
   const handleCreateDatapointAtPath = useCallback((prefix: string) => {
@@ -255,6 +261,7 @@ function AppContent() {
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
+    <>
     <Layout
       apiConnected={!objectsError && isOnline}
       browserOffline={!browserOnline}
@@ -658,6 +665,18 @@ function AppContent() {
         )}
       </div>
     </Layout>
+    {isRefreshing && createPortal(
+      <div className="fixed inset-0 z-[9997] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 px-8 py-6 flex flex-col items-center gap-3">
+          <RotateCcw size={28} className="text-blue-500 animate-spin" style={{ animationDuration: '1s' }} />
+          <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+            {isEn ? 'Refreshing data…' : 'Daten werden aktualisiert…'}
+          </p>
+        </div>
+      </div>,
+      document.body
+    )}
+    </>
   );
 }
 

@@ -5,7 +5,7 @@ export const queryKeys = {
   objects: {
     root: ['objects'] as const,
     all: ['objects', 'all'] as const,
-    filtered: (pattern: string, fulltext: boolean, exact: boolean) => ['objects', 'filtered', pattern, fulltext, exact] as const,
+    filtered: (pattern: string, fulltext: boolean, exact: boolean, fieldFilters?: { id?: string; name?: string; desc?: string }) => ['objects', 'filtered', pattern, fulltext, exact, fieldFilters?.id, fieldFilters?.name, fieldFilters?.desc] as const,
     detail: (id: string) => ['objects', 'detail', id] as const,
   },
   states: {

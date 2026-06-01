@@ -37,6 +37,9 @@ const SEARCH_COMMANDS: SearchCommand[] = [
   { example: 'function:Licht', descEn: 'Filter by function', descDe: 'Nach Funktion filtern' },
   { example: 'type:state', descEn: 'Filter by object type', descDe: 'Nach Objekttyp filtern' },
   { example: 'role:value.temperature', descEn: 'Filter by role', descDe: 'Nach Rolle filtern' },
+  { example: 'id:alias.*', descEn: 'Filter by ID pattern', descDe: 'Nach ID-Muster filtern' },
+  { example: 'name:Temperatur', descEn: 'Filter by name', descDe: 'Nach Name filtern' },
+  { example: 'desc:Fenster', descEn: 'Filter by description', descDe: 'Nach Beschreibung filtern' },
   { example: 'room:Bad function:Licht', descEn: 'Combine filters', descDe: 'Filter kombinieren' },
 ];
 

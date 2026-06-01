@@ -47,12 +47,15 @@ function loadFilterState(): Partial<FilterState> {
   } catch { return {}; }
 }
 
-function parseEnumFilters(pattern: string): { basePattern: string; roomFilter: string | null; functionFilter: string | null; typeFilter: string | null; roleFilter: string | null } {
+function parseEnumFilters(pattern: string): { basePattern: string; roomFilter: string | null; functionFilter: string | null; typeFilter: string | null; roleFilter: string | null; idFilter: string | null; nameFilter: string | null; descFilter: string | null } {
   let base = pattern;
   let roomFilter: string | null = null;
   let functionFilter: string | null = null;
   let typeFilter: string | null = null;
   let roleFilter: string | null = null;
+  let idFilter: string | null = null;
+  let nameFilter: string | null = null;
+  let descFilter: string | null = null;
   const roomMatch = base.match(/\broom:"([^"]+)"/i) || base.match(/\broom:(\S+)/i);
   if (roomMatch) { roomFilter = roomMatch[1]; base = base.replace(roomMatch[0], '').trim(); }
   const funcMatch = base.match(/\bfunction:"([^"]+)"/i) || base.match(/\bfunction:(\S+)/i);
@@ -61,7 +64,13 @@ function parseEnumFilters(pattern: string): { basePattern: string; roomFilter: s
   if (typeMatch) { typeFilter = typeMatch[1]; base = base.replace(typeMatch[0], '').trim(); }
   const roleMatch = base.match(/\brole:"([^"]+)"/i) || base.match(/\brole:(\S+)/i);
   if (roleMatch) { roleFilter = roleMatch[1]; base = base.replace(roleMatch[0], '').trim(); }
-  return { basePattern: base || '*', roomFilter, functionFilter, typeFilter, roleFilter };
+  const idMatch = base.match(/\bid:"([^"]+)"/i) || base.match(/\bid:(\S+)/i);
+  if (idMatch) { idFilter = idMatch[1]; base = base.replace(idMatch[0], '').trim(); }
+  const nameMatch = base.match(/\bname:"([^"]+)"/i) || base.match(/\bname:(\S+)/i);
+  if (nameMatch) { nameFilter = nameMatch[1]; base = base.replace(nameMatch[0], '').trim(); }
+  const descMatch = base.match(/\bdesc:"([^"]+)"/i) || base.match(/\bdesc:(\S+)/i);
+  if (descMatch) { descFilter = descMatch[1]; base = base.replace(descMatch[0], '').trim(); }
+  return { basePattern: base || '*', roomFilter, functionFilter, typeFilter, roleFilter, idFilter, nameFilter, descFilter };
 }
 
 export { parseEnumFilters };
@@ -98,6 +107,9 @@ interface FilterContextValue {
   functionFilter: string | null;
   typeFilter: string | null;
   roleFilter: string | null;
+  idFilter: string | null;
+  nameFilter: string | null;
+  descFilter: string | null;
   hasAnyFilter: boolean;
   // Setters
   setPattern: (p: string) => void;
@@ -253,7 +265,7 @@ export function FilterContextProvider({ children }: { children: ReactNode }) {
     updateNavState();
   }, [applySnapshot, updateNavState]);
 
-  const { basePattern, roomFilter, functionFilter, typeFilter, roleFilter } = parseEnumFilters(pattern);
+  const { basePattern, roomFilter, functionFilter, typeFilter, roleFilter, idFilter, nameFilter, descFilter } = parseEnumFilters(pattern);
 
   const hasAnyFilter =
     pattern !== '*' || historyOnly || smartOnly || danglingAliasFilter ||
@@ -449,7 +461,7 @@ export function FilterContextProvider({ children }: { children: ReactNode }) {
     quickPatterns, quickOpen, treeFilter, treeSearch, treeExpandSignal, sidebarToggleSeq,
     fulltextEnabled, exactEnabled, idSuggestEnabled,
     savedFiltersList, savedFiltersOpen, saveFilterPromptOpen, saveFilterName,
-    basePattern, roomFilter, functionFilter, typeFilter, roleFilter, hasAnyFilter,
+    basePattern, roomFilter, functionFilter, typeFilter, roleFilter, idFilter, nameFilter, descFilter, hasAnyFilter,
     setPattern, setPage, setHistoryOnly, setSmartOnly, setDanglingAliasFilter,
     setColFilters, setRoomFilters, setRoomsOpen, setFunctionFilters, setFunctionsOpen,
     setTypesOpen, setQuickPatterns, setQuickOpen, setTreeFilter, setTreeSearch,
@@ -467,7 +479,7 @@ export function FilterContextProvider({ children }: { children: ReactNode }) {
     quickPatterns, quickOpen, treeFilter, treeSearch, treeExpandSignal, sidebarToggleSeq,
     fulltextEnabled, exactEnabled, idSuggestEnabled,
     savedFiltersList, savedFiltersOpen, saveFilterPromptOpen, saveFilterName,
-    basePattern, roomFilter, functionFilter, typeFilter, roleFilter, hasAnyFilter,
+    basePattern, roomFilter, functionFilter, typeFilter, roleFilter, idFilter, nameFilter, descFilter, hasAnyFilter,
     setPattern, setPage, setHistoryOnly, setSmartOnly, setDanglingAliasFilter,
     setColFilters, setRoomFilters, setRoomsOpen, setFunctionFilters, setFunctionsOpen,
     setTypesOpen, setQuickPatterns, setQuickOpen, setTreeFilter, setTreeSearch,

@@ -86,14 +86,36 @@ export async function getAllObjects(): Promise<Record<string, IoBrokerObject>> {
   return _objectsFetchPromise;
 }
 
-export async function getObjectsByPattern(pattern: string, fulltext = true, exact = false): Promise<Record<string, IoBrokerObject>> {
+export async function getObjectsByPattern(pattern: string, fulltext = true, exact = false, fieldFilters?: { id?: string; name?: string; desc?: string }): Promise<Record<string, IoBrokerObject>> {
   const all = await getAllObjects();
+
+  // Helper: apply field-specific filters as AND conditions
+  function matchesFieldFilters(id: string, obj: IoBrokerObject): boolean {
+    if (!fieldFilters) return true;
+    if (fieldFilters.id) {
+      const q = fieldFilters.id.toLowerCase();
+      const idLow = id.toLowerCase();
+      const matched = isGlobPattern(fieldFilters.id) ? compilePattern(fieldFilters.id).test(id) : idLow.includes(q);
+      if (!matched) return false;
+    }
+    if (fieldFilters.name) {
+      const q = fieldFilters.name.toLowerCase();
+      const name = getAllNamesForSearch(obj.common?.name).toLowerCase();
+      if (!name.includes(q)) return false;
+    }
+    if (fieldFilters.desc) {
+      const q = fieldFilters.desc.toLowerCase();
+      const desc = (typeof obj.common?.desc === 'string' ? obj.common.desc : '').toLowerCase();
+      if (!desc.includes(q)) return false;
+    }
+    return true;
+  }
 
   if (isGlobPattern(pattern)) {
     const result: Record<string, IoBrokerObject> = {};
     const regex = compilePattern(pattern);
     for (const [id, obj] of Object.entries(all)) {
-      if (!!obj && regex.test(id)) {
+      if (!!obj && regex.test(id) && matchesFieldFilters(id, obj)) {
         result[id] = obj;
       }
     }
@@ -116,7 +138,7 @@ export async function getObjectsByPattern(pattern: string, fulltext = true, exac
     const q = pattern.toLowerCase();
     const result: Record<string, IoBrokerObject> = {};
     for (const [id, obj] of Object.entries(all)) {
-      if (!!obj && id.toLowerCase().includes(q)) {
+      if (!!obj && id.toLowerCase().includes(q) && matchesFieldFilters(id, obj)) {
         result[id] = obj;
       }
     }
@@ -140,7 +162,8 @@ export async function getObjectsByPattern(pattern: string, fulltext = true, exac
   const scored: Array<[string, IoBrokerObject, number]> = [];
   for (const [id, obj] of Object.entries(all)) {
     if (!obj) continue;
-    const score = scoreObject(id, obj, pattern);
+    if (!matchesFieldFilters(id, obj)) continue;
+    const score = pattern === '*' ? 1 : scoreObject(id, obj, pattern);
     if (score > 0) scored.push([id, obj, score]);
   }
   scored.sort((a, b) => b[2] - a[2] || a[0].localeCompare(b[0]));

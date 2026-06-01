@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, useImperativeHandle } from 'react';
+import { createPortal } from 'react-dom';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { X, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, Wrench, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Folder, Cpu, Layers, FileCode2, BarChart2, Copy, Check, Pencil, List, Zap, Indent } from 'lucide-react';
 import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch, useAllScriptSources } from '../hooks/useStates';
@@ -145,13 +146,16 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
     batchFnEnumId, setBatchFnEnumId,
     batchMin, setBatchMin,
     batchMax, setBatchMax,
+    batchDesc, setBatchDesc,
+    batchDescClear, setBatchDescClear,
     batchCanApply,
+    batchProgress,
     handleBatchApply,
   } = useBatchEdit({
     checkedIds,
-    extendMutate: extend.mutate,
-    updateRoomBatchMutate: updateRoomBatch.mutate,
-    updateFnBatchMutate: updateFnBatch.mutate,
+    extendMutateAsync: extend.mutateAsync,
+    updateRoomBatchMutateAsync: updateRoomBatch.mutateAsync,
+    updateFnBatchMutateAsync: updateFnBatch.mutateAsync,
     showToast,
     isEn,
   });
@@ -1020,6 +1024,24 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
             className="w-32"
             language={language}
           />
+          <div className="flex items-center gap-1">
+            <input
+              type="text"
+              value={batchDesc}
+              onChange={(e) => { setBatchDesc(e.target.value); if (batchDescClear) setBatchDescClear(false); }}
+              disabled={batchDescClear}
+              placeholder={batchDescClear ? (isEn ? '— clear —' : '— löschen —') : (isEn ? 'Description…' : 'Beschreibung…')}
+              className={`h-7 w-36 px-2 text-xs rounded border bg-gray-50/70 dark:bg-gray-800/70 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-400 ${batchDescClear ? 'border-red-400 dark:border-red-600 opacity-60' : 'border-gray-300 dark:border-gray-600'}`}
+            />
+            <button
+              type="button"
+              onClick={() => { setBatchDescClear((v) => !v); setBatchDesc(''); }}
+              title={isEn ? 'Clear description on all selected' : 'Beschreibung bei allen Ausgewählten löschen'}
+              className={`h-7 px-1.5 text-xs rounded border transition-colors ${batchDescClear ? 'border-red-400 bg-red-500/10 text-red-500 dark:border-red-600 dark:text-red-400' : 'border-gray-300 dark:border-gray-600 text-gray-400 hover:text-red-500 hover:border-red-400'}`}
+            >
+              <X size={11} />
+            </button>
+          </div>
           <input
             type="number"
             value={batchMin}
@@ -1734,6 +1756,25 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
         onScriptUsedIdsChange={(ids) => setScriptUsedIds(ids)}
         onRequestRefreshScripts={() => setConfirmScriptRefresh(true)}
       />
+    )}
+    {batchProgress && createPortal(
+      <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 px-8 py-6 flex flex-col items-center gap-4 min-w-[240px]">
+          <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+            {isEn ? 'Applying changes…' : 'Änderungen werden angewendet…'}
+          </p>
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+            <div
+              className="h-2 rounded-full bg-blue-500 transition-all duration-150"
+              style={{ width: `${Math.round((batchProgress.done / batchProgress.total) * 100)}%` }}
+            />
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+            {batchProgress.done} / {batchProgress.total}
+          </p>
+        </div>
+      </div>,
+      document.body
     )}
     </>
   );
