@@ -1512,6 +1512,10 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
             )}
             {visibleItems.map((item, idx) => {
               if (item.kind === 'sep') {
+                const isCollapsed = collapsedPrefixes !== null && collapsedPrefixes.has(item.prefix);
+                const hasCheckedInside = isCollapsed && [...checkedIds].some((id) => id.startsWith(item.prefix + '.') || id === item.prefix);
+                const hasFocusedInside = isCollapsed && focusedId !== null && (focusedId.startsWith(item.prefix + '.') || focusedId === item.prefix);
+                const hasHiddenSelection = hasCheckedInside || hasFocusedInside;
                 return (
                   <tr key={`sep_${item.prefix}_${idx}`} className="group/sep cursor-pointer select-none" onContextMenu={(e) => { e.preventDefault(); setSepCtxMenu({ x: e.clientX, y: e.clientY, prefix: item.prefix }); }} onClick={() => setCollapsedPrefixes((prev) => {
                       const base = prev === null ? new Set(allSepPrefixes) : new Set(prev);
@@ -1550,6 +1554,20 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                         })()}
                         {sepCountMap.get(item.prefix) != null && (
                           <span className="text-xs text-gray-400 dark:text-gray-500 font-mono shrink-0">({sepCountMap.get(item.prefix)})</span>
+                        )}
+                        {hasHiddenSelection && (
+                          <span className="flex items-center gap-1 shrink-0">
+                            {hasCheckedInside && (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-500/15 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+                                {[...checkedIds].filter((id) => id.startsWith(item.prefix + '.') || id === item.prefix).length} ✓
+                              </span>
+                            )}
+                            {hasFocusedInside && !hasCheckedInside && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/15 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400">
+                                ↵
+                              </span>
+                            )}
+                          </span>
                         )}
                         {item.prefix && objects[item.prefix] && (
                           <button
