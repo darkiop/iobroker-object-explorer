@@ -57,6 +57,7 @@ export interface StateRowProps {
   isFocused: boolean;
   showDesc?: boolean;
   depth?: number;
+  displayId?: string;
 }
 
 function aliasIdsEqual(a?: string[], b?: string[]): boolean {
@@ -74,7 +75,7 @@ const StateRow = React.memo(function StateRow({
   onSelect, onCheck, onContextMenu, onHistoryClick, onScriptsClick, onNavigateTo, onDeleteClick, onEditJson,
   onSelectRoom, onSelectFunction, onOpenValueModal,
   roomEditForced, fnEditForced, onRoomEditEnd, onFnEditEnd,
-  dateFormat, language, expertMode, isFocused, showDesc = true, scriptSources, depth = 0,
+  dateFormat, language, expertMode, isFocused, showDesc = true, scriptSources, depth = 0, displayId,
 }: StateRowProps) {
   const isEn = language === 'en';
   const show = (key: SortKey) => visibleCols.includes(key);
@@ -88,6 +89,8 @@ const StateRow = React.memo(function StateRow({
   const isAliasObject = id.startsWith('alias.0.');
   const danglingAlias = isAliasObject && !ownTarget;
   const hasAlias = (aliasIds && aliasIds.length > 0) || !!ownTarget || danglingAlias;
+  const aliasTargets = aliasIds?.length ? aliasIds : ownTarget ? [ownTarget] : [];
+  const allTargetsAreAlias = aliasTargets.length > 0 && aliasTargets.every(t => t.startsWith('alias.'));
   const aliasTooltip = aliasIds?.length
     ? `Alias: ${aliasIds.join(', ')}`
     : ownTarget
@@ -169,7 +172,7 @@ const StateRow = React.memo(function StateRow({
           <div className="flex flex-col gap-0.5 min-w-0">
             <div className="flex items-center gap-1.5 min-w-0">
               <TypeIcon type={obj?.common?.type || ''} />
-              <ColoredId id={id} />
+              <ColoredId id={displayId ?? id} />
               <CopyIdButton id={id} />
               <button
                 onClick={(e) => { e.stopPropagation(); onEditJson(id); }}
@@ -282,11 +285,11 @@ const StateRow = React.memo(function StateRow({
                 onClick={(e) => {
                   e.currentTarget.blur();
                   e.stopPropagation();
-                  const targets = aliasIds?.length ? aliasIds : ownTarget ? [ownTarget] : [];
-                  onNavigateTo?.(targets);
+                  onNavigateTo?.(aliasTargets);
                 }}
+                disabled={allTargetsAreAlias}
                 title={aliasTooltip}
-                className="relative p-0.5 rounded text-amber-500 dark:text-amber-400 hover:bg-amber-500/15 dark:hover:bg-amber-500/20 transition-colors"
+                className="relative p-0.5 rounded text-amber-500 dark:text-amber-400 hover:bg-amber-500/15 dark:hover:bg-amber-500/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
               >
                 <Link2 size={15} />
                 {aliasIds && aliasIds.length > 1 && (
@@ -400,7 +403,8 @@ const StateRow = React.memo(function StateRow({
     prev.onSelectRoom === next.onSelectRoom &&
     prev.onSelectFunction === next.onSelectFunction &&
     prev.onOpenValueModal === next.onOpenValueModal &&
-    prev.isFocused === next.isFocused
+    prev.isFocused === next.isFocused &&
+    prev.displayId === next.displayId
   );
 });
 

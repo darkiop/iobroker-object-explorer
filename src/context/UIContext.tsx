@@ -24,6 +24,7 @@ export interface AppSettings {
   customMaxWidths: Partial<Record<SortKey, number>>;
   objectsRefreshInterval: 'off' | '30s' | '1m' | '5m' | '10m';
   includeScripts: boolean;
+  shortenGroupPaths: boolean;
 }
 
 const PAGE_SIZE_OPTIONS = [200, 500, 1000, 3000];
@@ -51,6 +52,7 @@ export function getDefaultAppSettings(): AppSettings {
     customMaxWidths: {},
     objectsRefreshInterval: 'off',
     includeScripts: false,
+    shortenGroupPaths: true,
   };
 }
 
@@ -120,6 +122,7 @@ export function loadAppSettings(): AppSettings {
       customMaxWidths: parseColWidthMap(parsed.customMaxWidths),
       objectsRefreshInterval: (['off','30s','1m','5m','10m'] as const).includes(parsed.objectsRefreshInterval as 'off'|'30s'|'1m'|'5m'|'10m') ? parsed.objectsRefreshInterval as 'off'|'30s'|'1m'|'5m'|'10m' : 'off',
       includeScripts: parsed.includeScripts === true,
+      shortenGroupPaths: parsed.shortenGroupPaths !== false,
     };
   } catch { return fallback; }
 }

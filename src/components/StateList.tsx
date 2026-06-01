@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useImperativeHandle } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { X, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, Wrench, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Folder, Cpu, Layers, FileCode2, BarChart2, Copy, Check, Pencil, List, Zap } from 'lucide-react';
+import { X, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, Wrench, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Folder, Cpu, Layers, FileCode2, BarChart2, Copy, Check, Pencil, List, Zap, Indent } from 'lucide-react';
 import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch, useAllScriptSources } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
@@ -78,7 +78,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const { selectedId, setSelectedId: onSelect, setHistoryModalId: _setHistoryModalId, setEnumManagerOpen, setAliasReplaceInitialStr, setEditInitialTab, setAutoAliasDeviceId } = useSelectionContext();
   const { appSettings, expertMode, scriptUsedIds, scriptsFetching, scriptLastUpdated, setScriptUsedIds, setConfirmScriptRefresh, handleToggleExpertMode: onToggleExpertMode, handleToggleGroupByPath: onToggleGroupByPath, persistSettings } = useAppSettingsContext();
 
-  const { language = 'en', dateFormat = 'de', visibleCols: settingsVisibleCols, toolbarLabels = true, tableFontSize = 'normal', showDesc = true, groupByPath = false, customDefaultWidths, customMinWidths, customMaxWidths, pageSize } = appSettings;
+  const { language = 'en', dateFormat = 'de', visibleCols: settingsVisibleCols, toolbarLabels = true, tableFontSize = 'normal', showDesc = true, groupByPath = false, shortenGroupPaths = true, customDefaultWidths, customMinWidths, customMaxWidths, pageSize } = appSettings;
   const onOpenEnumManager = React.useCallback(() => setEnumManagerOpen(true), [setEnumManagerOpen]);
   const onOpenAliasReplace = React.useCallback((initialStr?: string) => setAliasReplaceInitialStr(initialStr ?? null), [setAliasReplaceInitialStr]);
   const onScriptsClick = React.useCallback((id: string) => { onSelect(id); setEditInitialTab('scripts'); }, [onSelect, setEditInitialTab]);
@@ -380,7 +380,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   }, [sortedIds, valueFilter, valueFilterEmpty, tsFilterParsed, dateFormat, scriptsFilterActive, ackFilter, scriptSources,
     (valueFilter || valueFilterEmpty || tsFilterParsed.mode !== 'none' || ackFilter) ? states : null]);
 
-  type DisplayItem = { kind: 'row'; id: string; depth: number } | { kind: 'sep'; prefix: string; isState: boolean; depth: number };
+  type DisplayItem = { kind: 'row'; id: string; depth: number; parentPrefix?: string } | { kind: 'sep'; prefix: string; isState: boolean; depth: number; parentPrefix?: string };
 
   // All ancestor prefixes at every level, used for collapse/expand logic
   const allSepPrefixes = useMemo((): Set<string> => {
@@ -432,16 +432,16 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
     }
 
     const items: DisplayItem[] = [];
-    function visit(prefix: string, depth: number) {
-      items.push({ kind: 'sep', prefix, depth, isState: filteredIdSet.has(prefix) });
+    function visit(prefix: string, depth: number, parentPrefix?: string) {
+      items.push({ kind: 'sep', prefix, depth, isState: filteredIdSet.has(prefix), parentPrefix });
       const isCollapsed = collapsedPrefixes === null || collapsedPrefixes.has(prefix);
       if (!isCollapsed) {
         const children = [...(childPrefixesMap.get(prefix) ?? [])].sort((a, b) =>
           a.localeCompare(b, undefined, { sensitivity: 'base' })
         );
-        for (const child of children) visit(child, depth + 1);
+        for (const child of children) visit(child, depth + 1, prefix);
         for (const id of (directLeavesMap.get(prefix) ?? [])) {
-          items.push({ kind: 'row', id, depth });
+          items.push({ kind: 'row', id, depth, parentPrefix: prefix });
         }
       }
     }
@@ -818,6 +818,19 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
             }
           </span>
         </button>
+        {groupByPath && (
+          <button
+            onClick={() => persistSettings({ ...appSettings, shortenGroupPaths: !shortenGroupPaths })}
+            title={shortenGroupPaths ? (isEn ? 'Show full paths' : 'Vollständige Pfade anzeigen') : (isEn ? 'Shorten paths' : 'Pfade kürzen')}
+            className={`p-2 rounded-lg transition-colors ${
+              shortenGroupPaths
+                ? 'text-blue-600 bg-blue-500/15 hover:bg-blue-500/25 dark:text-blue-400 dark:hover:bg-blue-500/20'
+                : 'text-gray-400 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-500 dark:hover:text-blue-400 dark:hover:bg-blue-500/10'
+            }`}
+          >
+            <Indent size={17} />
+          </button>
+        )}
         <button
           onClick={() => onToggleExpertMode?.()}
           title={expertMode ? (isEn ? 'Disable expert mode' : 'Expertenmodus deaktivieren') : (isEn ? 'Enable expert mode' : 'Expertenmodus aktivieren')}
@@ -1505,7 +1518,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                             : <FolderOpen size={14} className="text-yellow-500/80 shrink-0" />
                         }
                         {item.prefix
-                          ? <ColoredId id={item.prefix} className="text-sm font-mono font-bold" />
+                          ? <ColoredId id={shortenGroupPaths && item.parentPrefix ? item.prefix.slice(item.parentPrefix.length + 1) : item.prefix} className="text-sm font-mono font-bold" />
                           : <span className="text-sm text-gray-400 dark:text-gray-500 font-mono font-bold italic">root</span>
                         }
                         {item.prefix && allObjects[item.prefix]?.common?.name && (() => {
@@ -1582,10 +1595,12 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                 );
               }
               const id = item.id;
+              const displayId = shortenGroupPaths && item.parentPrefix ? id.slice(item.parentPrefix.length + 1) : undefined;
               return (
                 <StateRow
                   key={id}
                   id={id}
+                  displayId={displayId}
                   state={states[id]}
                   obj={objects[id]}
                   roomName={roomMap[id] || ''}
