@@ -712,7 +712,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
           <RotateCcw size={15} className={scriptsFetching ? 'animate-spin' : ''} />
           {showToolbarLabels && (
             <>
-              <span>Rescan Script Index</span>
+              <span>Script Index</span>
               {scriptLastUpdated && (
                 <span className="text-[10px] font-mono opacity-60">{new Date(scriptLastUpdated).toLocaleTimeString()}</span>
               )}

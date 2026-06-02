@@ -24,7 +24,7 @@ import { hasHistory, hasSmartName, hasCustomEnabled } from './api/iobroker';
 import type { StateListHandle } from './components/StateList';
 import { filterObjectIds } from './utils/filterObjectIds';
 import type { IoBrokerObject, IoBrokerState } from './types/iobroker';
-import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RotateCcw, Layers, X, Check, Bookmark, AlertTriangle, Tag, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RotateCcw, RefreshCw, Layers, X, Check, Bookmark, AlertTriangle, Tag, ArrowLeft, ArrowRight } from 'lucide-react';
 import { getTypeColor } from './utils/typeColor';
 import { FilterContextProvider, useFilterContext } from './context/FilterContext';
 import { SelectionContextProvider, useSelectionContext } from './context/SelectionContext';
@@ -226,10 +226,11 @@ function AppContent() {
 
   const handleManualRefresh = useCallback(() => {
     setIsRefreshing(true);
-    void Promise.all([
+    const timeout = setTimeout(() => setIsRefreshing(false), 6_000);
+    void Promise.allSettled([
       refetchFilteredObjects(), refetchAllObjects(), refetchRoomMap(),
       refetchFunctionMap(), refetchStateValues(), refetchRoomEnums(), refetchFunctionEnums(),
-    ]).finally(() => setIsRefreshing(false));
+    ]).finally(() => { clearTimeout(timeout); setIsRefreshing(false); });
   }, [refetchFilteredObjects, refetchAllObjects, refetchRoomMap, refetchFunctionMap, refetchStateValues, refetchRoomEnums, refetchFunctionEnums]);
 
   const handleCreateDatapointAtPath = useCallback((prefix: string) => {
@@ -668,7 +669,7 @@ function AppContent() {
     {isRefreshing && createPortal(
       <div className="fixed inset-0 z-[9997] flex items-center justify-center bg-black/40 backdrop-blur-sm">
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 px-8 py-6 flex flex-col items-center gap-3">
-          <RotateCcw size={28} className="text-blue-500 animate-spin" style={{ animationDuration: '1s' }} />
+          <RefreshCw size={28} className="text-blue-500 animate-spin" style={{ animationDuration: '1s' }} />
           <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
             {isEn ? 'Refreshing data…' : 'Daten werden aktualisiert…'}
           </p>
