@@ -26,6 +26,7 @@ export interface AppSettings {
   includeScripts: boolean;
   shortenGroupPaths: boolean;
   showObjectIcons: boolean;
+  showObjectTypeIcons: boolean;
 }
 
 const PAGE_SIZE_OPTIONS = [200, 500, 1000, 3000];
@@ -55,6 +56,7 @@ export function getDefaultAppSettings(): AppSettings {
     includeScripts: false,
     shortenGroupPaths: true,
     showObjectIcons: false,
+    showObjectTypeIcons: true,
   };
 }
 
@@ -126,6 +128,7 @@ export function loadAppSettings(): AppSettings {
       includeScripts: parsed.includeScripts === true,
       shortenGroupPaths: parsed.shortenGroupPaths !== false,
       showObjectIcons: parsed.showObjectIcons === true,
+      showObjectTypeIcons: parsed.showObjectTypeIcons !== false,
     };
   } catch { return fallback; }
 }

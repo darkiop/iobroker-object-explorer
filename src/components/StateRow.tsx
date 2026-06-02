@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Trash2, History, Mic2, Link2, Wrench, Lock, FileCode2 } from 'lucide-react';
+import { Trash2, History, Mic2, Link2, Wrench, Lock, FileCode2, Cpu, Layers as LayersIcon, Folder } from 'lucide-react';
 import type { IoBrokerState, IoBrokerObject } from '../types/iobroker';
 import type { SortKey, DateFormatSetting } from './stateListColumns';
 import EditableNameCell from './cells/EditableNameCell';
@@ -36,7 +36,7 @@ export interface StateRowProps {
   roomEnums: { id: string; name: string }[];
   fnEnums: { id: string; name: string }[];
   onSelect: (id: string) => void;
-  onCheck: (id: string, checked: boolean) => void;
+  onCheck: (id: string, checked: boolean, shiftKey?: boolean) => void;
   onContextMenu: (x: number, y: number, id: string) => void;
   onHistoryClick: (id: string) => void;
   onScriptsClick?: (id: string) => void;
@@ -56,6 +56,7 @@ export interface StateRowProps {
   expertMode: boolean;
   isFocused: boolean;
   showDesc?: boolean;
+  showObjectTypeIcons?: boolean;
   depth?: number;
   displayId?: string;
 }
@@ -75,7 +76,7 @@ const StateRow = React.memo(function StateRow({
   onSelect, onCheck, onContextMenu, onHistoryClick, onScriptsClick, onNavigateTo, onDeleteClick, onEditJson,
   onSelectRoom, onSelectFunction, onOpenValueModal,
   roomEditForced, fnEditForced, onRoomEditEnd, onFnEditEnd,
-  dateFormat, language, expertMode, isFocused, showDesc = true, scriptSources, depth = 0, displayId,
+  dateFormat, language, expertMode, isFocused, showDesc = true, showObjectTypeIcons = true, scriptSources, depth = 0, displayId,
 }: StateRowProps) {
   const isEn = language === 'en';
   const show = (key: SortKey) => visibleCols.includes(key);
@@ -162,7 +163,7 @@ const StateRow = React.memo(function StateRow({
           <div className={`flex items-center justify-center transition-opacity ${isChecked ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
             <StyledCheckbox
               checked={isChecked}
-              onChange={(e) => onCheck(id, e.target.checked)}
+              onChange={(e) => onCheck(id, e.target.checked, e.nativeEvent instanceof MouseEvent ? e.nativeEvent.shiftKey : false)}
             />
           </div>
         </td>
@@ -171,7 +172,10 @@ const StateRow = React.memo(function StateRow({
         <td data-col="id" className="py-2 font-mono text-xs text-gray-500 dark:text-gray-400 overflow-hidden group/id" style={{ paddingLeft: 12 + depth * 10 }}>
           <div className="flex flex-col gap-0.5 min-w-0">
             <div className="flex items-center gap-1.5 min-w-0">
-              <TypeIcon type={obj?.common?.type || ''} />
+              {showObjectTypeIcons && obj?.type === 'device'  && <Cpu       size={12} className="text-sky-500/80 shrink-0" />}
+              {showObjectTypeIcons && obj?.type === 'channel' && <LayersIcon size={12} className="text-indigo-500/80 shrink-0" />}
+              {showObjectTypeIcons && obj?.type === 'folder'  && <Folder    size={12} className="text-yellow-500/80 shrink-0" />}
+              {showObjectTypeIcons && <TypeIcon type={obj?.common?.type || ''} />}
               <ColoredId id={displayId ?? id} />
               <CopyIdButton id={id} />
               <button

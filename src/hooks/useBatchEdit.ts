@@ -1,21 +1,20 @@
-import { useState, useRef } from 'react';
-import type { UseMutateFunction } from '@tanstack/react-query';
+import { useState } from 'react';
 import type { IoBrokerObjectCommon } from '../types/iobroker';
 
 interface UseBatchEditParams {
   checkedIds: Set<string>;
-  extendMutate: UseMutateFunction<void, Error, { id: string; common: Partial<IoBrokerObjectCommon> }, unknown>;
-  updateRoomBatchMutate: UseMutateFunction<void, Error, { objectIds: string[]; newRoomEnumId: string | null }, unknown>;
-  updateFnBatchMutate: UseMutateFunction<void, Error, { objectIds: string[]; newFnEnumId: string | null }, unknown>;
+  extendMutateAsync: (args: { id: string; common: Partial<IoBrokerObjectCommon> }) => Promise<void>;
+  updateRoomBatchMutateAsync: (args: { objectIds: string[]; newRoomEnumId: string | null }) => Promise<void>;
+  updateFnBatchMutateAsync: (args: { objectIds: string[]; newFnEnumId: string | null }) => Promise<void>;
   showToast: (msg: string, type?: 'success' | 'error') => void;
   isEn: boolean;
 }
 
 export function useBatchEdit({
   checkedIds,
-  extendMutate,
-  updateRoomBatchMutate,
-  updateFnBatchMutate,
+  extendMutateAsync,
+  updateRoomBatchMutateAsync,
+  updateFnBatchMutateAsync,
   showToast,
   isEn,
 }: UseBatchEditParams) {
@@ -27,10 +26,7 @@ export function useBatchEdit({
   const [batchMax, setBatchMax] = useState('');
   const [batchDesc, setBatchDesc] = useState('');
   const [batchDescClear, setBatchDescClear] = useState(false);
-
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
-  const pendingRef = useRef(0);
-  const totalRef = useRef(0);
 
   const batchCanApply =
     batchRole.trim() !== '' || batchUnit.trim() !== '' ||
@@ -38,62 +34,36 @@ export function useBatchEdit({
     batchMin.trim() !== '' || batchMax.trim() !== '' ||
     batchDesc.trim() !== '' || batchDescClear;
 
-  function handleBatchApply() {
+  async function handleBatchApply() {
     const ids = [...checkedIds];
-
-    // Count total ops upfront
-    let total = 0;
-    if (batchRole.trim()) total += ids.length;
-    if (batchUnit.trim()) total += ids.length;
-    if (batchMin.trim() !== '' && !isNaN(parseFloat(batchMin.trim()))) total += ids.length;
-    if (batchMax.trim() !== '' && !isNaN(parseFloat(batchMax.trim()))) total += ids.length;
-    if (batchDesc.trim() || batchDescClear) total += ids.length;
-    if (batchRoomEnumId !== '') total += 1;
-    if (batchFnEnumId !== '') total += 1;
-
-    pendingRef.current = 0;
-    totalRef.current = total;
-    if (total > 1) setBatchProgress({ done: 0, total });
-
-    const onSettled = () => {
-      pendingRef.current += 1;
-      setBatchProgress({ done: pendingRef.current, total: totalRef.current });
-      if (pendingRef.current >= totalRef.current) {
-        setTimeout(() => setBatchProgress(null), 600);
-      }
-    };
-    const onErr = (err: unknown) => {
-      showToast((isEn ? 'Save failed: ' : 'Speichern fehlgeschlagen: ') + String(err));
-      onSettled();
-    };
-    const onSuccess = () => onSettled();
+    const promises: Promise<void>[] = [];
 
     if (batchRole.trim()) {
-      ids.forEach((id) => extendMutate({ id, common: { role: batchRole.trim() } }, { onError: onErr, onSuccess }));
+      ids.forEach((id) => promises.push(extendMutateAsync({ id, common: { role: batchRole.trim() } })));
     }
     if (batchUnit.trim()) {
-      ids.forEach((id) => extendMutate({ id, common: { unit: batchUnit.trim() } }, { onError: onErr, onSuccess }));
+      ids.forEach((id) => promises.push(extendMutateAsync({ id, common: { unit: batchUnit.trim() } })));
     }
     if (batchMin.trim() !== '') {
       const v = parseFloat(batchMin.trim());
-      if (!isNaN(v)) ids.forEach((id) => extendMutate({ id, common: { min: v } }, { onError: onErr, onSuccess }));
+      if (!isNaN(v)) ids.forEach((id) => promises.push(extendMutateAsync({ id, common: { min: v } })));
     }
     if (batchMax.trim() !== '') {
       const v = parseFloat(batchMax.trim());
-      if (!isNaN(v)) ids.forEach((id) => extendMutate({ id, common: { max: v } }, { onError: onErr, onSuccess }));
+      if (!isNaN(v)) ids.forEach((id) => promises.push(extendMutateAsync({ id, common: { max: v } })));
     }
     if (batchDescClear) {
-      ids.forEach((id) => extendMutate({ id, common: { desc: '' } }, { onError: onErr, onSuccess }));
+      ids.forEach((id) => promises.push(extendMutateAsync({ id, common: { desc: '' } })));
     } else if (batchDesc.trim()) {
-      ids.forEach((id) => extendMutate({ id, common: { desc: batchDesc.trim() } }, { onError: onErr, onSuccess }));
+      ids.forEach((id) => promises.push(extendMutateAsync({ id, common: { desc: batchDesc.trim() } })));
     }
     if (batchRoomEnumId !== '') {
       const newRoomEnumId = batchRoomEnumId === '__none__' ? null : batchRoomEnumId;
-      updateRoomBatchMutate({ objectIds: ids, newRoomEnumId }, { onError: onErr, onSuccess });
+      promises.push(updateRoomBatchMutateAsync({ objectIds: ids, newRoomEnumId }));
     }
     if (batchFnEnumId !== '') {
       const newFnEnumId = batchFnEnumId === '__none__' ? null : batchFnEnumId;
-      updateFnBatchMutate({ objectIds: ids, newFnEnumId }, { onError: onErr, onSuccess });
+      promises.push(updateFnBatchMutateAsync({ objectIds: ids, newFnEnumId }));
     }
 
     setBatchRole('');
@@ -104,6 +74,25 @@ export function useBatchEdit({
     setBatchMax('');
     setBatchDesc('');
     setBatchDescClear(false);
+
+    if (promises.length <= 1) {
+      const results = await Promise.allSettled(promises);
+      results.forEach((r) => { if (r.status === 'rejected') showToast((isEn ? 'Save failed: ' : 'Speichern fehlgeschlagen: ') + String(r.reason)); });
+      return;
+    }
+
+    const total = promises.length;
+    let done = 0;
+    setBatchProgress({ done: 0, total });
+
+    await Promise.allSettled(promises.map((p) =>
+      p.then(
+        () => { done++; setBatchProgress({ done, total }); },
+        (err) => { done++; setBatchProgress({ done, total }); showToast((isEn ? 'Save failed: ' : 'Speichern fehlgeschlagen: ') + String(err)); }
+      )
+    ));
+
+    setTimeout(() => setBatchProgress(null), 600);
   }
 
   return {

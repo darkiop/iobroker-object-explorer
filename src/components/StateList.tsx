@@ -79,7 +79,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const { selectedId, setSelectedId: onSelect, setHistoryModalId: _setHistoryModalId, setEnumManagerOpen, setAliasReplaceInitialStr, setEditInitialTab, setAutoAliasDeviceId } = useSelectionContext();
   const { appSettings, expertMode, scriptUsedIds, scriptsFetching, scriptLastUpdated, setScriptUsedIds, setConfirmScriptRefresh, handleToggleExpertMode: onToggleExpertMode, handleToggleGroupByPath: onToggleGroupByPath, persistSettings } = useAppSettingsContext();
 
-  const { language = 'en', dateFormat = 'de', visibleCols: settingsVisibleCols, toolbarLabels = true, tableFontSize = 'normal', showDesc = true, groupByPath = false, shortenGroupPaths = true, showObjectIcons = false, customDefaultWidths, customMinWidths, customMaxWidths, pageSize } = appSettings;
+  const { language = 'en', dateFormat = 'de', visibleCols: settingsVisibleCols, toolbarLabels = true, tableFontSize = 'normal', showDesc = true, groupByPath = false, shortenGroupPaths = true, showObjectIcons = false, showObjectTypeIcons = true, customDefaultWidths, customMinWidths, customMaxWidths, pageSize } = appSettings;
   const onOpenEnumManager = React.useCallback(() => setEnumManagerOpen(true), [setEnumManagerOpen]);
   const onOpenAliasReplace = React.useCallback((initialStr?: string) => setAliasReplaceInitialStr(initialStr ?? null), [setAliasReplaceInitialStr]);
   const onScriptsClick = React.useCallback((id: string) => { onSelect(id); setEditInitialTab('scripts'); }, [onSelect, setEditInitialTab]);
@@ -499,12 +499,33 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
       .catch((err) => showToast((isEn ? 'Delete failed: ' : 'Löschen fehlgeschlagen: ') + String(err)));
   }
 
-  const handleCheckRow = React.useCallback((id: string, checked: boolean) => {
+  const lastCheckedIdRef = useRef<string | null>(null);
+  const filteredIdsRef = useRef<string[]>(filteredIds);
+  filteredIdsRef.current = filteredIds;
+
+  const handleCheckRow = React.useCallback((id: string, checked: boolean, shiftKey?: boolean) => {
+    if (shiftKey && checked && lastCheckedIdRef.current) {
+      const ids = filteredIdsRef.current;
+      const lastId = lastCheckedIdRef.current;
+      const lastIdx = ids.indexOf(lastId);
+      const curIdx = ids.indexOf(id);
+      if (lastIdx !== -1 && curIdx !== -1) {
+        const [from, to] = lastIdx < curIdx ? [lastIdx, curIdx] : [curIdx, lastIdx];
+        setCheckedIds((prev) => {
+          const next = new Set(prev);
+          ids.slice(from, to + 1).forEach((rid) => next.add(rid));
+          return next;
+        });
+        lastCheckedIdRef.current = id;
+        return;
+      }
+    }
     setCheckedIds((prev) => {
       const next = new Set(prev);
       checked ? next.add(id) : next.delete(id);
       return next;
     });
+    if (checked) lastCheckedIdRef.current = id;
   }, []);
 
   const handleRowContextMenu = React.useCallback((x: number, y: number, id: string) => {
@@ -620,7 +641,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
         <button
           onClick={() => setNewDatapointOpen(true)}
           title={isEn ? 'New datapoint' : 'Neuer Datenpunkt'}
-          className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-green-600 hover:bg-green-500/10 dark:text-gray-400 dark:hover:text-green-400 dark:hover:bg-green-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
+          className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
         >
           <Plus size={16} />
           {showToolbarLabels && <span>{isEn ? 'New' : 'Neu'}</span>}
@@ -661,7 +682,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
         <button
           onClick={() => setImportOpen(true)}
           title={isEn ? 'Import datapoints (JSON)' : 'Datenpunkte importieren (JSON)'}
-          className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-violet-600 hover:bg-violet-500/10 dark:text-gray-400 dark:hover:text-violet-400 dark:hover:bg-violet-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
+          className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
         >
           <Upload size={16} />
           {showToolbarLabels && <span>Import</span>}
@@ -669,7 +690,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
         <button
           onClick={() => onOpenEnumManager?.()}
           title={isEn ? 'Manage enums (rooms & functions)' : 'Enums verwalten (Räume & Funktionen)'}
-          className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-amber-600 hover:bg-amber-500/10 dark:text-gray-400 dark:hover:text-amber-400 dark:hover:bg-amber-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
+          className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
         >
           <Tag size={15} />
           {showToolbarLabels && <span>{isEn ? 'Enum Management' : 'Enum Management'}</span>}
@@ -713,7 +734,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
               title={autoAliasTarget
                 ? (isEn ? `Auto-create aliases for: ${autoAliasTarget}` : `Aliases auto-erstellen für: ${autoAliasTarget}`)
                 : (isEn ? 'Set a tree filter or ID filter to a device path first' : 'Zuerst einen Baum- oder ID-Filter auf einen Gerätepfad setzen')}
-              className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-emerald-600 hover:bg-emerald-500/10 dark:text-gray-400 dark:hover:text-emerald-400 dark:hover:bg-emerald-500/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
+              className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
             >
               <Link2 size={15} />
               {showToolbarLabels && <span>{isEn ? 'Auto Alias' : 'Auto Alias'}</span>}
@@ -748,7 +769,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
               }
               className={`flex items-center gap-1.5 rounded-lg transition-colors disabled:cursor-not-allowed ${
                 enabled
-                  ? `text-gray-500 hover:text-purple-600 hover:bg-purple-500/10 dark:text-gray-400 dark:hover:text-purple-400 dark:hover:bg-purple-500/10`
+                  ? `text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10`
                   : `text-gray-300 dark:text-gray-600`
               } ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
             >
@@ -977,8 +998,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
     <>
     <div className="flex flex-col h-full">
       {toolbar}
-      {checkedIds.size > 0 && (
-        <div className="flex items-center gap-2 px-3 py-1.5 shrink-0 border-b border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20 flex-wrap">
+      <div className={`flex items-center gap-2 px-3 py-1.5 shrink-0 border-b border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20 flex-wrap transition-all ${checkedIds.size > 0 ? 'visible' : 'invisible h-0 py-0 overflow-hidden border-0'}`}>
           <span className="text-xs text-blue-600 dark:text-blue-400 font-medium shrink-0 whitespace-nowrap">
             {checkedIds.size} {isEn ? 'selected:' : 'ausgewählt:'}
           </span>
@@ -1063,8 +1083,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
           >
             {isEn ? 'Apply' : 'Anwenden'}
           </button>
-        </div>
-      )}
+      </div>
       {newDatapointOpen && (
         <NewDatapointModal
           onClose={() => { setNewDatapointOpen(false); setNewDatapointPrefix(null); }}
@@ -1727,7 +1746,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                   language={language}
                   expertMode={expertMode}
                   isFocused={focusedId === id && selectedId !== id}
-                  showDesc={showDesc}
+                  showDesc={showDesc} showObjectTypeIcons={showObjectTypeIcons}
                   depth={item.depth}
                 />
               );
