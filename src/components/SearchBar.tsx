@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Check } from 'lucide-react';
 
 const SEARCH_ALL = '*';
@@ -22,6 +22,7 @@ interface SearchBarProps {
   functionNames?: string[];
   roleNames?: string[];
   allObjectIds?: string[];
+  saveButton?: React.ReactNode;
 }
 
 interface Suggestion {
@@ -144,6 +145,7 @@ export default function SearchBar({
   functionNames = [],
   roleNames = [],
   allObjectIds = [],
+  saveButton,
 }: SearchBarProps) {
   const [value, setValue] = useState('');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -301,6 +303,7 @@ export default function SearchBar({
         <CheckToggle checked={fulltextEnabled} onChange={(v) => onFulltextChange?.(v)} label={isEn ? 'Full text' : 'Volltext'} />
         <CheckToggle checked={exactEnabled} onChange={(v) => onExactChange?.(v)} label={isEn ? 'Exact' : 'Exakt'} />
         <CheckToggle checked={idSuggestEnabled} onChange={(v) => onIdSuggestChange?.(v)} label={isEn ? 'Suggestions' : 'Vorschläge'} />
+        {saveButton && <div className="ml-auto">{saveButton}</div>}
       </div>
     </form>
   );

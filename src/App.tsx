@@ -287,29 +287,17 @@ function AppContent() {
               idSuggestEnabled={idSuggestEnabled}
               onIdSuggestChange={setIdSuggestEnabled}
               allObjectIds={idSuggestEnabled ? Object.keys(allObjects) : undefined}
-            />
-            {hasAnyFilter && (
-              <div className="flex gap-1">
+              saveButton={hasAnyFilter && !saveFilterPromptOpen ? (
                 <button
-                  onClick={resetAllFilters}
-                  className="flex items-center justify-center gap-1.5 flex-1 px-2 py-1 text-xs rounded text-red-500 hover:text-red-700 hover:bg-red-500/10 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-500/10 transition-colors"
-                  title={isEn ? 'Reset all filters' : 'Alle Filter zurücksetzen'}
+                  onClick={() => { setSaveFilterPromptOpen(true); setSaveFilterName(''); }}
+                  className="flex items-center gap-1 px-1.5 py-0.5 text-xs rounded text-blue-500 hover:text-blue-700 hover:bg-blue-500/10 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-500/10 transition-colors"
+                  title={isEn ? 'Save current filter' : 'Filter speichern'}
                 >
-                  <RotateCcw size={11} />
-                  {isEn ? 'Reset filters' : 'Filter zurücksetzen'}
+                  <Bookmark size={11} />
+                  {isEn ? 'Save' : 'Speichern'}
                 </button>
-                {!saveFilterPromptOpen && (
-                  <button
-                    onClick={() => { setSaveFilterPromptOpen(true); setSaveFilterName(''); }}
-                    className="flex items-center justify-center gap-1 px-2 py-1 text-xs rounded text-blue-500 hover:text-blue-700 hover:bg-blue-500/10 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-500/10 transition-colors"
-                    title={isEn ? 'Save current filter' : 'Filter speichern'}
-                  >
-                    <Bookmark size={11} />
-                    {isEn ? 'Save' : 'Speichern'}
-                  </button>
-                )}
-              </div>
-            )}
+              ) : undefined}
+            />
             {saveFilterPromptOpen && (
               <div className="flex items-center gap-1">
                 <input

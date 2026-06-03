@@ -505,9 +505,6 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const lastCheckedIdRef = useRef<string | null>(null);
   const filteredIdsRef = useRef<string[]>(filteredIds);
   filteredIdsRef.current = filteredIds;
-  const optimizeOpenRef = useRef(optimizeOpen);
-  optimizeOpenRef.current = optimizeOpen;
-
   const handleCheckRow = React.useCallback((id: string, checked: boolean, shiftKey?: boolean) => {
     if (shiftKey && checked && lastCheckedIdRef.current) {
       const ids = filteredIdsRef.current;
@@ -532,7 +529,6 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
     });
     if (checked) {
       lastCheckedIdRef.current = id;
-      if (!optimizeOpenRef.current) { setOptimizePath(id); setOptimizeOpen(true); }
     }
   }, []);
 
