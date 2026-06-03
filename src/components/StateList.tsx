@@ -7,6 +7,7 @@ import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
 import NewDatapointModal from './NewDatapointModal';
 import ImportDatapointsModal from './ImportDatapointsModal';
+import OptimizeModal from './OptimizeModal';
 import ObjectEditModal from './ObjectEditModal';
 import CreateAliasModal from './CreateAliasModal';
 import CopyDatapointModal from './CopyDatapointModal';
@@ -115,6 +116,8 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const [newDatapointOpen, setNewDatapointOpen] = useState(false);
   const [newDatapointPrefix, setNewDatapointPrefix] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [optimizeOpen, setOptimizeOpen] = useState(false);
+  const [optimizePath, setOptimizePath] = useState<string | undefined>(undefined);
   const [historyModalId, setHistoryModalId] = useState<string | null>(null);
   const [historyInitialExtra, setHistoryInitialExtra] = useState<import('./HistoryChart').ExtraSeries[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -502,6 +505,8 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const lastCheckedIdRef = useRef<string | null>(null);
   const filteredIdsRef = useRef<string[]>(filteredIds);
   filteredIdsRef.current = filteredIds;
+  const optimizeOpenRef = useRef(optimizeOpen);
+  optimizeOpenRef.current = optimizeOpen;
 
   const handleCheckRow = React.useCallback((id: string, checked: boolean, shiftKey?: boolean) => {
     if (shiftKey && checked && lastCheckedIdRef.current) {
@@ -525,7 +530,10 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
       checked ? next.add(id) : next.delete(id);
       return next;
     });
-    if (checked) lastCheckedIdRef.current = id;
+    if (checked) {
+      lastCheckedIdRef.current = id;
+      if (!optimizeOpenRef.current) { setOptimizePath(id); setOptimizeOpen(true); }
+    }
   }, []);
 
   const handleRowContextMenu = React.useCallback((x: number, y: number, id: string) => {
@@ -693,7 +701,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
           className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
         >
           <Tag size={15} />
-          {showToolbarLabels && <span>{isEn ? 'Enum Management' : 'Enum Management'}</span>}
+          {showToolbarLabels && <span>{isEn ? 'Enums' : 'Enums'}</span>}
         </button>
         <button
           onClick={() => setShowStats(true)}
@@ -706,19 +714,37 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
         <button
           onClick={() => setConfirmScriptRefresh(true)}
           disabled={scriptsFetching}
-          title={isEn ? 'Refresh script usage index' : 'Skript-Index aktualisieren'}
+          title={scriptLastUpdated
+            ? `${isEn ? 'Refresh script usage index' : 'Skript-Index aktualisieren'} · ${isEn ? 'Last update' : 'Zuletzt'}: ${new Date(scriptLastUpdated).toLocaleTimeString()}`
+            : isEn ? 'Refresh script usage index' : 'Skript-Index aktualisieren'}
           className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
         >
           <RotateCcw size={15} className={scriptsFetching ? 'animate-spin' : ''} />
-          {showToolbarLabels && (
-            <>
-              <span>Script Index</span>
-              {scriptLastUpdated && (
-                <span className="text-[10px] font-mono opacity-60">{new Date(scriptLastUpdated).toLocaleTimeString()}</span>
-              )}
-            </>
-          )}
+          {showToolbarLabels && <span>{isEn ? 'Script Index' : 'Skript-Index'}</span>}
         </button>
+        <button
+          onClick={() => { setOptimizePath(undefined); setOptimizeOpen(true); }}
+          title={isEn ? 'Analyze datapoints' : 'Datenpunkte analysieren'}
+          className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
+        >
+          <BarChart2 size={15} />
+          {showToolbarLabels && <span>{isEn ? 'Optimize' : 'Optimieren'}</span>}
+        </button>
+        {[...checkedIds].some((id) => id.startsWith('alias.')) && (
+          <button
+            onClick={() => {
+              const firstAliasId = [...checkedIds].find((id) => id.startsWith('alias.'));
+              const rawTarget = firstAliasId ? objects[firstAliasId]?.common?.alias?.id : undefined;
+              const initialStr = typeof rawTarget === 'string' ? rawTarget : (rawTarget?.read ?? rawTarget?.write ?? '');
+              onOpenAliasReplace?.(initialStr);
+            }}
+            title={isEn ? 'Find & Replace in alias targets' : 'Alias-Ziele suchen & ersetzen'}
+            className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
+          >
+            <Link2 size={15} />
+            {showToolbarLabels && <span>{isEn ? 'Alias Replace' : 'Alias Ersetzen'}</span>}
+          </button>
+        )}
         {(() => {
           const idFilter = colFilters.id?.trim() ?? '';
           const autoAliasTarget = (() => {
@@ -778,21 +804,6 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
             </button>
           );
         })()}
-        {[...checkedIds].some((id) => id.startsWith('alias.')) && (
-          <button
-            onClick={() => {
-              const firstAliasId = [...checkedIds].find((id) => id.startsWith('alias.'));
-              const rawTarget = firstAliasId ? objects[firstAliasId]?.common?.alias?.id : undefined;
-              const initialStr = typeof rawTarget === 'string' ? rawTarget : (rawTarget?.read ?? rawTarget?.write ?? '');
-              onOpenAliasReplace?.(initialStr);
-            }}
-            title={isEn ? 'Find & Replace in alias targets' : 'Alias-Ziele suchen & ersetzen'}
-            className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
-          >
-            <Link2 size={15} />
-            {showToolbarLabels && <span>{isEn ? 'Alias Replace' : 'Alias Ersetzen'}</span>}
-          </button>
-        )}
         {checkedIds.size > 0 && (
           <button
             onClick={() => setMultiDeleteOpen(true)}
@@ -1100,6 +1111,19 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
           existingIds={allObjectIds}
         />
       )}
+      {optimizeOpen && (
+        <OptimizeModal
+          onClose={() => { setOptimizeOpen(false); setOptimizePath(undefined); }}
+          language={language}
+          allObjects={allObjects}
+          roomMap={Object.fromEntries(roomEnums.map(r => [r.id, r.name]))}
+          functionMap={Object.fromEntries(fnEnums.map(f => [f.id, f.name]))}
+          roomEnums={roomEnums}
+          fnEnums={fnEnums}
+          initialPath={optimizePath}
+          onOpenEdit={(id) => { setOptimizeOpen(false); setOptimizePath(undefined); onSelect(id); }}
+        />
+      )}
       {historyModalId && (
         <HistoryModal
           stateId={historyModalId}
@@ -1251,6 +1275,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
           items.push({ separator: true } as const);
         }
         items.push({ icon: <Search size={13} />, label: isEn ? 'Set as filter' : 'Als Filter setzen', onClick: () => setDraftAndPropagate({ ...colFiltersDraft, id: ctxId }) });
+        items.push({ icon: <BarChart2 size={13} />, label: isEn ? 'Set as filter & Optimize…' : 'Als Filter setzen & Optimieren…', onClick: () => { setOptimizeOpen(true); setOptimizePath(ctxId); setCtxMenu(null); } });
         items.push({ icon: <Home size={13} />, label: isEn ? 'Edit room' : 'Raum bearbeiten', onClick: () => setRoomEditId(ctxId) });
         items.push({ icon: <Zap size={13} />, label: isEn ? 'Edit function' : 'Funktion bearbeiten', onClick: () => setFnEditId(ctxId) });
         items.push({ icon: <FileEdit size={13} />, label: isEn ? 'Edit object' : 'Objekt bearbeiten', onClick: () => setEditObjId(ctxId) });
@@ -1323,6 +1348,16 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
           sepItems.push({ separator: true } as const);
           sepItems.push({ icon: <Link2 size={13} />, label: isEn ? 'Auto-create aliases…' : 'Aliases auto-erstellen…', onClick: () => setAutoAliasDeviceId(prefix) });
         }
+        sepItems.push({ separator: true } as const);
+        sepItems.push({
+          icon: <BarChart2 size={13} />,
+          label: isEn ? 'Optimize…' : 'Optimieren…',
+          onClick: () => {
+            setOptimizePath(prefix + '.*');
+            setOptimizeOpen(true);
+            setSepCtxMenu(null);
+          },
+        });
         sepItems.push({ separator: true } as const);
         sepItems.push({
           icon: <Trash2 size={13} />,

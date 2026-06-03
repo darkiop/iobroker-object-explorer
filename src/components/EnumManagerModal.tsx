@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ChevronRight, ChevronDown, Pencil, Trash2, Plus, Check, Loader2 } from 'lucide-react';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 import type { IoBrokerObject } from '../types/iobroker';
 import { useCreateEnum, useRenameEnum, useDeleteEnum, useUpdateRoomMembership, useUpdateFunctionMembership } from '../hooks/useStates';
 
@@ -38,6 +39,7 @@ interface EnumEntry {
 
 export default function EnumManagerModal({ allObjects, language, onClose }: EnumManagerModalProps) {
   const isEn = language === 'en';
+  useEscapeKey(onClose);
   const [tab, setTab] = useState<Tab>('rooms');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);

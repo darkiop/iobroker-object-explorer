@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Sun, Moon, Gem, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Maximize, Minimize, RefreshCw, ExternalLink, Info, WifiOff, Wifi } from 'lucide-react';
+import { Sun, Moon, Gem, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Maximize, Minimize, RefreshCw, ExternalLink, Info, WifiOff, Wifi, FilterX } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import LanguageDropdown from './LanguageDropdown';
 import { useUIContext } from '../context/UIContext';
@@ -23,10 +23,10 @@ const LS_SIDEBAR_COLLAPSED = 'iobroker-explorer-sidebar-collapsed';
 
 export default function Layout({ sidebar, children, apiConnected = true, browserOffline = false, lastUpdated, onManualRefresh, onConfirmScriptRefresh }: LayoutProps) {
   const {
-    appSettings, confirmScriptRefresh,
+    appSettings, confirmScriptRefresh, scriptLastUpdated,
     setConfirmScriptRefresh, handleLanguageChange, openSettings, setShortcutsOpen,
   } = useUIContext();
-  const { handleSidebarToggle } = useFilterContext();
+  const { handleSidebarToggle, hasAnyFilter, resetAllFilters } = useFilterContext();
   const language = appSettings.language;
   const adminPort = appSettings.adminPort;
   const objectsRefreshInterval = appSettings.objectsRefreshInterval;
@@ -35,6 +35,12 @@ export default function Layout({ sidebar, children, apiConnected = true, browser
   const onLanguageChange = handleLanguageChange;
   const onShowShortcuts = () => setShortcutsOpen(true);
   const onCancelScriptRefresh = () => setConfirmScriptRefresh(false);
+  useEffect(() => {
+    if (!confirmScriptRefresh) return;
+    const fn = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancelScriptRefresh(); };
+    document.addEventListener('keydown', fn);
+    return () => document.removeEventListener('keydown', fn);
+  }, [confirmScriptRefresh]);
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const stored = parseInt(localStorage.getItem(LS_SIDEBAR_WIDTH) ?? '', 10);
     return Number.isFinite(stored) ? Math.max(180, Math.min(600, stored)) : 360;
@@ -142,6 +148,18 @@ export default function Layout({ sidebar, children, apiConnected = true, browser
           <img src="/favicon.svg" alt="" className="w-6 h-6 shrink-0" />
           <h1 className="text-lg font-semibold text-gray-900 dark:text-white">ioBroker Object Explorer</h1>
         </div>
+        {hasAnyFilter && (
+          <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none">
+            <button
+              onClick={resetAllFilters}
+              className="pointer-events-auto flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-500/15 text-amber-600 hover:bg-amber-500/25 dark:text-amber-400 dark:bg-amber-500/20 dark:hover:bg-amber-500/30 transition-colors border border-amber-400/30"
+              title={language === 'en' ? 'Reset all filters' : 'Alle Filter zurücksetzen'}
+            >
+              <FilterX size={13} />
+              {language === 'en' ? 'Reset Filters' : 'Filter zurücksetzen'}
+            </button>
+          </div>
+        )}
         <div className="flex items-center gap-3">
           <span className="text-[10px] font-mono text-gray-400 dark:text-gray-600 select-none" title="App version">v{__APP_VERSION__}</span>
           <LanguageDropdown value={language} onChange={(next) => onLanguageChange?.(next)} compact />
@@ -226,6 +244,11 @@ export default function Layout({ sidebar, children, apiConnected = true, browser
               <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">
                 {language === 'en' ? 'Refresh script index?' : 'Skript-Index aktualisieren?'}
               </p>
+              {scriptLastUpdated && (
+                <p className="text-xs text-gray-400 dark:text-gray-500 font-mono mb-1">
+                  {language === 'en' ? 'Last update:' : 'Zuletzt:'} {new Date(scriptLastUpdated).toLocaleTimeString()}
+                </p>
+              )}
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {language === 'en'
                   ? 'This scans the source code of all scripts and may take several seconds depending on the number of scripts and datapoints.'

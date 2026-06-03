@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { createPortal } from 'react-dom';
-import { X, CircleHelp, Search, Keyboard, MousePointerClick, CheckSquare, ArrowLeftRight, History, Mic2, Code2, Wand2, ChevronDown } from 'lucide-react';
+import { X, CircleHelp, Search, Keyboard, MousePointerClick, CheckSquare, ArrowLeftRight, History, Mic2, Code2, Wand2, ChevronDown, BarChart2 } from 'lucide-react';
 
 interface Props {
   onClose: () => void;
@@ -192,6 +192,21 @@ export default function HelpModal({ onClose, language = 'en' }: Props) {
                 </div>
               ))}
             </div>
+          </AccordionItem>
+
+          {/* Optimize */}
+          <AccordionItem
+            id="optimize"
+            open={!!open['optimize']}
+            onToggle={() => toggle('optimize')}
+            icon={<BarChart2 size={13} />}
+            label={isEn ? 'Optimize' : 'Optimieren'}
+          >
+            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+              {isEn
+                ? 'The Optimize toolbar button analyzes datapoints under a chosen path (or your current table selection) for missing metadata: room, function, role, name, description, unit, min/max, type, and SmartName. Results are sorted by number of issues. Check rows to batch-fix room, function, role, or unit for all selected at once.'
+                : 'Der Optimize-Button in der Toolbar analysiert Datenpunkte unter einem gewählten Pfad (oder der aktuellen Tabellenauswahl) auf fehlende Metadaten: Raum, Funktion, Rolle, Name, Beschreibung, Einheit, Min/Max, Typ und SmartName. Ergebnisse werden nach Anzahl der Probleme sortiert. Zeilen anwählen, um Raum, Funktion, Rolle oder Einheit für alle Markierten auf einmal zu setzen.'}
+            </p>
           </AccordionItem>
 
           {/* Search commands */}

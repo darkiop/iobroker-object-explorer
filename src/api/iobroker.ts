@@ -178,8 +178,12 @@ export async function getState(id: string): Promise<IoBrokerState> {
 }
 
 let _bulkStatesSupported: boolean | null = null;
+let _commandStatesSupported: boolean | null = null;
 
-async function getStatesBulk(ids: string[]): Promise<Record<string, IoBrokerState> | null> {
+// Max IDs for the URL-based bulk endpoint before URL becomes too long
+const BULK_MAX_IDS = 200;
+
+async function getStatesBulkSmall(ids: string[]): Promise<Record<string, IoBrokerState> | null> {
   const url = `${getBaseUrl()}/states?ids=${ids.map(encodeURIComponent).join(',')}`;
   const res = await fetch(url);
   if (!res.ok) return null;
@@ -188,12 +192,38 @@ async function getStatesBulk(ids: string[]): Promise<Record<string, IoBrokerStat
   return data as Record<string, IoBrokerState>;
 }
 
+async function getStatesViaCommand(ids: string[]): Promise<Record<string, IoBrokerState> | null> {
+  if (_commandStatesSupported === false) return null;
+  try {
+    const url = `${getBaseUrl()}/command/getStates?pattern=*`;
+    const res = await fetch(url);
+    if (!res.ok) { _commandStatesSupported = false; return null; }
+    const envelope: unknown = await res.json();
+    if (typeof envelope !== 'object' || envelope === null) { _commandStatesSupported = false; return null; }
+    const allData = (envelope as { result?: unknown }).result;
+    if (typeof allData !== 'object' || allData === null || Array.isArray(allData)) { _commandStatesSupported = false; return null; }
+    _commandStatesSupported = true;
+    const all = allData as Record<string, IoBrokerState>;
+    const result: Record<string, IoBrokerState> = {};
+    for (const id of ids) {
+      if (id in all) result[id] = all[id];
+    }
+    return result;
+  } catch {
+    _commandStatesSupported = false;
+    return null;
+  }
+}
+
 export async function getStatesBatch(ids: string[]): Promise<Record<string, IoBrokerState>> {
   if (ids.length === 0) return {};
 
-  if (_bulkStatesSupported !== false) {
+  // For small batches: try the URL-based bulk endpoint (fast single request, minimal data).
+  // Only test/disable this path for small batches — large batches would create URLs that are
+  // too long and would permanently disable the endpoint even though small batches work fine.
+  if (ids.length <= BULK_MAX_IDS && _bulkStatesSupported !== false) {
     try {
-      const result = await getStatesBulk(ids);
+      const result = await getStatesBulkSmall(ids);
       if (result !== null) {
         _bulkStatesSupported = true;
         return result;
@@ -202,7 +232,12 @@ export async function getStatesBatch(ids: string[]): Promise<Record<string, IoBr
     if (_bulkStatesSupported === null) _bulkStatesSupported = false;
   }
 
-  // Fallback: parallel individual requests in batches of 50
+  // For large batches (or if small-batch bulk failed): fetch all states in one request,
+  // then filter to the requested IDs. One request beats hundreds of individual ones.
+  const commandResult = await getStatesViaCommand(ids);
+  if (commandResult !== null) return commandResult;
+
+  // Last-resort fallback: parallel individual requests in batches of 50
   const BATCH_SIZE = 50;
   const record: Record<string, IoBrokerState> = {};
   for (let i = 0; i < ids.length; i += BATCH_SIZE) {
