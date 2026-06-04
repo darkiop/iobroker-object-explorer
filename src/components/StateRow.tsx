@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useTransition } from 'react';
 import { createPortal } from 'react-dom';
 import { Trash2, History, Mic2, Link2, Wrench, Lock, FileCode2, Cpu, Layers as LayersIcon, Folder } from 'lucide-react';
 import type { IoBrokerState, IoBrokerObject } from '../types/iobroker';
@@ -100,6 +100,7 @@ const StateRow = React.memo(function StateRow({
         ? (isEn ? 'Alias without source' : 'Alias ohne Quelle')
         : undefined;
 
+  const [, startTransition] = useTransition();
   const tooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
 
@@ -144,7 +145,7 @@ const StateRow = React.memo(function StateRow({
       document.body
     )}
     <tr
-      onClick={() => onSelect(id)}
+      onClick={() => startTransition(() => onSelect(id))}
       onContextMenu={(e) => { e.preventDefault(); onContextMenu(e.clientX, e.clientY, id); }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}

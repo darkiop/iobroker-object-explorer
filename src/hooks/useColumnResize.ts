@@ -71,6 +71,8 @@ export function useColumnResize({
     const startX = e.clientX;
     const startWidth = colWidths[key];
     let latestWidths: Record<SortKey, number> = colWidths;
+    let rafId: number | null = null;
+    let pendingWidth = startWidth;
 
     function clampWidth(w: number) {
       const mn = effectiveMinRef.current[key] ?? minColWidth(key);
@@ -78,19 +80,28 @@ export function useColumnResize({
     }
 
     function onMouseMove(ev: MouseEvent) {
-      const newWidth = clampWidth(startWidth + ev.clientX - startX);
-      setColWidths((prev) => {
-        latestWidths = { ...prev, [key]: newWidth };
-        return latestWidths;
+      pendingWidth = clampWidth(startWidth + ev.clientX - startX);
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        const w = pendingWidth;
+        setColWidths((prev) => {
+          latestWidths = { ...prev, [key]: w };
+          return latestWidths;
+        });
+        if (saveWidthsTimerRef.current !== null) clearTimeout(saveWidthsTimerRef.current);
+        saveWidthsTimerRef.current = setTimeout(() => {
+          localStorage.setItem(LS_WIDTHS_KEY, JSON.stringify(latestWidths));
+          saveWidthsTimerRef.current = null;
+        }, 500);
       });
-      if (saveWidthsTimerRef.current !== null) clearTimeout(saveWidthsTimerRef.current);
-      saveWidthsTimerRef.current = setTimeout(() => {
-        localStorage.setItem(LS_WIDTHS_KEY, JSON.stringify(latestWidths));
-        saveWidthsTimerRef.current = null;
-      }, 500);
     }
 
     function onMouseUp(ev: MouseEvent) {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
       if (saveWidthsTimerRef.current !== null) {
         clearTimeout(saveWidthsTimerRef.current);
         saveWidthsTimerRef.current = null;
