@@ -109,9 +109,6 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const isFilterActive = !!(pattern && pattern !== '*') || !!treeFilter;
   // null = "all collapsed". new Set() = all expanded.
   const [collapsedPrefixes, setCollapsedPrefixes] = useState<Set<string> | null>(null);
-  useEffect(() => {
-    setCollapsedPrefixes(null);
-  }, [isFilterActive]);
   const [headerHeight, setHeaderHeight] = useState(0);
   const [newDatapointOpen, setNewDatapointOpen] = useState(false);
   const [newDatapointPrefix, setNewDatapointPrefix] = useState<string | null>(null);
@@ -407,6 +404,28 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
     }
     return result;
   }, [filteredIds, groupByPath, allObjects]);
+
+  useEffect(() => {
+    if (!groupByPath || !isFilterActive) { setCollapsedPrefixes(null); return; }
+    // Auto-expand depth 0+1, collapse depth >= 2 when a search filter is active
+    const sepPrefixes = new Set<string>();
+    for (const id of filteredIds) {
+      const parts = id.split('.');
+      for (let i = 1; i < parts.length; i++) {
+        sepPrefixes.add(parts.slice(0, i).join('.'));
+      }
+    }
+    const toCollapse = new Set<string>();
+    for (const prefix of sepPrefixes) {
+      const parts = prefix.split('.');
+      let depth = 0;
+      for (let i = 1; i < parts.length; i++) {
+        if (sepPrefixes.has(parts.slice(0, i).join('.'))) depth++;
+      }
+      if (depth >= 2) toCollapse.add(prefix);
+    }
+    setCollapsedPrefixes(toCollapse);
+  }, [filteredIds, groupByPath, isFilterActive]);
 
   const displayItems = useMemo((): DisplayItem[] => {
     if (!groupByPath) return filteredIds.map((id) => ({ kind: 'row' as const, id, depth: 0 }));
@@ -824,15 +843,6 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
           <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-violet-500/15 border border-violet-400/30 text-violet-600 dark:text-violet-400 text-sm font-mono max-w-[520px]">
             <span className="truncate">Volltext: {pattern}</span>
           </span>
-        )}
-        {hasColFilters && (
-          <button
-            onClick={() => setDraftAndPropagate({})}
-            className="flex items-center gap-1.5 px-3 py-0.5 text-xs rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20 border border-blue-200 dark:border-blue-500/30 transition-colors"
-          >
-            <X size={11} />
-            {isEn ? 'Clear column filters' : 'Spaltenfilter leeren'}
-          </button>
         )}
       </div>
       <div className="flex items-center gap-1">
@@ -1553,15 +1563,6 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                         {isEn ? 'No entries match the active filters.' : 'Keine Einträge entsprechen den gesetzten Filtern.'}
                       </span>
                       <div className="flex flex-wrap justify-center gap-2">
-                        {hasColFilters && (
-                          <button
-                            onClick={() => setDraftAndPropagate({})}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:hover:bg-blue-800/60 transition-colors"
-                          >
-                            <X size={12} />
-                            {isEn ? 'Clear column filters' : 'Spaltenfilter leeren'}
-                          </button>
-                        )}
                         {treeFilter && onClearTreeFilter && (
                           <button
                             onClick={onClearTreeFilter}
