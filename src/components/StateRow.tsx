@@ -169,7 +169,7 @@ const StateRow = React.memo(function StateRow({
         </td>
       )}
       {show('id') && (
-        <td data-col="id" className="py-2 font-mono text-xs text-gray-500 dark:text-gray-400 overflow-hidden group/id" style={{ paddingLeft: depth === 0 ? 12 : 12 + (depth - 1) * 10 + 50 }}>
+        <td data-col="id" className="py-2 font-mono text-xs text-gray-500 dark:text-gray-400 overflow-hidden group/id" style={{ paddingLeft: depth === 0 ? 12 : 12 + (depth - 1) * 10 + 32 }}>
           <div className="flex flex-col gap-0.5 min-w-0">
             <div className="flex items-center gap-1.5 min-w-0">
               {showObjectTypeIcons && obj?.type === 'device'  && <Cpu       size={12} className="text-sky-500/80 shrink-0" />}
