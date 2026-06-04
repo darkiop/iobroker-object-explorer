@@ -162,6 +162,25 @@ html:not(.dark) * {
 .obsidian .dark\:outline-blue-500 { outline-color: #89b4fa !important; }
 .obsidian .dark\:caret-gray-100 { caret-color: #cdd6f4 !important; }
 
+/* Group expand/collapse animation */
+@keyframes group-row-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes group-row-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+.group-row-enter {
+  animation: group-row-in 0.18s ease-out both;
+  transition: none !important;
+}
+.group-row-exit {
+  animation: group-row-out 0.18s ease-in both;
+  transition: none !important;
+  pointer-events: none;
+}
+
 /* Table font size overrides */
 [data-table-fontsize="small"] td,
 [data-table-fontsize="small"] th { font-size: 0.65rem !important; }

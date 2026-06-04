@@ -80,7 +80,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const { selectedId, setSelectedId: onSelect, setHistoryModalId: _setHistoryModalId, setEnumManagerOpen, setAliasReplaceInitialStr, setEditInitialTab, setAutoAliasDeviceId } = useSelectionContext();
   const { appSettings, expertMode, scriptUsedIds, scriptsFetching, scriptLastUpdated, setScriptUsedIds, setConfirmScriptRefresh, handleToggleExpertMode: onToggleExpertMode, handleToggleGroupByPath: onToggleGroupByPath, persistSettings } = useAppSettingsContext();
 
-  const { language = 'en', dateFormat = 'de', visibleCols: settingsVisibleCols, toolbarLabels = true, tableFontSize = 'normal', showDesc = true, groupByPath = false, shortenGroupPaths = true, showObjectIcons = false, showObjectTypeIcons = true, customDefaultWidths, customMinWidths, customMaxWidths, pageSize } = appSettings;
+  const { language = 'en', dateFormat = 'de', visibleCols: settingsVisibleCols, toolbarLabels = true, tableFontSize = 'normal', showDesc = true, groupByPath = false, shortenGroupPaths = true, showObjectIcons = false, showObjectTypeIcons = true, customDefaultWidths, customMinWidths, customMaxWidths, pageSize, animateGroupExpand = false } = appSettings;
   const onOpenEnumManager = React.useCallback(() => setEnumManagerOpen(true), [setEnumManagerOpen]);
   const onOpenAliasReplace = React.useCallback((initialStr?: string) => setAliasReplaceInitialStr(initialStr ?? null), [setAliasReplaceInitialStr]);
   const onScriptsClick = React.useCallback((id: string) => { onSelect(id); setEditInitialTab('scripts'); }, [onSelect, setEditInitialTab]);
@@ -109,6 +109,11 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const isFilterActive = !!(pattern && pattern !== '*') || !!treeFilter;
   // null = "all collapsed". new Set() = all expanded.
   const [collapsedPrefixes, setCollapsedPrefixes] = useState<Set<string> | null>(null);
+  const [animatingPrefixes, setAnimatingPrefixes] = useState<Set<string>>(new Set());
+  const [collapsingPrefixes, setCollapsingPrefixes] = useState<Set<string>>(new Set());
+  const animTimersRef = React.useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const collapseTimersRef = React.useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const allSepPrefixesRef = React.useRef<Set<string>>(new Set());
   const [headerHeight, setHeaderHeight] = useState(0);
   const [newDatapointOpen, setNewDatapointOpen] = useState(false);
   const [newDatapointPrefix, setNewDatapointPrefix] = useState<string | null>(null);
@@ -405,6 +410,8 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
     return result;
   }, [filteredIds, groupByPath, allObjects]);
 
+  allSepPrefixesRef.current = allSepPrefixes;
+
   useEffect(() => {
     if (!groupByPath || !isFilterActive) { setCollapsedPrefixes(null); return; }
     // Auto-expand depth 0+1, collapse depth >= 2 when a search filter is active
@@ -462,7 +469,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
     const items: DisplayItem[] = [];
     function visit(prefix: string, depth: number, parentPrefix?: string) {
       items.push({ kind: 'sep', prefix, depth, isState: filteredIdSet.has(prefix), parentPrefix });
-      const isCollapsed = collapsedPrefixes === null || collapsedPrefixes.has(prefix);
+      const isCollapsed = (collapsedPrefixes === null || collapsedPrefixes.has(prefix)) && !collapsingPrefixes.has(prefix);
       if (!isCollapsed) {
         const children = [...(childPrefixesMap.get(prefix) ?? [])].sort((a, b) =>
           a.localeCompare(b, undefined, { sensitivity: 'base' })
@@ -485,7 +492,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
     }
 
     return items;
-  }, [filteredIds, groupByPath, collapsedPrefixes, allSepPrefixes]);
+  }, [filteredIds, groupByPath, collapsedPrefixes, collapsingPrefixes, allSepPrefixes]);
 
   const activeDisplayItems: DisplayItem[] = displayItems;
 
@@ -1590,11 +1597,44 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                 const hasFocusedInside = isCollapsed && focusedId !== null && (focusedId.startsWith(item.prefix + '.') || focusedId === item.prefix);
                 const hasHiddenSelection = hasCheckedInside || hasFocusedInside;
                 return (
-                  <tr key={`sep_${item.prefix}_${idx}`} className="group/sep cursor-pointer select-none" onContextMenu={(e) => { e.preventDefault(); setSepCtxMenu({ x: e.clientX, y: e.clientY, prefix: item.prefix }); }} onClick={() => setCollapsedPrefixes((prev) => {
-                      const base = prev === null ? new Set(allSepPrefixes) : new Set(prev);
-                      base.has(item.prefix) ? base.delete(item.prefix) : base.add(item.prefix);
-                      return base;
-                    })}>
+                  <tr key={`sep_${item.prefix}_${idx}`} className={`group/sep cursor-pointer select-none${animateGroupExpand && item.parentPrefix && animatingPrefixes.has(item.parentPrefix) ? ' group-row-enter' : ''}${animateGroupExpand && item.parentPrefix && collapsingPrefixes.has(item.parentPrefix) ? ' group-row-exit' : ''}`} onContextMenu={(e) => { e.preventDefault(); setSepCtxMenu({ x: e.clientX, y: e.clientY, prefix: item.prefix }); }} onClick={() => {
+                      const prefix = item.prefix;
+                      const base = collapsedPrefixes === null ? new Set(allSepPrefixesRef.current) : new Set(collapsedPrefixes);
+                      const wasCollapsed = base.has(prefix);
+                      if (wasCollapsed) {
+                        // Expand
+                        base.delete(prefix);
+                        setCollapsedPrefixes(base);
+                        if (animateGroupExpand) {
+                          const existing = animTimersRef.current.get(prefix);
+                          if (existing) clearTimeout(existing);
+                          setAnimatingPrefixes((ap) => new Set(ap).add(prefix));
+                          animTimersRef.current.set(prefix, setTimeout(() => {
+                            setAnimatingPrefixes((ap) => { const s = new Set(ap); s.delete(prefix); return s; });
+                            animTimersRef.current.delete(prefix);
+                          }, 250));
+                        }
+                      } else {
+                        // Collapse
+                        if (animateGroupExpand) {
+                          const existingT = collapseTimersRef.current.get(prefix);
+                          if (existingT) clearTimeout(existingT);
+                          setCollapsingPrefixes((cp) => new Set(cp).add(prefix));
+                          collapseTimersRef.current.set(prefix, setTimeout(() => {
+                            setCollapsedPrefixes((prev) => {
+                              const b = prev === null ? new Set(allSepPrefixesRef.current) : new Set(prev);
+                              b.add(prefix);
+                              return b;
+                            });
+                            setCollapsingPrefixes((cp) => { const s = new Set(cp); s.delete(prefix); return s; });
+                            collapseTimersRef.current.delete(prefix);
+                          }, 200));
+                        } else {
+                          base.add(prefix);
+                          setCollapsedPrefixes(base);
+                        }
+                      }
+                    }}>
                     <td className="py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-100/50 dark:group-hover/sep:bg-gray-700/60 transition-colors text-center" style={{ width: DEL_COL_WIDTH, minWidth: DEL_COL_WIDTH }}>
                       {item.prefix && (
                         <StyledCheckbox
@@ -1606,7 +1646,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                     </td>
                     <td colSpan={(_sepNameBeforeType ? (_sepMainSpanWithName || 1) : (_sepMainSpan || rowColSpan + 1)) - 1} className="py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-100/50 dark:group-hover/sep:bg-gray-700/60 transition-colors" style={{ paddingLeft: 12 + item.depth * 10, paddingRight: 12 }}>
                       <div className="flex items-center gap-2">
-                        {(collapsedPrefixes === null || collapsedPrefixes.has(item.prefix))
+                        {(collapsedPrefixes === null || collapsedPrefixes.has(item.prefix) || collapsingPrefixes.has(item.prefix))
                           ? <ChevronRight size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
                           : <ChevronDown size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
                         }
@@ -1780,6 +1820,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                   isFocused={focusedId === id && selectedId !== id}
                   showDesc={showDesc} showObjectTypeIcons={showObjectTypeIcons}
                   depth={item.depth}
+                  trClassName={animateGroupExpand && item.parentPrefix ? (animatingPrefixes.has(item.parentPrefix) ? 'group-row-enter' : collapsingPrefixes.has(item.parentPrefix) ? 'group-row-exit' : undefined) : undefined}
                 />
               );
             })}

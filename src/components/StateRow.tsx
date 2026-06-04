@@ -59,6 +59,7 @@ export interface StateRowProps {
   showObjectTypeIcons?: boolean;
   depth?: number;
   displayId?: string;
+  trClassName?: string;
 }
 
 function aliasIdsEqual(a?: string[], b?: string[]): boolean {
@@ -76,7 +77,7 @@ const StateRow = React.memo(function StateRow({
   onSelect, onCheck, onContextMenu, onHistoryClick, onScriptsClick, onNavigateTo, onDeleteClick, onEditJson,
   onSelectRoom, onSelectFunction, onOpenValueModal,
   roomEditForced, fnEditForced, onRoomEditEnd, onFnEditEnd,
-  dateFormat, language, expertMode, isFocused, showDesc = true, showObjectTypeIcons = true, scriptSources, depth = 0, displayId,
+  dateFormat, language, expertMode, isFocused, showDesc = true, showObjectTypeIcons = true, scriptSources, depth = 0, displayId, trClassName,
 }: StateRowProps) {
   const isEn = language === 'en';
   const show = (key: SortKey) => visibleCols.includes(key);
@@ -149,7 +150,7 @@ const StateRow = React.memo(function StateRow({
       onContextMenu={(e) => { e.preventDefault(); onContextMenu(e.clientX, e.clientY, id); }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className={`group border-b border-gray-200 dark:border-gray-800 cursor-pointer transition-colors ${
+      className={`group border-b border-gray-200 dark:border-gray-800 cursor-pointer transition-colors${trClassName ? ` ${trClassName}` : ''} ${
         isSelected
           ? 'bg-blue-600/20 text-blue-700 dark:text-blue-200'
           : isFocused
@@ -409,7 +410,8 @@ const StateRow = React.memo(function StateRow({
     prev.onSelectFunction === next.onSelectFunction &&
     prev.onOpenValueModal === next.onOpenValueModal &&
     prev.isFocused === next.isFocused &&
-    prev.displayId === next.displayId
+    prev.displayId === next.displayId &&
+    prev.trClassName === next.trClassName
   );
 });
 

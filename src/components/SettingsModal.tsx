@@ -126,6 +126,7 @@ export default function SettingsModal() {
       includeScripts: settingsDraft.includeScripts,
       showObjectIcons: settingsDraft.showObjectIcons,
       showObjectTypeIcons: settingsDraft.showObjectTypeIcons,
+      animateGroupExpand: settingsDraft.animateGroupExpand,
     };
     applySettings(next);
   }, [settingsDraft, applySettings]);
@@ -384,6 +385,8 @@ export default function SettingsModal() {
                   value={settingsDraft.showObjectIcons} onToggle={() => setSettingsDraft((prev) => ({ ...prev, showObjectIcons: !prev.showObjectIcons }))} />
                 <SettingsToggleRow isEn={isEn} labelEn="Show type icons" labelDe="Typ-Icons anzeigen"
                   value={settingsDraft.showObjectTypeIcons} onToggle={() => setSettingsDraft((prev) => ({ ...prev, showObjectTypeIcons: !prev.showObjectTypeIcons }))} />
+                <SettingsToggleRow isEn={isEn} labelEn="Animate group expand/collapse" labelDe="Gruppen-Aufklappen animieren"
+                  value={settingsDraft.animateGroupExpand} onToggle={() => setSettingsDraft((prev) => ({ ...prev, animateGroupExpand: !prev.animateGroupExpand }))} />
               </div>
 
               <div className="border-t border-gray-200 dark:border-gray-700" />
