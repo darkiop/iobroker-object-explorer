@@ -69,7 +69,6 @@ export function useStateValues(ids: string[]) {
     queryFn: () => getStatesBatch(ids),
     enabled: ids.length > 0 && pageVisible,
     refetchInterval: 30_000,
-    gcTime: 60_000,
   });
 }
 
