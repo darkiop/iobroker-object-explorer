@@ -15,7 +15,8 @@ export function formatTimestamp(ts: number, dateFormat: DateFormatSetting = 'de'
 }
 
 export function formatValue(val: unknown, pretty = false): string {
-  if (val === null || val === undefined) return '—';
+  if (val === undefined) return '—';
+  if (val === null) return 'null';
   if (typeof val === 'boolean') return val ? 'true' : 'false';
   if (typeof val === 'number') return val.toString();
   if (typeof val === 'bigint') return val.toString();
