@@ -61,14 +61,14 @@ export function useAllObjects(refetchInterval?: number | false) {
   });
 }
 
-export function useStateValues(ids: string[]) {
+export function useStateValues(ids: string[], refetchInterval: number | false = 30_000) {
   const pageVisible = usePageVisible();
   const sortedIds = [...ids].sort();
   return useQuery({
     queryKey: queryKeys.states.values(sortedIds),
     queryFn: () => getStatesBatch(ids),
     enabled: ids.length > 0 && pageVisible,
-    refetchInterval: 30_000,
+    refetchInterval: refetchInterval === false ? false : refetchInterval,
   });
 }
 

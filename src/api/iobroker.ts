@@ -3,7 +3,7 @@ import { getLocalizedName, getAllNamesForSearch } from '../utils/i18n';
 
 const LS_HOST_KEY = 'ioBrokerHost';
 
-function getBaseUrl(): string {
+export function getBaseUrl(): string {
   if (window.location.protocol === 'https:') {
     return '/api/v1';
   }

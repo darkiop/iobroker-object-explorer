@@ -20,6 +20,7 @@ import HostConnectedButton from './components/HostConnectedButton';
 import SettingsModal from './components/SettingsModal';
 import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunctionMap, useRoomEnums, useFunctionEnums, useAliasMap } from './hooks/useStates';
 import { useApiConnectivity } from './hooks/useApiConnectivity';
+import { useLongPolling } from './hooks/useLongPolling';
 import { hasHistory, hasSmartName, hasCustomEnabled } from './api/iobroker';
 import type { StateListHandle } from './components/StateList';
 import { filterObjectIds } from './utils/filterObjectIds';
@@ -95,6 +96,7 @@ function AppContent() {
 
   // ── Connectivity ─────────────────────────────────────────────────────────
   const { isOnline, browserOnline } = useApiConnectivity();
+  const lpStatus = useLongPolling();
 
   // ── React Query ──────────────────────────────────────────────────────────
   const fieldFilters = (idFilter || nameFilter || descFilter) ? { id: idFilter ?? undefined, name: nameFilter ?? undefined, desc: descFilter ?? undefined } : undefined;
@@ -217,7 +219,10 @@ function AppContent() {
   );
   const totalPages = paginationDisabled ? 1 : Math.ceil(totalCount / appSettings.pageSize);
 
-  const { data: stateValues, refetch: refetchStateValues, dataUpdatedAt: statesUpdatedAt } = useStateValues(pageIds);
+  const { data: stateValues, refetch: refetchStateValues, dataUpdatedAt: statesUpdatedAt } = useStateValues(
+    pageIds,
+    lpStatus.connected ? false : 30_000,
+  );
   const lastValidUpdatedAt = useRef<number>(0);
   if (statesUpdatedAt > 0) lastValidUpdatedAt.current = statesUpdatedAt;
 
