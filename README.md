@@ -437,16 +437,44 @@ Import button
 
 ## API Endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/v1/objects` | Load all objects |
-| GET | `/v1/object/:id` | Single object |
-| PUT | `/v1/object/:id` | Create / fully replace object |
-| PATCH | `/v1/object/:id` | Partially update object (extend) |
-| DELETE | `/v1/object/:id` | Delete object |
-| GET | `/v1/state/:id` | Load single state |
-| PATCH | `/v1/state/:id` | Set state |
-| POST | `/v1/command/sendTo` | Query / delete history data via `sql.0` |
+Base URL: `/api/v1` (via Vite proxy or Nginx) or `http://{host}/v1` (direct).
+
+### Objects
+
+| Method | Path | When | Purpose |
+|--------|------|------|---------|
+| GET | `/objects?type=state` | App start (immediately) | Fast bootstrap — state objects for instant table population |
+| GET | `/objects` | App start (after bootstrap) | All objects (base for everything) |
+| GET | `/objects?type=enum` | App start + room/function dropdowns | Enum objects (rooms, functions) |
+| GET | `/objects?type=folder` | App start (parallel) | Folder objects |
+| GET | `/objects?type=device` | App start (parallel) | Device objects |
+| GET | `/objects?type=channel` | App start (parallel) | Channel objects |
+| GET | `/objects?type=script` | Scripts column visible / Scripts tab in modal | Script sources for usage search |
+| GET | `/objects?type=instance` | Custom tab open | Instances with `supportCustoms=true` |
+| GET | `/object/:id` | ObjectEditModal (Custom / fresh fetch) | Single object fresh from server |
+| PUT | `/object/:id` | Save object, enum membership, rename, import | Create or fully replace object |
+| DELETE | `/object/:id` | Delete datapoint (single or batch of 8 parallel) | Delete object |
+
+### States
+
+| Method | Path | When | Purpose |
+|--------|------|------|---------|
+| GET | `/states?ids=a,b,...` | Every 30 s (polling), ≤ 200 IDs | Bulk state fetch (1 request). Probed on first poll — falls back if unsupported |
+| GET | `/command/getStates?pattern=*` | Fallback when bulk unavailable and > 200 IDs | All states at once, filtered client-side |
+| GET | `/state/:id` | Last-resort fallback (batches of 50 parallel) / Edit modal (every 5 s) | Single state |
+| PATCH | `/state/:id` | User writes value in edit modal or value editor | Write state value |
+
+### History (sql.0 only)
+
+| Method | Path | When | Purpose |
+|--------|------|------|---------|
+| POST | `/command/sendTo` | History modal open | Query history data from `sql.0` (`getHistory`) |
+| POST | `/command/sendTo` | History entry delete | `delete`, `deleteRange`, `deleteAll` sent to sql.0 |
+
+**State fetch priority** (per 30 s poll):
+1. `GET /states?ids=...` (≤ 200 IDs) — fastest, single request
+2. `GET /command/getStates?pattern=*` — one request for all states, filtered client-side
+3. `GET /state/:id` × N in batches of 50 — slowest fallback
 
 ---
 
