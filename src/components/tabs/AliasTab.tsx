@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Parser as ExprParser } from 'expr-eval';
 import { Link2, Check } from 'lucide-react';
 import type { IoBrokerObject } from '../../types/iobroker';
+import IdSuggestInput from '../IdSuggestInput';
 
 const inputCls = 'px-2.5 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500';
 
@@ -23,6 +24,7 @@ function evalFormula(formula: string, val: unknown): { value?: string; error?: s
 interface AliasTabProps {
   obj: IoBrokerObject;
   language: 'en' | 'de';
+  allStateIds?: string[];
   aliasSeparateIds: boolean;
   setAliasSeparateIds: (v: boolean) => void;
   aliasId: string;
@@ -38,7 +40,7 @@ interface AliasTabProps {
 }
 
 export default function AliasTab({
-  obj, language,
+  obj, language, allStateIds = [],
   aliasSeparateIds, setAliasSeparateIds,
   aliasId, setAliasId,
   aliasReadId, setAliasReadId,
@@ -92,13 +94,12 @@ export default function AliasTab({
               {isEn ? 'Read source ID (alias.id.read)' : 'Lese-Quell-ID (alias.id.read)'}
               <span className="font-normal text-gray-400 dark:text-gray-500">- {isEn ? 'optional' : 'optional'}</span>
             </label>
-            <input
-              type="text"
+            <IdSuggestInput
               value={aliasReadId}
-              onChange={(e) => setAliasReadId(e.target.value)}
+              onChange={setAliasReadId}
+              suggestions={allStateIds}
               className={`${inputCls} font-mono`}
               placeholder={isEn ? 'e.g. hm-rpc.0.ABC123.1.STATE' : 'z.B. hm-rpc.0.ABC123.1.STATE'}
-              spellCheck={false}
             />
           </div>
           <div className="flex flex-col gap-1">
@@ -107,13 +108,12 @@ export default function AliasTab({
               {isEn ? 'Write source ID (alias.id.write)' : 'Schreib-Quell-ID (alias.id.write)'}
               <span className="font-normal text-gray-400 dark:text-gray-500">- {isEn ? 'optional' : 'optional'}</span>
             </label>
-            <input
-              type="text"
+            <IdSuggestInput
               value={aliasWriteId}
-              onChange={(e) => setAliasWriteId(e.target.value)}
+              onChange={setAliasWriteId}
+              suggestions={allStateIds}
               className={`${inputCls} font-mono`}
               placeholder={isEn ? 'e.g. hm-rpc.0.ABC123.1.STATE' : 'z.B. hm-rpc.0.ABC123.1.STATE'}
-              spellCheck={false}
             />
           </div>
         </>
@@ -123,13 +123,12 @@ export default function AliasTab({
             <Link2 size={11} className="text-amber-500" />
             {isEn ? 'Target datapoint (alias.id)' : 'Ziel-Datenpunkt (alias.id)'}
           </label>
-          <input
-            type="text"
+          <IdSuggestInput
             value={aliasId}
-            onChange={(e) => setAliasId(e.target.value)}
+            onChange={setAliasId}
+            suggestions={allStateIds}
             className={`${inputCls} font-mono`}
             placeholder={isEn ? 'e.g. hm-rpc.0.ABC123.1.STATE' : 'z.B. hm-rpc.0.ABC123.1.STATE'}
-            spellCheck={false}
           />
           <p className="text-[11px] text-gray-400 dark:text-gray-500">
             {isEn

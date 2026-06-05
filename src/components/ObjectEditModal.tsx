@@ -95,6 +95,10 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
   const updateFn = useUpdateFunctionMembership();
   const { data: allObjects } = useAllObjects();
   const existingIds = useMemo(() => new Set(Object.keys(allObjects ?? {})), [allObjects]);
+  const allStateIds = useMemo(
+    () => Object.entries(allObjects ?? {}).filter(([, o]) => o?.type === 'state').map(([id]) => id).sort(),
+    [allObjects],
+  );
   const { data: customInstances = [] } = useCustomSupportedInstances();
   const { data: scriptUsages, isFetching: scriptsFetching, refetch: refetchScripts } = useScriptUsages(id, tab === 'scripts');
 
@@ -389,6 +393,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
               <AliasTab
                 obj={obj}
                 language={language}
+                allStateIds={allStateIds}
                 aliasSeparateIds={aliasSeparateIds}
                 setAliasSeparateIds={setAliasSeparateIds}
                 aliasId={aliasId}

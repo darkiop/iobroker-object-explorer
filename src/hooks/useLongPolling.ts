@@ -21,54 +21,115 @@ type LongPollingEvent =
   | { disconnect: true }
   | { error: string };
 
-export function useLongPolling(): LongPollingStatus {
+/**
+ * Derive minimal namespace patterns from a list of visible IDs.
+ * Uses adapter.instance level: "hm-rpc.0.MEQ123.1.STATE" → "hm-rpc.0.*"
+ * Falls back to full id if only 1-2 segments.
+ */
+export function derivePatterns(ids: string[]): string[] {
+  if (ids.length === 0) return [];
+  const prefixes = new Set<string>();
+  for (const id of ids) {
+    const dot1 = id.indexOf('.');
+    if (dot1 === -1) {
+      prefixes.add(id);
+      continue;
+    }
+    const dot2 = id.indexOf('.', dot1 + 1);
+    if (dot2 === -1) {
+      // Only adapter.instance — subscribe that subtree
+      prefixes.add(`${id}.*`);
+    } else {
+      // adapter.instance.* covers the device/channel/state subtree
+      prefixes.add(`${id.slice(0, dot2)}.*`);
+    }
+  }
+  return [...prefixes].sort();
+}
+
+export function useLongPolling(visibleIds: string[]): LongPollingStatus {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<LongPollingStatus>({ supported: null, connected: false });
+
+  // Derive patterns and stringify for stable comparison
+  const patterns = derivePatterns(visibleIds);
+  const patternsKey = patterns.join('\n');
 
   const terminateRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
   const reconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sidRef = useRef('');
-  const subscribedRef = useRef(false);
+  const subscribedPatternsRef = useRef<string[]>([]);
 
   useEffect(() => {
+    if (patterns.length === 0) {
+      // Nothing visible — stay disconnected, don't subscribe
+      setStatus({ supported: null, connected: false });
+      return;
+    }
+
     terminateRef.current = false;
 
     function newSid() {
       sidRef.current = `${Date.now()}_${Math.round(Math.random() * 10_000)}`;
     }
 
-    async function subscribe(): Promise<'ok' | 'unsupported' | 'error'> {
-      subscribedRef.current = false;
+    type SubscribeResult = 'ok' | 'unsupported' | 'error';
+
+    async function subscribePattern(pattern: string): Promise<SubscribeResult> {
       try {
         const res = await fetch(`${getBaseUrl()}/states/subscribe?sid=${sidRef.current}&method=polling`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ method: 'polling', pattern: '*' }),
+          body: JSON.stringify({ method: 'polling', pattern }),
         });
         if (res.status === 404) {
           const body = await res.text().catch(() => '');
-          console.info(`[LongPolling] POST ${getBaseUrl()}/states/subscribe → 404 (body: ${body || '(empty)'}). Endpoint not available — falling back to 30s polling. Check: REST API adapter restarted after update? Running as web extension?`);
+          console.info(`[LongPolling] 404 on subscribe (body: ${body || '(empty)'}). Falling back to interval polling.`);
           return 'unsupported';
         }
-        if (!res.ok) return 'error';
-        subscribedRef.current = true;
-        return 'ok';
+        return res.ok ? 'ok' : 'error';
       } catch {
         return 'error';
       }
     }
 
-    async function unsubscribe() {
-      if (!subscribedRef.current) return;
-      subscribedRef.current = false;
+    async function unsubscribePattern(pattern: string): Promise<void> {
       try {
         await fetch(`${getBaseUrl()}/states/unsubscribe?sid=${sidRef.current}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ method: 'polling', pattern: '*' }),
+          body: JSON.stringify({ method: 'polling', pattern }),
         });
       } catch { /* best effort */ }
+    }
+
+    async function subscribe(): Promise<'ok' | 'unsupported' | 'error'> {
+      subscribedPatternsRef.current = [];
+
+      // Probe first pattern to detect endpoint support before firing all
+      const firstResult = await subscribePattern(patterns[0]);
+      if (firstResult === 'unsupported') return 'unsupported';
+      if (firstResult === 'error') return 'error';
+
+      // Subscribe remaining patterns in parallel
+      const remaining = patterns.slice(1);
+      const remainingResults = remaining.length > 0
+        ? await Promise.all(remaining.map(subscribePattern))
+        : [];
+
+      // Track all successfully subscribed patterns
+      const allResults: SubscribeResult[] = [firstResult, ...remainingResults];
+      subscribedPatternsRef.current = patterns.filter((_, i) => allResults[i] === 'ok');
+
+      return subscribedPatternsRef.current.length > 0 ? 'ok' : 'error';
+    }
+
+    async function unsubscribeAll() {
+      const toUnsub = subscribedPatternsRef.current;
+      subscribedPatternsRef.current = [];
+      if (toUnsub.length === 0) return;
+      await Promise.allSettled(toUnsub.map(unsubscribePattern));
     }
 
     function scheduleReconnect() {
@@ -80,10 +141,10 @@ export function useLongPolling(): LongPollingStatus {
     }
 
     function applyEvent(data: LongPollingEvent) {
-      if ('disconnect' in data) return; // handled by caller
+      if ('disconnect' in data) return;
 
       if ('state' in data && data.id) {
-        // State changed — update all active batch queries that contain this ID
+        // Update all active batch queries that contain this ID
         queryClient.setQueriesData<Record<string, IoBrokerState>>(
           { queryKey: queryKeys.states.valuesRoot },
           (old) => {
@@ -120,15 +181,11 @@ export function useLongPolling(): LongPollingStatus {
             setStatus({ supported: true, connected: true });
             return 'continue';
           }
-          // Unexpected response — endpoint exists but behaves wrong
           setStatus({ supported: false, connected: false });
           return 'stop';
         }
 
-        if (!text || text.trim() === '_') {
-          // Empty heartbeat — keep going
-          return 'continue';
-        }
+        if (!text || text.trim() === '_') return 'continue';
 
         let data: LongPollingEvent;
         try {
@@ -172,7 +229,6 @@ export function useLongPolling(): LongPollingStatus {
         return;
       }
 
-      // Polling loop
       let isStart = true;
       while (!terminateRef.current) {
         const result = await poll(isStart);
@@ -196,9 +252,11 @@ export function useLongPolling(): LongPollingStatus {
         clearTimeout(reconnectRef.current);
         reconnectRef.current = null;
       }
-      void unsubscribe();
+      void unsubscribeAll();
     };
-  }, [queryClient]);
+  // patternsKey as stable dep — re-runs when visible page changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryClient, patternsKey]);
 
   return status;
 }

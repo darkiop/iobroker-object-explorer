@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useTransition } from 'react';
+import React, { useState, useRef, useCallback, useTransition, useLayoutEffect, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Trash2, History, Mic2, Link2, Wrench, Lock, FileCode2, Cpu, Layers as LayersIcon, Folder } from 'lucide-react';
 import type { IoBrokerState, IoBrokerObject } from '../types/iobroker';
@@ -59,7 +59,8 @@ export interface StateRowProps {
   showObjectTypeIcons?: boolean;
   depth?: number;
   displayId?: string;
-  trClassName?: string;
+  animateEnter?: boolean;
+  animateExit?: boolean;
 }
 
 function aliasIdsEqual(a?: string[], b?: string[]): boolean {
@@ -77,9 +78,30 @@ const StateRow = React.memo(function StateRow({
   onSelect, onCheck, onContextMenu, onHistoryClick, onScriptsClick, onNavigateTo, onDeleteClick, onEditJson,
   onSelectRoom, onSelectFunction, onOpenValueModal,
   roomEditForced, fnEditForced, onRoomEditEnd, onFnEditEnd,
-  dateFormat, language, expertMode, isFocused, showDesc = true, showObjectTypeIcons = true, scriptSources, depth = 0, displayId, trClassName,
+  dateFormat, language, expertMode, isFocused, showDesc = true, showObjectTypeIcons = true, scriptSources, depth = 0, displayId, animateEnter, animateExit,
 }: StateRowProps) {
   const isEn = language === 'en';
+  const trRef = useRef<HTMLTableRowElement>(null);
+
+  // Enter animation: apply class once on mount via DOM, decoupled from React className
+  // so re-renders (e.g. isChecked change) never restart it.
+  useLayoutEffect(() => {
+    if (animateEnter && trRef.current) {
+      const el = trRef.current;
+      el.classList.add('group-row-enter');
+      const cleanup = () => el.classList.remove('group-row-enter');
+      el.addEventListener('animationend', cleanup, { once: true });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Exit animation: class managed via effect so className re-renders don't restart it.
+  useEffect(() => {
+    if (animateExit && trRef.current) {
+      const el = trRef.current;
+      el.classList.add('group-row-exit');
+      return () => el.classList.remove('group-row-exit');
+    }
+  }, [animateExit]);
   const show = (key: SortKey) => visibleCols.includes(key);
   const w = (key: SortKey) => colWidths[key];
   const unit = obj?.common?.unit || '';
@@ -146,11 +168,12 @@ const StateRow = React.memo(function StateRow({
       document.body
     )}
     <tr
+      ref={trRef}
       onClick={() => startTransition(() => onSelect(id))}
       onContextMenu={(e) => { e.preventDefault(); onContextMenu(e.clientX, e.clientY, id); }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className={`group border-b border-gray-200 dark:border-gray-800 cursor-pointer transition-colors${trClassName ? ` ${trClassName}` : ''} ${
+      className={`group border-b border-gray-200 dark:border-gray-800 cursor-pointer transition-colors ${
         isSelected
           ? 'bg-blue-600/20 text-blue-700 dark:text-blue-200'
           : isFocused
@@ -411,7 +434,7 @@ const StateRow = React.memo(function StateRow({
     prev.onOpenValueModal === next.onOpenValueModal &&
     prev.isFocused === next.isFocused &&
     prev.displayId === next.displayId &&
-    prev.trClassName === next.trClassName
+    prev.animateExit === next.animateExit
   );
 });
 

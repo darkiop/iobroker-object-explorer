@@ -114,6 +114,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const animTimersRef = React.useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const collapseTimersRef = React.useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const allSepPrefixesRef = React.useRef<Set<string>>(new Set());
+  const animatedSepEls = React.useRef<WeakSet<Element>>(new WeakSet());
   const [headerHeight, setHeaderHeight] = useState(0);
   const [newDatapointOpen, setNewDatapointOpen] = useState(false);
   const [newDatapointPrefix, setNewDatapointPrefix] = useState<string | null>(null);
@@ -1597,7 +1598,21 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                 const hasFocusedInside = isCollapsed && focusedId !== null && (focusedId.startsWith(item.prefix + '.') || focusedId === item.prefix);
                 const hasHiddenSelection = hasCheckedInside || hasFocusedInside;
                 return (
-                  <tr key={`sep_${item.prefix}_${idx}`} className={`group/sep cursor-pointer select-none${animateGroupExpand && item.parentPrefix && animatingPrefixes.has(item.parentPrefix) ? ' group-row-enter' : ''}${animateGroupExpand && item.parentPrefix && collapsingPrefixes.has(item.parentPrefix) ? ' group-row-exit' : ''}`} onContextMenu={(e) => { e.preventDefault(); setSepCtxMenu({ x: e.clientX, y: e.clientY, prefix: item.prefix }); }} onClick={() => {
+                  <tr key={`sep_${item.prefix}`} ref={(el) => {
+                      if (!el) return;
+                      if (animateGroupExpand && item.parentPrefix) {
+                        if (animatingPrefixes.has(item.parentPrefix) && !animatedSepEls.current.has(el)) {
+                          animatedSepEls.current.add(el);
+                          el.classList.add('group-row-enter');
+                          el.addEventListener('animationend', () => el.classList.remove('group-row-enter'), { once: true });
+                        }
+                        if (collapsingPrefixes.has(item.parentPrefix) && !el.classList.contains('group-row-exit')) {
+                          el.classList.add('group-row-exit');
+                        } else if (!collapsingPrefixes.has(item.parentPrefix) && el.classList.contains('group-row-exit')) {
+                          el.classList.remove('group-row-exit');
+                        }
+                      }
+                    }} className="group/sep cursor-pointer select-none" onContextMenu={(e) => { e.preventDefault(); setSepCtxMenu({ x: e.clientX, y: e.clientY, prefix: item.prefix }); }} onClick={() => {
                       const prefix = item.prefix;
                       const base = collapsedPrefixes === null ? new Set(allSepPrefixesRef.current) : new Set(collapsedPrefixes);
                       const wasCollapsed = base.has(prefix);
@@ -1820,7 +1835,8 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                   isFocused={focusedId === id && selectedId !== id}
                   showDesc={showDesc} showObjectTypeIcons={showObjectTypeIcons}
                   depth={item.depth}
-                  trClassName={animateGroupExpand && item.parentPrefix ? (animatingPrefixes.has(item.parentPrefix) ? 'group-row-enter' : collapsingPrefixes.has(item.parentPrefix) ? 'group-row-exit' : undefined) : undefined}
+                  animateEnter={animateGroupExpand && !!item.parentPrefix && animatingPrefixes.has(item.parentPrefix)}
+                  animateExit={animateGroupExpand && !!item.parentPrefix && collapsingPrefixes.has(item.parentPrefix)}
                 />
               );
             })}

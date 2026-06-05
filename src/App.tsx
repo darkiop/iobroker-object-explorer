@@ -96,7 +96,6 @@ function AppContent() {
 
   // ── Connectivity ─────────────────────────────────────────────────────────
   const { isOnline, browserOnline } = useApiConnectivity();
-  const lpStatus = useLongPolling();
 
   // ── React Query ──────────────────────────────────────────────────────────
   const fieldFilters = (idFilter || nameFilter || descFilter) ? { id: idFilter ?? undefined, name: nameFilter ?? undefined, desc: descFilter ?? undefined } : undefined;
@@ -219,9 +218,12 @@ function AppContent() {
   );
   const totalPages = paginationDisabled ? 1 : Math.ceil(totalCount / appSettings.pageSize);
 
+  // Long-polling scoped to visible page IDs only — no global * subscription
+  const lpStatus = useLongPolling(pageIds);
+
   const { data: stateValues, refetch: refetchStateValues, dataUpdatedAt: statesUpdatedAt } = useStateValues(
     pageIds,
-    lpStatus.connected ? false : 30_000,
+    lpStatus.connected ? false : 10_000,
   );
   const lastValidUpdatedAt = useRef<number>(0);
   if (statesUpdatedAt > 0) lastValidUpdatedAt.current = statesUpdatedAt;
