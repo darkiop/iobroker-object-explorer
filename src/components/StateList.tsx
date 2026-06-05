@@ -118,6 +118,9 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const [headerHeight, setHeaderHeight] = useState(0);
   const [newDatapointOpen, setNewDatapointOpen] = useState(false);
   const [newDatapointPrefix, setNewDatapointPrefix] = useState<string | null>(null);
+  const [newAliasOpen, setNewAliasOpen] = useState(false);
+  const [newMenuOpen, setNewMenuOpen] = useState(false);
+  const newMenuRef = useRef<HTMLDivElement>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [optimizeOpen, setOptimizeOpen] = useState(false);
   const [optimizePath, setOptimizePath] = useState<string | undefined>(undefined);
@@ -199,6 +202,17 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [exportMenuOpen]);
+
+  useEffect(() => {
+    if (!newMenuOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (newMenuRef.current && !newMenuRef.current.contains(e.target as Node)) {
+        setNewMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [newMenuOpen]);
 
   function handleColChange(cols: SortKey[]) {
     persistSettings({ ...appSettings, visibleCols: cols });
@@ -499,7 +513,6 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
 
   const activeDisplayItems: DisplayItem[] = displayItems;
 
-  const _hasColFilters = Object.values(colFiltersDraft).some((v) => v.trim() !== '');
 
   const totalWidth = DEL_COL_WIDTH + visibleCols.reduce((sum, k) => sum + colWidths[k], 0);
 
@@ -671,14 +684,34 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
       <div className="flex items-center gap-2">
         {connectedInfo && <div className="shrink-0">{connectedInfo}</div>}
         {connectedInfo && <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 shrink-0" />}
-        <button
-          onClick={() => setNewDatapointOpen(true)}
-          title={isEn ? 'New datapoint' : 'Neuer Datenpunkt'}
-          className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
-        >
-          <Plus size={16} />
-          {showToolbarLabels && <span>{isEn ? 'New' : 'Neu'}</span>}
-        </button>
+        <div className="relative" ref={newMenuRef}>
+          <button
+            onClick={() => setNewMenuOpen((v) => !v)}
+            title={isEn ? 'New…' : 'Neu…'}
+            className={`flex items-center gap-1.5 rounded-lg transition-colors ${newMenuOpen ? 'text-blue-600 bg-blue-500/15 dark:text-blue-400 dark:bg-blue-500/20' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10'} ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
+          >
+            <Plus size={16} />
+            {showToolbarLabels && <span>{isEn ? 'New' : 'Neu'}</span>}
+          </button>
+          {newMenuOpen && (
+            <div className="absolute left-0 top-full mt-1 z-50 flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg overflow-hidden min-w-[150px]">
+              <button
+                onClick={() => { setNewDatapointOpen(true); setNewMenuOpen(false); }}
+                className="flex items-center gap-2 px-3 py-1.5 text-xs text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <Plus size={13} />
+                {isEn ? 'New datapoint' : 'Neuer Datenpunkt'}
+              </button>
+              <button
+                onClick={() => { setNewAliasOpen(true); setNewMenuOpen(false); }}
+                className="flex items-center gap-2 px-3 py-1.5 text-xs text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <Link2 size={13} />
+                {isEn ? 'New alias' : 'Neuer Alias'}
+              </button>
+            </div>
+          )}
+        </div>
         <div className="relative" ref={exportMenuRef}>
           <button
             onClick={() => setExportMenuOpen((v) => !v)}
@@ -1118,6 +1151,16 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
           initialId={newDatapointPrefix !== null ? newDatapointPrefix + '.' : patternToInitialId(pattern)}
           language={language}
           allObjectIds={allObjectIds}
+        />
+      )}
+      {newAliasOpen && (
+        <CreateAliasModal
+          sourceId=""
+          sourceObj={undefined}
+          existingIds={existingIds}
+          language={language}
+          onClose={() => setNewAliasOpen(false)}
+          onCreated={(newId) => { setNewAliasOpen(false); onNavigateTo?.([newId]); }}
         />
       )}
       {importOpen && (

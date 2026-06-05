@@ -337,7 +337,6 @@ export default function AutoCreateAliasModal({ deviceId, allObjects, existingIds
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700/60">
                       {visibleRows.map((row) => {
-                        const _aliasId = aliasIdForRow(row);
                         const err = rowErrors.get(row.sourceId);
                         return (
                           <tr
