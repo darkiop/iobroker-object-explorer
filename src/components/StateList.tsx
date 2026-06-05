@@ -56,8 +56,12 @@ interface StateListProps {
   allObjectIds: Set<string>;
   exportIds: string[];
   onNavigateTo: (ids: string[]) => void;
-  connectedInfo?: React.ReactNode;
   onOpenInOtherPanel?: (id: string) => void;
+  forceHideToolbarLabels?: boolean;
+  visibleColsOverride?: SortKey[];
+  onVisibleColsChange?: (cols: SortKey[]) => void;
+  groupByPathOverride?: boolean;
+  onToggleGroupByPathOverride?: () => void;
 }
 
 
@@ -76,12 +80,14 @@ function patternToInitialId(pattern: string): string {
 }
 
 
-function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allObjectIds, exportIds, onNavigateTo, connectedInfo, onOpenInOtherPanel }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
+function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allObjectIds, exportIds, onNavigateTo, onOpenInOtherPanel, forceHideToolbarLabels, visibleColsOverride, onVisibleColsChange, groupByPathOverride, onToggleGroupByPathOverride }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
   const { colFilters, handleColFilterChange: onColFilterChange, pattern, treeFilter, handleClearTreeFilter: onClearTreeFilter, sidebarToggleSeq, fulltextEnabled, handleTreeScope } = usePanelContext();
   const { selectedId, setSelectedId: onSelect, setHistoryModalId: _setHistoryModalId, setEnumManagerOpen, setAliasReplaceInitialStr, setEditInitialTab, setAutoAliasDeviceId } = useSelectionContext();
-  const { appSettings, expertMode, scriptUsedIds, scriptsFetching, scriptLastUpdated, setScriptUsedIds, setConfirmScriptRefresh, handleToggleExpertMode: onToggleExpertMode, handleToggleGroupByPath: onToggleGroupByPath, persistSettings } = useAppSettingsContext();
+  const { appSettings, expertMode, scriptUsedIds, scriptsFetching, scriptLastUpdated, setScriptUsedIds, setConfirmScriptRefresh, handleToggleExpertMode: onToggleExpertMode, handleToggleGroupByPath: _handleToggleGroupByPath, persistSettings } = useAppSettingsContext();
+  const onToggleGroupByPath = onToggleGroupByPathOverride ?? _handleToggleGroupByPath;
 
-  const { language = 'en', dateFormat = 'de', visibleCols: settingsVisibleCols, toolbarLabels = true, tableFontSize = 'normal', showDesc = true, groupByPath = false, shortenGroupPaths = true, showObjectIcons = false, showObjectTypeIcons = true, customDefaultWidths, customMinWidths, customMaxWidths, pageSize, animateGroupExpand = false } = appSettings;
+  const { language = 'en', dateFormat = 'de', visibleCols: settingsVisibleCols, toolbarLabels = true, tableFontSize = 'normal', showDesc = true, groupByPath: settingsGroupByPath = false, shortenGroupPaths = true, showObjectIcons = false, showObjectTypeIcons = true, customDefaultWidths, customMinWidths, customMaxWidths, pageSize, animateGroupExpand = false } = appSettings;
+  const groupByPath = groupByPathOverride !== undefined ? groupByPathOverride : settingsGroupByPath;
   const onOpenEnumManager = React.useCallback(() => setEnumManagerOpen(true), [setEnumManagerOpen]);
   const onOpenAliasReplace = React.useCallback((initialStr?: string) => setAliasReplaceInitialStr(initialStr ?? null), [setAliasReplaceInitialStr]);
   const onScriptsClick = React.useCallback((id: string) => { onSelect(id); setEditInitialTab('scripts'); }, [onSelect, setEditInitialTab]);
@@ -93,7 +99,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const isEn = language === 'en';
   const [sortKey, setSortKey] = useState<SortKey>('id');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
-  const [visibleCols, setVisibleCols] = useState<SortKey[]>(() => settingsVisibleCols ?? DEFAULT_COLS);
+  const [visibleCols, setVisibleCols] = useState<SortKey[]>(() => visibleColsOverride ?? settingsVisibleCols ?? DEFAULT_COLS);
   const { data: scriptSources } = useAllScriptSources(visibleCols.includes('scripts'));
   const [showStats, setShowStats] = useState(false);
   const { data: allObjectsData } = useAllObjects();
@@ -131,7 +137,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const [deletingGroupPrefix, setDeletingGroupPrefix] = useState<string | null>(null);
   const [valueEditId, setValueEditId] = useState<string | null>(null);
   const [confirmResetLs, setConfirmResetLs] = useState(false);
-  const showToolbarLabels = toolbarLabels;
+  const showToolbarLabels = forceHideToolbarLabels ? false : toolbarLabels;
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [multiDeleteOpen, setMultiDeleteOpen] = useState(false);
@@ -216,7 +222,12 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   }, [newMenuOpen]);
 
   function handleColChange(cols: SortKey[]) {
-    persistSettings({ ...appSettings, visibleCols: cols });
+    if (onVisibleColsChange) {
+      onVisibleColsChange(cols);
+      setVisibleCols(cols);
+    } else {
+      persistSettings({ ...appSettings, visibleCols: cols });
+    }
   }
 
   function handleHideCol(key: SortKey) {
@@ -262,9 +273,10 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   }, [sidebarToggleSeq]);
 
   useEffect(() => {
+    if (visibleColsOverride) { setVisibleCols(visibleColsOverride); return; }
     if (!settingsVisibleCols || settingsVisibleCols.length === 0) return;
     setVisibleCols(settingsVisibleCols);
-  }, [settingsVisibleCols]);
+  }, [settingsVisibleCols, visibleColsOverride]);
 
   // Sync external colFilters → draft (e.g. context menu, clear from App.tsx)
   useEffect(() => {
@@ -683,8 +695,6 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const toolbar = (
     <div className="flex items-center justify-between pl-1 pr-3 py-1 shrink-0 border-b border-gray-200 dark:border-gray-800">
       <div className="flex items-center gap-2">
-        {connectedInfo && <div className="shrink-0">{connectedInfo}</div>}
-        {connectedInfo && <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 shrink-0" />}
         <div className="relative" ref={newMenuRef}>
           <button
             onClick={() => setNewMenuOpen((v) => !v)}
@@ -724,25 +734,9 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
           </button>
           {exportMenuOpen && (
             <div className="absolute left-0 top-full mt-1 z-50 flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg overflow-hidden min-w-[130px]">
-              <button
-                onClick={() => { handleExport('csv'); setExportMenuOpen(false); }}
-                className="px-3 py-1.5 text-xs text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-              >
-                CSV
-              </button>
-              <button
-                onClick={() => { handleExport('json'); setExportMenuOpen(false); }}
-                className="px-3 py-1.5 text-xs text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-              >
-                JSON
-              </button>
-              <button
-                onClick={() => { handleCopyJson(); setExportMenuOpen(false); }}
-                className="px-3 py-1.5 text-xs text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                title={isEn ? 'Copy filtered list as JSON to clipboard' : 'Gefilterte Liste als JSON in die Zwischenablage kopieren'}
-              >
-                {isEn ? 'JSON (Clipboard)' : 'JSON (Zwischenablage)'}
-              </button>
+              <button onClick={() => { handleExport('csv'); setExportMenuOpen(false); }} className="px-3 py-1.5 text-xs text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">CSV</button>
+              <button onClick={() => { handleExport('json'); setExportMenuOpen(false); }} className="px-3 py-1.5 text-xs text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">JSON</button>
+              <button onClick={() => { handleCopyJson(); setExportMenuOpen(false); }} className="px-3 py-1.5 text-xs text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" title={isEn ? 'Copy filtered list as JSON to clipboard' : 'Gefilterte Liste als JSON in die Zwischenablage kopieren'}>{isEn ? 'JSON (Clipboard)' : 'JSON (Zwischenablage)'}</button>
             </div>
           )}
         </div>
@@ -919,17 +913,6 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
             <Indent size={17} />
           </button>
         )}
-        <button
-          onClick={() => onToggleExpertMode?.()}
-          title={expertMode ? (isEn ? 'Disable expert mode' : 'Expertenmodus deaktivieren') : (isEn ? 'Enable expert mode' : 'Expertenmodus aktivieren')}
-          className={`p-2 rounded-lg transition-colors ${
-            expertMode
-              ? 'text-amber-600 bg-amber-500/15 hover:bg-amber-500/25 dark:text-amber-400 dark:hover:bg-amber-500/20'
-              : 'text-gray-400 hover:text-amber-600 hover:bg-amber-500/10 dark:text-gray-500 dark:hover:text-amber-400 dark:hover:bg-amber-500/10'
-          }`}
-        >
-          <Wrench size={17} />
-        </button>
         <button
           onClick={fitToContainer}
           title={isEn ? 'Stretch columns to 100%' : 'Spalten auf 100% strecken'}

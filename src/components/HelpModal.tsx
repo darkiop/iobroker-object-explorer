@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { createPortal } from 'react-dom';
-import { X, CircleHelp, Search, Keyboard, MousePointerClick, CheckSquare, ArrowLeftRight, History, Mic2, Code2, Wand2, ChevronDown, BarChart2 } from 'lucide-react';
+import { X, CircleHelp, Search, Keyboard, MousePointerClick, CheckSquare, ArrowLeftRight, History, Mic2, Code2, Wand2, ChevronDown, BarChart2, Columns2 } from 'lucide-react';
 
 interface Props {
   onClose: () => void;
@@ -27,8 +27,9 @@ const SHORTCUTS: Shortcut[] = [
   { keys: ['?'], descEn: 'Show this help', descDe: 'Diese Hilfe anzeigen' },
   { keys: ['Esc'], descEn: 'Close modal / deselect', descDe: 'Modal schließen / Auswahl aufheben' },
   { keys: ['↑', '↓'], descEn: 'Navigate rows in table', descDe: 'Zeilen in Tabelle navigieren' },
-  { keys: ['←', '→'], descEn: 'Previous / next page', descDe: 'Vorherige / nächste Seite' },
+  { keys: ['←', '→'], descEn: 'Previous / next page (active panel)', descDe: 'Vorherige / nächste Seite (aktives Panel)' },
   { keys: ['Enter'], descEn: 'Open focused row', descDe: 'Fokussierte Zeile öffnen' },
+  { keys: ['Tab'], descEn: 'Switch active panel (dual-pane mode)', descDe: 'Aktives Panel wechseln (Zwei-Panel-Ansicht)' },
 ];
 
 const SEARCH_COMMANDS: SearchCommand[] = [
@@ -163,6 +164,45 @@ export default function HelpModal({ onClose, language = 'en' }: Props) {
                 ? 'Right-click any row in the table or any node in the sidebar tree to open the context menu. It offers quick actions like opening the editor, copying the ID, creating an alias, or showing history.'
                 : 'Rechtsklick auf eine Tabellenzeile oder einen Knoten im Seitenbaum öffnet das Kontextmenü. Es bietet schnelle Aktionen wie Editor öffnen, ID kopieren, Alias erstellen oder Verlauf anzeigen.'}
             </p>
+          </AccordionItem>
+
+          {/* Dual-pane */}
+          <AccordionItem
+            id="dualpane"
+            open={!!open['dualpane']}
+            onToggle={() => toggle('dualpane')}
+            icon={<Columns2 size={13} />}
+            label={isEn ? 'Dual-pane view' : 'Zwei-Panel-Ansicht'}
+          >
+            <div className="space-y-3 text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+              <p>
+                {isEn
+                  ? 'The dual-pane view shows two independent StateList panels side by side — like a dual-pane file manager (FreeCommander style). Toggle it with the'
+                  : 'Die Zwei-Panel-Ansicht zeigt zwei unabhängige Tabellen nebeneinander — wie ein Zwei-Panel-Dateimanager (FreeCommander-Stil). Aktivieren über den'}
+                {' '}<Columns2 size={12} className="inline-block align-middle" />{' '}
+                {isEn ? 'button in the header.' : 'Button in der Titelleiste.'}
+              </p>
+              <SubSection icon={<MousePointerClick size={12} />} label={isEn ? 'Active panel' : 'Aktives Panel'}>
+                {isEn
+                  ? 'Click a panel to make it active (blue top border). The sidebar search and tree navigation always target the active panel. Press Tab (outside an input) to switch between panels.'
+                  : 'Klick auf ein Panel macht es aktiv (blaue Linie oben). Suchfeld und Baumnavigation in der Sidebar steuern immer das aktive Panel. Tab (außerhalb eines Eingabefelds) wechselt zwischen Panels.'}
+              </SubSection>
+              <SubSection icon={<CheckSquare size={12} />} label={isEn ? 'Independent settings per panel' : 'Unabhängige Einstellungen pro Panel'}>
+                {isEn
+                  ? 'Each panel has its own search pattern, page, column filters, tree scope, visible columns, and flat/grouped view. Settings are persisted independently in localStorage. In dual-pane mode, both panels default to a reduced column set (ID, Room, Function, Type, Role, Value, Unit) to save horizontal space.'
+                  : 'Jedes Panel hat eigenes Suchmuster, Seite, Spaltenfilter, Baumbereich, sichtbare Spalten und Flat/Gruppiert-Ansicht. Einstellungen werden unabhängig in localStorage gespeichert. Im Zwei-Panel-Modus starten beide Panels mit einem reduzierten Spaltensatz (ID, Raum, Funktion, Typ, Rolle, Wert, Einheit).'}
+              </SubSection>
+              <SubSection icon={<ArrowLeftRight size={12} />} label={isEn ? 'Cross-panel operations' : 'Panel-übergreifende Operationen'}>
+                {isEn
+                  ? 'Right-click a row → "Open in other panel" navigates the other panel to the selected datapoint\'s namespace. The "Reset Filters" button in the header resets both panels simultaneously.'
+                  : 'Rechtsklick auf eine Zeile → „Im anderen Panel öffnen" navigiert das andere Panel in den Namespace des gewählten Datenpunkts. Der „Filter zurücksetzen"-Button in der Kopfzeile setzt beide Panels gleichzeitig zurück.'}
+              </SubSection>
+              <SubSection icon={<Search size={12} />} label={isEn ? 'Hidden column tooltips' : 'Ausgeblendete Spalten im Tooltip'}>
+                {isEn
+                  ? 'When columns are hidden (e.g. Name, Ack, Timestamp), their values appear highlighted in blue at the top of the row hover tooltip.'
+                  : 'Wenn Spalten ausgeblendet sind (z. B. Name, Ack, Zeitstempel), erscheinen ihre Werte blau hervorgehoben am Anfang des Zeilen-Hover-Tooltips.'}
+              </SubSection>
+            </div>
           </AccordionItem>
 
           {/* Keyboard shortcuts */}

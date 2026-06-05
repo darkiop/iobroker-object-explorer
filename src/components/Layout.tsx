@@ -1,8 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Sun, Moon, Gem, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Maximize, Minimize, RefreshCw, ExternalLink, Info, WifiOff, FilterX, Columns2 } from 'lucide-react';
+import { Sun, Moon, Gem, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Maximize, Minimize, RefreshCw, ExternalLink, Info, WifiOff, FilterX, Columns2, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import LanguageDropdown from './LanguageDropdown';
+import HostConnectedButton from './HostConnectedButton';
 import { useUIContext } from '../context/UIContext';
 import { useFilterContext } from '../context/FilterContext';
 
@@ -16,18 +17,20 @@ interface LayoutProps {
   lastUpdated?: number;
   onManualRefresh?: () => void;
   onConfirmScriptRefresh?: () => void;
+  headerExtra?: React.ReactNode;
+  onExtraReset?: () => void;
 }
 
 const LS_SIDEBAR_WIDTH = 'iobroker-explorer-sidebar-width';
 const LS_SIDEBAR_COLLAPSED = 'iobroker-explorer-sidebar-collapsed';
 
-export default function Layout({ sidebar, children, apiConnected = true, browserOffline = false, onConfirmScriptRefresh }: LayoutProps) {
+export default function Layout({ sidebar, children, apiConnected = true, browserOffline = false, lastUpdated, onManualRefresh, onConfirmScriptRefresh, headerExtra, onExtraReset }: LayoutProps) {
   const {
     appSettings, confirmScriptRefresh, scriptLastUpdated,
     setConfirmScriptRefresh, handleLanguageChange, openSettings, setShortcutsOpen,
     persistSettings,
   } = useUIContext();
-  const { handleSidebarToggle, hasAnyFilter, resetAllFilters } = useFilterContext();
+  const { handleSidebarToggle, hasAnyFilter, resetAllFilters, canGoBack, goBack, canGoForward, goForward } = useFilterContext();
   const language = appSettings.language;
   const adminPort = appSettings.adminPort;
   const onSidebarToggle = handleSidebarToggle;
@@ -147,11 +150,28 @@ export default function Layout({ sidebar, children, apiConnected = true, browser
           </button>
           <img src="/favicon.svg" alt="" className="w-6 h-6 shrink-0" />
           <h1 className="text-lg font-semibold text-gray-900 dark:text-white">ioBroker Object Explorer</h1>
+          <div className="w-px h-4 bg-gray-300 dark:bg-gray-600" />
+          <button
+            onClick={goBack}
+            disabled={!canGoBack}
+            title={language === 'en' ? 'Back (filter history)' : 'Zurück (Filter-Verlauf)'}
+            className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <ArrowLeft size={15} />
+          </button>
+          <button
+            onClick={goForward}
+            disabled={!canGoForward}
+            title={language === 'en' ? 'Forward (filter history)' : 'Vorwärts (Filter-Verlauf)'}
+            className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <ArrowRight size={15} />
+          </button>
         </div>
         {hasAnyFilter && (
           <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none">
             <button
-              onClick={resetAllFilters}
+              onClick={() => { resetAllFilters(); onExtraReset?.(); }}
               className="pointer-events-auto flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-500/15 text-amber-600 hover:bg-amber-500/25 dark:text-amber-400 dark:bg-amber-500/20 dark:hover:bg-amber-500/30 transition-colors border border-amber-400/30"
               title={language === 'en' ? 'Reset all filters' : 'Alle Filter zurücksetzen'}
             >
@@ -161,6 +181,12 @@ export default function Layout({ sidebar, children, apiConnected = true, browser
           </div>
         )}
         <div className="flex items-center gap-3">
+          <HostConnectedButton
+            apiConnected={apiConnected}
+            lastUpdated={lastUpdated}
+            onManualRefresh={onManualRefresh}
+          />
+          <div className="w-px h-4 bg-gray-300 dark:bg-gray-600" />
           <span className="text-[10px] font-mono text-gray-400 dark:text-gray-600 select-none" title="App version">v{__APP_VERSION__}</span>
           <LanguageDropdown value={language} onChange={(next) => onLanguageChange?.(next)} compact />
           {currentHost && (
@@ -191,6 +217,7 @@ export default function Layout({ sidebar, children, apiConnected = true, browser
           >
             <Columns2 size={16} />
           </button>
+          {headerExtra}
           <button
             onClick={onOpenSettings}
             className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"

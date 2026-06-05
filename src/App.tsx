@@ -16,7 +16,6 @@ import HelpModal from './components/HelpModal';
 import EnumManagerModal from './components/EnumManagerModal';
 import AliasReplaceModal from './components/AliasReplaceModal';
 import AutoCreateAliasModal from './components/AutoCreateAliasModal';
-import HostConnectedButton from './components/HostConnectedButton';
 import SettingsModal from './components/SettingsModal';
 import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunctionMap, useRoomEnums, useFunctionEnums, useAliasMap } from './hooks/useStates';
 import { useApiConnectivity } from './hooks/useApiConnectivity';
@@ -25,33 +24,63 @@ import { hasHistory, hasSmartName, hasCustomEnabled } from './api/iobroker';
 import type { StateListHandle } from './components/StateList';
 import { filterObjectIds } from './utils/filterObjectIds';
 import type { IoBrokerObject, IoBrokerState } from './types/iobroker';
-import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RefreshCw, Layers, X, Check, Bookmark, AlertTriangle, Tag, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RefreshCw, Layers, X, Check, Bookmark, AlertTriangle, Tag, Wrench } from 'lucide-react';
 import { getTypeColor } from './utils/typeColor';
 import { FilterContextProvider, useFilterContext } from './context/FilterContext';
 import { PanelContextProvider } from './context/PanelContext';
 import type { PanelContextValue } from './context/PanelContext';
 import { SelectionContextProvider, useSelectionContext } from './context/SelectionContext';
 import { UIContextProvider, useUIContext, DEFAULT_QUICK_PATTERNS } from './context/UIContext';
+import { DEFAULT_COLS } from './components/stateListColumns';
 import type { SortKey } from './components/stateListColumns';
+
+const PANEL2_DEFAULT_COLS: SortKey[] = DEFAULT_COLS.filter(
+  (k) => !(['write', 'history', 'custom', 'smart', 'alias', 'scripts', 'name', 'ack', 'ts'] as SortKey[]).includes(k)
+);
+const PANEL2_STATE_VERSION = 3;
+const LS_PANEL1_DUAL_COLS = 'iobroker-panel1-dual-cols';
+const PANEL1_DUAL_COLS_VERSION = 2;
+
+function loadPanel1DualCols(): SortKey[] {
+  try {
+    const raw = localStorage.getItem(LS_PANEL1_DUAL_COLS);
+    if (!raw) return PANEL2_DEFAULT_COLS;
+    const parsed = JSON.parse(raw) as { _v?: number; cols?: SortKey[] };
+    if (parsed._v !== PANEL1_DUAL_COLS_VERSION || !parsed.cols?.length) return PANEL2_DEFAULT_COLS;
+    return parsed.cols;
+  } catch { return PANEL2_DEFAULT_COLS; }
+}
+
+function savePanel1DualCols(cols: SortKey[]): void {
+  try { localStorage.setItem(LS_PANEL1_DUAL_COLS, JSON.stringify({ _v: PANEL1_DUAL_COLS_VERSION, cols })); } catch { /* ignore */ }
+}
 
 const LS_PANEL2_STATE = 'iobroker-panel2-filter-state';
 
 interface Panel2FilterState {
+  _v: number;
   pattern: string;
   page: number;
   colFilters: Partial<Record<SortKey, string>>;
   treeFilter: string | null;
   fulltextEnabled: boolean;
+  visibleCols: SortKey[];
+  groupByPath: boolean;
 }
 
 function loadPanel2State(): Panel2FilterState {
+  const defaults: Panel2FilterState = { _v: PANEL2_STATE_VERSION, pattern: '*', page: 0, colFilters: {}, treeFilter: null, fulltextEnabled: false, visibleCols: PANEL2_DEFAULT_COLS, groupByPath: true };
   try {
     const raw = localStorage.getItem(LS_PANEL2_STATE);
-    const defaults: Panel2FilterState = { pattern: '*', page: 0, colFilters: {}, treeFilter: null, fulltextEnabled: false };
     if (!raw) return defaults;
-    return { ...defaults, ...JSON.parse(raw) as Partial<Panel2FilterState> };
+    const parsed = JSON.parse(raw) as Partial<Panel2FilterState>;
+    // Version mismatch → reset visibleCols to new default
+    const visibleCols = parsed._v === PANEL2_STATE_VERSION && parsed.visibleCols?.length
+      ? parsed.visibleCols
+      : PANEL2_DEFAULT_COLS;
+    return { ...defaults, ...parsed, visibleCols, _v: PANEL2_STATE_VERSION };
   } catch {
-    return { pattern: '*', page: 0, colFilters: {}, treeFilter: null, fulltextEnabled: false };
+    return defaults;
   }
 }
 
@@ -86,6 +115,8 @@ const ENUM_COLORS = [
 
 function AppContent() {
   const stateListRef = useRef<StateListHandle>(null);
+  const p2StateListRef = useRef<StateListHandle>(null);
+  const [resetSeq, setResetSeq] = useState(0);
 
   // ── Filter Context ───────────────────────────────────────────────────────
   const {
@@ -105,7 +136,6 @@ function AppContent() {
     handleTreeScope, handleLoadSavedFilter, handleDeleteSavedFilter,
     handleSaveCurrentFilter, handleNavigateTo,
     setFulltextEnabled, setExactEnabled,
-    canGoBack, canGoForward, goBack, goForward,
   } = useFilterContext();
 
   // ── Selection Context ────────────────────────────────────────────────────
@@ -119,7 +149,7 @@ function AppContent() {
   // ── UI Context ───────────────────────────────────────────────────────────
   const {
     appSettings, settingsOpen, setSettingsOpen, shortcutsOpen, setShortcutsOpen,
-    handleScriptRefreshConfirmed,
+    handleScriptRefreshConfirmed, expertMode, handleToggleExpertMode,
   } = useUIContext();
 
   // ── Panel 2 State ────────────────────────────────────────────────────────
@@ -129,6 +159,10 @@ function AppContent() {
   const [p2ColFilters, setP2ColFilters] = useState<Partial<Record<SortKey, string>>>(() => loadPanel2State().colFilters);
   const [p2TreeFilter, setP2TreeFilter] = useState<string | null>(() => loadPanel2State().treeFilter);
   const [p2FulltextEnabled, setP2FulltextEnabled] = useState(() => loadPanel2State().fulltextEnabled);
+  const [p2VisibleCols, setP2VisibleCols] = useState<SortKey[]>(() => loadPanel2State().visibleCols);
+  const [p1DualCols, setP1DualColsRaw] = useState<SortKey[]>(() => loadPanel1DualCols());
+  const setP1DualCols = useCallback((cols: SortKey[]) => { setP1DualColsRaw(cols); savePanel1DualCols(cols); }, []);
+  const [p2GroupByPath, setP2GroupByPath] = useState(() => loadPanel2State().groupByPath);
 
   const setP2Pattern = useCallback((p: string) => {
     setP2PatternRaw(p);
@@ -136,12 +170,15 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    savePanel2State({ pattern: p2Pattern, page: p2Page, colFilters: p2ColFilters, treeFilter: p2TreeFilter, fulltextEnabled: p2FulltextEnabled });
-  }, [p2Pattern, p2Page, p2ColFilters, p2TreeFilter, p2FulltextEnabled]);
+    savePanel2State({ _v: PANEL2_STATE_VERSION, pattern: p2Pattern, page: p2Page, colFilters: p2ColFilters, treeFilter: p2TreeFilter, fulltextEnabled: p2FulltextEnabled, visibleCols: p2VisibleCols, groupByPath: p2GroupByPath });
+  }, [p2Pattern, p2Page, p2ColFilters, p2TreeFilter, p2FulltextEnabled, p2VisibleCols, p2GroupByPath]);
 
-  // Close panel 2 → reset active panel
+  // Close panel 2 → reset active panel + refit columns
   useEffect(() => {
-    if (!appSettings.panel2Open) setActivePanelIdx(0);
+    if (!appSettings.panel2Open) {
+      setActivePanelIdx(0);
+      requestAnimationFrame(() => requestAnimationFrame(() => stateListRef.current?.fitToContainer()));
+    }
   }, [appSettings.panel2Open]);
 
   // ── Connectivity ─────────────────────────────────────────────────────────
@@ -302,12 +339,13 @@ function AppContent() {
 
   const p2TotalCount = p2TableIds.length;
   const p2PageSize = appSettings.pageSize;
-  const p2PageStart = p2Page * p2PageSize;
+  const p2PaginationDisabled = p2GroupByPath;
+  const p2PageStart = p2PaginationDisabled ? 0 : p2Page * p2PageSize;
   const p2PageIds = useMemo(
-    () => p2TableIds.slice(p2PageStart, p2PageStart + p2PageSize),
-    [p2TableIds, p2PageStart, p2PageSize]
+    () => p2PaginationDisabled ? p2TableIds : p2TableIds.slice(p2PageStart, p2PageStart + p2PageSize),
+    [p2TableIds, p2PageStart, p2PageSize, p2PaginationDisabled]
   );
-  const p2TotalPages = Math.ceil(p2TotalCount / p2PageSize);
+  const p2TotalPages = p2PaginationDisabled ? 1 : Math.ceil(p2TotalCount / p2PageSize);
 
   const { data: p2StateValues } = useStateValues(p2PageIds, 10_000);
 
@@ -394,16 +432,27 @@ function AppContent() {
       lastUpdated={lastValidUpdatedAt.current > 0 ? lastValidUpdatedAt.current : undefined}
       onManualRefresh={handleManualRefresh}
       onConfirmScriptRefresh={() => handleScriptRefreshConfirmed(Object.keys(allObjects))}
+      onExtraReset={() => {
+        setP2Pattern('*');
+        setP2Page(0);
+        setP2ColFilters({});
+        setP2TreeFilter(null);
+        setResetSeq((s) => s + 1);
+      }}
+      headerExtra={
+        <button
+          onClick={handleToggleExpertMode}
+          title={expertMode ? (isEn ? 'Disable expert mode' : 'Expertenmodus deaktivieren') : (isEn ? 'Enable expert mode' : 'Expertenmodus aktivieren')}
+          className={`p-1.5 rounded-lg transition-colors ${expertMode ? 'text-amber-600 bg-amber-500/15 hover:bg-amber-500/25 dark:text-amber-400 dark:bg-amber-500/20 dark:hover:bg-amber-500/30' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700'}`}
+        >
+          <Wrench size={16} />
+        </button>
+      }
       sidebar={
         <div className="flex flex-col h-full">
           <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex flex-col gap-2">
-            {appSettings.panel2Open && (
-              <div className="text-[10px] font-semibold text-blue-500 -mb-1">
-                {isEn ? `Sidebar → Panel ${activePanelIdx + 1}` : `Sidebar → Panel ${activePanelIdx + 1}`}
-              </div>
-            )}
             <SearchBar
-              key={`searchbar-p${activePanelIdx}`}
+              key={`searchbar-p${activePanelIdx}-r${resetSeq}`}
               onSearch={activePanelIdx === 0 ? handleSearch : setP2Pattern}
               initialPattern={activePanelIdx === 0 ? pattern : p2Pattern}
               onReset={activePanelIdx === 0 ? resetAllFilters : () => { setP2Pattern('*'); setP2ColFilters({}); setP2TreeFilter(null); }}
@@ -708,15 +757,9 @@ function AppContent() {
         <div className="flex-1 min-h-0 flex flex-row overflow-hidden">
           {/* ── Panel 1 ── */}
           <div
-            className={`flex flex-col flex-1 min-w-0 overflow-hidden ${activePanelIdx === 0 && appSettings.panel2Open ? 'outline outline-1 outline-blue-500 outline-offset-[-1px]' : ''}`}
+            className={`flex flex-col flex-1 min-w-0 overflow-hidden ${activePanelIdx === 0 && appSettings.panel2Open ? 'border-t-2 border-blue-500' : 'border-t-2 border-transparent'}`}
             onClick={() => setActivePanelIdx(0)}
           >
-            {appSettings.panel2Open && (
-              <div className="px-2 py-0.5 text-[10px] font-semibold border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-850 shrink-0 flex items-center gap-1 select-none">
-                <span className={activePanelIdx === 0 ? 'text-blue-500' : 'text-gray-400 dark:text-gray-500'}>Panel 1</span>
-                {activePanelIdx === 0 && <span className="text-blue-500 text-[8px]">●</span>}
-              </div>
-            )}
             <StateList
               ref={stateListRef}
               ids={pageIds}
@@ -732,32 +775,9 @@ function AppContent() {
                 setActivePanelIdx(1);
                 setP2Pattern(id.split('.').slice(0, -1).join('.') + '.*');
               } : undefined}
-              connectedInfo={
-                <div className="flex items-center gap-1">
-                  <HostConnectedButton
-                    apiConnected={!objectsError && isOnline}
-                    lastUpdated={lastValidUpdatedAt.current > 0 ? lastValidUpdatedAt.current : undefined}
-                    onManualRefresh={handleManualRefresh}
-                  />
-                  <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-0.5" />
-                  <button
-                    onClick={goBack}
-                    disabled={!canGoBack}
-                    title={isEn ? 'Back (filter history)' : 'Zurück (Filter-Verlauf)'}
-                    className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <ArrowLeft size={15} />
-                  </button>
-                  <button
-                    onClick={goForward}
-                    disabled={!canGoForward}
-                    title={isEn ? 'Forward (filter history)' : 'Vorwärts (Filter-Verlauf)'}
-                    className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <ArrowRight size={15} />
-                  </button>
-                </div>
-              }
+              forceHideToolbarLabels={appSettings.panel2Open}
+              visibleColsOverride={appSettings.panel2Open ? p1DualCols : undefined}
+              onVisibleColsChange={appSettings.panel2Open ? setP1DualCols : undefined}
             />
             {!appSettings.groupByPath && (
               <div className="py-2 px-1 border-t border-gray-200 dark:border-gray-700 shrink-0">
@@ -799,14 +819,11 @@ function AppContent() {
           {appSettings.panel2Open && (
             <PanelContextProvider value={panel2PanelCtx}>
               <div
-                className={`flex flex-col flex-1 min-w-0 overflow-hidden ${activePanelIdx === 1 ? 'outline outline-1 outline-blue-500 outline-offset-[-1px]' : ''}`}
+                className={`flex flex-col flex-1 min-w-0 overflow-hidden ${activePanelIdx === 1 ? 'border-t-2 border-blue-500' : 'border-t-2 border-transparent'}`}
                 onClick={() => setActivePanelIdx(1)}
               >
-                <div className="px-2 py-0.5 text-[10px] font-semibold border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-850 shrink-0 flex items-center gap-1 select-none">
-                  <span className={activePanelIdx === 1 ? 'text-blue-500' : 'text-gray-400 dark:text-gray-500'}>Panel 2</span>
-                  {activePanelIdx === 1 && <span className="text-blue-500 text-[8px]">●</span>}
-                </div>
                 <StateList
+                  ref={p2StateListRef}
                   ids={p2PageIds}
                   states={p2StateValues ?? EMPTY_STATES}
                   objects={p2StateObjects}
@@ -823,8 +840,13 @@ function AppContent() {
                     setActivePanelIdx(0);
                     handleSearch(id.split('.').slice(0, -1).join('.') + '.*');
                   }}
+                  forceHideToolbarLabels
+                  visibleColsOverride={p2VisibleCols}
+                  onVisibleColsChange={setP2VisibleCols}
+                  groupByPathOverride={p2GroupByPath}
+                  onToggleGroupByPathOverride={() => setP2GroupByPath((v) => !v)}
                 />
-                {p2TotalPages > 1 && !appSettings.groupByPath && (
+                {p2TotalPages > 1 && !p2GroupByPath && (
                   <div className="py-2 px-1 border-t border-gray-200 dark:border-gray-700 shrink-0">
                     <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full gap-2">
                       <div className="flex items-center justify-start">

@@ -90,8 +90,26 @@ The app is then reachable at `http://localhost:8080`.
 - **Fullscreen mode**: Maximize/Minimize button in header; press ESC to exit
 - **Theme**: Light / Dark / Obsidian — switchable in Settings, saved in `localStorage`
 - **Language toggle**: EN/DE selector in header, saved in settings
-- **Filter history navigation**: Back / Forward arrow buttons in the header toolbar navigate through the history of applied search filters — works like browser back/forward for filter state
+- **Filter history navigation**: Back / Forward arrow buttons in the header (next to the app title) navigate through the history of applied search filters — works like browser back/forward for filter state
+- **Expert mode toggle**: Wrench icon in the header (left of Settings); amber when active
 - **Saved filters**: frequently used filter combinations can be named and saved; accessible via the bookmark icon in the search bar; persisted to `localStorage`
+- **Connection status**: host badge in the header (left of the version number); click to change the ioBroker host
+
+---
+
+### Dual-Pane View
+
+Toggle with the **Columns2** icon in the header. Shows two independent datapoint tables side by side — like a dual-pane file manager (FreeCommander style).
+
+- **Active panel**: click a panel to activate it (blue top border); the sidebar search and tree navigation always target the active panel
+- **Tab** key (outside an input field) switches the active panel
+- **←/→** arrow keys page through the active panel
+- **Independent per panel**: search pattern, page, column filters, tree scope, visible columns, flat/grouped view — all saved independently in `localStorage`
+- **Reduced default columns** in dual-pane: ID, Room, Function, Type, Role, Value, Unit (to save horizontal space); each panel's column selection is saved independently
+- **Stretch to 100%** is automatically triggered when dual-pane is closed
+- **Cross-panel**: right-click → **"Open in other panel"** navigates the other panel to the selected datapoint's namespace
+- **Reset Filters** button resets both panels simultaneously
+- **Hidden column tooltips**: when columns are hidden (e.g. Name, Ack, Timestamp), their values appear highlighted in blue at the top of the row hover tooltip
 
 ---
 
@@ -184,6 +202,7 @@ All data columns (except + and Delete) can be toggled via the **column picker dr
 | Edit function | Open function dropdown directly |
 | Edit value | Open ValueEditModal |
 | Edit object | Open ObjectEditModal (Details / JSON / Alias / Custom Settings) |
+| Open in other panel | Navigate the other panel to this datapoint's namespace (dual-pane mode only) |
 | Copy datapoint | Open copy dialog |
 | Rename datapoint | Open rename dialog |
 | Move datapoint | Open move dialog |

@@ -128,7 +128,6 @@ const StateRow = React.memo(function StateRow({
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
 
   const handleMouseEnter = useCallback((e: React.MouseEvent) => {
-    if (!state) return;
     const x = e.clientX;
     const y = e.clientY;
     tooltipTimerRef.current = setTimeout(() => setTooltipPos({ x, y }), 600);
@@ -139,7 +138,20 @@ const StateRow = React.memo(function StateRow({
     setTooltipPos(null);
   }, []);
 
-  const tooltipRows = state ? [
+  const hiddenColRows: [string, string][] = [];
+  if (!show('name') && name) hiddenColRows.push([isEn ? 'Name' : 'Name', name]);
+  if (!show('ts') && state)  hiddenColRows.push([isEn ? 'Timestamp' : 'Zeitstempel', formatTimestamp(state.ts, dateFormat)]);
+  if (!show('ack') && state) hiddenColRows.push([isEn ? 'Acknowledged' : 'Bestätigt', state.ack ? (isEn ? 'Yes' : 'Ja') : (isEn ? 'No' : 'Nein')]);
+  if (!show('write') && obj) hiddenColRows.push([isEn ? 'Writable' : 'Schreibbar', obj.common?.write === false ? (isEn ? 'No (read-only)' : 'Nein (nur lesen)') : (isEn ? 'Yes' : 'Ja')]);
+  if (!show('history') && obj && hasHistory(obj)) hiddenColRows.push(['History', isEn ? 'Yes' : 'Ja']);
+  if (!show('custom') && obj && hasCustomEnabled(obj)) hiddenColRows.push(['Custom', isEn ? 'Yes' : 'Ja']);
+  if (!show('smart') && obj && hasSmartName(obj)) {
+    const sn = resolveI18n(obj.common?.smartName, language);
+    if (sn) hiddenColRows.push(['SmartName', sn]);
+  }
+  if (!show('alias') && ownTarget) hiddenColRows.push(['Alias', ownTarget]);
+
+  const tooltipStateRows: [string, string][] = state ? [
     ['Timestamp',    formatTimestamp(state.ts, dateFormat)],
     ['Last Change',  formatTimestamp(state.lc, dateFormat)],
     ['Acknowledged', state.ack ? 'Yes' : 'No'],
@@ -149,14 +161,23 @@ const StateRow = React.memo(function StateRow({
 
   return (
     <>
-    {tooltipPos && state && createPortal(
+    {tooltipPos && (state || hiddenColRows.length > 0) && createPortal(
       <div
         className="fixed z-[9999] pointer-events-none px-2.5 py-1.5 rounded shadow-lg border text-xs font-mono bg-gray-900 border-gray-600 text-gray-100 dark:bg-gray-950 dark:border-gray-700"
         style={{ left: tooltipPos.x + 14, top: tooltipPos.y + 10 }}
       >
         <table className="border-separate" style={{ borderSpacing: '0 1px' }}>
           <tbody>
-            {tooltipRows.map(([label, value]) => (
+            {hiddenColRows.map(([label, value]) => (
+              <tr key={`h-${label}`}>
+                <td className="pr-3 text-blue-300 whitespace-nowrap">{label}</td>
+                <td className="text-gray-100 whitespace-nowrap">{value}</td>
+              </tr>
+            ))}
+            {hiddenColRows.length > 0 && tooltipStateRows.length > 0 && (
+              <tr><td colSpan={2} className="py-0.5"><div className="border-t border-gray-600" /></td></tr>
+            )}
+            {tooltipStateRows.map(([label, value]) => (
               <tr key={label}>
                 <td className="pr-3 text-gray-400 whitespace-nowrap">{label}</td>
                 <td className="text-gray-100 whitespace-nowrap">{value}</td>
