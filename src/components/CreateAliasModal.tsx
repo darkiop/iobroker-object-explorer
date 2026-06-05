@@ -344,7 +344,7 @@ export default function CreateAliasModal({ sourceId = '', sourceObj, existingIds
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
                 className={`${inputCls} font-mono`}
-                placeholder="°C, %, W…"
+                placeholder=""
                 spellCheck={false}
               />
             </div>

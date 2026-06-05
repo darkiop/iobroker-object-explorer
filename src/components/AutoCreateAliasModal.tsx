@@ -4,7 +4,7 @@ import { X, Link2, Check, AlertTriangle, RefreshCw, Search } from 'lucide-react'
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { useQueryClient } from '@tanstack/react-query';
 import { createObject, updateRoomMembership, updateFunctionMembership } from '../api/iobroker';
-import { useRoomEnums, useFunctionEnums, useAllRoles } from '../hooks/useStates';
+import { useRoomEnums, useFunctionEnums, useAllRoles, useAllUnits } from '../hooks/useStates';
 import type { IoBrokerObject, IoBrokerObjectCommon } from '../types/iobroker';
 import { isValidIoBrokerId } from '../utils/validation';
 import { compilePattern, isGlobPattern } from '../api/iobroker';
@@ -63,6 +63,7 @@ export default function AutoCreateAliasModal({ deviceId, allObjects, existingIds
   const { data: roomEnums = [] } = useRoomEnums();
   const { data: functionEnums = [] } = useFunctionEnums();
   const { data: allRoles = [] } = useAllRoles();
+  const { data: allUnits = [] } = useAllUnits();
   const queryClient = useQueryClient();
 
   useEscapeKey(onClose);
@@ -219,7 +220,7 @@ export default function AutoCreateAliasModal({ deviceId, allObjects, existingIds
       onClick={onClose}
     >
       <div
-        className="w-full max-w-5xl bg-white dark:bg-gray-900 animate-modal-in rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[95vh]"
+        className="w-full max-w-6xl bg-white dark:bg-gray-900 animate-modal-in rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[95vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -312,7 +313,7 @@ export default function AutoCreateAliasModal({ deviceId, allObjects, existingIds
                     value={rowFilter}
                     onChange={(e) => setRowFilter(e.target.value)}
                     placeholder={isEn ? 'Filter…' : 'Filtern…'}
-                    className={`${inputCls} pl-6 py-1 w-full text-[11px]`}
+                    className="pl-6 py-0.5 w-full text-[11px] bg-transparent border-b border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-blue-400 dark:focus:border-blue-500"
                     disabled={isCreating || done}
                   />
                 </div>
@@ -329,9 +330,9 @@ export default function AutoCreateAliasModal({ deviceId, allObjects, existingIds
                         <th className="px-2 py-2 w-8"></th>
                         <th className="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Alias ID' : 'Alias-ID'}</th>
                         <th className="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Name' : 'Name'}</th>
-                        <th className="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Type' : 'Typ'}</th>
-                        <th className="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Unit' : 'Einheit'}</th>
-                        <th className="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 w-1/5">{isEn ? 'Role' : 'Rolle'}</th>
+                        <th className="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 w-28">{isEn ? 'Type' : 'Typ'}</th>
+                        <th className="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 w-28">{isEn ? 'Unit' : 'Einheit'}</th>
+                        <th className="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 w-28">{isEn ? 'Role' : 'Rolle'}</th>
                         <th className="px-2 py-2 w-8"></th>
                       </tr>
                     </thead>
@@ -390,13 +391,17 @@ export default function AutoCreateAliasModal({ deviceId, allObjects, existingIds
                               </select>
                             </td>
                             <td className="px-2 py-1" onClick={(e) => e.stopPropagation()}>
+                              <datalist id={`units-${row.sourceId}`}>
+                                {allUnits.map((u) => <option key={u} value={u} />)}
+                              </datalist>
                               <input
                                 type="text"
+                                list={`units-${row.sourceId}`}
                                 value={row.unitDraft}
                                 onChange={(e) => updateUnitDraft(row.sourceId, e.target.value)}
                                 disabled={isCreating || done}
                                 className="w-full px-1.5 py-0.5 rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500 text-[11px] font-mono"
-                                placeholder="°C, %, W…"
+                                placeholder=""
                                 spellCheck={false}
                               />
                             </td>

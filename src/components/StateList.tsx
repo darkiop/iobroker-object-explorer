@@ -1153,16 +1153,19 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
           allObjectIds={allObjectIds}
         />
       )}
-      {newAliasOpen && (
-        <CreateAliasModal
-          sourceId=""
-          sourceObj={undefined}
-          existingIds={allObjectIds}
-          language={language}
-          onClose={() => setNewAliasOpen(false)}
-          onCreated={(newId) => { setNewAliasOpen(false); onNavigateTo?.([newId]); }}
-        />
-      )}
+      {newAliasOpen && (() => {
+        const singleChecked = checkedIds.size === 1 ? [...checkedIds][0] : undefined;
+        return (
+          <CreateAliasModal
+            sourceId={singleChecked ?? ''}
+            sourceObj={singleChecked ? objects[singleChecked] : undefined}
+            existingIds={allObjectIds}
+            language={language}
+            onClose={() => setNewAliasOpen(false)}
+            onCreated={(newId) => { setNewAliasOpen(false); onNavigateTo?.([newId]); }}
+          />
+        );
+      })()}
       {importOpen && (
         <ImportDatapointsModal
           onClose={() => setImportOpen(false)}
