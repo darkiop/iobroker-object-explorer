@@ -63,8 +63,6 @@ export default function CreateAliasModal({ sourceId = '', sourceObj, existingIds
   const srcType   = srcCommon?.type   ?? 'mixed';
   const srcRead   = srcCommon?.read   !== false;
   const srcWrite  = srcCommon?.write  !== false;
-  const sourceRoomName = roomEnumId ? (roomEnums.find((r) => r.id === roomEnumId)?.name || fallbackEnumName(roomEnumId)) : '';
-  const sourceFnName = functionEnumId ? (functionEnums.find((f) => f.id === functionEnumId)?.name || fallbackEnumName(functionEnumId)) : '';
   const aliasIdsSorted = useMemo(
     () => [...existingIds].filter((id) => id.startsWith('alias.0.')).sort(),
     [existingIds]
