@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import type { SortKey } from '../components/stateListColumns';
+import { PanelContextProvider } from './PanelContext';
+import type { PanelContextValue } from './PanelContext';
 
 const LS_FILTER_STATE = 'iobroker-filter-state';
 const LS_SAVED_FILTERS = 'iobroker-saved-filters';
@@ -493,5 +495,22 @@ export function FilterContextProvider({ children }: { children: ReactNode }) {
     navState, goBack, goForward,
   ]);
 
-  return <FilterContext.Provider value={value}>{children}</FilterContext.Provider>;
+  const panel1Value: PanelContextValue = {
+    colFilters,
+    handleColFilterChange,
+    pattern,
+    treeFilter,
+    handleClearTreeFilter,
+    sidebarToggleSeq,
+    fulltextEnabled,
+    handleTreeScope,
+  };
+
+  return (
+    <FilterContext.Provider value={value}>
+      <PanelContextProvider value={panel1Value}>
+        {children}
+      </PanelContextProvider>
+    </FilterContext.Provider>
+  );
 }

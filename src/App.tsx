@@ -28,8 +28,36 @@ import type { IoBrokerObject, IoBrokerState } from './types/iobroker';
 import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RefreshCw, Layers, X, Check, Bookmark, AlertTriangle, Tag, ArrowLeft, ArrowRight } from 'lucide-react';
 import { getTypeColor } from './utils/typeColor';
 import { FilterContextProvider, useFilterContext } from './context/FilterContext';
+import { PanelContextProvider } from './context/PanelContext';
+import type { PanelContextValue } from './context/PanelContext';
 import { SelectionContextProvider, useSelectionContext } from './context/SelectionContext';
 import { UIContextProvider, useUIContext, DEFAULT_QUICK_PATTERNS } from './context/UIContext';
+import type { SortKey } from './components/stateListColumns';
+
+const LS_PANEL2_STATE = 'iobroker-panel2-filter-state';
+
+interface Panel2FilterState {
+  pattern: string;
+  page: number;
+  colFilters: Partial<Record<SortKey, string>>;
+  treeFilter: string | null;
+  fulltextEnabled: boolean;
+}
+
+function loadPanel2State(): Panel2FilterState {
+  try {
+    const raw = localStorage.getItem(LS_PANEL2_STATE);
+    const defaults: Panel2FilterState = { pattern: '*', page: 0, colFilters: {}, treeFilter: null, fulltextEnabled: false };
+    if (!raw) return defaults;
+    return { ...defaults, ...JSON.parse(raw) as Partial<Panel2FilterState> };
+  } catch {
+    return { pattern: '*', page: 0, colFilters: {}, treeFilter: null, fulltextEnabled: false };
+  }
+}
+
+function savePanel2State(s: Panel2FilterState): void {
+  try { localStorage.setItem(LS_PANEL2_STATE, JSON.stringify(s)); } catch { /* ignore */ }
+}
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 10_000 } },
@@ -72,7 +100,7 @@ function AppContent() {
     quickOpen, setQuickOpen, roomsOpen, setRoomsOpen, functionsOpen, setFunctionsOpen,
     typesOpen, setTypesOpen,
     basePattern, roomFilter, functionFilter, typeFilter, hasAnyFilter,
-    handleSearch,
+    handleSearch, sidebarToggleSeq,
     resetAllFilters, handleRoomToggle, handleFunctionToggle, handleTypeToggle,
     handleTreeScope, handleLoadSavedFilter, handleDeleteSavedFilter,
     handleSaveCurrentFilter, handleNavigateTo,
@@ -93,6 +121,28 @@ function AppContent() {
     appSettings, settingsOpen, setSettingsOpen, shortcutsOpen, setShortcutsOpen,
     handleScriptRefreshConfirmed,
   } = useUIContext();
+
+  // ── Panel 2 State ────────────────────────────────────────────────────────
+  const [activePanelIdx, setActivePanelIdx] = useState<0 | 1>(0);
+  const [p2Pattern, setP2PatternRaw] = useState(() => loadPanel2State().pattern);
+  const [p2Page, setP2Page] = useState(() => loadPanel2State().page);
+  const [p2ColFilters, setP2ColFilters] = useState<Partial<Record<SortKey, string>>>(() => loadPanel2State().colFilters);
+  const [p2TreeFilter, setP2TreeFilter] = useState<string | null>(() => loadPanel2State().treeFilter);
+  const [p2FulltextEnabled, setP2FulltextEnabled] = useState(() => loadPanel2State().fulltextEnabled);
+
+  const setP2Pattern = useCallback((p: string) => {
+    setP2PatternRaw(p);
+    setP2Page(0);
+  }, []);
+
+  useEffect(() => {
+    savePanel2State({ pattern: p2Pattern, page: p2Page, colFilters: p2ColFilters, treeFilter: p2TreeFilter, fulltextEnabled: p2FulltextEnabled });
+  }, [p2Pattern, p2Page, p2ColFilters, p2TreeFilter, p2FulltextEnabled]);
+
+  // Close panel 2 → reset active panel
+  useEffect(() => {
+    if (!appSettings.panel2Open) setActivePanelIdx(0);
+  }, [appSettings.panel2Open]);
 
   // ── Connectivity ─────────────────────────────────────────────────────────
   const { isOnline, browserOnline } = useApiConnectivity();
@@ -228,6 +278,60 @@ function AppContent() {
   const lastValidUpdatedAt = useRef<number>(0);
   if (statesUpdatedAt > 0) lastValidUpdatedAt.current = statesUpdatedAt;
 
+  // ── Panel 2 data pipeline ────────────────────────────────────────────────
+  const { data: p2StateObjectsData } = useFilteredObjects(p2Pattern, p2FulltextEnabled, false, undefined);
+  const p2StateObjects = p2StateObjectsData ?? EMPTY_OBJECTS;
+
+  const p2ObjectIds = useMemo(() => {
+    const ids = Object.keys(p2StateObjects).sort();
+    return filterObjectIds({
+      ids, objects: p2StateObjects, roomMap, functionMap,
+      historyIds: new Set<string>(), customIds: new Set<string>(), smartIds: new Set<string>(),
+      aliasMap,
+      colFilters: p2ColFilters, roomFilters: new Set<string>(), functionFilters: new Set<string>(),
+      quickPatterns: new Set<string>(),
+      patternRoomFilter: null, patternFunctionFilter: null, patternTypeFilter: null, patternRoleFilter: null,
+      danglingAliases: false, allObjectIds: existingIds,
+    });
+  }, [p2StateObjects, roomMap, functionMap, aliasMap, p2ColFilters, existingIds]);
+
+  const p2TableIds = useMemo(
+    () => p2TreeFilter ? p2ObjectIds.filter((id) => id.startsWith(p2TreeFilter!)) : p2ObjectIds,
+    [p2ObjectIds, p2TreeFilter]
+  );
+
+  const p2TotalCount = p2TableIds.length;
+  const p2PageSize = appSettings.pageSize;
+  const p2PageStart = p2Page * p2PageSize;
+  const p2PageIds = useMemo(
+    () => p2TableIds.slice(p2PageStart, p2PageStart + p2PageSize),
+    [p2TableIds, p2PageStart, p2PageSize]
+  );
+  const p2TotalPages = Math.ceil(p2TotalCount / p2PageSize);
+
+  const { data: p2StateValues } = useStateValues(p2PageIds, 10_000);
+
+  const p2HandleColFilterChange = useCallback((filters: Partial<Record<SortKey, string>>) => {
+    setP2ColFilters(filters);
+    setP2Page(0);
+  }, []);
+  const p2HandleClearTreeFilter = useCallback(() => setP2TreeFilter(null), []);
+  const p2HandleTreeScope = useCallback((prefix: string) => {
+    setP2TreeFilter(prefix);
+    setP2Page(0);
+  }, []);
+
+  const panel2PanelCtx: PanelContextValue = {
+    colFilters: p2ColFilters,
+    handleColFilterChange: p2HandleColFilterChange,
+    pattern: p2Pattern,
+    treeFilter: p2TreeFilter,
+    handleClearTreeFilter: p2HandleClearTreeFilter,
+    sidebarToggleSeq,  // shared — sidebar width change affects both panels
+    fulltextEnabled: p2FulltextEnabled,
+    handleTreeScope: p2HandleTreeScope,
+  };
+
   // ── Cross-context handlers ───────────────────────────────────────────────
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -252,20 +356,34 @@ function AppContent() {
         setSelectedId(null);
         return;
       }
+      if (e.key === 'Tab' && !e.shiftKey && appSettings.panel2Open) {
+        const tag = (document.activeElement as HTMLElement)?.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+        e.preventDefault();
+        setActivePanelIdx((p) => (p === 0 ? 1 : 0));
+        return;
+      }
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
         const tag = (document.activeElement as HTMLElement)?.tagName;
         if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
         if (settingsOpen || selectedId) return;
-        if (totalPages <= 1) return;
-        e.preventDefault();
-        stateListRef.current?.fitToContainer();
-        if (e.key === 'ArrowLeft') setPage((p) => Math.max(0, p - 1));
-        else setPage((p) => Math.min(totalPages - 1, p + 1));
+        if (activePanelIdx === 0) {
+          if (totalPages <= 1) return;
+          e.preventDefault();
+          stateListRef.current?.fitToContainer();
+          if (e.key === 'ArrowLeft') setPage((p) => Math.max(0, p - 1));
+          else setPage((p) => Math.min(totalPages - 1, p + 1));
+        } else {
+          if (p2TotalPages <= 1) return;
+          e.preventDefault();
+          if (e.key === 'ArrowLeft') setP2Page((p) => Math.max(0, p - 1));
+          else setP2Page((p) => Math.min(p2TotalPages - 1, p + 1));
+        }
       }
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [settingsOpen, selectedId, totalPages, setSettingsOpen, setSelectedId, setPage]);
+  }, [settingsOpen, selectedId, totalPages, p2TotalPages, activePanelIdx, appSettings.panel2Open, setSettingsOpen, setSelectedId, setPage, setP2Page, setActivePanelIdx]);
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
@@ -279,12 +397,18 @@ function AppContent() {
       sidebar={
         <div className="flex flex-col h-full">
           <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex flex-col gap-2">
+            {appSettings.panel2Open && (
+              <div className="text-[10px] font-semibold text-blue-500 -mb-1">
+                {isEn ? `Sidebar → Panel ${activePanelIdx + 1}` : `Sidebar → Panel ${activePanelIdx + 1}`}
+              </div>
+            )}
             <SearchBar
-              onSearch={handleSearch}
-              initialPattern={pattern}
-              onReset={resetAllFilters}
-              fulltextEnabled={fulltextEnabled}
-              onFulltextChange={setFulltextEnabled}
+              key={`searchbar-p${activePanelIdx}`}
+              onSearch={activePanelIdx === 0 ? handleSearch : setP2Pattern}
+              initialPattern={activePanelIdx === 0 ? pattern : p2Pattern}
+              onReset={activePanelIdx === 0 ? resetAllFilters : () => { setP2Pattern('*'); setP2ColFilters({}); setP2TreeFilter(null); }}
+              fulltextEnabled={activePanelIdx === 0 ? fulltextEnabled : p2FulltextEnabled}
+              onFulltextChange={activePanelIdx === 0 ? setFulltextEnabled : setP2FulltextEnabled}
               exactEnabled={exactEnabled}
               onExactChange={setExactEnabled}
               language={appSettings.language}
@@ -501,8 +625,8 @@ function AppContent() {
               historyIds={treeHistoryIds}
               smartIds={treeSmartIds}
               onCreateAtPath={handleCreateDatapointAtPath}
-              onSearch={handleSearch}
-              onTreeScope={handleTreeScope}
+              onSearch={activePanelIdx === 0 ? handleSearch : setP2Pattern}
+              onTreeScope={activePanelIdx === 0 ? handleTreeScope : p2HandleTreeScope}
             />
           </div>
         </div>
@@ -581,84 +705,148 @@ function AppContent() {
         {settingsOpen && <SettingsModal />}
         </ErrorBoundary>
 
-        <div className="flex-1 min-h-0 flex flex-col">
-          <StateList
-            ref={stateListRef}
-            ids={pageIds}
-            states={stateValues ?? EMPTY_STATES}
-            objects={stateObjects}
-            roomMap={roomMap}
-            functionMap={functionMap}
-            aliasMap={aliasMap}
-            allObjectIds={existingIds}
-            exportIds={tableIds}
-            onNavigateTo={handleNavigateTo}
-            connectedInfo={
-              <div className="flex items-center gap-1">
-                <HostConnectedButton
-                  apiConnected={!objectsError && isOnline}
-                  lastUpdated={lastValidUpdatedAt.current > 0 ? lastValidUpdatedAt.current : undefined}
-                  onManualRefresh={handleManualRefresh}
-                />
-                <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-0.5" />
-                <button
-                  onClick={goBack}
-                  disabled={!canGoBack}
-                  title={isEn ? 'Back (filter history)' : 'Zurück (Filter-Verlauf)'}
-                  className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ArrowLeft size={15} />
-                </button>
-                <button
-                  onClick={goForward}
-                  disabled={!canGoForward}
-                  title={isEn ? 'Forward (filter history)' : 'Vorwärts (Filter-Verlauf)'}
-                  className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ArrowRight size={15} />
-                </button>
+        <div className="flex-1 min-h-0 flex flex-row overflow-hidden">
+          {/* ── Panel 1 ── */}
+          <div
+            className={`flex flex-col flex-1 min-w-0 overflow-hidden ${activePanelIdx === 0 && appSettings.panel2Open ? 'outline outline-1 outline-blue-500 outline-offset-[-1px]' : ''}`}
+            onClick={() => setActivePanelIdx(0)}
+          >
+            {appSettings.panel2Open && (
+              <div className="px-2 py-0.5 text-[10px] font-semibold border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-850 shrink-0 flex items-center gap-1 select-none">
+                <span className={activePanelIdx === 0 ? 'text-blue-500' : 'text-gray-400 dark:text-gray-500'}>Panel 1</span>
+                {activePanelIdx === 0 && <span className="text-blue-500 text-[8px]">●</span>}
               </div>
-            }
-          />
-        </div>
-
-        {!appSettings.groupByPath && (
-          <div className="py-2 px-1 border-t border-gray-200 dark:border-gray-700 shrink-0">
-            <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full gap-2">
-              <div className="flex items-center justify-start">
-                {totalPages > 1 && (
+            )}
+            <StateList
+              ref={stateListRef}
+              ids={pageIds}
+              states={stateValues ?? EMPTY_STATES}
+              objects={stateObjects}
+              roomMap={roomMap}
+              functionMap={functionMap}
+              aliasMap={aliasMap}
+              allObjectIds={existingIds}
+              exportIds={tableIds}
+              onNavigateTo={handleNavigateTo}
+              onOpenInOtherPanel={appSettings.panel2Open ? (id: string) => {
+                setActivePanelIdx(1);
+                setP2Pattern(id.split('.').slice(0, -1).join('.') + '.*');
+              } : undefined}
+              connectedInfo={
+                <div className="flex items-center gap-1">
+                  <HostConnectedButton
+                    apiConnected={!objectsError && isOnline}
+                    lastUpdated={lastValidUpdatedAt.current > 0 ? lastValidUpdatedAt.current : undefined}
+                    onManualRefresh={handleManualRefresh}
+                  />
+                  <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-0.5" />
                   <button
-                    onClick={() => setPage((p) => Math.max(0, p - 1))}
-                    disabled={page === 0}
-                    className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                    onClick={goBack}
+                    disabled={!canGoBack}
+                    title={isEn ? 'Back (filter history)' : 'Zurück (Filter-Verlauf)'}
+                    className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
-                    {isEn ? 'Previous' : 'Zurück'}
+                    <ArrowLeft size={15} />
                   </button>
-                )}
-              </div>
-              <div className="text-center">
-                <span className="text-xs text-gray-400 dark:text-gray-500">
-                  {totalPages > 1
-                    ? <>{isEn ? 'Page' : 'Seite'} {page + 1} {isEn ? 'of' : 'von'} {totalPages} ({pageStart + 1}–{Math.min(pageStart + appSettings.pageSize, totalCount)} {isEn ? 'of' : 'von'} {totalCount})</>
-                    : <>{isEn ? 'Datapoints' : 'Datenpunkte'}: <span className="text-gray-700 dark:text-gray-200">{totalCount}</span></>
-                  }
-                  {objectsIsPartial && <span className="ml-2 text-[10px] text-blue-400 dark:text-blue-500 animate-pulse">{isEn ? 'loading…' : 'lädt…'}</span>}
-                </span>
-              </div>
-              <div className="flex items-center justify-end gap-2">
-                {totalPages > 1 && (
                   <button
-                    onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                    disabled={page >= totalPages - 1}
-                    className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                    onClick={goForward}
+                    disabled={!canGoForward}
+                    title={isEn ? 'Forward (filter history)' : 'Vorwärts (Filter-Verlauf)'}
+                    className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
-                    {isEn ? 'Next' : 'Weiter'}
+                    <ArrowRight size={15} />
                   </button>
-                )}
+                </div>
+              }
+            />
+            {!appSettings.groupByPath && (
+              <div className="py-2 px-1 border-t border-gray-200 dark:border-gray-700 shrink-0">
+                <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full gap-2">
+                  <div className="flex items-center justify-start">
+                    {totalPages > 1 && (
+                      <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0} className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
+                        {isEn ? 'Previous' : 'Zurück'}
+                      </button>
+                    )}
+                  </div>
+                  <div className="text-center">
+                    <span className="text-xs text-gray-400 dark:text-gray-500">
+                      {totalPages > 1
+                        ? <>{isEn ? 'Page' : 'Seite'} {page + 1} {isEn ? 'of' : 'von'} {totalPages} ({pageStart + 1}–{Math.min(pageStart + appSettings.pageSize, totalCount)} {isEn ? 'of' : 'von'} {totalCount})</>
+                        : <>{isEn ? 'Datapoints' : 'Datenpunkte'}: <span className="text-gray-700 dark:text-gray-200">{totalCount}</span></>
+                      }
+                      {objectsIsPartial && <span className="ml-2 text-[10px] text-blue-400 dark:text-blue-500 animate-pulse">{isEn ? 'loading…' : 'lädt…'}</span>}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-end gap-2">
+                    {totalPages > 1 && (
+                      <button onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1} className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
+                        {isEn ? 'Next' : 'Weiter'}
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
-        )}
+
+          {/* ── Divider ── */}
+          {appSettings.panel2Open && (
+            <div className="w-1 shrink-0 bg-gray-200 dark:bg-gray-700 hover:bg-blue-400 dark:hover:bg-blue-600 cursor-col-resize transition-colors" />
+          )}
+
+          {/* ── Panel 2 ── */}
+          {appSettings.panel2Open && (
+            <PanelContextProvider value={panel2PanelCtx}>
+              <div
+                className={`flex flex-col flex-1 min-w-0 overflow-hidden ${activePanelIdx === 1 ? 'outline outline-1 outline-blue-500 outline-offset-[-1px]' : ''}`}
+                onClick={() => setActivePanelIdx(1)}
+              >
+                <div className="px-2 py-0.5 text-[10px] font-semibold border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-850 shrink-0 flex items-center gap-1 select-none">
+                  <span className={activePanelIdx === 1 ? 'text-blue-500' : 'text-gray-400 dark:text-gray-500'}>Panel 2</span>
+                  {activePanelIdx === 1 && <span className="text-blue-500 text-[8px]">●</span>}
+                </div>
+                <StateList
+                  ids={p2PageIds}
+                  states={p2StateValues ?? EMPTY_STATES}
+                  objects={p2StateObjects}
+                  roomMap={roomMap}
+                  functionMap={functionMap}
+                  aliasMap={aliasMap}
+                  allObjectIds={existingIds}
+                  exportIds={p2TableIds}
+                  onNavigateTo={(ids) => {
+                    const pat = ids.length === 1 ? ids[0] : ids[0] ? ids[0].split('.').slice(0, -1).join('.') + '.*' : '*';
+                    setP2Pattern(pat);
+                  }}
+                  onOpenInOtherPanel={(id: string) => {
+                    setActivePanelIdx(0);
+                    handleSearch(id.split('.').slice(0, -1).join('.') + '.*');
+                  }}
+                />
+                {p2TotalPages > 1 && !appSettings.groupByPath && (
+                  <div className="py-2 px-1 border-t border-gray-200 dark:border-gray-700 shrink-0">
+                    <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full gap-2">
+                      <div className="flex items-center justify-start">
+                        <button onClick={() => setP2Page((p) => Math.max(0, p - 1))} disabled={p2Page === 0} className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
+                          {isEn ? 'Previous' : 'Zurück'}
+                        </button>
+                      </div>
+                      <span className="text-xs text-gray-400 dark:text-gray-500 text-center">
+                        {isEn ? 'Page' : 'Seite'} {p2Page + 1} {isEn ? 'of' : 'von'} {p2TotalPages} ({p2PageStart + 1}–{Math.min(p2PageStart + p2PageSize, p2TotalCount)} {isEn ? 'of' : 'von'} {p2TotalCount})
+                      </span>
+                      <div className="flex items-center justify-end">
+                        <button onClick={() => setP2Page((p) => Math.min(p2TotalPages - 1, p + 1))} disabled={p2Page >= p2TotalPages - 1} className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
+                          {isEn ? 'Next' : 'Weiter'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </PanelContextProvider>
+          )}
+        </div>
       </div>
     </Layout>
     {isRefreshing && createPortal(

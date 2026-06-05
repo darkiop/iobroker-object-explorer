@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Sun, Moon, Gem, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Maximize, Minimize, RefreshCw, ExternalLink, Info, WifiOff, FilterX } from 'lucide-react';
+import { Sun, Moon, Gem, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Maximize, Minimize, RefreshCw, ExternalLink, Info, WifiOff, FilterX, Columns2 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import LanguageDropdown from './LanguageDropdown';
 import { useUIContext } from '../context/UIContext';
@@ -25,6 +25,7 @@ export default function Layout({ sidebar, children, apiConnected = true, browser
   const {
     appSettings, confirmScriptRefresh, scriptLastUpdated,
     setConfirmScriptRefresh, handleLanguageChange, openSettings, setShortcutsOpen,
+    persistSettings,
   } = useUIContext();
   const { handleSidebarToggle, hasAnyFilter, resetAllFilters } = useFilterContext();
   const language = appSettings.language;
@@ -181,6 +182,14 @@ export default function Layout({ sidebar, children, apiConnected = true, browser
             aria-label={theme === 'light' ? 'Dark Mode' : theme === 'dark' ? 'Obsidian Mode' : 'Light Mode'}
           >
             {theme === 'light' ? <Moon size={16} /> : theme === 'dark' ? <Gem size={16} /> : <Sun size={16} />}
+          </button>
+          <button
+            onClick={() => persistSettings({ ...appSettings, panel2Open: !appSettings.panel2Open })}
+            className={`p-1.5 rounded-lg transition-colors ${appSettings.panel2Open ? 'text-blue-600 bg-blue-500/15 hover:bg-blue-500/25 dark:text-blue-400 dark:bg-blue-500/20 dark:hover:bg-blue-500/30' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700'}`}
+            title={language === 'en' ? 'Dual pane view' : 'Zwei-Panel-Ansicht'}
+            aria-label={language === 'en' ? 'Dual pane view' : 'Zwei-Panel-Ansicht'}
+          >
+            <Columns2 size={16} />
           </button>
           <button
             onClick={onOpenSettings}

@@ -128,6 +128,7 @@ export default function SettingsModal() {
       showObjectTypeIcons: settingsDraft.showObjectTypeIcons,
       animateGroupExpand: settingsDraft.animateGroupExpand,
       shortenGroupPaths: settingsDraft.shortenGroupPaths,
+      panel2Open: settingsDraft.panel2Open,
     };
     applySettings(next);
   }, [settingsDraft, applySettings]);

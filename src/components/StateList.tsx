@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { X, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, Wrench, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Folder, Cpu, Layers, FileCode2, BarChart2, Copy, Check, Pencil, List, Zap, Indent } from 'lucide-react';
+import { X, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, Wrench, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Folder, Cpu, Layers, FileCode2, BarChart2, Copy, Check, Pencil, List, Zap, Indent, Columns2 } from 'lucide-react';
 import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch, useAllScriptSources } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
@@ -27,7 +27,7 @@ import { ColoredId } from '../utils/coloredId';
 import { getTypeColor } from '../utils/typeColor';
 import { getRoleColor } from '../utils/roleColor';
 import { useToast } from '../context/ToastContext';
-import { useFilterContext } from '../context/FilterContext';
+import { usePanelContext } from '../context/PanelContext';
 import { useSelectionContext } from '../context/SelectionContext';
 import { useAppSettingsContext } from '../context/UIContext';
 import BatchComboControl, { EMPTY_SENTINEL } from './BatchComboControl';
@@ -57,6 +57,7 @@ interface StateListProps {
   exportIds: string[];
   onNavigateTo: (ids: string[]) => void;
   connectedInfo?: React.ReactNode;
+  onOpenInOtherPanel?: (id: string) => void;
 }
 
 
@@ -75,8 +76,8 @@ function patternToInitialId(pattern: string): string {
 }
 
 
-function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allObjectIds, exportIds, onNavigateTo, connectedInfo }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
-  const { colFilters, handleColFilterChange: onColFilterChange, pattern, treeFilter, handleClearTreeFilter: onClearTreeFilter, sidebarToggleSeq, fulltextEnabled, handleTreeScope } = useFilterContext();
+function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allObjectIds, exportIds, onNavigateTo, connectedInfo, onOpenInOtherPanel }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
+  const { colFilters, handleColFilterChange: onColFilterChange, pattern, treeFilter, handleClearTreeFilter: onClearTreeFilter, sidebarToggleSeq, fulltextEnabled, handleTreeScope } = usePanelContext();
   const { selectedId, setSelectedId: onSelect, setHistoryModalId: _setHistoryModalId, setEnumManagerOpen, setAliasReplaceInitialStr, setEditInitialTab, setAutoAliasDeviceId } = useSelectionContext();
   const { appSettings, expertMode, scriptUsedIds, scriptsFetching, scriptLastUpdated, setScriptUsedIds, setConfirmScriptRefresh, handleToggleExpertMode: onToggleExpertMode, handleToggleGroupByPath: onToggleGroupByPath, persistSettings } = useAppSettingsContext();
 
@@ -1341,6 +1342,9 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
         items.push({ icon: <Home size={13} />, label: isEn ? 'Edit room' : 'Raum bearbeiten', onClick: () => setRoomEditId(ctxId) });
         items.push({ icon: <Zap size={13} />, label: isEn ? 'Edit function' : 'Funktion bearbeiten', onClick: () => setFnEditId(ctxId) });
         items.push({ icon: <FileEdit size={13} />, label: isEn ? 'Edit object' : 'Objekt bearbeiten', onClick: () => setEditObjId(ctxId) });
+        if (onOpenInOtherPanel) {
+          items.push({ icon: <Columns2 size={13} />, label: isEn ? 'Open in other panel' : 'Im anderen Panel öffnen', onClick: () => { onOpenInOtherPanel(ctxId); setCtxMenu(null); } });
+        }
         items.push({ separator: true } as const);
         items.push({ icon: <Copy size={13} />, label: isEn ? 'Copy datapoint' : 'Datenpunkt kopieren', onClick: () => setCopySourceId(ctxId) });
         items.push({ icon: <PenLine size={13} />, label: isEn ? 'Rename datapoint' : 'Datenpunkt umbenennen', onClick: () => setRenameId(ctxId) });

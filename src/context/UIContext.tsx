@@ -28,6 +28,7 @@ export interface AppSettings {
   showObjectIcons: boolean;
   showObjectTypeIcons: boolean;
   animateGroupExpand: boolean;
+  panel2Open: boolean;
 }
 
 const PAGE_SIZE_OPTIONS = [200, 500, 1000, 3000];
@@ -59,6 +60,7 @@ export function getDefaultAppSettings(): AppSettings {
     showObjectIcons: false,
     showObjectTypeIcons: true,
     animateGroupExpand: false,
+    panel2Open: false,
   };
 }
 
@@ -132,6 +134,7 @@ export function loadAppSettings(): AppSettings {
       showObjectIcons: parsed.showObjectIcons === true,
       showObjectTypeIcons: parsed.showObjectTypeIcons !== false,
       animateGroupExpand: parsed.animateGroupExpand === true,
+      panel2Open: parsed.panel2Open === true,
     };
   } catch { return fallback; }
 }
