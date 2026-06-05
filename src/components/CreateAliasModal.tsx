@@ -27,9 +27,6 @@ function getObjectName(obj: IoBrokerObject | undefined): string {
   return obj.common.name.de || obj.common.name.en || Object.values(obj.common.name)[0] || '';
 }
 
-function fallbackEnumName(enumId: string): string {
-  return enumId.split('.').slice(2).join('.') || enumId;
-}
 
 export default function CreateAliasModal({ sourceId = '', sourceObj, existingIds, onClose, onCreated, language = 'en' }: Props) {
   const isEn = language === 'en';
