@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Sun, Moon, Gem, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Maximize, Minimize, RefreshCw, ExternalLink, Info, WifiOff, Wifi, FilterX } from 'lucide-react';
+import { Sun, Moon, Gem, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Maximize, Minimize, RefreshCw, ExternalLink, Info, WifiOff, FilterX } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import LanguageDropdown from './LanguageDropdown';
 import { useUIContext } from '../context/UIContext';
@@ -21,7 +21,7 @@ interface LayoutProps {
 const LS_SIDEBAR_WIDTH = 'iobroker-explorer-sidebar-width';
 const LS_SIDEBAR_COLLAPSED = 'iobroker-explorer-sidebar-collapsed';
 
-export default function Layout({ sidebar, children, apiConnected = true, browserOffline = false, lastUpdated, onManualRefresh, onConfirmScriptRefresh }: LayoutProps) {
+export default function Layout({ sidebar, children, apiConnected = true, browserOffline = false, onConfirmScriptRefresh }: LayoutProps) {
   const {
     appSettings, confirmScriptRefresh, scriptLastUpdated,
     setConfirmScriptRefresh, handleLanguageChange, openSettings, setShortcutsOpen,
@@ -29,7 +29,6 @@ export default function Layout({ sidebar, children, apiConnected = true, browser
   const { handleSidebarToggle, hasAnyFilter, resetAllFilters } = useFilterContext();
   const language = appSettings.language;
   const adminPort = appSettings.adminPort;
-  const objectsRefreshInterval = appSettings.objectsRefreshInterval;
   const onSidebarToggle = handleSidebarToggle;
   const onOpenSettings = openSettings;
   const onLanguageChange = handleLanguageChange;

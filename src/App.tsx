@@ -25,7 +25,7 @@ import { hasHistory, hasSmartName, hasCustomEnabled } from './api/iobroker';
 import type { StateListHandle } from './components/StateList';
 import { filterObjectIds } from './utils/filterObjectIds';
 import type { IoBrokerObject, IoBrokerState } from './types/iobroker';
-import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RotateCcw, RefreshCw, Layers, X, Check, Bookmark, AlertTriangle, Tag, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RefreshCw, Layers, X, Check, Bookmark, AlertTriangle, Tag, ArrowLeft, ArrowRight } from 'lucide-react';
 import { getTypeColor } from './utils/typeColor';
 import { FilterContextProvider, useFilterContext } from './context/FilterContext';
 import { SelectionContextProvider, useSelectionContext } from './context/SelectionContext';

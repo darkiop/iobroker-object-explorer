@@ -39,7 +39,7 @@ import StyledCheckbox from './StyledCheckbox';
 import StateRow from './StateRow';
 import { getObjectName } from './stateListUtils';
 import { DEL_COL_WIDTH, VIRTUAL_ROW_HEIGHT, VIRTUAL_OVERSCAN } from './stateListConstants';
-import { useColumnResize, loadColWidths, LS_WIDTHS_KEY } from '../hooks/useColumnResize';
+import { useColumnResize, LS_WIDTHS_KEY } from '../hooks/useColumnResize';
 import { useBatchEdit } from '../hooks/useBatchEdit';
 
 export interface StateListHandle {
@@ -64,7 +64,7 @@ interface StateListProps {
 export type { SortKey, DateFormatSetting } from './stateListColumns';
 export { ALL_COLUMNS, getColumnLabel, DEFAULT_COLS } from './stateListColumns';
 import type { SortKey } from './stateListColumns';
-import { ALL_COLUMNS, DEFAULT_COLS, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MIN_WIDTHS, BUILTIN_MAX_WIDTHS } from './stateListColumns';
+import { DEFAULT_COLS, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MIN_WIDTHS, BUILTIN_MAX_WIDTHS } from './stateListColumns';
 
 
 function patternToInitialId(pattern: string): string {
@@ -415,9 +415,11 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
 
   useEffect(() => {
     if (!groupByPath || !isFilterActive) { setCollapsedPrefixes(null); return; }
-    // Auto-expand depth 0+1, collapse depth >= 2 when a search filter is active
+    // Auto-expand depth 0+1, collapse depth >= 2 when a search filter is active.
+    // Uses filteredIdsRef so background state refreshes don't re-trigger this.
+    const ids = filteredIdsRef.current;
     const sepPrefixes = new Set<string>();
-    for (const id of filteredIds) {
+    for (const id of ids) {
       const parts = id.split('.');
       for (let i = 1; i < parts.length; i++) {
         sepPrefixes.add(parts.slice(0, i).join('.'));
@@ -433,7 +435,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
       if (depth >= 2) toCollapse.add(prefix);
     }
     setCollapsedPrefixes(toCollapse);
-  }, [filteredIds, groupByPath, isFilterActive]);
+  }, [groupByPath, isFilterActive]);
 
   const displayItems = useMemo((): DisplayItem[] => {
     if (!groupByPath) return filteredIds.map((id) => ({ kind: 'row' as const, id, depth: 0 }));
@@ -497,7 +499,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
 
   const activeDisplayItems: DisplayItem[] = displayItems;
 
-  const hasColFilters = Object.values(colFiltersDraft).some((v) => v.trim() !== '');
+  const _hasColFilters = Object.values(colFiltersDraft).some((v) => v.trim() !== '');
 
   const totalWidth = DEL_COL_WIDTH + visibleCols.reduce((sum, k) => sum + colWidths[k], 0);
 
@@ -1591,7 +1593,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                 <td colSpan={rowColSpan} style={{ height: topSpacer, padding: 0, border: 0 }} />
               </tr>
             )}
-            {visibleItems.map((item, idx) => {
+            {visibleItems.map((item) => {
               if (item.kind === 'sep') {
                 const isCollapsed = collapsedPrefixes !== null && collapsedPrefixes.has(item.prefix);
                 const hasCheckedInside = isCollapsed && [...checkedIds].some((id) => id.startsWith(item.prefix + '.') || id === item.prefix);

@@ -177,7 +177,7 @@ export function useTreeState({
   );
 
   return {
-    expandSignal,
+    expandSignal, setExpandSignal,
     showFolders, setShowFolders,
     showDevices, setShowDevices,
     showChannels, setShowChannels,

@@ -29,6 +29,7 @@ interface AliasRow {
   role: string;
   roleDraft: string;     // editable override for role
   unit: string;
+  unitDraft: string;
   read: boolean;
   write: boolean;
   checked: boolean;
@@ -87,6 +88,7 @@ export default function AutoCreateAliasModal({ deviceId, allObjects, existingIds
           role,
           roleDraft: role,
           unit: (c?.unit as string) || '',
+          unitDraft: (c?.unit as string) || '',
           read: c?.read !== false,
           write: c?.write === true,
           checked: true,
@@ -97,6 +99,19 @@ export default function AutoCreateAliasModal({ deviceId, allObjects, existingIds
   const [rows, setRows] = useState<AliasRow[]>(initialRows);
 
   const basePathTrimmed = basePath.replace(/\.+$/, '');
+
+  const basePathSuggestions = useMemo(() => {
+    const paths = new Set<string>();
+    for (const id of Object.keys(allObjects)) {
+      if (!id.startsWith('alias.0.')) continue;
+      const parts = id.split('.');
+      // add all ancestor paths from alias.0 down to parent
+      for (let i = 2; i < parts.length; i++) {
+        paths.add(parts.slice(0, i).join('.'));
+      }
+    }
+    return Array.from(paths).sort();
+  }, [allObjects]);
 
   const aliasIdForRow = (row: AliasRow) =>
     basePathTrimmed ? `${basePathTrimmed}.${row.suffixDraft}` : `alias.0.${row.suffixDraft}`;
@@ -152,6 +167,10 @@ export default function AutoCreateAliasModal({ deviceId, allObjects, existingIds
     setRows((prev) => prev.map((r) => r.sourceId === sourceId ? { ...r, roleDraft: val } : r));
   }
 
+  function updateUnitDraft(sourceId: string, val: string) {
+    setRows((prev) => prev.map((r) => r.sourceId === sourceId ? { ...r, unitDraft: val } : r));
+  }
+
   function updateTypeDraft(sourceId: string, val: string) {
     setRows((prev) => prev.map((r) => r.sourceId === sourceId ? { ...r, typeDraft: val } : r));
   }
@@ -168,7 +187,7 @@ export default function AutoCreateAliasModal({ deviceId, allObjects, existingIds
           name: row.nameDraft || row.name,
           type: (row.typeDraft || row.type) as IoBrokerObjectCommon['type'],
           role: row.roleDraft || row.role || undefined,
-          unit: row.unit || undefined,
+          unit: row.unitDraft || undefined,
           read: row.read,
           write: row.write,
           alias: { id: row.sourceId },
@@ -225,9 +244,13 @@ export default function AutoCreateAliasModal({ deviceId, allObjects, existingIds
             <label className={labelCls}>
               {isEn ? 'Alias base path' : 'Alias-Basispfad'} <span className="text-red-500">*</span>
             </label>
+            <datalist id="alias-base-path-suggestions">
+              {basePathSuggestions.map((p) => <option key={p} value={p} />)}
+            </datalist>
             <input
               autoFocus
               type="text"
+              list="alias-base-path-suggestions"
               value={basePath}
               onChange={(e) => setBasePath(e.target.value)}
               className={`${inputCls} font-mono w-full`}
@@ -307,13 +330,14 @@ export default function AutoCreateAliasModal({ deviceId, allObjects, existingIds
                         <th className="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Alias ID' : 'Alias-ID'}</th>
                         <th className="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Name' : 'Name'}</th>
                         <th className="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Type' : 'Typ'}</th>
+                        <th className="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Unit' : 'Einheit'}</th>
                         <th className="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 w-1/5">{isEn ? 'Role' : 'Rolle'}</th>
                         <th className="px-2 py-2 w-8"></th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700/60">
                       {visibleRows.map((row) => {
-                        const aliasId = aliasIdForRow(row);
+                        const _aliasId = aliasIdForRow(row);
                         const err = rowErrors.get(row.sourceId);
                         return (
                           <tr
@@ -365,6 +389,17 @@ export default function AutoCreateAliasModal({ deviceId, allObjects, existingIds
                                   <option key={t} value={t}>{t}</option>
                                 ))}
                               </select>
+                            </td>
+                            <td className="px-2 py-1" onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="text"
+                                value={row.unitDraft}
+                                onChange={(e) => updateUnitDraft(row.sourceId, e.target.value)}
+                                disabled={isCreating || done}
+                                className="w-full px-1.5 py-0.5 rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500 text-[11px] font-mono"
+                                placeholder="°C, %, W…"
+                                spellCheck={false}
+                              />
                             </td>
                             <td className="px-2 py-1 w-1/5" onClick={(e) => e.stopPropagation()}>
                               <datalist id={`roles-${row.sourceId}`}>

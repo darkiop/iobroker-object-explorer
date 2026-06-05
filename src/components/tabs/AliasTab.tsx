@@ -8,9 +8,7 @@ const inputCls = 'px-2.5 py-1.5 text-sm rounded border border-gray-300 dark:bord
 
 function evalFormula(formula: string, val: unknown): { value?: string; error?: string } {
   try {
-    const parser = new ExprParser({
-      operators: { logical: true, comparison: true, 'in': false, assignment: false },
-    });
+    const parser = new ExprParser();
     const expr = parser.parse(formula.trim());
     const output = expr.evaluate({ val });
     return { value: String(output) };

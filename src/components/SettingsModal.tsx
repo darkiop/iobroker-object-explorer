@@ -127,6 +127,7 @@ export default function SettingsModal() {
       showObjectIcons: settingsDraft.showObjectIcons,
       showObjectTypeIcons: settingsDraft.showObjectTypeIcons,
       animateGroupExpand: settingsDraft.animateGroupExpand,
+      shortenGroupPaths: settingsDraft.shortenGroupPaths,
     };
     applySettings(next);
   }, [settingsDraft, applySettings]);

@@ -30,6 +30,7 @@ export interface IoBrokerObjectCommon {
   supportCustoms?: boolean;
   source?: string;
   engineType?: string;
+  icon?: string;
 }
 
 export interface IoBrokerObject {
