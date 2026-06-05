@@ -1157,7 +1157,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
         <CreateAliasModal
           sourceId=""
           sourceObj={undefined}
-          existingIds={existingIds}
+          existingIds={allObjectIds}
           language={language}
           onClose={() => setNewAliasOpen(false)}
           onCreated={(newId) => { setNewAliasOpen(false); onNavigateTo?.([newId]); }}
@@ -1256,7 +1256,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
         <CreateAliasModal
           sourceId={aliasSourceId}
           sourceObj={objects[aliasSourceId]}
-          existingIds={existingIds}
+          existingIds={allObjectIds}
           language={language}
           onClose={() => setAliasSourceId(null)}
           onCreated={(newId) => onNavigateTo?.([newId])}

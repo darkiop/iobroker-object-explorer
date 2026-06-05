@@ -2,11 +2,11 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { createPortal } from 'react-dom';
 import { X, Link2, ArrowRight } from 'lucide-react';
-import { useCreateDatapoint } from '../hooks/useStates';
+import { useCreateDatapoint, useRoomEnums, useFunctionEnums, useAllRoles, useAllUnits } from '../hooks/useStates';
 import type { IoBrokerObject } from '../types/iobroker';
 
 interface Props {
-  sourceId: string;
+  sourceId?: string;
   sourceObj: IoBrokerObject | undefined;
   existingIds: Set<string>;
   onClose: () => void;
@@ -31,28 +31,40 @@ function fallbackEnumName(enumId: string): string {
   return enumId.split('.').slice(2).join('.') || enumId;
 }
 
-export default function CreateAliasModal({ sourceId, sourceObj, existingIds, onClose, onCreated, language = 'en' }: Props) {
+export default function CreateAliasModal({ sourceId = '', sourceObj, existingIds, onClose, onCreated, language = 'en' }: Props) {
   const isEn = language === 'en';
+  const freeSource = sourceId === '';
+  const [localSourceId, setLocalSourceId] = useState(sourceId);
   const [aliasId, setAliasId] = useState(() => suggestAliasId(sourceId));
   const [name, setName] = useState(() => getObjectName(sourceObj));
+  const [role, setRole] = useState(() => (sourceObj?.common?.role as string) ?? '');
+  const [unit, setUnit] = useState(() => (sourceObj?.common?.unit as string) ?? '');
+  const [roomEnumId, setRoomEnumId] = useState<string>(
+    () => Object.keys(sourceObj?.enums ?? {}).find((id) => id.startsWith('enum.rooms.')) ?? ''
+  );
+  const [functionEnumId, setFunctionEnumId] = useState<string>(
+    () => Object.keys(sourceObj?.enums ?? {}).find((id) => id.startsWith('enum.functions.')) ?? ''
+  );
   const [aliasRead, setAliasRead] = useState('');
   const [aliasWrite, setAliasWrite] = useState('');
+  const [sourceSuggestionsOpen, setSourceSuggestionsOpen] = useState(false);
+  const [sourceActiveIndex, setSourceActiveIndex] = useState(-1);
   const [aliasSuggestionsOpen, setAliasSuggestionsOpen] = useState(false);
   const [aliasActiveIndex, setAliasActiveIndex] = useState(-1);
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const create = useCreateDatapoint();
+  const { data: roomEnums = [] } = useRoomEnums();
+  const { data: functionEnums = [] } = useFunctionEnums();
+  const { data: allRoles = [] } = useAllRoles();
+  const { data: allUnits = [] } = useAllUnits();
 
   const srcCommon = sourceObj?.common;
   const srcType   = srcCommon?.type   ?? 'mixed';
-  const srcRole   = srcCommon?.role   ?? '';
-  const srcUnit   = srcCommon?.unit   ?? '';
   const srcRead   = srcCommon?.read   !== false;
   const srcWrite  = srcCommon?.write  !== false;
-  const sourceRoomEnumId = Object.keys(sourceObj?.enums ?? {}).find((enumId) => enumId.startsWith('enum.rooms.')) ?? null;
-  const sourceFnEnumId = Object.keys(sourceObj?.enums ?? {}).find((enumId) => enumId.startsWith('enum.functions.')) ?? null;
-  const sourceRoomName = sourceRoomEnumId ? ((sourceObj?.enums?.[sourceRoomEnumId] as string | undefined) || fallbackEnumName(sourceRoomEnumId)) : '';
-  const sourceFnName = sourceFnEnumId ? ((sourceObj?.enums?.[sourceFnEnumId] as string | undefined) || fallbackEnumName(sourceFnEnumId)) : '';
+  const sourceRoomName = roomEnumId ? (roomEnums.find((r) => r.id === roomEnumId)?.name || fallbackEnumName(roomEnumId)) : '';
+  const sourceFnName = functionEnumId ? (functionEnums.find((f) => f.id === functionEnumId)?.name || fallbackEnumName(functionEnumId)) : '';
   const aliasIdsSorted = useMemo(
     () => [...existingIds].filter((id) => id.startsWith('alias.0.')).sort(),
     [existingIds]
@@ -60,6 +72,13 @@ export default function CreateAliasModal({ sourceId, sourceObj, existingIds, onC
   const filteredAliasSuggestions = aliasId.trim()
     ? aliasIdsSorted.filter((id) => id.toLowerCase().startsWith(aliasId.toLowerCase())).slice(0, 30)
     : aliasIdsSorted.slice(0, 30);
+  const sourceIdsSorted = useMemo(
+    () => [...existingIds].filter((id) => !id.startsWith('alias.0.')).sort(),
+    [existingIds]
+  );
+  const filteredSourceSuggestions = localSourceId.trim()
+    ? sourceIdsSorted.filter((id) => id.toLowerCase().includes(localSourceId.toLowerCase())).slice(0, 30)
+    : [];
 
   useEffect(() => {
     inputRef.current?.select();
@@ -84,17 +103,17 @@ export default function CreateAliasModal({ sourceId, sourceObj, existingIds, onC
     create.mutate(
       {
         id: aliasId.trim(),
-        roomEnumId: sourceRoomEnumId,
-        functionEnumId: sourceFnEnumId,
+        roomEnumId: roomEnumId || null,
+        functionEnumId: functionEnumId || null,
         common: {
           name: name.trim(),
           type: srcType as 'number' | 'string' | 'boolean' | 'mixed',
-          role: srcRole || undefined,
-          unit: srcUnit || undefined,
+          role: role.trim() || undefined,
+          unit: unit.trim() || undefined,
           read: srcRead,
           write: srcWrite,
           alias: {
-            id: sourceId,
+            id: localSourceId,
             read: aliasRead.trim() || undefined,
             write: aliasWrite.trim() || undefined,
           },
@@ -141,7 +160,71 @@ export default function CreateAliasModal({ sourceId, sourceObj, existingIds, onC
           <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800/60 rounded-lg px-3 py-2.5 text-xs">
             <div className="flex-1 min-w-0">
               <div className="text-gray-400 dark:text-gray-500 mb-0.5">{isEn ? 'Source' : 'Quelle'}</div>
-              <div className="font-mono text-gray-700 dark:text-gray-300 truncate" title={sourceId}>{sourceId}</div>
+              {freeSource ? (
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={localSourceId}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setLocalSourceId(val);
+                      setSourceActiveIndex(-1);
+                      setSourceSuggestionsOpen(true);
+                      if (!aliasId || aliasId === suggestAliasId(localSourceId)) {
+                        setAliasId(suggestAliasId(val));
+                      }
+                    }}
+                    onFocus={() => setSourceSuggestionsOpen(true)}
+                    onBlur={() => setTimeout(() => setSourceSuggestionsOpen(false), 150)}
+                    onKeyDown={(e) => {
+                      if (!sourceSuggestionsOpen || filteredSourceSuggestions.length === 0) return;
+                      if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        setSourceActiveIndex((i) => Math.min(i + 1, filteredSourceSuggestions.length - 1));
+                      } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        setSourceActiveIndex((i) => Math.max(i - 1, -1));
+                      } else if (e.key === 'Enter' && sourceActiveIndex >= 0) {
+                        e.preventDefault();
+                        const picked = filteredSourceSuggestions[sourceActiveIndex];
+                        setLocalSourceId(picked);
+                        if (!aliasId || aliasId === suggestAliasId(localSourceId)) setAliasId(suggestAliasId(picked));
+                        setSourceSuggestionsOpen(false);
+                        setSourceActiveIndex(-1);
+                      } else if (e.key === 'Escape') {
+                        setSourceSuggestionsOpen(false);
+                      }
+                    }}
+                    placeholder={isEn ? 'e.g. hm-rpc.0.ABC.STATE' : 'z.B. hm-rpc.0.ABC.STATE'}
+                    className="w-full font-mono bg-transparent border-b border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 focus:outline-none focus:border-blue-400"
+                  />
+                  {sourceSuggestionsOpen && filteredSourceSuggestions.length > 0 && (
+                    <ul className="absolute top-full left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg z-50 text-sm">
+                      {filteredSourceSuggestions.map((suggestion, i) => (
+                        <li
+                          key={suggestion}
+                          onMouseDown={() => {
+                            setLocalSourceId(suggestion);
+                            if (!aliasId || aliasId === suggestAliasId(localSourceId)) setAliasId(suggestAliasId(suggestion));
+                            setSourceSuggestionsOpen(false);
+                            setSourceActiveIndex(-1);
+                          }}
+                          onMouseEnter={() => setSourceActiveIndex(i)}
+                          className={`px-2.5 py-1 cursor-pointer font-mono text-xs ${
+                            i === sourceActiveIndex
+                              ? 'bg-blue-600 text-white'
+                              : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
+                          }`}
+                        >
+                          {suggestion}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ) : (
+                <div className="font-mono text-gray-700 dark:text-gray-300 truncate" title={localSourceId}>{localSourceId}</div>
+              )}
             </div>
             <ArrowRight size={14} className="text-amber-400 shrink-0" />
             <div className="flex-1 min-w-0">
@@ -155,10 +238,6 @@ export default function CreateAliasModal({ sourceId, sourceObj, existingIds, onC
             <div className="grid grid-cols-4 gap-1.5 bg-gray-50 dark:bg-gray-800/60 rounded-lg px-3 py-2">
               {[
                 [isEn ? 'Type' : 'Typ', srcType],
-                [isEn ? 'Role' : 'Rolle', srcRole || '—'],
-                [isEn ? 'Unit' : 'Einheit', srcUnit || '—'],
-                [isEn ? 'Room' : 'Raum', sourceRoomName || '—'],
-                [isEn ? 'Function' : 'Funktion', sourceFnName || '—'],
                 [isEn ? 'Read' : 'Lesen', srcRead ? (isEn ? 'yes' : 'ja') : (isEn ? 'no' : 'nein')],
                 [isEn ? 'Write' : 'Schreiben', srcWrite ? (isEn ? 'yes' : 'ja') : (isEn ? 'no' : 'nein')],
               ].map(([label, val]) => (
@@ -235,6 +314,66 @@ export default function CreateAliasModal({ sourceId, sourceObj, existingIds, onC
               className={inputCls}
               placeholder={isEn ? 'Display name' : 'Anzeigename'}
             />
+          </div>
+
+          {/* Role + Unit */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1">
+              <label className={labelCls}>{isEn ? 'Role' : 'Rolle'}</label>
+              <datalist id="create-alias-roles">
+                {allRoles.map((r) => <option key={r} value={r} />)}
+              </datalist>
+              <input
+                type="text"
+                list="create-alias-roles"
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className={`${inputCls} font-mono`}
+                placeholder={isEn ? 'e.g. level.temperature' : 'z.B. level.temperature'}
+                spellCheck={false}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className={labelCls}>{isEn ? 'Unit' : 'Einheit'}</label>
+              <datalist id="create-alias-units">
+                {allUnits.map((u) => <option key={u} value={u} />)}
+              </datalist>
+              <input
+                type="text"
+                list="create-alias-units"
+                value={unit}
+                onChange={(e) => setUnit(e.target.value)}
+                className={`${inputCls} font-mono`}
+                placeholder="°C, %, W…"
+                spellCheck={false}
+              />
+            </div>
+          </div>
+
+          {/* Room + Function */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1">
+              <label className={labelCls}>{isEn ? 'Room' : 'Raum'}</label>
+              <select
+                value={roomEnumId}
+                onChange={(e) => setRoomEnumId(e.target.value)}
+                className={`${inputCls} w-full`}
+              >
+                <option value="">{isEn ? '— None —' : '— Kein Raum —'}</option>
+                {roomEnums.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className={labelCls}>{isEn ? 'Function' : 'Funktion'}</label>
+              <select
+                value={functionEnumId}
+                onChange={(e) => setFunctionEnumId(e.target.value)}
+                className={`${inputCls} w-full`}
+              >
+                <option value="">{isEn ? '— None —' : '— Keine Funktion —'}</option>
+                {functionEnums.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+              </select>
+            </div>
           </div>
 
           <div className="flex flex-col gap-1">
