@@ -2,7 +2,6 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Sun, Moon, Gem, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Maximize, Minimize, RefreshCw, ExternalLink, Info, WifiOff, FilterX, Columns2, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
-import LanguageDropdown from './LanguageDropdown';
 import HostConnectedButton from './HostConnectedButton';
 import { useUIContext } from '../context/UIContext';
 import { useFilterContext } from '../context/FilterContext';
@@ -188,7 +187,6 @@ export default function Layout({ sidebar, children, apiConnected = true, browser
           />
           <div className="w-px h-4 bg-gray-300 dark:bg-gray-600" />
           <span className="text-[10px] font-mono text-gray-400 dark:text-gray-600 select-none" title="App version">v{__APP_VERSION__}</span>
-          <LanguageDropdown value={language} onChange={(next) => onLanguageChange?.(next)} compact />
           {currentHost && (
             <a
               href={`http://${currentHost.split(':')[0]}:${adminPort}`}
