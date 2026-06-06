@@ -41,17 +41,17 @@ function getObjectName(obj: IoBrokerObject | undefined): string {
   return obj.common.name.de || obj.common.name.en || Object.values(obj.common.name)[0] || '';
 }
 
+const ALIAS_PREFIX = 'alias.0.';
+
 export default function AutoCreateAliasModal({ deviceId, allObjects, existingIds, onClose, onCreated, language = 'en' }: Props) {
   const isEn = language === 'en';
   const prefix = deviceId + '.';
 
-  // Suggest a base path: alias.0.<last segment of deviceId>
-  const defaultBasePath = useMemo(() => {
-    const lastSegment = deviceId.split('.').slice(2).join('.');
-    return lastSegment ? `alias.0.${lastSegment}` : 'alias.0.';
+  const defaultBaseSuffix = useMemo(() => {
+    return deviceId.split('.').slice(2).join('.');
   }, [deviceId]);
 
-  const [basePath, setBasePath] = useState(defaultBasePath);
+  const [baseSuffix, setBaseSuffix] = useState(defaultBaseSuffix);
   const [roomEnumId, setRoomEnumId] = useState<string>('');
   const [functionEnumId, setFunctionEnumId] = useState<string>('');
   const [rowFilter, setRowFilter] = useState('');
@@ -99,23 +99,22 @@ export default function AutoCreateAliasModal({ deviceId, allObjects, existingIds
 
   const [rows, setRows] = useState<AliasRow[]>(initialRows);
 
-  const basePathTrimmed = basePath.replace(/\.+$/, '');
+  const fullBasePath = ALIAS_PREFIX + baseSuffix;
+  const basePathTrimmed = fullBasePath.replace(/\.+$/, '');
 
   const basePathSuggestions = useMemo(() => {
-    const paths = new Set<string>();
+    const suffixes = new Set<string>();
     for (const id of Object.keys(allObjects)) {
-      if (!id.startsWith('alias.0.')) continue;
+      if (!id.startsWith(ALIAS_PREFIX)) continue;
       const parts = id.split('.');
-      // add all ancestor paths from alias.0 down to parent
-      for (let i = 2; i < parts.length; i++) {
-        paths.add(parts.slice(0, i).join('.'));
+      for (let i = 3; i < parts.length; i++) {
+        suffixes.add(parts.slice(2).slice(0, i - 2).join('.'));
       }
     }
-    return Array.from(paths).sort();
+    return Array.from(suffixes).filter(Boolean).sort();
   }, [allObjects]);
 
-  const aliasIdForRow = (row: AliasRow) =>
-    basePathTrimmed ? `${basePathTrimmed}.${row.suffixDraft}` : `alias.0.${row.suffixDraft}`;
+  const aliasIdForRow = (row: AliasRow) => `${basePathTrimmed}.${row.suffixDraft}`;
 
   const checkedRows = rows.filter((r) => r.checked);
   const visibleRows = useMemo(() => {
@@ -144,7 +143,7 @@ export default function AutoCreateAliasModal({ deviceId, allObjects, existingIds
     }
     return errors;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [checkedRows, basePath, existingIds, isEn]);
+  }, [checkedRows, baseSuffix, existingIds, isEn]);
 
   const hasErrors = rowErrors.size > 0;
 
@@ -248,21 +247,26 @@ export default function AutoCreateAliasModal({ deviceId, allObjects, existingIds
             <datalist id="alias-base-path-suggestions">
               {basePathSuggestions.map((p) => <option key={p} value={p} />)}
             </datalist>
-            <input
-              autoFocus
-              type="text"
-              list="alias-base-path-suggestions"
-              value={basePath}
-              onChange={(e) => setBasePath(e.target.value)}
-              className={`${inputCls} font-mono w-full`}
-              placeholder="alias.0.Wohnzimmer.Lampe"
-              spellCheck={false}
-              disabled={isCreating || done}
-            />
+            <div className={`${inputCls} flex items-center p-0 overflow-hidden`}>
+              <span className="px-2.5 py-1.5 font-mono text-sm text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-700 border-r border-gray-300 dark:border-gray-600 select-none shrink-0">
+                {ALIAS_PREFIX}
+              </span>
+              <input
+                autoFocus
+                type="text"
+                list="alias-base-path-suggestions"
+                value={baseSuffix}
+                onChange={(e) => setBaseSuffix(e.target.value)}
+                className="flex-1 px-2.5 py-1.5 font-mono text-sm bg-transparent focus:outline-none text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                placeholder="Wohnzimmer.Lampe"
+                spellCheck={false}
+                disabled={isCreating || done}
+              />
+            </div>
             <p className="text-[10px] text-gray-400 dark:text-gray-500">
               {isEn
-                ? `Aliases will be created as: ${basePathTrimmed || 'alias.0'}.<suffix>`
-                : `Aliases werden erstellt als: ${basePathTrimmed || 'alias.0'}.<Suffix>`}
+                ? `Aliases will be created as: ${basePathTrimmed}.<suffix>`
+                : `Aliases werden erstellt als: ${basePathTrimmed}.<Suffix>`}
             </p>
           </div>
 
@@ -330,9 +334,9 @@ export default function AutoCreateAliasModal({ deviceId, allObjects, existingIds
                         <th className="px-2 py-2 w-8"></th>
                         <th className="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Alias ID' : 'Alias-ID'}</th>
                         <th className="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Name' : 'Name'}</th>
-                        <th className="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 w-28">{isEn ? 'Type' : 'Typ'}</th>
+                        <th className="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 w-36">{isEn ? 'Type' : 'Typ'}</th>
                         <th className="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 w-28">{isEn ? 'Unit' : 'Einheit'}</th>
-                        <th className="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 w-28">{isEn ? 'Role' : 'Rolle'}</th>
+                        <th className="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 w-36">{isEn ? 'Role' : 'Rolle'}</th>
                         <th className="px-2 py-2 w-8"></th>
                       </tr>
                     </thead>
@@ -391,34 +395,26 @@ export default function AutoCreateAliasModal({ deviceId, allObjects, existingIds
                               </select>
                             </td>
                             <td className="px-2 py-1" onClick={(e) => e.stopPropagation()}>
-                              <datalist id={`units-${row.sourceId}`}>
-                                {allUnits.map((u) => <option key={u} value={u} />)}
-                              </datalist>
-                              <input
-                                type="text"
-                                list={`units-${row.sourceId}`}
+                              <select
                                 value={row.unitDraft}
                                 onChange={(e) => updateUnitDraft(row.sourceId, e.target.value)}
                                 disabled={isCreating || done}
                                 className="w-full px-1.5 py-0.5 rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500 text-[11px] font-mono"
-                                placeholder=""
-                                spellCheck={false}
-                              />
+                              >
+                                <option value="">—</option>
+                                {allUnits.map((u) => <option key={u} value={u}>{u}</option>)}
+                              </select>
                             </td>
                             <td className="px-2 py-1 w-1/5" onClick={(e) => e.stopPropagation()}>
-                              <datalist id={`roles-${row.sourceId}`}>
-                                {allRoles.map((r) => <option key={r} value={r} />)}
-                              </datalist>
-                              <input
-                                type="text"
-                                list={`roles-${row.sourceId}`}
+                              <select
                                 value={row.roleDraft}
                                 onChange={(e) => updateRoleDraft(row.sourceId, e.target.value)}
                                 disabled={isCreating || done}
                                 className="w-full px-1.5 py-0.5 rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500 text-[11px]"
-                                placeholder={isEn ? 'role…' : 'Rolle…'}
-                                spellCheck={false}
-                              />
+                              >
+                                <option value="">—</option>
+                                {allRoles.map((r) => <option key={r} value={r}>{r}</option>)}
+                              </select>
                             </td>
                             <td className="px-2 py-1.5 text-center">
                               {err && <span title={err}><AlertTriangle size={12} className="text-amber-500" /></span>}

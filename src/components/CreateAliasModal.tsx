@@ -14,11 +14,11 @@ interface Props {
   language?: 'en' | 'de';
 }
 
-function suggestAliasId(sourceId: string): string {
-  // Strip adapter prefix (first two dot-segments: "adapter.instance.")
+const ALIAS_PREFIX = 'alias.0.';
+
+function suggestAliasSuffix(sourceId: string): string {
   const parts = sourceId.split('.');
-  const withoutPrefix = parts.length > 2 ? parts.slice(2).join('.') : sourceId;
-  return `alias.0.${withoutPrefix}`;
+  return parts.length > 2 ? parts.slice(2).join('.') : sourceId;
 }
 
 function getObjectName(obj: IoBrokerObject | undefined): string {
@@ -32,7 +32,7 @@ export default function CreateAliasModal({ sourceId = '', sourceObj, existingIds
   const isEn = language === 'en';
   const freeSource = sourceId === '';
   const [localSourceId, setLocalSourceId] = useState(sourceId);
-  const [aliasId, setAliasId] = useState(() => suggestAliasId(sourceId));
+  const [aliasId, setAliasId] = useState(() => suggestAliasSuffix(sourceId));
   const [name, setName] = useState(() => getObjectName(sourceObj));
   const [role, setRole] = useState(() => (sourceObj?.common?.role as string) ?? '');
   const [unit, setUnit] = useState(() => (sourceObj?.common?.unit as string) ?? '');
@@ -61,11 +61,12 @@ export default function CreateAliasModal({ sourceId = '', sourceObj, existingIds
   const srcRead   = srcCommon?.read   !== false;
   const srcWrite  = srcCommon?.write  !== false;
   const aliasIdsSorted = useMemo(
-    () => [...existingIds].filter((id) => id.startsWith('alias.0.')).sort(),
+    () => [...existingIds].filter((id) => id.startsWith(ALIAS_PREFIX)).sort(),
     [existingIds]
   );
+  const fullAliasId = ALIAS_PREFIX + aliasId;
   const filteredAliasSuggestions = aliasId.trim()
-    ? aliasIdsSorted.filter((id) => id.toLowerCase().startsWith(aliasId.toLowerCase())).slice(0, 30)
+    ? aliasIdsSorted.filter((id) => id.toLowerCase().startsWith(fullAliasId.toLowerCase())).slice(0, 30)
     : aliasIdsSorted.slice(0, 30);
   const sourceIdsSorted = useMemo(
     () => [...existingIds].filter((id) => !id.startsWith('alias.0.')).sort(),
@@ -82,9 +83,9 @@ export default function CreateAliasModal({ sourceId = '', sourceObj, existingIds
   useEscapeKey(onClose);
 
   function validate(): string {
-    const id = aliasId.trim();
-    if (!id) return isEn ? 'Alias ID is required.' : 'Alias-ID ist erforderlich.';
-    if (!id.startsWith('alias.0.')) return isEn ? 'Alias ID must start with "alias.0.".' : 'Alias-ID muss mit „alias.0." beginnen.';
+    const suffix = aliasId.trim();
+    if (!suffix) return isEn ? 'Alias ID is required.' : 'Alias-ID ist erforderlich.';
+    const id = ALIAS_PREFIX + suffix;
     if (existingIds.has(id)) return isEn ? `"${id}" already exists.` : `„${id}" existiert bereits.`;
     if (!name.trim()) return isEn ? 'Name is required.' : 'Name ist erforderlich.';
     return '';
@@ -97,7 +98,7 @@ export default function CreateAliasModal({ sourceId = '', sourceObj, existingIds
 
     create.mutate(
       {
-        id: aliasId.trim(),
+        id: fullAliasId,
         roomEnumId: roomEnumId || null,
         functionEnumId: functionEnumId || null,
         common: {
@@ -116,7 +117,7 @@ export default function CreateAliasModal({ sourceId = '', sourceObj, existingIds
       },
       {
         onSuccess: () => {
-          onCreated?.(aliasId.trim());
+          onCreated?.(fullAliasId);
           onClose();
         },
         onError: (err) => setError(String(err)),
@@ -165,8 +166,8 @@ export default function CreateAliasModal({ sourceId = '', sourceObj, existingIds
                       setLocalSourceId(val);
                       setSourceActiveIndex(-1);
                       setSourceSuggestionsOpen(true);
-                      if (!aliasId || aliasId === suggestAliasId(localSourceId)) {
-                        setAliasId(suggestAliasId(val));
+                      if (!aliasId || aliasId === suggestAliasSuffix(localSourceId)) {
+                        setAliasId(suggestAliasSuffix(val));
                       }
                     }}
                     onFocus={() => setSourceSuggestionsOpen(true)}
@@ -183,7 +184,7 @@ export default function CreateAliasModal({ sourceId = '', sourceObj, existingIds
                         e.preventDefault();
                         const picked = filteredSourceSuggestions[sourceActiveIndex];
                         setLocalSourceId(picked);
-                        if (!aliasId || aliasId === suggestAliasId(localSourceId)) setAliasId(suggestAliasId(picked));
+                        if (!aliasId || aliasId === suggestAliasSuffix(localSourceId)) setAliasId(suggestAliasSuffix(picked));
                         setSourceSuggestionsOpen(false);
                         setSourceActiveIndex(-1);
                       } else if (e.key === 'Escape') {
@@ -200,7 +201,7 @@ export default function CreateAliasModal({ sourceId = '', sourceObj, existingIds
                           key={suggestion}
                           onMouseDown={() => {
                             setLocalSourceId(suggestion);
-                            if (!aliasId || aliasId === suggestAliasId(localSourceId)) setAliasId(suggestAliasId(suggestion));
+                            if (!aliasId || aliasId === suggestAliasSuffix(localSourceId)) setAliasId(suggestAliasSuffix(suggestion));
                             setSourceSuggestionsOpen(false);
                             setSourceActiveIndex(-1);
                           }}
@@ -224,7 +225,7 @@ export default function CreateAliasModal({ sourceId = '', sourceObj, existingIds
             <ArrowRight size={14} className="text-amber-400 shrink-0" />
             <div className="flex-1 min-w-0">
               <div className="text-gray-400 dark:text-gray-500 mb-0.5">{isEn ? 'Alias' : 'Alias'}</div>
-              <div className="font-mono text-amber-600 dark:text-amber-400 truncate" title={aliasId}>{aliasId || '—'}</div>
+              <div className="font-mono text-amber-600 dark:text-amber-400 truncate" title={fullAliasId}>{aliasId ? fullAliasId : '—'}</div>
             </div>
           </div>
 
@@ -247,41 +248,46 @@ export default function CreateAliasModal({ sourceId = '', sourceObj, existingIds
           {/* Alias ID */}
           <div className="flex flex-col gap-1 relative">
             <label className={labelCls}>{isEn ? 'Alias ID' : 'Alias-ID'} <span className="text-red-500">*</span></label>
-            <input
-              ref={inputRef}
-              type="text"
-              value={aliasId}
-              onChange={(e) => { setAliasId(e.target.value); setError(''); setAliasActiveIndex(-1); setAliasSuggestionsOpen(true); }}
-              onFocus={() => setAliasSuggestionsOpen(true)}
-              onBlur={() => setTimeout(() => setAliasSuggestionsOpen(false), 150)}
-              onKeyDown={(e) => {
-                if (!aliasSuggestionsOpen || filteredAliasSuggestions.length === 0) return;
-                if (e.key === 'ArrowDown') {
-                  e.preventDefault();
-                  setAliasActiveIndex((i) => Math.min(i + 1, filteredAliasSuggestions.length - 1));
-                } else if (e.key === 'ArrowUp') {
-                  e.preventDefault();
-                  setAliasActiveIndex((i) => Math.max(i - 1, -1));
-                } else if (e.key === 'Enter' && aliasActiveIndex >= 0) {
-                  e.preventDefault();
-                  setAliasId(filteredAliasSuggestions[aliasActiveIndex]);
-                  setAliasSuggestionsOpen(false);
-                  setAliasActiveIndex(-1);
-                } else if (e.key === 'Escape') {
-                  setAliasSuggestionsOpen(false);
-                }
-              }}
-              className={`${inputCls} font-mono`}
-              placeholder={isEn ? 'alias.0.my.datapoint' : 'alias.0.mein.datenpunkt'}
-              spellCheck={false}
-            />
+            <div className={`${inputCls} flex items-center gap-0 p-0 overflow-hidden`}>
+              <span className="px-2.5 py-1.5 font-mono text-sm text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-700 border-r border-gray-300 dark:border-gray-600 select-none shrink-0">
+                {ALIAS_PREFIX}
+              </span>
+              <input
+                ref={inputRef}
+                type="text"
+                value={aliasId}
+                onChange={(e) => { setAliasId(e.target.value); setError(''); setAliasActiveIndex(-1); setAliasSuggestionsOpen(true); }}
+                onFocus={() => setAliasSuggestionsOpen(true)}
+                onBlur={() => setTimeout(() => setAliasSuggestionsOpen(false), 150)}
+                onKeyDown={(e) => {
+                  if (!aliasSuggestionsOpen || filteredAliasSuggestions.length === 0) return;
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setAliasActiveIndex((i) => Math.min(i + 1, filteredAliasSuggestions.length - 1));
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setAliasActiveIndex((i) => Math.max(i - 1, -1));
+                  } else if (e.key === 'Enter' && aliasActiveIndex >= 0) {
+                    e.preventDefault();
+                    setAliasId(filteredAliasSuggestions[aliasActiveIndex].slice(ALIAS_PREFIX.length));
+                    setAliasSuggestionsOpen(false);
+                    setAliasActiveIndex(-1);
+                  } else if (e.key === 'Escape') {
+                    setAliasSuggestionsOpen(false);
+                  }
+                }}
+                className="flex-1 px-2.5 py-1.5 font-mono text-sm bg-transparent focus:outline-none text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                placeholder={isEn ? 'my.datapoint' : 'mein.datenpunkt'}
+                spellCheck={false}
+              />
+            </div>
             {aliasSuggestionsOpen && filteredAliasSuggestions.length > 0 && (
               <ul className="absolute top-full left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg z-50 text-sm">
                 {filteredAliasSuggestions.map((suggestion, i) => (
                   <li
                     key={suggestion}
                     onMouseDown={() => {
-                      setAliasId(suggestion);
+                      setAliasId(suggestion.slice(ALIAS_PREFIX.length));
                       setAliasSuggestionsOpen(false);
                       setAliasActiveIndex(-1);
                     }}
