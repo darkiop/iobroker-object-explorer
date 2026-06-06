@@ -199,14 +199,19 @@ function AppContent() {
       isDraggingRef.current = false;
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
-      requestAnimationFrame(() => {
-        stateListRef.current?.fitToContainer();
-        p2StateListRef.current?.fitToContainer();
-      });
     };
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
   }, []);
+
+  // Refit both panel columns whenever panel width changes (drag, double-click, any future trigger)
+  useEffect(() => {
+    if (!appSettings.panel2Open) return;
+    requestAnimationFrame(() => {
+      stateListRef.current?.fitToContainer();
+      p2StateListRef.current?.fitToContainer();
+    });
+  }, [p1Width, appSettings.panel2Open]);
 
   // ── Connectivity ─────────────────────────────────────────────────────────
   const { isOnline, browserOnline } = useApiConnectivity();
@@ -843,6 +848,7 @@ function AppContent() {
             <div
               className="w-1 shrink-0 bg-gray-200 dark:bg-gray-700 hover:bg-blue-400 dark:hover:bg-blue-600 active:bg-blue-500 cursor-col-resize transition-colors select-none"
               onMouseDown={handleDividerMouseDown}
+              onDoubleClick={() => setP1Width(50)}
             />
           )}
 

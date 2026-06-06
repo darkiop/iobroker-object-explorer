@@ -57,6 +57,7 @@ export interface StateRowProps {
   isFocused: boolean;
   showDesc?: boolean;
   showObjectTypeIcons?: boolean;
+  hideAliasSubRows?: boolean;
   depth?: number;
   displayId?: string;
   animateEnter?: boolean;
@@ -78,7 +79,7 @@ const StateRow = React.memo(function StateRow({
   onSelect, onCheck, onContextMenu, onHistoryClick, onScriptsClick, onNavigateTo, onDeleteClick, onEditJson,
   onSelectRoom, onSelectFunction, onOpenValueModal,
   roomEditForced, fnEditForced, onRoomEditEnd, onFnEditEnd,
-  dateFormat, language, expertMode, isFocused, showDesc = true, showObjectTypeIcons = true, scriptSources, depth = 0, displayId, animateEnter, animateExit,
+  dateFormat, language, expertMode, isFocused, showDesc = true, showObjectTypeIcons = true, hideAliasSubRows = false, scriptSources, depth = 0, displayId, animateEnter, animateExit,
 }: StateRowProps) {
   const isEn = language === 'en';
   const trRef = useRef<HTMLTableRowElement>(null);
@@ -232,7 +233,7 @@ const StateRow = React.memo(function StateRow({
                 <Wrench size={12} />
               </button>
             </div>
-            {!!onNavigateTo && (
+            {!!onNavigateTo && !hideAliasSubRows && (
               <div className={`text-[10px] leading-4 text-gray-400 dark:text-gray-500 truncate ${!(ownTarget || (aliasIds && aliasIds.length > 0)) ? 'invisible' : ''}`}>
                 {ownTarget && (
                   <>

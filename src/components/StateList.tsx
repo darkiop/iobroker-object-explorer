@@ -180,7 +180,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const [checkedSepPrefix, setCheckedSepPrefix] = useState<string | null>(null);
   const [roomEditId, setRoomEditId] = useState<string | null>(null);
   const [fnEditId, setFnEditId] = useState<string | null>(null);
-  const [hideAliasSources, setHideAliasSources] = useState(false);
+  const [hideAliasSubRows, setHideAliasSubRows] = useState(false);
   const [aliasSourceId, setAliasSourceId] = useState<string | null>(null);
   const [copySourceId, setCopySourceId] = useState<string | null>(null);
   const [renameId, setRenameId] = useState<string | null>(null);
@@ -394,14 +394,9 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const tsFilterParsed = useMemo(() => parseTsFilter(colFilters.ts || ''), [colFilters.ts]);
   const scriptsFilterActive = colFilters.scripts === '1';
   const ackFilter = colFilters.ack || '';
-  const aliasSourceFilteredIds = useMemo(() => {
-    if (!hideAliasSources) return sortedIds;
-    return sortedIds.filter((id) => !aliasMap.has(id));
-  }, [sortedIds, hideAliasSources, aliasMap]);
-
   const filteredIds = useMemo(() => {
-    if (!valueFilter && !valueFilterEmpty && tsFilterParsed.mode === 'none' && !scriptsFilterActive && !ackFilter) return aliasSourceFilteredIds;
-    return aliasSourceFilteredIds.filter((id) => {
+    if (!valueFilter && !valueFilterEmpty && tsFilterParsed.mode === 'none' && !scriptsFilterActive && !ackFilter) return sortedIds;
+    return sortedIds.filter((id) => {
       if (scriptsFilterActive && !scriptSources?.includes(id)) return false;
       if (ackFilter === 'yes' && !states[id]?.ack) return false;
       if (ackFilter === 'no' && states[id]?.ack !== false) return false;
@@ -422,7 +417,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
       }
       return valueOk && tsOk;
     });
-  }, [aliasSourceFilteredIds, valueFilter, valueFilterEmpty, tsFilterParsed, dateFormat, scriptsFilterActive, ackFilter, scriptSources,
+  }, [sortedIds, valueFilter, valueFilterEmpty, tsFilterParsed, dateFormat, scriptsFilterActive, ackFilter, scriptSources,
     (valueFilter || valueFilterEmpty || tsFilterParsed.mode !== 'none' || ackFilter) ? states : null]);
 
   type DisplayItem = { kind: 'row'; id: string; depth: number; parentPrefix?: string } | { kind: 'sep'; prefix: string; isState: boolean; depth: number; parentPrefix?: string };
@@ -891,12 +886,12 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
       </div>
       <div className="flex items-center gap-1">
         <button
-          onClick={() => setHideAliasSources((v) => !v)}
-          title={hideAliasSources
-            ? (isEn ? 'Show alias sources' : 'Alias-Quellen anzeigen')
-            : (isEn ? 'Hide alias sources' : 'Alias-Quellen ausblenden')}
+          onClick={() => setHideAliasSubRows((v) => !v)}
+          title={hideAliasSubRows
+            ? (isEn ? 'Show alias source/target lines' : 'Alias-Quell-/Zielzeilen anzeigen')
+            : (isEn ? 'Hide alias source/target lines' : 'Alias-Quell-/Zielzeilen ausblenden')}
           className={`p-2 rounded-lg transition-colors ${
-            hideAliasSources
+            hideAliasSubRows
               ? 'text-blue-600 bg-blue-500/15 hover:bg-blue-500/25 dark:text-blue-400 dark:hover:bg-blue-500/20'
               : 'text-gray-400 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-500 dark:hover:text-blue-400 dark:hover:bg-blue-500/10'
           }`}
@@ -1888,6 +1883,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                   expertMode={expertMode}
                   isFocused={focusedId === id && selectedId !== id}
                   showDesc={showDesc} showObjectTypeIcons={showObjectTypeIcons}
+                  hideAliasSubRows={hideAliasSubRows}
                   depth={item.depth}
                   animateEnter={animateGroupExpand && !!item.parentPrefix && animatingPrefixes.has(item.parentPrefix)}
                   animateExit={animateGroupExpand && !!item.parentPrefix && collapsingPrefixes.has(item.parentPrefix)}
