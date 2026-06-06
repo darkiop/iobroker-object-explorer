@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { X, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, Wrench, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Folder, Cpu, Layers, FileCode2, BarChart2, Copy, Check, Pencil, List, Zap, Indent, Columns2 } from 'lucide-react';
+import { X, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, Wrench, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Folder, Cpu, Layers, FileCode2, BarChart2, Copy, Check, Pencil, List, Zap, Indent, Columns2, EyeOff, Wand2 } from 'lucide-react';
 import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch, useAllScriptSources } from '../hooks/useStates';
 import ContextMenu from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
@@ -180,6 +180,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const [checkedSepPrefix, setCheckedSepPrefix] = useState<string | null>(null);
   const [roomEditId, setRoomEditId] = useState<string | null>(null);
   const [fnEditId, setFnEditId] = useState<string | null>(null);
+  const [hideAliasSources, setHideAliasSources] = useState(false);
   const [aliasSourceId, setAliasSourceId] = useState<string | null>(null);
   const [copySourceId, setCopySourceId] = useState<string | null>(null);
   const [renameId, setRenameId] = useState<string | null>(null);
@@ -393,9 +394,14 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const tsFilterParsed = useMemo(() => parseTsFilter(colFilters.ts || ''), [colFilters.ts]);
   const scriptsFilterActive = colFilters.scripts === '1';
   const ackFilter = colFilters.ack || '';
+  const aliasSourceFilteredIds = useMemo(() => {
+    if (!hideAliasSources) return sortedIds;
+    return sortedIds.filter((id) => !aliasMap.has(id));
+  }, [sortedIds, hideAliasSources, aliasMap]);
+
   const filteredIds = useMemo(() => {
-    if (!valueFilter && !valueFilterEmpty && tsFilterParsed.mode === 'none' && !scriptsFilterActive && !ackFilter) return sortedIds;
-    return sortedIds.filter((id) => {
+    if (!valueFilter && !valueFilterEmpty && tsFilterParsed.mode === 'none' && !scriptsFilterActive && !ackFilter) return aliasSourceFilteredIds;
+    return aliasSourceFilteredIds.filter((id) => {
       if (scriptsFilterActive && !scriptSources?.includes(id)) return false;
       if (ackFilter === 'yes' && !states[id]?.ack) return false;
       if (ackFilter === 'no' && states[id]?.ack !== false) return false;
@@ -416,7 +422,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
       }
       return valueOk && tsOk;
     });
-  }, [sortedIds, valueFilter, valueFilterEmpty, tsFilterParsed, dateFormat, scriptsFilterActive, ackFilter, scriptSources,
+  }, [aliasSourceFilteredIds, valueFilter, valueFilterEmpty, tsFilterParsed, dateFormat, scriptsFilterActive, ackFilter, scriptSources,
     (valueFilter || valueFilterEmpty || tsFilterParsed.mode !== 'none' || ackFilter) ? states : null]);
 
   type DisplayItem = { kind: 'row'; id: string; depth: number; parentPrefix?: string } | { kind: 'sep'; prefix: string; isState: boolean; depth: number; parentPrefix?: string };
@@ -780,7 +786,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
           title={isEn ? 'Analyze datapoints' : 'Datenpunkte analysieren'}
           className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
         >
-          <BarChart2 size={15} />
+          <Wand2 size={15} />
           {showToolbarLabels && <span>{isEn ? 'Optimize' : 'Optimieren'}</span>}
         </button>
         {[...checkedIds].some((id) => id.startsWith('alias.')) && (
@@ -884,6 +890,19 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
         )}
       </div>
       <div className="flex items-center gap-1">
+        <button
+          onClick={() => setHideAliasSources((v) => !v)}
+          title={hideAliasSources
+            ? (isEn ? 'Show alias sources' : 'Alias-Quellen anzeigen')
+            : (isEn ? 'Hide alias sources' : 'Alias-Quellen ausblenden')}
+          className={`p-2 rounded-lg transition-colors ${
+            hideAliasSources
+              ? 'text-blue-600 bg-blue-500/15 hover:bg-blue-500/25 dark:text-blue-400 dark:hover:bg-blue-500/20'
+              : 'text-gray-400 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-500 dark:hover:text-blue-400 dark:hover:bg-blue-500/10'
+          }`}
+        >
+          <EyeOff size={17} />
+        </button>
         <button
           onClick={() => onToggleGroupByPath?.()}
           title={groupByPath ? (isEn ? 'Switch to flat view' : 'Flache Ansicht') : (isEn ? 'Switch to grouped view' : 'Gruppierte Ansicht')}

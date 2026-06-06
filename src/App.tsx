@@ -66,10 +66,11 @@ interface Panel2FilterState {
   fulltextEnabled: boolean;
   visibleCols: SortKey[];
   groupByPath: boolean;
+  p1Width: number;
 }
 
 function loadPanel2State(): Panel2FilterState {
-  const defaults: Panel2FilterState = { _v: PANEL2_STATE_VERSION, pattern: '*', page: 0, colFilters: {}, treeFilter: null, fulltextEnabled: false, visibleCols: PANEL2_DEFAULT_COLS, groupByPath: true };
+  const defaults: Panel2FilterState = { _v: PANEL2_STATE_VERSION, pattern: '*', page: 0, colFilters: {}, treeFilter: null, fulltextEnabled: false, visibleCols: PANEL2_DEFAULT_COLS, groupByPath: true, p1Width: 50 };
   try {
     const raw = localStorage.getItem(LS_PANEL2_STATE);
     if (!raw) return defaults;
@@ -163,6 +164,9 @@ function AppContent() {
   const [p1DualCols, setP1DualColsRaw] = useState<SortKey[]>(() => loadPanel1DualCols());
   const setP1DualCols = useCallback((cols: SortKey[]) => { setP1DualColsRaw(cols); savePanel1DualCols(cols); }, []);
   const [p2GroupByPath, setP2GroupByPath] = useState(() => loadPanel2State().groupByPath);
+  const [p1Width, setP1Width] = useState(() => loadPanel2State().p1Width ?? 50);
+  const panelContainerRef = useRef<HTMLDivElement>(null);
+  const isDraggingRef = useRef(false);
 
   const setP2Pattern = useCallback((p: string) => {
     setP2PatternRaw(p);
@@ -170,8 +174,8 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    savePanel2State({ _v: PANEL2_STATE_VERSION, pattern: p2Pattern, page: p2Page, colFilters: p2ColFilters, treeFilter: p2TreeFilter, fulltextEnabled: p2FulltextEnabled, visibleCols: p2VisibleCols, groupByPath: p2GroupByPath });
-  }, [p2Pattern, p2Page, p2ColFilters, p2TreeFilter, p2FulltextEnabled, p2VisibleCols, p2GroupByPath]);
+    savePanel2State({ _v: PANEL2_STATE_VERSION, pattern: p2Pattern, page: p2Page, colFilters: p2ColFilters, treeFilter: p2TreeFilter, fulltextEnabled: p2FulltextEnabled, visibleCols: p2VisibleCols, groupByPath: p2GroupByPath, p1Width });
+  }, [p2Pattern, p2Page, p2ColFilters, p2TreeFilter, p2FulltextEnabled, p2VisibleCols, p2GroupByPath, p1Width]);
 
   // Close panel 2 → reset active panel + refit columns
   useEffect(() => {
@@ -180,6 +184,29 @@ function AppContent() {
       requestAnimationFrame(() => requestAnimationFrame(() => stateListRef.current?.fitToContainer()));
     }
   }, [appSettings.panel2Open]);
+
+  // ── Panel divider drag resize ────────────────────────────────────────────
+  const handleDividerMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDraggingRef.current = true;
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!isDraggingRef.current || !panelContainerRef.current) return;
+      const rect = panelContainerRef.current.getBoundingClientRect();
+      const pct = ((ev.clientX - rect.left) / rect.width) * 100;
+      setP1Width(Math.min(80, Math.max(20, pct)));
+    };
+    const onMouseUp = () => {
+      isDraggingRef.current = false;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      requestAnimationFrame(() => {
+        stateListRef.current?.fitToContainer();
+        p2StateListRef.current?.fitToContainer();
+      });
+    };
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, []);
 
   // ── Connectivity ─────────────────────────────────────────────────────────
   const { isOnline, browserOnline } = useApiConnectivity();
@@ -754,10 +781,11 @@ function AppContent() {
         {settingsOpen && <SettingsModal />}
         </ErrorBoundary>
 
-        <div className="flex-1 min-h-0 flex flex-row overflow-hidden">
+        <div ref={panelContainerRef} className="flex-1 min-h-0 flex flex-row overflow-hidden">
           {/* ── Panel 1 ── */}
           <div
-            className={`flex flex-col flex-1 min-w-0 overflow-hidden ${activePanelIdx === 0 && appSettings.panel2Open ? 'border-t-2 border-blue-500' : 'border-t-2 border-transparent'}`}
+            className={`flex flex-col min-w-0 overflow-hidden ${activePanelIdx === 0 && appSettings.panel2Open ? 'border-t-2 border-blue-500' : 'border-t-2 border-transparent'}`}
+            style={appSettings.panel2Open ? { flex: 'none', width: `${p1Width}%` } : { flex: '1' }}
             onClick={() => setActivePanelIdx(0)}
           >
             <StateList
@@ -812,7 +840,10 @@ function AppContent() {
 
           {/* ── Divider ── */}
           {appSettings.panel2Open && (
-            <div className="w-1 shrink-0 bg-gray-200 dark:bg-gray-700 hover:bg-blue-400 dark:hover:bg-blue-600 cursor-col-resize transition-colors" />
+            <div
+              className="w-1 shrink-0 bg-gray-200 dark:bg-gray-700 hover:bg-blue-400 dark:hover:bg-blue-600 active:bg-blue-500 cursor-col-resize transition-colors select-none"
+              onMouseDown={handleDividerMouseDown}
+            />
           )}
 
           {/* ── Panel 2 ── */}
