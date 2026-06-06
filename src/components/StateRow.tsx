@@ -456,7 +456,8 @@ const StateRow = React.memo(function StateRow({
     prev.onOpenValueModal === next.onOpenValueModal &&
     prev.isFocused === next.isFocused &&
     prev.displayId === next.displayId &&
-    prev.animateExit === next.animateExit
+    prev.animateExit === next.animateExit &&
+    prev.hideAliasSubRows === next.hideAliasSubRows
   );
 });
 

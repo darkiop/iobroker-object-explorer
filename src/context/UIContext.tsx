@@ -28,6 +28,7 @@ export interface AppSettings {
   showObjectIcons: boolean;
   showObjectTypeIcons: boolean;
   animateGroupExpand: boolean;
+  hideAliasSubRows: boolean;
   panel2Open: boolean;
 }
 
@@ -60,6 +61,7 @@ export function getDefaultAppSettings(): AppSettings {
     showObjectIcons: false,
     showObjectTypeIcons: true,
     animateGroupExpand: false,
+    hideAliasSubRows: false,
     panel2Open: false,
   };
 }

@@ -127,6 +127,7 @@ export default function SettingsModal() {
       showObjectIcons: settingsDraft.showObjectIcons,
       showObjectTypeIcons: settingsDraft.showObjectTypeIcons,
       animateGroupExpand: settingsDraft.animateGroupExpand,
+      hideAliasSubRows: settingsDraft.hideAliasSubRows ?? false,
       shortenGroupPaths: settingsDraft.shortenGroupPaths,
       panel2Open: settingsDraft.panel2Open,
     };
@@ -389,6 +390,8 @@ export default function SettingsModal() {
                   value={settingsDraft.showObjectTypeIcons} onToggle={() => setSettingsDraft((prev) => ({ ...prev, showObjectTypeIcons: !prev.showObjectTypeIcons }))} />
                 <SettingsToggleRow isEn={isEn} labelEn="Animate group expand/collapse" labelDe="Gruppen-Aufklappen animieren"
                   value={settingsDraft.animateGroupExpand} onToggle={() => setSettingsDraft((prev) => ({ ...prev, animateGroupExpand: !prev.animateGroupExpand }))} />
+                <SettingsToggleRow isEn={isEn} labelEn="Hide alias source/target lines" labelDe="Alias-Quell-/Zielzeilen ausblenden"
+                  value={settingsDraft.hideAliasSubRows ?? false} onToggle={() => setSettingsDraft((prev) => ({ ...prev, hideAliasSubRows: !prev.hideAliasSubRows }))} />
               </div>
 
               <div className="border-t border-gray-200 dark:border-gray-700" />

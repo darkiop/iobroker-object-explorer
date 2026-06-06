@@ -86,7 +86,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const { appSettings, expertMode, scriptUsedIds, scriptsFetching, scriptLastUpdated, setScriptUsedIds, setConfirmScriptRefresh, handleToggleExpertMode: onToggleExpertMode, handleToggleGroupByPath: _handleToggleGroupByPath, persistSettings } = useAppSettingsContext();
   const onToggleGroupByPath = onToggleGroupByPathOverride ?? _handleToggleGroupByPath;
 
-  const { language = 'en', dateFormat = 'de', visibleCols: settingsVisibleCols, toolbarLabels = true, tableFontSize = 'normal', showDesc = true, groupByPath: settingsGroupByPath = false, shortenGroupPaths = true, showObjectIcons = false, showObjectTypeIcons = true, customDefaultWidths, customMinWidths, customMaxWidths, pageSize, animateGroupExpand = false } = appSettings;
+  const { language = 'en', dateFormat = 'de', visibleCols: settingsVisibleCols, toolbarLabels = true, tableFontSize = 'normal', showDesc = true, groupByPath: settingsGroupByPath = false, shortenGroupPaths = true, showObjectIcons = false, showObjectTypeIcons = true, customDefaultWidths, customMinWidths, customMaxWidths, pageSize, animateGroupExpand = false, hideAliasSubRows = false } = appSettings;
   const groupByPath = groupByPathOverride !== undefined ? groupByPathOverride : settingsGroupByPath;
   const onOpenEnumManager = React.useCallback(() => setEnumManagerOpen(true), [setEnumManagerOpen]);
   const onOpenAliasReplace = React.useCallback((initialStr?: string) => setAliasReplaceInitialStr(initialStr ?? null), [setAliasReplaceInitialStr]);
@@ -180,7 +180,6 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const [checkedSepPrefix, setCheckedSepPrefix] = useState<string | null>(null);
   const [roomEditId, setRoomEditId] = useState<string | null>(null);
   const [fnEditId, setFnEditId] = useState<string | null>(null);
-  const [hideAliasSubRows, setHideAliasSubRows] = useState(false);
   const [aliasSourceId, setAliasSourceId] = useState<string | null>(null);
   const [copySourceId, setCopySourceId] = useState<string | null>(null);
   const [renameId, setRenameId] = useState<string | null>(null);
@@ -886,7 +885,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
       </div>
       <div className="flex items-center gap-1">
         <button
-          onClick={() => setHideAliasSubRows((v) => !v)}
+          onClick={() => persistSettings({ ...appSettings, hideAliasSubRows: !hideAliasSubRows })}
           title={hideAliasSubRows
             ? (isEn ? 'Show alias source/target lines' : 'Alias-Quell-/Zielzeilen anzeigen')
             : (isEn ? 'Hide alias source/target lines' : 'Alias-Quell-/Zielzeilen ausblenden')}
