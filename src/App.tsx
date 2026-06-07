@@ -353,10 +353,17 @@ function AppContent() {
   // 'socketio' (experimental — requires a separate `socketio` adapter instance).
   // Each hook no-ops (returns {supported:null, connected:false}) when not selected,
   // either via empty-array (long polling) or its own `enabled` flag (socket.io).
+  //
+  // Auto-fallback: if socket.io is selected but its adapter is unreachable
+  // (`supported === false`, e.g. wrong host/port or adapter not installed),
+  // long polling kicks in automatically as a live fallback — no dead UI.
+  // Recovers automatically once socket.io reconnects (`supported` flips back to true).
   const useSocketTransport = appSettings.realtimeTransport === 'socketio';
-  const lpStatusRaw = useLongPolling(useSocketTransport ? [] : pageIds);
   const sioStatus = useSocketIO(pageIds, useSocketTransport, appSettings.socketHost);
-  const lpStatus = useSocketTransport ? sioStatus : lpStatusRaw;
+  const sioFailed = useSocketTransport && sioStatus.supported === false;
+  const lpEnabled = !useSocketTransport || sioFailed;
+  const lpStatusRaw = useLongPolling(lpEnabled ? pageIds : []);
+  const lpStatus = useSocketTransport && !sioFailed ? sioStatus : lpStatusRaw;
   lpConnectedRef.current = lpStatus.connected;
 
   const { data: stateValues, refetch: refetchStateValues, dataUpdatedAt: statesUpdatedAt } = useStateValues(
@@ -479,6 +486,9 @@ function AppContent() {
     <>
     <Layout
       apiConnected={!objectsError && isOnline}
+      realtimeTransport={useSocketTransport && !sioFailed ? 'socketio' : 'longpolling'}
+      realtimeStatus={lpStatus}
+      realtimeFallback={sioFailed}
       browserOffline={!browserOnline}
       lastUpdated={lastValidUpdatedAt.current > 0 ? lastValidUpdatedAt.current : undefined}
       onManualRefresh={handleManualRefresh}

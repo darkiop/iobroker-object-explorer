@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import io, { type Socket } from 'socket.io-client';
-import type { IoBrokerState } from '../types/iobroker';
+import type { IoBrokerState, IoBrokerObject } from '../types/iobroker';
 import { queryKeys } from './queryKeys';
 import { derivePatterns } from './useLongPolling';
 
@@ -65,6 +65,42 @@ function makeApplyEvent(queryClient: ReturnType<typeof useQueryClient>): StateCh
   };
 }
 
+type ObjectChangeHandler = (id: string, obj: IoBrokerObject | null) => void;
+
+const OBJECTS_BOOTSTRAP_KEY = ['objects', 'bootstrap'] as const;
+
+/**
+ * Live-patches the object caches on `objectChange` events — keeps the table/tree
+ * in sync when datapoints are created, deleted, or their `common` (name, role,
+ * unit, min/max, alias target, ...) changes, without waiting for a manual/periodic
+ * objects refresh. Patches `objects.all` (full set), `objects.bootstrap` (state-only
+ * fast set used for client-side filtering) and the single-object detail query.
+ * `obj === null` means the object was deleted.
+ */
+function makeApplyObjectChange(queryClient: ReturnType<typeof useQueryClient>): ObjectChangeHandler {
+  const patchSet = (old: Record<string, IoBrokerObject> | undefined, id: string, obj: IoBrokerObject | null) => {
+    if (!old) return old;
+    if (obj) {
+      if (old[id] === obj) return old;
+      return { ...old, [id]: obj };
+    }
+    if (!(id in old)) return old;
+    const next = { ...old };
+    delete next[id];
+    return next;
+  };
+
+  return (id, obj) => {
+    queryClient.setQueryData<Record<string, IoBrokerObject>>(queryKeys.objects.all, (old) => patchSet(old, id, obj));
+    queryClient.setQueryData<Record<string, IoBrokerObject>>(OBJECTS_BOOTSTRAP_KEY, (old) => patchSet(old, id, obj));
+    if (obj) {
+      queryClient.setQueryData<IoBrokerObject>(queryKeys.objects.detail(id), obj);
+    } else {
+      queryClient.removeQueries({ queryKey: queryKeys.objects.detail(id) });
+    }
+  };
+}
+
 export function useSocketIO(visibleIds: string[], enabled: boolean, hostOverride?: string): SocketIOStatus {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<SocketIOStatus>({ supported: null, connected: false });
@@ -73,15 +109,33 @@ export function useSocketIO(visibleIds: string[], enabled: boolean, hostOverride
   const patternsKey = patterns.join('\n');
 
   const socketRef = useRef<Socket | null>(null);
+  // Patterns currently subscribed on the live socket — diffed against `patterns`
+  // on every page/filter change so we only emit the delta, not a full
+  // unsubscribe-everything + subscribe-everything round trip (avoids emit
+  // bursts and a brief gap in the live stream for patterns that stay visible).
   const subscribedRef = useRef<string[]>([]);
+  const subscribedObjectsRef = useRef<string[]>([]);
+  // Always-current pattern list for the `connect`/`reconnect` handler — the
+  // adapter forgets subscriptions across reconnects, so on (re)connect we
+  // must (re)subscribe whatever is visible *right now*, not what it was when
+  // the socket was created.
+  const patternsRef = useRef<string[]>(patterns);
+  patternsRef.current = patterns;
+  // Set by the socket-lifecycle effect — lets the diff-resubscribe effect emit
+  // with the same ack/retry handling without re-creating the socket.
+  const emitWithAckRef = useRef<((event: 'subscribe' | 'unsubscribe' | 'subscribeObjects' | 'unsubscribeObjects', pattern: string) => void) | null>(null);
 
+  const shouldConnect = enabled && patterns.length > 0;
+
+  // ── Socket lifecycle — created once per (enabled, host); survives pattern changes ──
   useEffect(() => {
-    if (!enabled || patterns.length === 0) {
+    if (!shouldConnect) {
       setStatus({ supported: null, connected: false });
       return;
     }
 
     const applyEvent = makeApplyEvent(queryClient);
+    const applyObjectChange = makeApplyObjectChange(queryClient);
     let cancelled = false;
 
     const socket = io(getSocketUrl(hostOverride), {
@@ -91,26 +145,54 @@ export function useSocketIO(visibleIds: string[], enabled: boolean, hostOverride
       timeout: CONNECT_TIMEOUT_MS,
     });
     socketRef.current = socket;
+    emitWithAckRef.current = (event, pattern) => emitWithAck(event, pattern);
 
-    function subscribeAll() {
-      subscribedRef.current = [...patterns];
-      for (const pattern of patterns) {
-        // ioBroker socket.io protocol: emit('subscribe', pattern, cb?)
-        socket.emit('subscribe', pattern);
+    type SubEvent = 'subscribe' | 'unsubscribe' | 'subscribeObjects' | 'unsubscribeObjects';
+
+    // ioBroker socket.io protocol: emit(event, pattern, cb?) → cb(err, result);
+    // validated live (10.4.0.20:8084): success acks as (null, undefined).
+    // We pass a callback to actually notice rejected subscriptions instead of
+    // silently believing we're receiving live updates for a pattern we aren't.
+    // One retry after 5s for failed *subscribe* attempts (transient adapter
+    // hiccup); failed un-subscribes are logged only — nothing to recover.
+    function emitWithAck(event: SubEvent, pattern: string, allowRetry = true) {
+      socket.emit(event, pattern, (err?: unknown) => {
+        if (cancelled || !err) return;
+        console.warn(`[useSocketIO] "${event}" rejected for pattern "${pattern}":`, err);
+        if (allowRetry && (event === 'subscribe' || event === 'subscribeObjects')) {
+          setTimeout(() => {
+            if (cancelled) return;
+            emitWithAck(event, pattern, false);
+          }, 5_000);
+        }
+      });
+    }
+
+    // Full (re)subscribe to whatever is visible *now* — used on (re)connect,
+    // since the server-side subscription list is lost across reconnects.
+    function resubscribeAll() {
+      const next = patternsRef.current;
+      for (const pattern of subscribedRef.current) emitWithAck('unsubscribe', pattern);
+      for (const pattern of subscribedObjectsRef.current) emitWithAck('unsubscribeObjects', pattern);
+      subscribedRef.current = [...next];
+      subscribedObjectsRef.current = [...next];
+      for (const pattern of next) {
+        emitWithAck('subscribe', pattern);
+        emitWithAck('subscribeObjects', pattern);
       }
     }
 
     function unsubscribeAll() {
-      for (const pattern of subscribedRef.current) {
-        socket.emit('unsubscribe', pattern);
-      }
+      for (const pattern of subscribedRef.current) emitWithAck('unsubscribe', pattern);
+      for (const pattern of subscribedObjectsRef.current) emitWithAck('unsubscribeObjects', pattern);
       subscribedRef.current = [];
+      subscribedObjectsRef.current = [];
     }
 
     socket.on('connect', () => {
       if (cancelled) return;
       setStatus({ supported: true, connected: true });
-      subscribeAll();
+      resubscribeAll();
     });
 
     socket.on('disconnect', () => {
@@ -131,16 +213,48 @@ export function useSocketIO(visibleIds: string[], enabled: boolean, hostOverride
       applyEvent(id, state);
     });
 
+    // ioBroker socket.io protocol: on('objectChange', (id, obj)) — obj === null means deleted
+    socket.on('objectChange', (id: string, obj: IoBrokerObject | null) => {
+      if (cancelled) return;
+      applyObjectChange(id, obj);
+    });
+
     return () => {
       cancelled = true;
       unsubscribeAll();
       socket.removeAllListeners();
       socket.disconnect();
       socketRef.current = null;
+      emitWithAckRef.current = null;
     };
-  // patternsKey as stable dep — re-subscribes when visible page changes
+  }, [queryClient, shouldConnect, hostOverride]);
+
+  // ── Diff-based resubscribe — only emits the delta when the visible pattern set changes ──
+  useEffect(() => {
+    const socket = socketRef.current;
+    const emit = emitWithAckRef.current;
+    if (!socket || !socket.connected || !emit) return; // connect handler will (re)subscribe with current patterns
+
+    const prev = subscribedRef.current;
+    const next = patterns;
+    const removed = prev.filter(p => !next.includes(p));
+    const added = next.filter(p => !prev.includes(p));
+    for (const pattern of removed) {
+      emit('unsubscribe', pattern);
+      emit('unsubscribeObjects', pattern);
+    }
+    for (const pattern of added) {
+      emit('subscribe', pattern);
+      emit('subscribeObjects', pattern);
+    }
+    if (removed.length || added.length) {
+      subscribedRef.current = [...next];
+      subscribedObjectsRef.current = [...next];
+    }
+  // patternsKey is the stable, joined representation of `patterns` — re-running
+  // only when its content actually changes (not on every derivePatterns() re-creation).
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [queryClient, patternsKey, enabled, hostOverride]);
+  }, [patternsKey]);
 
   return status;
 }

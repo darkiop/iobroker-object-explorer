@@ -20,6 +20,8 @@ npx tsc --noEmit   # Type check only
 
 **Prerequisites:** ioBroker with an active [REST API adapter](https://github.com/ioBroker/ioBroker.rest-api) (port `8093`) with CORS enabled. For history data, only the **`sql.0` adapter** is supported (History and InfluxDB adapters are not detected).
 
+> **⚠️ No auth support:** Neither the REST API nor the optional Socket.io realtime transport currently support authentication (login/token). Only use this dashboard against ioBroker instances reachable solely from a trusted network — do not expose the REST API or Socket.io adapter to the internet.
+
 The ioBroker address can be configured directly in the browser: click the connection badge in the header → enter `host:port` → press Enter. The browser connects directly to the ioBroker REST API (no server-side proxy required).
 
 **Dev server configuration:** Copy `.env.local.example` to `.env.local` and set `VITE_IOBROKER_TARGET`. The Vite dev server proxies `/api` to this address as a fallback when no host is set in the browser.

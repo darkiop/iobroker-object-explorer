@@ -12,6 +12,9 @@ interface LayoutProps {
   sidebar: React.ReactNode;
   children: React.ReactNode;
   apiConnected?: boolean;
+  realtimeTransport?: 'longpolling' | 'socketio';
+  realtimeStatus?: { supported: boolean | null; connected: boolean };
+  realtimeFallback?: boolean;
   browserOffline?: boolean;
   lastUpdated?: number;
   onManualRefresh?: () => void;
@@ -23,7 +26,7 @@ interface LayoutProps {
 const LS_SIDEBAR_WIDTH = 'iobroker-explorer-sidebar-width';
 const LS_SIDEBAR_COLLAPSED = 'iobroker-explorer-sidebar-collapsed';
 
-export default function Layout({ sidebar, children, apiConnected = true, browserOffline = false, lastUpdated, onManualRefresh, onConfirmScriptRefresh, headerExtra, onExtraReset }: LayoutProps) {
+export default function Layout({ sidebar, children, apiConnected = true, realtimeTransport, realtimeStatus, realtimeFallback = false, browserOffline = false, lastUpdated, onManualRefresh, onConfirmScriptRefresh, headerExtra, onExtraReset }: LayoutProps) {
   const {
     appSettings, confirmScriptRefresh, scriptLastUpdated,
     setConfirmScriptRefresh, openSettings, setShortcutsOpen,
@@ -181,6 +184,9 @@ export default function Layout({ sidebar, children, apiConnected = true, browser
         <div className="flex items-center gap-3">
           <HostConnectedButton
             apiConnected={apiConnected}
+            realtimeTransport={realtimeTransport}
+            realtimeStatus={realtimeStatus}
+            realtimeFallback={realtimeFallback}
             lastUpdated={lastUpdated}
             onManualRefresh={onManualRefresh}
           />
