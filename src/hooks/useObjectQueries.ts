@@ -87,7 +87,7 @@ export function useStateDetail(id: string | null) {
     queryKey: id ? queryKeys.states.detail(id) : [...queryKeys.states.detail('__none__')] as const,
     queryFn: () => getState(id!),
     enabled: !!id,
-    refetchInterval: 5_000,
+    refetchInterval: 30_000,
     initialData: () => {
       if (!id) return undefined;
       const batchCaches = queryClient.getQueriesData<Record<string, IoBrokerState>>({ queryKey: queryKeys.states.valuesRoot });

@@ -214,7 +214,8 @@ function AppContent() {
   }, [p1Width, appSettings.panel2Open]);
 
   // ── Connectivity ─────────────────────────────────────────────────────────
-  const { isOnline, browserOnline } = useApiConnectivity();
+  const lpConnectedRef = useRef(false);
+  const { isOnline, browserOnline } = useApiConnectivity(() => lpConnectedRef.current);
 
   // ── React Query ──────────────────────────────────────────────────────────
   const fieldFilters = (idFilter || nameFilter || descFilter) ? { id: idFilter ?? undefined, name: nameFilter ?? undefined, desc: descFilter ?? undefined } : undefined;
@@ -253,53 +254,56 @@ function AppContent() {
     return set;
   }, [stateObjects]);
 
-  const allStateIds = useMemo(
-    () => Object.keys(allObjects).filter(id => allObjects[id]?.type === 'state').sort(),
-    [allObjects]
-  );
-  const treeHistoryIds = useMemo(() => {
-    const set = new Set<string>();
-    for (const [id, obj] of Object.entries(allObjects)) { if (hasHistory(obj)) set.add(id); }
-    return set;
-  }, [allObjects]);
-  const treeSmartIds = useMemo(() => {
-    const set = new Set<string>();
-    for (const [id, obj] of Object.entries(allObjects)) { if (hasSmartName(obj)) set.add(id); }
-    return set;
+  const allObjectsDerived = useMemo(() => {
+    const stateIds: string[] = [];
+    const historyIdSet = new Set<string>();
+    const smartIdSet = new Set<string>();
+    const existingIdSet = new Set<string>();
+    const roleSet = new Set<string>();
+
+    for (const [id, obj] of Object.entries(allObjects)) {
+      existingIdSet.add(id);
+      const t = obj?.type;
+      if (t === 'state') stateIds.push(id);
+      if (hasHistory(obj)) historyIdSet.add(id);
+      if (hasSmartName(obj)) smartIdSet.add(id);
+      const role = obj?.common?.role;
+      if (role) roleSet.add(role);
+    }
+
+    let dangling = 0;
+    for (const [id, obj] of Object.entries(allObjects)) {
+      const t = obj?.type;
+      if (!id.startsWith('alias.0.') || t === 'folder' || t === 'channel' || t === 'device') continue;
+      const rawId = obj?.common?.alias?.id;
+      const targets: string[] = typeof rawId === 'object' && rawId !== null
+        ? [(rawId as { read?: string; write?: string }).read, (rawId as { read?: string; write?: string }).write].filter((t2): t2 is string => !!t2)
+        : rawId ? [rawId as string] : [];
+      if (targets.length === 0 || targets.every((tgt) => !existingIdSet.has(tgt))) dangling++;
+    }
+
+    stateIds.sort();
+
+    return {
+      allStateIds: stateIds,
+      treeHistoryIds: historyIdSet,
+      treeSmartIds: smartIdSet,
+      existingIds: existingIdSet,
+      allRoleNames: [...roleSet].sort(),
+      danglingAliasCount: dangling,
+    };
   }, [allObjects]);
 
-  const allRoleNames = useMemo(() => {
-    const set = new Set<string>();
-    for (const obj of Object.values(allObjects)) {
-      const role = obj?.common?.role;
-      if (role) set.add(role);
-    }
-    return [...set].sort();
-  }, [allObjects]);
+  const { allStateIds, treeHistoryIds, treeSmartIds, existingIds, allRoleNames, danglingAliasCount } = allObjectsDerived;
 
   const { data: aliasMapData } = useAliasMap();
   const aliasMap = aliasMapData ?? EMPTY_ALIAS_MAP;
-  const existingIds = useMemo(() => new Set(Object.keys(allObjects)), [allObjects]);
 
   const quickPatternOptions = useMemo(
     () => [...new Set([...DEFAULT_QUICK_PATTERNS, ...appSettings.extraQuickFilters])],
     [appSettings.extraQuickFilters]
   );
   const isEn = appSettings.language === 'en';
-
-  const danglingAliasCount = useMemo(() => {
-    let count = 0;
-    for (const [id, obj] of Object.entries(allObjects)) {
-      if (!id.startsWith('alias.0.')) continue;
-      if (obj?.type === 'folder' || obj?.type === 'channel' || obj?.type === 'device') continue;
-      const rawId = obj?.common?.alias?.id;
-      const targets: string[] = typeof rawId === 'object'
-        ? [rawId?.read, rawId?.write].filter((t): t is string => !!t)
-        : rawId ? [rawId] : [];
-      if (targets.length === 0 || targets.every((t) => !existingIds.has(t))) count++;
-    }
-    return count;
-  }, [allObjects, existingIds]);
 
   const objectIds = useMemo(() => {
     const sourceObjects = danglingAliasFilter ? allObjects : stateObjects;
@@ -339,6 +343,7 @@ function AppContent() {
 
   // Long-polling scoped to visible page IDs only — no global * subscription
   const lpStatus = useLongPolling(pageIds);
+  lpConnectedRef.current = lpStatus.connected;
 
   const { data: stateValues, refetch: refetchStateValues, dataUpdatedAt: statesUpdatedAt } = useStateValues(
     pageIds,
@@ -379,7 +384,7 @@ function AppContent() {
   );
   const p2TotalPages = p2PaginationDisabled ? 1 : Math.ceil(p2TotalCount / p2PageSize);
 
-  const { data: p2StateValues } = useStateValues(p2PageIds, 10_000);
+  const { data: p2StateValues } = useStateValues(p2PageIds, lpStatus.connected ? false : 10_000);
 
   const p2HandleColFilterChange = useCallback((filters: Partial<Record<SortKey, string>>) => {
     setP2ColFilters(filters);
@@ -811,6 +816,8 @@ function AppContent() {
               forceHideToolbarLabels={appSettings.panel2Open}
               visibleColsOverride={appSettings.panel2Open ? p1DualCols : undefined}
               onVisibleColsChange={appSettings.panel2Open ? setP1DualCols : undefined}
+              historyIds={treeHistoryIds}
+              smartIds={treeSmartIds}
             />
             {!appSettings.groupByPath && (
               <div className="py-2 px-1 border-t border-gray-200 dark:border-gray-700 shrink-0">
@@ -882,6 +889,8 @@ function AppContent() {
                   onVisibleColsChange={setP2VisibleCols}
                   groupByPathOverride={p2GroupByPath}
                   onToggleGroupByPathOverride={() => setP2GroupByPath((v) => !v)}
+                  historyIds={treeHistoryIds}
+                  smartIds={treeSmartIds}
                 />
                 {p2TotalPages > 1 && !p2GroupByPath && (
                   <div className="py-2 px-1 border-t border-gray-200 dark:border-gray-700 shrink-0">

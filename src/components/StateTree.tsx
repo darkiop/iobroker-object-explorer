@@ -134,7 +134,10 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   const hasChildren = node.children.size > 0;
   const objectType = !node.isLeaf ? allObjects[node.fullPath]?.type : undefined;
   const isFolder = !node.isLeaf && (hasChildren || objectType === 'folder' || objectType === 'device' || objectType === 'channel' || objectType === 'instance');
-  const isExpandableFolder = isFolder && hasExpandableBranch(node, allObjects, showFolders, showDevices, showChannels);
+  const isExpandableFolder = useMemo(
+    () => isFolder && hasExpandableBranch(node, allObjects, showFolders, showDevices, showChannels),
+    [isFolder, node, allObjects, showFolders, showDevices, showChannels]
+  );
   const isHistoryEnabled = node.isLeaf && historyIds.has(node.fullPath);
   const isSmartEnabled = node.isLeaf && smartIds.has(node.fullPath);
   const isActiveScope = (!!treeFilter && treeFilter === node.fullPath + '.') || (!!pattern && pattern === node.fullPath + '.*');

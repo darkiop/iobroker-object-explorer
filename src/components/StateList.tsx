@@ -62,6 +62,8 @@ interface StateListProps {
   onVisibleColsChange?: (cols: SortKey[]) => void;
   groupByPathOverride?: boolean;
   onToggleGroupByPathOverride?: () => void;
+  historyIds?: Set<string>;
+  smartIds?: Set<string>;
 }
 
 
@@ -80,7 +82,7 @@ function patternToInitialId(pattern: string): string {
 }
 
 
-function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allObjectIds, exportIds, onNavigateTo, onOpenInOtherPanel, forceHideToolbarLabels, visibleColsOverride, onVisibleColsChange, groupByPathOverride, onToggleGroupByPathOverride }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
+function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allObjectIds, exportIds, onNavigateTo, onOpenInOtherPanel, forceHideToolbarLabels, visibleColsOverride, onVisibleColsChange, groupByPathOverride, onToggleGroupByPathOverride, historyIds, smartIds }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
   const { colFilters, handleColFilterChange: onColFilterChange, pattern, treeFilter, handleClearTreeFilter: onClearTreeFilter, sidebarToggleSeq, fulltextEnabled, handleTreeScope } = usePanelContext();
   const { selectedId, setSelectedId: onSelect, setHistoryModalId: _setHistoryModalId, setEnumManagerOpen, setAliasReplaceInitialStr, setEditInitialTab, setAutoAliasDeviceId } = useSelectionContext();
   const { appSettings, expertMode, scriptUsedIds, scriptsFetching, scriptLastUpdated, setScriptUsedIds, setConfirmScriptRefresh, handleToggleExpertMode: onToggleExpertMode, handleToggleGroupByPath: _handleToggleGroupByPath, persistSettings } = useAppSettingsContext();
@@ -104,8 +106,14 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const [showStats, setShowStats] = useState(false);
   const { data: allObjectsData } = useAllObjects();
   const allObjects = allObjectsData ?? {} as Record<string, IoBrokerObject>;
-  const allHistoryIds = useMemo(() => { const s = new Set<string>(); for (const [id, obj] of Object.entries(allObjects)) { if (hasHistory(obj)) s.add(id); } return s; }, [allObjects]);
-  const allSmartIds = useMemo(() => { const s = new Set<string>(); for (const [id, obj] of Object.entries(allObjects)) { if (hasSmartName(obj)) s.add(id); } return s; }, [allObjects]);
+  const allHistoryIds = useMemo(() => {
+    if (historyIds) return historyIds;
+    const s = new Set<string>(); for (const [id, obj] of Object.entries(allObjects)) { if (hasHistory(obj)) s.add(id); } return s;
+  }, [historyIds, allObjects]);
+  const allSmartIds = useMemo(() => {
+    if (smartIds) return smartIds;
+    const s = new Set<string>(); for (const [id, obj] of Object.entries(allObjects)) { if (hasSmartName(obj)) s.add(id); } return s;
+  }, [smartIds, allObjects]);
   const containerRef = useRef<HTMLDivElement>(null);
   const theadRef = useRef<HTMLTableSectionElement>(null);
   const autoFitRef = useRef(true);
@@ -248,8 +256,13 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
     const thead = theadRef.current;
     if (!container) return;
 
+    let rafId: number | null = null;
     const measure = () => {
-      setHeaderHeight(thead?.offsetHeight ?? 0);
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        setHeaderHeight(thead?.offsetHeight ?? 0);
+      });
     };
     measure();
 
@@ -261,6 +274,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
       window.addEventListener('resize', measure);
     }
     return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
       if (ro) ro.disconnect();
       else window.removeEventListener('resize', measure);
     };

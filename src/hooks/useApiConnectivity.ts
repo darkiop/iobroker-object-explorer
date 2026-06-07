@@ -28,7 +28,7 @@ export interface ApiConnectivityState {
   isOnline: boolean;
 }
 
-export function useApiConnectivity(): ApiConnectivityState {
+export function useApiConnectivity(isLpConnected: () => boolean = () => false): ApiConnectivityState {
   const [browserOnline, setBrowserOnline] = useState(() => navigator.onLine);
   const [apiReachable, setApiReachable] = useState(true);
   const queryClient = useQueryClient();
@@ -55,10 +55,11 @@ export function useApiConnectivity(): ApiConnectivityState {
   }, [checkApi]);
 
   useEffect(() => {
+    if (isLpConnected()) return;
     const ms = apiReachable ? 60_000 : 10_000;
     const id = setInterval(checkApi, ms);
     return () => clearInterval(id);
-  }, [checkApi, apiReachable]);
+  }, [checkApi, apiReachable, isLpConnected]);
 
   return { browserOnline, apiReachable, isOnline: browserOnline && apiReachable };
 }
