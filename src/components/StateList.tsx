@@ -85,7 +85,7 @@ function patternToInitialId(pattern: string): string {
 function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allObjectIds, exportIds, onNavigateTo, onOpenInOtherPanel, forceHideToolbarLabels, visibleColsOverride, onVisibleColsChange, groupByPathOverride, onToggleGroupByPathOverride, historyIds, smartIds }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
   const { colFilters, handleColFilterChange: onColFilterChange, pattern, treeFilter, handleClearTreeFilter: onClearTreeFilter, sidebarToggleSeq, fulltextEnabled, handleTreeScope } = usePanelContext();
   const { selectedId, setSelectedId: onSelect, setHistoryModalId: _setHistoryModalId, setEnumManagerOpen, setAliasReplaceInitialStr, setEditInitialTab, setAutoAliasDeviceId } = useSelectionContext();
-  const { appSettings, expertMode, scriptUsedIds, scriptsFetching, scriptLastUpdated, setScriptUsedIds, setConfirmScriptRefresh, handleToggleExpertMode: onToggleExpertMode, handleToggleGroupByPath: _handleToggleGroupByPath, persistSettings } = useAppSettingsContext();
+  const { appSettings, expertMode, scriptUsedIds, scriptsFetching, scriptLastUpdated, setScriptUsedIds, setConfirmScriptRefresh, handleToggleGroupByPath: _handleToggleGroupByPath, persistSettings } = useAppSettingsContext();
   const onToggleGroupByPath = onToggleGroupByPathOverride ?? _handleToggleGroupByPath;
 
   const { language = 'en', dateFormat = 'de', visibleCols: settingsVisibleCols, toolbarLabels = true, tableFontSize = 'normal', showDesc = true, groupByPath: settingsGroupByPath = false, shortenGroupPaths = true, showObjectIcons = false, showObjectTypeIcons = true, customDefaultWidths, customMinWidths, customMaxWidths, pageSize, animateGroupExpand = false, hideAliasSubRows = false } = appSettings;

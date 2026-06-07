@@ -26,7 +26,7 @@ const LS_SIDEBAR_COLLAPSED = 'iobroker-explorer-sidebar-collapsed';
 export default function Layout({ sidebar, children, apiConnected = true, browserOffline = false, lastUpdated, onManualRefresh, onConfirmScriptRefresh, headerExtra, onExtraReset }: LayoutProps) {
   const {
     appSettings, confirmScriptRefresh, scriptLastUpdated,
-    setConfirmScriptRefresh, handleLanguageChange, openSettings, setShortcutsOpen,
+    setConfirmScriptRefresh, openSettings, setShortcutsOpen,
     persistSettings,
   } = useUIContext();
   const { handleSidebarToggle, hasAnyFilter, resetAllFilters, canGoBack, goBack, canGoForward, goForward } = useFilterContext();
@@ -34,7 +34,6 @@ export default function Layout({ sidebar, children, apiConnected = true, browser
   const adminPort = appSettings.adminPort;
   const onSidebarToggle = handleSidebarToggle;
   const onOpenSettings = openSettings;
-  const onLanguageChange = handleLanguageChange;
   const onShowShortcuts = () => setShortcutsOpen(true);
   const onCancelScriptRefresh = () => setConfirmScriptRefresh(false);
   useEffect(() => {

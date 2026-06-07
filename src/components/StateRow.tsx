@@ -147,7 +147,8 @@ const StateRow = React.memo(function StateRow({
   if (!show('history') && obj && hasHistory(obj)) hiddenColRows.push(['History', isEn ? 'Yes' : 'Ja']);
   if (!show('custom') && obj && hasCustomEnabled(obj)) hiddenColRows.push(['Custom', isEn ? 'Yes' : 'Ja']);
   if (!show('smart') && obj && hasSmartName(obj)) {
-    const sn = resolveI18n(obj.common?.smartName, language);
+    const smartNameVal = obj.common?.smartName;
+    const sn = resolveI18n(smartNameVal === false ? undefined : smartNameVal);
     if (sn) hiddenColRows.push(['SmartName', sn]);
   }
   if (!show('alias') && ownTarget) hiddenColRows.push(['Alias', ownTarget]);

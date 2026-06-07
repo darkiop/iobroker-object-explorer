@@ -136,6 +136,7 @@ export function loadAppSettings(): AppSettings {
       showObjectIcons: parsed.showObjectIcons === true,
       showObjectTypeIcons: parsed.showObjectTypeIcons !== false,
       animateGroupExpand: parsed.animateGroupExpand === true,
+      hideAliasSubRows: parsed.hideAliasSubRows === true,
       panel2Open: parsed.panel2Open === true,
     };
   } catch { return fallback; }
