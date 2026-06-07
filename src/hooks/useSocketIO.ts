@@ -9,17 +9,16 @@ import { derivePatterns } from './useLongPolling';
  * POC — Socket.IO transport as alternative to useLongPolling.
  *
  * Requires the `socketio` adapter (default port 8084) running alongside
- * the REST adapter. Derives the connection URL from a dedicated localStorage
- * key (`ioBrokerSocketHost`) — falls back to `<restHost-without-port>:8084`.
+ * the REST adapter.
+ *
+ * Validated live against socket.io adapter v2.x (10.4.0.20:8084):
+ * `subscribe(pattern, cb)` acks (null, undefined); `stateChange(id, state)`
+ * matches the (id, state) shape applyEvent expects 1:1.
  *
  * Status shape mirrors `LongPollingStatus` so the two transports are
- * interchangeable in `App.tsx` (pick one based on a setting / probe result).
- *
- * NOT wired into the app yet — POC only. Validate against a real
- * `socketio` adapter instance before promoting beyond experimental.
+ * interchangeable in `App.tsx` — selected via AppSettings.realtimeTransport.
  */
 
-const LS_SOCKET_HOST_KEY = 'ioBrokerSocketHost';
 const CONNECT_TIMEOUT_MS = 5_000;
 
 export interface SocketIOStatus {
@@ -28,12 +27,16 @@ export interface SocketIOStatus {
   connected: boolean;
 }
 
-function getSocketUrl(): string {
-  const override = localStorage.getItem(LS_SOCKET_HOST_KEY);
+/**
+ * Resolve the socketio adapter URL.
+ * @param hostOverride explicit `host[:port]` from AppSettings.socketHost (empty = use heuristic)
+ */
+export function getSocketUrl(hostOverride?: string): string {
+  const override = hostOverride?.trim();
   if (override) {
     return /^https?:\/\//.test(override) ? override : `http://${override}`;
   }
-  // Fallback heuristic: same host as REST target, default socketio port 8084
+  // Fallback heuristic: same host as REST target, default socketio adapter port 8084
   const raw = localStorage.getItem('ioBrokerHost') ?? window.__CONFIG__?.ioBrokerHost;
   if (raw) {
     const host = raw.replace(/:\d+$/, '');
@@ -62,7 +65,7 @@ function makeApplyEvent(queryClient: ReturnType<typeof useQueryClient>): StateCh
   };
 }
 
-export function useSocketIO(visibleIds: string[], enabled: boolean): SocketIOStatus {
+export function useSocketIO(visibleIds: string[], enabled: boolean, hostOverride?: string): SocketIOStatus {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<SocketIOStatus>({ supported: null, connected: false });
 
@@ -81,7 +84,7 @@ export function useSocketIO(visibleIds: string[], enabled: boolean): SocketIOSta
     const applyEvent = makeApplyEvent(queryClient);
     let cancelled = false;
 
-    const socket = io(getSocketUrl(), {
+    const socket = io(getSocketUrl(hostOverride), {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 5_000,
@@ -137,9 +140,7 @@ export function useSocketIO(visibleIds: string[], enabled: boolean): SocketIOSta
     };
   // patternsKey as stable dep — re-subscribes when visible page changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [queryClient, patternsKey, enabled]);
+  }, [queryClient, patternsKey, enabled, hostOverride]);
 
   return status;
 }
-
-export { getSocketUrl as __getSocketUrlForTest };

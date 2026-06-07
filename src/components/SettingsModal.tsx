@@ -130,6 +130,8 @@ export default function SettingsModal() {
       hideAliasSubRows: settingsDraft.hideAliasSubRows ?? false,
       shortenGroupPaths: settingsDraft.shortenGroupPaths,
       panel2Open: settingsDraft.panel2Open,
+      realtimeTransport: settingsDraft.realtimeTransport,
+      socketHost: settingsDraft.socketHost.trim(),
     };
     applySettings(next);
   }, [settingsDraft, applySettings]);
@@ -273,6 +275,45 @@ export default function SettingsModal() {
                     </a>
                   )}
                 </div>
+              </div>
+
+              <div className="border-t border-gray-200 dark:border-gray-700" />
+
+              {/* ── Realtime ── */}
+              <div className="flex flex-col gap-3">
+                <SettingsGroupLabel isEn={isEn} en="Realtime updates" de="Echtzeit-Updates" />
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Transport' : 'Übertragung'}</span>
+                  <select
+                    value={settingsDraft.realtimeTransport}
+                    onChange={(e) => setSettingsDraft((prev) => ({ ...prev, realtimeTransport: e.target.value as 'longpolling' | 'socketio' }))}
+                    className="px-2 py-1.5 text-xs rounded border bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                  >
+                    <option value="longpolling">{isEn ? 'Long polling (default — REST only)' : 'Long Polling (Standard — nur REST)'}</option>
+                    <option value="socketio">{isEn ? 'Socket.IO (experimental — requires socketio adapter)' : 'Socket.IO (experimentell — benötigt socketio-Adapter)'}</option>
+                  </select>
+                  <span className="text-[11px] text-gray-400 dark:text-gray-500">
+                    {isEn
+                      ? 'Long polling works out of the box via the REST API. Socket.IO connects directly to a separate `socketio` adapter instance for lower-latency push updates.'
+                      : 'Long Polling funktioniert ohne weitere Voraussetzungen über die REST-API. Socket.IO verbindet sich direkt mit einer separaten socketio-Adapter-Instanz für Updates mit geringerer Latenz.'}
+                  </span>
+                </div>
+                {settingsDraft.realtimeTransport === 'socketio' && (
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Socket.IO host (optional override)' : 'Socket.IO-Host (optionaler Override)'}</span>
+                    <input
+                      value={settingsDraft.socketHost}
+                      onChange={(e) => setSettingsDraft((prev) => ({ ...prev, socketHost: e.target.value }))}
+                      placeholder={`${settingsHostIp.trim() || '10.4.0.33'}:8084`}
+                      className="px-2 py-1.5 text-xs rounded border font-mono bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none border-gray-300 dark:border-gray-600 focus:ring-1 focus:ring-blue-400"
+                    />
+                    <span className="text-[11px] text-gray-400 dark:text-gray-500">
+                      {isEn
+                        ? 'Leave empty to guess from the REST host (default port 8084 — the socketio adapter’s standard port).'
+                        : 'Leer lassen, um den Wert vom REST-Host abzuleiten (Standardport 8084 des socketio-Adapters).'}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="border-t border-gray-200 dark:border-gray-700" />

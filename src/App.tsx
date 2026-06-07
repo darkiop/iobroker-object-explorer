@@ -20,6 +20,7 @@ import SettingsModal from './components/SettingsModal';
 import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunctionMap, useRoomEnums, useFunctionEnums, useAliasMap } from './hooks/useStates';
 import { useApiConnectivity } from './hooks/useApiConnectivity';
 import { useLongPolling } from './hooks/useLongPolling';
+import { useSocketIO } from './hooks/useSocketIO';
 import { hasHistory, hasSmartName, hasCustomEnabled } from './api/iobroker';
 import type { StateListHandle } from './components/StateList';
 import { filterObjectIds } from './utils/filterObjectIds';
@@ -171,6 +172,12 @@ function AppContent() {
   const setP2Pattern = useCallback((p: string) => {
     setP2PatternRaw(p);
     setP2Page(0);
+  }, []);
+
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      document.title = `[DEV] ${document.title}`;
+    }
   }, []);
 
   useEffect(() => {
@@ -341,8 +348,15 @@ function AppContent() {
   );
   const totalPages = paginationDisabled ? 1 : Math.ceil(totalCount / appSettings.pageSize);
 
-  // Long-polling scoped to visible page IDs only — no global * subscription
-  const lpStatus = useLongPolling(pageIds);
+  // Realtime push transport — scoped to visible page IDs only, no global * subscription.
+  // Selectable in Settings: 'longpolling' (default, REST-only, works everywhere) or
+  // 'socketio' (experimental — requires a separate `socketio` adapter instance).
+  // Each hook no-ops (returns {supported:null, connected:false}) when not selected,
+  // either via empty-array (long polling) or its own `enabled` flag (socket.io).
+  const useSocketTransport = appSettings.realtimeTransport === 'socketio';
+  const lpStatusRaw = useLongPolling(useSocketTransport ? [] : pageIds);
+  const sioStatus = useSocketIO(pageIds, useSocketTransport, appSettings.socketHost);
+  const lpStatus = useSocketTransport ? sioStatus : lpStatusRaw;
   lpConnectedRef.current = lpStatus.connected;
 
   const { data: stateValues, refetch: refetchStateValues, dataUpdatedAt: statesUpdatedAt } = useStateValues(

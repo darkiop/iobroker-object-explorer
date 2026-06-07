@@ -30,6 +30,12 @@ export interface AppSettings {
   animateGroupExpand: boolean;
   hideAliasSubRows: boolean;
   panel2Open: boolean;
+  /** Realtime push transport — 'longpolling' uses the REST polling endpoint (default,
+   *  works everywhere); 'socketio' connects to a separate `socketio` adapter instance
+   *  (lower latency, requires that adapter to be installed/running — experimental). */
+  realtimeTransport: 'longpolling' | 'socketio';
+  /** Override host:port for the socketio adapter (default guess: <restHost>:8084). */
+  socketHost: string;
 }
 
 const PAGE_SIZE_OPTIONS = [200, 500, 1000, 3000];
@@ -63,6 +69,8 @@ export function getDefaultAppSettings(): AppSettings {
     animateGroupExpand: false,
     hideAliasSubRows: false,
     panel2Open: false,
+    realtimeTransport: 'longpolling',
+    socketHost: '',
   };
 }
 
@@ -138,6 +146,8 @@ export function loadAppSettings(): AppSettings {
       animateGroupExpand: parsed.animateGroupExpand === true,
       hideAliasSubRows: parsed.hideAliasSubRows === true,
       panel2Open: parsed.panel2Open === true,
+      realtimeTransport: parsed.realtimeTransport === 'socketio' ? 'socketio' : 'longpolling',
+      socketHost: typeof parsed.socketHost === 'string' ? parsed.socketHost.trim() : '',
     };
   } catch { return fallback; }
 }
