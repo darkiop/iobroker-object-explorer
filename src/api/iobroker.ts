@@ -54,6 +54,62 @@ export function scoreObject(id: string, obj: IoBrokerObject, query: string): num
 }
 
 
+// ── Search index ─────────────────────────────────────────────────────────────
+// `getObjectsByPattern` re-scans on every keystroke. Without an index this means
+// re-running getAllNamesForSearch()/lowercasing/alias-shape-normalization for
+// every object on every render — O(n) string work per keystroke even though the
+// underlying object set rarely changes. We build the per-object search strings
+// once (keyed on the `all` object reference returned by getAllObjects' cache —
+// new reference only after an actual refetch/invalidation) and reuse them.
+interface ObjectSearchIndex {
+  source: Record<string, IoBrokerObject>;
+  ids: string[];
+  idLower: string[];
+  names: string[];
+  aliasIds: string[];
+  descs: string[];
+}
+
+let _searchIndex: ObjectSearchIndex | null = null;
+
+function getSearchIndex(all: Record<string, IoBrokerObject>): ObjectSearchIndex {
+  if (_searchIndex && _searchIndex.source === all) return _searchIndex;
+  const entries = Object.entries(all);
+  const n = entries.length;
+  const idx: ObjectSearchIndex = {
+    source: all,
+    ids: new Array(n),
+    idLower: new Array(n),
+    names: new Array(n),
+    aliasIds: new Array(n),
+    descs: new Array(n),
+  };
+  for (let i = 0; i < n; i++) {
+    const [id, obj] = entries[i];
+    idx.ids[i] = id;
+    idx.idLower[i] = id.toLowerCase();
+    idx.names[i] = getAllNamesForSearch(obj?.common?.name).toLowerCase();
+    const rawAliasId = obj?.common?.alias?.id;
+    idx.aliasIds[i] = (typeof rawAliasId === 'object'
+      ? [rawAliasId?.read, rawAliasId?.write].filter(Boolean).join(' ')
+      : (rawAliasId ?? '')
+    ).toLowerCase();
+    idx.descs[i] = (typeof obj?.common?.desc === 'string' ? obj.common.desc : '').toLowerCase();
+  }
+  _searchIndex = idx;
+  return idx;
+}
+
+function scoreIndexed(idLower: string, name: string, aliasId: string, desc: string, q: string): number {
+  if (idLower === q) return 100;
+  if (idLower.startsWith(q)) return 80;
+  if (idLower.includes(q)) return 60;
+  if (name && name.includes(q)) return 50;
+  if (aliasId && aliasId.includes(q)) return 40;
+  if (desc && desc.includes(q)) return 30;
+  return 0;
+}
+
 let _objectsFetchPromise: Promise<Record<string, IoBrokerObject>> | null = null;
 let _fastObjectsPromise: Promise<Record<string, IoBrokerObject>> | null = null;
 
@@ -66,23 +122,35 @@ export async function getStateObjectsFast(): Promise<Record<string, IoBrokerObje
 
 export async function getAllObjects(): Promise<Record<string, IoBrokerObject>> {
   if (_objectsFetchPromise) return _objectsFetchPromise;
-  _objectsFetchPromise = Promise.all([
-    fetchApi<Record<string, IoBrokerObject>>('/objects'),
-    fetchApi<Record<string, IoBrokerObject>>('/objects?type=enum'),
-    fetchApi<Record<string, IoBrokerObject>>('/objects?type=folder'),
-    fetchApi<Record<string, IoBrokerObject>>('/objects?type=device'),
-    fetchApi<Record<string, IoBrokerObject>>('/objects?type=channel'),
-  ]).then(([all, enums, folders, devices, channels]) => {
-    _objectsFetchPromise = null;
-    _fastObjectsPromise = null;
-    const foldersTyped = Object.fromEntries(
-      Object.entries(folders).map(([k, v]) => [k, { ...v, type: v.type ?? 'folder' }])
-    ) as Record<string, IoBrokerObject>;
-    return { ...all, ...enums, ...foldersTyped, ...devices, ...channels };
-  }).catch(err => {
-    _objectsFetchPromise = null;
-    throw err;
-  });
+  // `/objects` already returns every object of every type — the four
+  // `?type=…` requests were a workaround for older REST-API versions that
+  // returned folder/device/channel/enum objects without a `type` field.
+  // Modern adapters set it, so the single request is enough in practice;
+  // we only pay for the legacy-fallback requests if we actually detect
+  // untyped objects (keeps the fast path at 1 request, stays correct on old APIs).
+  _objectsFetchPromise = fetchApi<Record<string, IoBrokerObject>>('/objects')
+    .then(async all => {
+      const untyped = Object.entries(all).filter(([, obj]) => obj && !obj.type);
+      if (untyped.length > 0) {
+        const [enums, folders, devices, channels] = await Promise.all([
+          fetchApi<Record<string, IoBrokerObject>>('/objects?type=enum'),
+          fetchApi<Record<string, IoBrokerObject>>('/objects?type=folder'),
+          fetchApi<Record<string, IoBrokerObject>>('/objects?type=device'),
+          fetchApi<Record<string, IoBrokerObject>>('/objects?type=channel'),
+        ]);
+        const foldersTyped = Object.fromEntries(
+          Object.entries(folders).map(([k, v]) => [k, { ...v, type: v.type ?? 'folder' }])
+        ) as Record<string, IoBrokerObject>;
+        all = { ...all, ...enums, ...foldersTyped, ...devices, ...channels };
+      }
+      _objectsFetchPromise = null;
+      _fastObjectsPromise = null;
+      return all;
+    })
+    .catch(err => {
+      _objectsFetchPromise = null;
+      throw err;
+    });
   return _objectsFetchPromise;
 }
 
@@ -158,12 +226,19 @@ export async function getObjectsByPattern(pattern: string, fulltext = true, exac
     return result;
   }
 
-  // Volltext-Suche: ID, Name, Beschreibung, Alias-Ziel
+  // Volltext-Suche: ID, Name, Beschreibung, Alias-Ziel — uses the precomputed
+  // search index (lowercased id/name/alias/desc strings) instead of recomputing
+  // getAllNamesForSearch()/alias-shape-normalization for every object on every
+  // keystroke. Index is rebuilt only when `all` changes (new object reference).
+  const q = pattern.toLowerCase();
+  const idx = getSearchIndex(all);
   const scored: Array<[string, IoBrokerObject, number]> = [];
-  for (const [id, obj] of Object.entries(all)) {
+  for (let i = 0; i < idx.ids.length; i++) {
+    const id = idx.ids[i];
+    const obj = all[id];
     if (!obj) continue;
     if (!matchesFieldFilters(id, obj)) continue;
-    const score = pattern === '*' ? 1 : scoreObject(id, obj, pattern);
+    const score = pattern === '*' ? 1 : scoreIndexed(idx.idLower[i], idx.names[i], idx.aliasIds[i], idx.descs[i], q);
     if (score > 0) scored.push([id, obj, score]);
   }
   scored.sort((a, b) => b[2] - a[2] || a[0].localeCompare(b[0]));
@@ -478,9 +553,9 @@ export async function getFunctionMap(): Promise<Record<string, string>> {
 }
 
 export async function getCustomSupportedInstances(): Promise<Array<{ id: string; adapterName: string }>> {
-  const res = await fetchApi<Record<string, IoBrokerObject>>('/objects?type=instance');
-  return Object.entries(res)
-    .filter(([, o]) => o.common?.enabled === true && o.common?.supportCustoms === true)
+  const all = await getAllObjects(); // cached — avoids a redundant /objects?type=instance round trip
+  return Object.entries(all)
+    .filter(([id, o]) => id.startsWith('system.adapter.') && o.common?.enabled === true && o.common?.supportCustoms === true)
     .map(([id]) => {
       const instanceId = id.replace('system.adapter.', '');
       return { id: instanceId, adapterName: instanceId.replace(/\.\d+$/, '') };
@@ -488,7 +563,7 @@ export async function getCustomSupportedInstances(): Promise<Array<{ id: string;
 }
 
 export async function getFunctionEnums(): Promise<Array<{ id: string; name: string }>> {
-  const res = await fetchApi<Record<string, IoBrokerObject>>('/objects?type=enum');
+  const res = await getAllObjects(); // cached — avoids a redundant /objects?type=enum round trip
   const fns: Array<{ id: string; name: string }> = [];
   for (const [id, obj] of Object.entries(res)) {
     if (!id.startsWith('enum.functions.')) continue;
@@ -538,7 +613,7 @@ export async function updateFunctionMembershipBatch(objectIds: string[], newFnEn
 }
 
 export async function getRoomEnums(): Promise<Array<{ id: string; name: string }>> {
-  const res = await fetchApi<Record<string, IoBrokerObject>>('/objects?type=enum');
+  const res = await getAllObjects(); // cached — avoids a redundant /objects?type=enum round trip
   const rooms: Array<{ id: string; name: string }> = [];
   for (const [id, obj] of Object.entries(res)) {
     if (!id.startsWith('enum.rooms.')) continue;
