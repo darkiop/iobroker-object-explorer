@@ -8,6 +8,8 @@ import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel, CONFIGURABLE_WIDTH_COLS, BUI
 import { useAppSettingsContext, useUIOverlayContext, DEFAULT_QUICK_PATTERNS, getDefaultAppSettings, normalizeQuickPattern } from '../context/UIContext';
 import type { AppSettings, UiFontSize } from '../context/UIContext';
 import { useFilterContext } from '../context/FilterContext';
+import io from 'socket.io-client';
+import { getSocketUrl } from '../hooks/useSocketIO';
 import { useTheme } from '../context/ThemeContext';
 import type { Theme } from '../context/ThemeContext';
 
@@ -87,6 +89,9 @@ export default function SettingsModal() {
   const [settingsHostPort, setSettingsHostPort] = useState(() => initHostState().port);
   const [settingsHostTesting, setSettingsHostTesting] = useState(false);
   const [settingsHostError, setSettingsHostError] = useState<string | null>(null);
+  const [socketTesting, setSocketTesting] = useState(false);
+  const [socketTestResult, setSocketTestResult] = useState<'ok' | 'error' | null>(null);
+  const [socketTestError, setSocketTestError] = useState<string | null>(null);
   const [settingsDraft, setSettingsDraft] = useState<AppSettings>(() => initDraftFromSettings(appSettings));
   const [newQuickFilter, setNewQuickFilter] = useState('');
 
@@ -156,6 +161,39 @@ export default function SettingsModal() {
     }));
     setNewQuickFilter('');
   }, [newQuickFilter]);
+
+  const testSocketConnection = useCallback(() => {
+    if (socketTesting) return;
+    setSocketTesting(true);
+    setSocketTestResult(null);
+    setSocketTestError(null);
+
+    const url = getSocketUrl(settingsDraft.socketHost);
+    const socket = io(url, {
+      transports: ['websocket', 'polling'],
+      reconnection: false,
+      timeout: 5_000,
+      forceNew: true,
+    });
+
+    let settled = false;
+    const finish = (ok: boolean, err?: string) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      socket.removeAllListeners();
+      socket.disconnect();
+      setSocketTesting(false);
+      setSocketTestResult(ok ? 'ok' : 'error');
+      setSocketTestError(ok ? null : err ?? (isEn ? 'Connection failed' : 'Verbindung fehlgeschlagen'));
+    };
+
+    const timer = setTimeout(() => finish(false, isEn ? 'Timed out' : 'Zeitüberschreitung'), 6_000);
+    socket.on('connect', () => finish(true));
+    socket.on('connect_error', (err: { message?: string } | Error) =>
+      finish(false, err?.message || (isEn ? 'Connection failed' : 'Verbindung fehlgeschlagen'))
+    );
+  }, [socketTesting, settingsDraft.socketHost, isEn]);
 
   const resetSettingsToDefault = useCallback(() => {
     const defaults = getDefaultAppSettings();
@@ -303,7 +341,11 @@ export default function SettingsModal() {
                     <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Socket.IO host (optional override)' : 'Socket.IO-Host (optionaler Override)'}</span>
                     <input
                       value={settingsDraft.socketHost}
-                      onChange={(e) => setSettingsDraft((prev) => ({ ...prev, socketHost: e.target.value }))}
+                      onChange={(e) => {
+                        setSettingsDraft((prev) => ({ ...prev, socketHost: e.target.value }));
+                        setSocketTestResult(null);
+                        setSocketTestError(null);
+                      }}
                       placeholder={`${settingsHostIp.trim() || '10.4.0.33'}:8084`}
                       className="px-2 py-1.5 text-xs rounded border font-mono bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none border-gray-300 dark:border-gray-600 focus:ring-1 focus:ring-blue-400"
                     />
@@ -311,6 +353,34 @@ export default function SettingsModal() {
                       {isEn
                         ? 'Leave empty to guess from the REST host (default port 8084 — the socketio adapter’s standard port).'
                         : 'Leer lassen, um den Wert vom REST-Host abzuleiten (Standardport 8084 des socketio-Adapters).'}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={socketTesting}
+                        onClick={testSocketConnection}
+                        className="px-2.5 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 transition-colors flex items-center gap-1.5"
+                      >
+                        {socketTesting
+                          ? <><Loader2 size={12} className="animate-spin" />{isEn ? 'Testing…' : 'Teste…'}</>
+                          : isEn ? 'Test connection' : 'Verbindung testen'
+                        }
+                      </button>
+                      {socketTestResult === 'ok' && (
+                        <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                          <Check size={12} /> {isEn ? 'Connected' : 'Verbunden'}
+                        </span>
+                      )}
+                      {socketTestResult === 'error' && (
+                        <span className="flex items-center gap-1 text-xs text-red-500">
+                          <AlertCircle size={12} /> {socketTestError}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[11px] text-gray-400 dark:text-gray-500">
+                      {isEn
+                        ? 'Connects briefly to verify reachability — does not save or reload. Save the form to apply the host override.'
+                        : 'Verbindet kurz zur Erreichbarkeitsprüfung — speichert nicht und lädt nicht neu. Formular speichern, um den Host-Override zu übernehmen.'}
                     </span>
                   </div>
                 )}

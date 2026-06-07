@@ -175,7 +175,7 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    if (import.meta.env.DEV) {
+    if (import.meta.env.DEV && !document.title.startsWith('[DEV] ')) {
       document.title = `[DEV] ${document.title}`;
     }
   }, []);

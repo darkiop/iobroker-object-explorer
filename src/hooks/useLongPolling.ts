@@ -8,6 +8,10 @@ const POLLING_TIMEOUT_MS = 30_000;
 const RECONNECT_INTERVAL_MS = 5_000;
 const CLIENT_ABORT_BUFFER_MS = 1_500;
 
+// Module-level: some adapters support /states/subscribe but 404 on /states/unsubscribe.
+// Once detected, skip unsubscribe calls entirely to avoid spamming devtools with 404s.
+let _unsubscribeSupported: boolean | null = null;
+
 export interface LongPollingStatus {
   /** null = probing, true = REST API supports it, false = not supported */
   supported: boolean | null;
@@ -95,12 +99,19 @@ export function useLongPolling(visibleIds: string[]): LongPollingStatus {
     }
 
     async function unsubscribePattern(pattern: string): Promise<void> {
+      if (_unsubscribeSupported === false) return;
       try {
-        await fetch(`${getBaseUrl()}/states/unsubscribe?sid=${sidRef.current}`, {
+        const res = await fetch(`${getBaseUrl()}/states/unsubscribe?sid=${sidRef.current}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ method: 'polling', pattern }),
         });
+        if (res.status === 404) {
+          _unsubscribeSupported = false;
+          console.info('[LongPolling] 404 on unsubscribe — adapter lacks endpoint, skipping further unsubscribe calls.');
+          return;
+        }
+        _unsubscribeSupported = true;
       } catch { /* best effort */ }
     }
 
