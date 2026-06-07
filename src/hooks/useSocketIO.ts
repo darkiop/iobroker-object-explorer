@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { io, type Socket } from 'socket.io-client';
+import io, { type Socket } from 'socket.io-client';
 import type { IoBrokerState } from '../types/iobroker';
 import { queryKeys } from './queryKeys';
 import { derivePatterns } from './useLongPolling';
