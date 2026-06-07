@@ -30,3 +30,5 @@ docker-compose.yml
 # Claude Code local config and worktrees
 .claude/settings.local.json
 .claude/worktrees/
+
+docs/
