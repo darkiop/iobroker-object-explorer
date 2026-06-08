@@ -248,6 +248,8 @@ Opened via the gear icon in the header. Changes are applied only on **Save** (dr
 | REST API IP / Port | ioBroker host and REST API adapter port; "Test & Connect" probes connectivity then reloads |
 | Admin UI Port | ioBroker Admin port (default 8081); used for object icon URLs and direct admin links |
 | Swagger UI link | Opens the REST API adapter's built-in Swagger UI for the configured host |
+| Realtime transport | Long Polling (default) / Socket.io (experimental); selects the push transport for live state/object updates — see [Realtime Updates](#realtime-updates--long-polling--socketio) |
+| Socket host | Override `host:port` for the Socket.io adapter (default guess: `<restHost>:8084`); only shown when transport is set to Socket.io |
 
 **Tab: Display**
 
@@ -264,15 +266,24 @@ Opened via the gear icon in the header. Changes are applied only on **Save** (dr
 | Show object icons in Name column | on/off | off | Fetches and shows the adapter icon next to each object name |
 | Show type icons | on/off | on | Shows a small type icon (state/device/channel/folder) in the table |
 | Animate group expand/collapse | on/off | off | Smooth CSS animation when expanding/collapsing path groups |
+| Hide alias source/target lines | on/off | off | Hides the extra sub-rows showing an alias's source/target datapoint beneath the alias row |
 | Sidebar tree font size | S / M / L / XL | M | Text size in the object tree |
 | Tree count badge | Off / Objects / States / Both | Objects | What count is shown in the badge next to each tree node |
 | Auto-refresh objects | Off / 30 s / 1 m / 5 m / 10 m | Off | Periodic background re-fetch of the full object cache |
+| Reuse cached objects for | Off / 5 / 10 / 20 / 50 reloads | 10 | How many browser reloads reuse the persisted (IndexedDB) objects/scripts payload before refetching; works together with cache TTL — whichever triggers first wins |
+| Objects cache TTL | Off / 1h / 6h / 24h / 7d | 24h | Max age of the persisted objects cache before it's considered stale, regardless of the reload counter |
+| Fetch state values for visible rows only | on/off | off | Restricts state-value fetching/polling to rows currently scrolled into view (reported by the table virtualizer) instead of the whole page — reduces request size on large pages at the cost of a brief "loading" flicker for newly visible rows |
 
 **Tab: Columns**
 
 - Toggle visibility of each table column individually; at least one must remain visible
 - Per-column width customization: set default, min, and max width in px for each configurable column
 - "Reset all" reverts to built-in widths
+
+**Tab: Filters**
+
+- Add custom ID patterns (wildcards supported, e.g. `hm-rpc.0.*`) that appear as additional quick-filter buttons in the sidebar
+- Remove custom patterns individually; built-in quick filters (Aliases, SmartName, Custom, History, Script) are not affected
 
 ---
 
@@ -646,11 +657,16 @@ The app probes Tier 1 on the first call and caches the result (`_bulkStatesSuppo
 
 ---
 
-### Live Updates — Long-Polling
+### Realtime Updates — Long-Polling & Socket.io
 
-The app uses **long-polling** (HTTP long-hold, not WebSocket) for push-based state change notifications from the ioBroker REST API adapter.
+The app supports two interchangeable push transports for live state/object updates, selectable in **Settings → Connection → Realtime transport**:
 
-**Protocol overview:**
+- **Long Polling** (default) — HTTP long-hold against the standard REST API adapter, always available, no extra setup
+- **Socket.io** (experimental, opt-in) — connects to a separate `socketio` adapter instance (default port `8084`, requires `socket.io-client@2`/v2.x server) for lower-latency push; subscribes per-pattern to both state and object changes (`stateChange`/`objectChange`), live-patching the React Query caches directly. If the adapter is unreachable, the app automatically activates long-polling in parallel as a fallback and reflects the *effective* active transport in the connection-status badge (with an amber fallback marker), recovering automatically once Socket.io reconnects.
+
+Both transports share the same `{ supported, connected }` status shape, so the rest of the app (subscription scoping, cache patching, status display) is transport-agnostic. The long-polling path is documented in detail below as it's the default and always-available transport.
+
+**Long-polling protocol overview:**
 
 ```
 Browser                                 ioBroker REST API
