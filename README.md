@@ -499,6 +499,44 @@ Press **`?`** to open the keyboard shortcuts overview.
 
 ---
 
+## Architecture
+
+```mermaid
+graph TD
+    subgraph Browser
+        UI[React UI Layer]
+        QC[TanStack Query Cache]
+        RT["Realtime Transport<br/>Long Polling / Socket.io<br/>(selectable in Settings)"]
+        LS[localStorage Settings]
+    end
+
+    subgraph "API Layer (src/api/)"
+        OC[Object Cache<br/>getAllObjects]
+        SC[State API<br/>getStatesBatch]
+        WR[Write API<br/>setState / putObject]
+    end
+
+    subgraph ioBroker
+        REST[REST API :8093]
+        WS[Socket.io adapter :8084<br/>optional, opt-in]
+    end
+
+    UI -->|useQuery hooks| QC
+    QC -->|staleTime:Infinity| OC
+    QC -->|refetch 30s fallback| SC
+    RT -->|push state/object updates| QC
+    OC -->|GET /objects| REST
+    SC -->|GET /states?ids=| REST
+    WR -->|PUT/PATCH/DELETE| REST
+    RT -->|GET /polling, POST /states/subscribe| REST
+    RT -.->|subscribe / subscribeObjects| WS
+    LS -.->|persisted AppSettings| UI
+```
+
+Realtime updates default to long polling against the standard REST adapter (always available). An experimental Socket.io transport can be enabled in Settings for lower-latency push — it requires a separate `socketio` adapter instance and automatically falls back to long polling if unreachable. See [`CLAUDE.md`](CLAUDE.md) for details on both transports.
+
+---
+
 ## Data Flow
 
 ```
