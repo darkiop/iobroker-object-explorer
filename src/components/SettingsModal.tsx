@@ -127,6 +127,7 @@ export default function SettingsModal() {
       objectsRefreshInterval: settingsDraft.objectsRefreshInterval,
       objectsCacheReloads: settingsDraft.objectsCacheReloads,
       objectsCacheTTL: settingsDraft.objectsCacheTTL,
+      loadOnlyVisibleStateValues: settingsDraft.loadOnlyVisibleStateValues,
       includeScripts: settingsDraft.includeScripts,
       showObjectIcons: settingsDraft.showObjectIcons,
       showObjectTypeIcons: settingsDraft.showObjectTypeIcons,
@@ -211,7 +212,7 @@ export default function SettingsModal() {
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center animate-backdrop-in bg-black/50 p-4" onClick={onClose}>
       <div
-        className="w-full max-w-2xl animate-modal-in rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl"
+        className="w-full max-w-3xl animate-modal-in rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
@@ -470,6 +471,11 @@ export default function SettingsModal() {
                 </div>
                 <SettingsToggleRow isEn={isEn} labelEn="Toolbar button labels" labelDe="Beschriftungen in der Toolbar"
                   value={settingsDraft.toolbarLabels} onToggle={() => setSettingsDraft((prev) => ({ ...prev, toolbarLabels: !prev.toolbarLabels }))} />
+                <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
+                  {isEn
+                    ? 'Shows text next to the icons in the toolbar buttons; off shows icons only.'
+                    : 'Zeigt Text neben den Icons der Toolbar-Buttons an; aus zeigt nur die Icons.'}
+                </p>
               </div>
 
               <div className="border-t border-gray-200 dark:border-gray-700" />
@@ -495,18 +501,67 @@ export default function SettingsModal() {
                     {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
                   </select>
                 </div>
-                <SettingsToggleRow isEn={isEn} labelEn="Group table by path" labelDe="Tabelle nach Pfad gruppieren"
-                  value={settingsDraft.groupByPath} onToggle={() => setSettingsDraft((prev) => ({ ...prev, groupByPath: !prev.groupByPath }))} />
-                <SettingsToggleRow isEn={isEn} labelEn="Description below name" labelDe="Beschreibung unter Name"
-                  value={settingsDraft.showDesc} onToggle={() => setSettingsDraft((prev) => ({ ...prev, showDesc: !prev.showDesc }))} />
-                <SettingsToggleRow isEn={isEn} labelEn="Show object icons in Name column" labelDe="Objekt-Icons in der Name-Spalte anzeigen"
-                  value={settingsDraft.showObjectIcons} onToggle={() => setSettingsDraft((prev) => ({ ...prev, showObjectIcons: !prev.showObjectIcons }))} />
-                <SettingsToggleRow isEn={isEn} labelEn="Show type icons" labelDe="Typ-Icons anzeigen"
-                  value={settingsDraft.showObjectTypeIcons} onToggle={() => setSettingsDraft((prev) => ({ ...prev, showObjectTypeIcons: !prev.showObjectTypeIcons }))} />
-                <SettingsToggleRow isEn={isEn} labelEn="Animate group expand/collapse" labelDe="Gruppen-Aufklappen animieren"
-                  value={settingsDraft.animateGroupExpand} onToggle={() => setSettingsDraft((prev) => ({ ...prev, animateGroupExpand: !prev.animateGroupExpand }))} />
-                <SettingsToggleRow isEn={isEn} labelEn="Hide alias source/target lines" labelDe="Alias-Quell-/Zielzeilen ausblenden"
-                  value={settingsDraft.hideAliasSubRows ?? false} onToggle={() => setSettingsDraft((prev) => ({ ...prev, hideAliasSubRows: !prev.hideAliasSubRows }))} />
+                <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
+                  {isEn
+                    ? 'Number of rows shown per page in the table; also controls how many rows’ state values are fetched and polled at once.'
+                    : 'Anzahl der pro Seite angezeigten Zeilen in der Tabelle; bestimmt zudem, für wie viele Zeilen State-Werte gleichzeitig geladen und abgefragt werden.'}
+                </p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                  <div className="flex flex-col gap-1">
+                    <SettingsToggleRow isEn={isEn} labelEn="Group table by path" labelDe="Tabelle nach Pfad gruppieren"
+                      value={settingsDraft.groupByPath} onToggle={() => setSettingsDraft((prev) => ({ ...prev, groupByPath: !prev.groupByPath }))} />
+                    <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
+                      {isEn
+                        ? 'Collapses rows into collapsible groups by their ID path (e.g. adapter instance) instead of one flat list.'
+                        : 'Fasst Zeilen anhand ihres ID-Pfads (z. B. Adapter-Instanz) zu auf-/zuklappbaren Gruppen zusammen, statt einer flachen Liste.'}
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <SettingsToggleRow isEn={isEn} labelEn="Description below name" labelDe="Beschreibung unter Name"
+                      value={settingsDraft.showDesc} onToggle={() => setSettingsDraft((prev) => ({ ...prev, showDesc: !prev.showDesc }))} />
+                    <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
+                      {isEn
+                        ? 'Shows the object’s description as a small second line under its name in the table.'
+                        : 'Zeigt die Beschreibung des Objekts als kleine zweite Zeile unter seinem Namen in der Tabelle an.'}
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <SettingsToggleRow isEn={isEn} labelEn="Show object icons in Name column" labelDe="Objekt-Icons in der Name-Spalte anzeigen"
+                      value={settingsDraft.showObjectIcons} onToggle={() => setSettingsDraft((prev) => ({ ...prev, showObjectIcons: !prev.showObjectIcons }))} />
+                    <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
+                      {isEn
+                        ? 'Shows the adapter/object icon (from the object’s common.icon) in front of the name.'
+                        : 'Zeigt das Adapter-/Objekt-Icon (aus common.icon des Objekts) vor dem Namen an.'}
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <SettingsToggleRow isEn={isEn} labelEn="Show type icons" labelDe="Typ-Icons anzeigen"
+                      value={settingsDraft.showObjectTypeIcons} onToggle={() => setSettingsDraft((prev) => ({ ...prev, showObjectTypeIcons: !prev.showObjectTypeIcons }))} />
+                    <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
+                      {isEn
+                        ? 'Shows a small icon indicating the object type (state, channel, device, …) next to the name.'
+                        : 'Zeigt ein kleines Icon für den Objekttyp (State, Channel, Device, …) neben dem Namen an.'}
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <SettingsToggleRow isEn={isEn} labelEn="Animate group expand/collapse" labelDe="Gruppen-Aufklappen animieren"
+                      value={settingsDraft.animateGroupExpand} onToggle={() => setSettingsDraft((prev) => ({ ...prev, animateGroupExpand: !prev.animateGroupExpand }))} />
+                    <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
+                      {isEn
+                        ? 'Plays a smooth slide animation when expanding or collapsing path groups; off applies the change instantly.'
+                        : 'Spielt beim Auf-/Zuklappen von Pfadgruppen eine sanfte Schiebe-Animation ab; aus wendet die Änderung sofort an.'}
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <SettingsToggleRow isEn={isEn} labelEn="Hide alias source/target lines" labelDe="Alias-Quell-/Zielzeilen ausblenden"
+                      value={settingsDraft.hideAliasSubRows ?? false} onToggle={() => setSettingsDraft((prev) => ({ ...prev, hideAliasSubRows: !prev.hideAliasSubRows }))} />
+                    <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
+                      {isEn
+                        ? 'Hides the extra sub-rows that show an alias’s source/target datapoint beneath the alias row.'
+                        : 'Blendet die zusätzlichen Unterzeilen aus, die das Quell-/Ziel-Datenpunkt eines Alias unter dessen Zeile anzeigen.'}
+                    </p>
+                  </div>
+                </div>
               </div>
 
               <div className="border-t border-gray-200 dark:border-gray-700" />
@@ -535,6 +590,11 @@ export default function SettingsModal() {
                     <option value="both">{isEn ? 'Both (States / Objects)' : 'Beides (States / Objekte)'}</option>
                   </select>
                 </div>
+                <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
+                  {isEn
+                    ? 'Shows a small badge next to each tree node with the number of states and/or objects nested beneath it.'
+                    : 'Zeigt neben jedem Baumknoten ein kleines Badge mit der Anzahl der darunter liegenden States und/oder Objekte an.'}
+                </p>
               </div>
 
               <div className="border-t border-gray-200 dark:border-gray-700" />
@@ -584,6 +644,13 @@ export default function SettingsModal() {
                     <option value="7d">{isEn ? '7 days' : '7 Tage'}</option>
                   </select>
                 </div>
+                <SettingsToggleRow isEn={isEn} labelEn="Fetch state values for visible rows only" labelDe="State-Werte nur für sichtbare Zeilen laden"
+                  value={settingsDraft.loadOnlyVisibleStateValues} onToggle={() => setSettingsDraft((prev) => ({ ...prev, loadOnlyVisibleStateValues: !prev.loadOnlyVisibleStateValues }))} />
+                <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
+                  {isEn
+                    ? 'Reduces request size on large pages by only fetching values for rows scrolled into view (reported by the table virtualizer), instead of the whole page. Rows scrolled into view briefly show as loading. Off by default — fetches the full page.'
+                    : 'Reduziert die Anfragegröße bei großen Seiten, indem nur Werte für Zeilen geladen werden, die gerade sichtbar sind (vom Tabellen-Virtualizer gemeldet), statt der ganzen Seite. Neu eingeblendete Zeilen zeigen kurz „lädt“. Standardmäßig aus — lädt die ganze Seite.'}
+                </p>
               </div>
 
             </div>

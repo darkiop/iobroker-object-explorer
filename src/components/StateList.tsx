@@ -64,6 +64,7 @@ interface StateListProps {
   onToggleGroupByPathOverride?: () => void;
   historyIds?: Set<string>;
   smartIds?: Set<string>;
+  onVisibleIdsChange?: (ids: string[]) => void;
 }
 
 
@@ -82,7 +83,7 @@ function patternToInitialId(pattern: string): string {
 }
 
 
-function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allObjectIds, exportIds, onNavigateTo, onOpenInOtherPanel, forceHideToolbarLabels, visibleColsOverride, onVisibleColsChange, groupByPathOverride, onToggleGroupByPathOverride, historyIds, smartIds }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
+function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allObjectIds, exportIds, onNavigateTo, onOpenInOtherPanel, forceHideToolbarLabels, visibleColsOverride, onVisibleColsChange, groupByPathOverride, onToggleGroupByPathOverride, historyIds, smartIds, onVisibleIdsChange }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
   const { colFilters, handleColFilterChange: onColFilterChange, pattern, treeFilter, handleClearTreeFilter: onClearTreeFilter, sidebarToggleSeq, fulltextEnabled, handleTreeScope } = usePanelContext();
   const { selectedId, setSelectedId: onSelect, setHistoryModalId: _setHistoryModalId, setEnumManagerOpen, setAliasReplaceInitialStr, setEditInitialTab, setAutoAliasDeviceId } = useSelectionContext();
   const { appSettings, expertMode, scriptUsedIds, scriptsFetching, scriptLastUpdated, setScriptUsedIds, setConfirmScriptRefresh, handleToggleGroupByPath: _handleToggleGroupByPath, persistSettings } = useAppSettingsContext();
@@ -1002,6 +1003,20 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
     : totalVirtualSize;
   const visibleItems = virtualItems.map((v) => activeDisplayItems[v.index]);
   const rowColSpan = visibleCols.length + 1;
+
+  const lastVisibleIdsKey = useRef<string>('');
+  useEffect(() => {
+    if (!onVisibleIdsChange) return;
+    const visibleRowIds = visibleItems.filter((item) => item.kind === 'row').map((item) => item.id);
+    const key = [...visibleRowIds].sort().join(',');
+    const timer = setTimeout(() => {
+      if (key !== lastVisibleIdsKey.current) {
+        lastVisibleIdsKey.current = key;
+        onVisibleIdsChange(visibleRowIds);
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [visibleItems, onVisibleIdsChange]);
 
   const sepCountMap = useMemo(() => {
     if (!groupByPath) return new Map<string, number>();

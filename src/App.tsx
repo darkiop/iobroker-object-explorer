@@ -348,9 +348,10 @@ function AppContent() {
   );
   const totalPages = paginationDisabled ? 1 : Math.ceil(totalCount / appSettings.pageSize);
 
-  // Only fetch state values for rows currently visible in the StateList viewport
-  // (reported by its virtualizer), falling back to the full page until that's known
-  // or after a page/filter change invalidates the previous selection.
+  // Optionally fetch state values only for rows currently visible in the StateList
+  // viewport (reported by its virtualizer), falling back to the full page until
+  // that's known or after a page/filter change invalidates the previous selection.
+  // Off by default — see `loadOnlyVisibleStateValues` in AppSettings.
   const [visibleIds, setVisibleIds] = useState<string[]>([]);
   useEffect(() => {
     setVisibleIds([]);
@@ -361,11 +362,12 @@ function AppContent() {
     // thousands of IDs, forcing getStatesBatch into its full-DB-dump fallback. Cap to
     // a page's worth; the virtualizer corrects this to the real viewport moments later.
     const fallback = pageIds.length > appSettings.pageSize ? pageIds.slice(0, appSettings.pageSize) : pageIds;
+    if (!appSettings.loadOnlyVisibleStateValues) return fallback;
     if (visibleIds.length === 0) return fallback;
     const pageIdSet = new Set(pageIds);
     const filtered = visibleIds.filter((id) => pageIdSet.has(id));
     return filtered.length > 0 ? filtered : fallback;
-  }, [visibleIds, pageIds, appSettings.pageSize]);
+  }, [visibleIds, pageIds, appSettings.pageSize, appSettings.loadOnlyVisibleStateValues]);
 
   // Realtime push transport — scoped to visible page IDs only, no global * subscription.
   // Selectable in Settings: 'longpolling' (default, REST-only, works everywhere) or

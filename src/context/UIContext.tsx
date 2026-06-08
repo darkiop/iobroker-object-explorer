@@ -46,6 +46,11 @@ export interface AppSettings {
   /** Max age of the persisted objects cache before it's considered stale,
    *  regardless of [[objectsCacheReloads]] — see that field for how they combine. */
   objectsCacheTTL: 'off' | '1h' | '6h' | '24h' | '7d';
+  /** When on, state values are fetched only for rows currently visible in the
+   *  StateList viewport (reported by its virtualizer) instead of the whole page —
+   *  cuts request size on large pages, at the cost of a brief "loading" flicker
+   *  for rows scrolled into view. Off by default: fetches the full page, as before. */
+  loadOnlyVisibleStateValues: boolean;
 }
 
 const PAGE_SIZE_OPTIONS = [200, 500, 1000, 3000];
@@ -83,6 +88,7 @@ export function getDefaultAppSettings(): AppSettings {
     socketHost: '',
     objectsCacheReloads: '10',
     objectsCacheTTL: '24h',
+    loadOnlyVisibleStateValues: false,
   };
 }
 
