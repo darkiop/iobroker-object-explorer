@@ -265,12 +265,22 @@ let _commandStatesSupported: boolean | null = null;
 const BULK_MAX_IDS = 200;
 
 async function getStatesBulkSmall(ids: string[]): Promise<Record<string, IoBrokerState> | null> {
-  const url = `${getBaseUrl()}/states?ids=${ids.map(encodeURIComponent).join(',')}`;
+  // /v1/states only takes a `filter` pattern (not explicit ids — unknown query
+  // params are ignored and it falls back to dumping the whole DB). The real
+  // bulk-by-id endpoint is /v1/state/<comma,separated,ids> (readState splits on ',').
+  const url = `${getBaseUrl()}/state/${ids.map(encodeURIComponent).join(',')}`;
   const res = await fetch(url);
   if (!res.ok) return null;
   const data: unknown = await res.json();
-  if (typeof data !== 'object' || data === null || Array.isArray(data)) return null;
-  return data as Record<string, IoBrokerState>;
+  const list = Array.isArray(data) ? data : [data];
+  const result: Record<string, IoBrokerState> = {};
+  for (const entry of list) {
+    if (entry && typeof entry === 'object' && typeof (entry as { id?: unknown }).id === 'string') {
+      const state = entry as IoBrokerState;
+      result[state.id] = state;
+    }
+  }
+  return Object.keys(result).length > 0 ? result : null;
 }
 
 async function getStatesViaCommand(ids: string[]): Promise<Record<string, IoBrokerState> | null> {
