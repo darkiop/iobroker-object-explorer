@@ -63,13 +63,9 @@ function DateFormatDropdown({ value, onChange }: { value: DateFormatSetting; onC
   );
 }
 
-function initHostState(): { ip: string; port: string } {
+function initHostState(): string {
   const stored = localStorage.getItem('ioBrokerHost') ?? window.__CONFIG__?.ioBrokerHost ?? '';
-  const colonIdx = stored.lastIndexOf(':');
-  return {
-    ip: colonIdx > 0 ? stored.slice(0, colonIdx) : stored,
-    port: colonIdx > 0 ? stored.slice(colonIdx + 1) : '8093',
-  };
+  return stored || '10.4.0.33:8093';
 }
 
 function initDraftFromSettings(appSettings: AppSettings): AppSettings {
@@ -85,10 +81,10 @@ export default function SettingsModal() {
   useEscapeKey(onClose);
 
   const [settingsTab, setSettingsTab] = useState<'connection' | 'display' | 'columns' | 'filters'>('connection');
-  const [settingsHostIp, setSettingsHostIp] = useState(() => initHostState().ip);
-  const [settingsHostPort, setSettingsHostPort] = useState(() => initHostState().port);
+  const [settingsHost, setSettingsHost] = useState(() => initHostState());
   const [settingsHostTesting, setSettingsHostTesting] = useState(false);
   const [settingsHostError, setSettingsHostError] = useState<string | null>(null);
+  const [settingsHostTestResult, setSettingsHostTestResult] = useState<'ok' | 'error' | null>(null);
   const [socketTesting, setSocketTesting] = useState(false);
   const [socketTestResult, setSocketTestResult] = useState<'ok' | 'error' | null>(null);
   const [socketTestError, setSocketTestError] = useState<string | null>(null);
@@ -96,6 +92,7 @@ export default function SettingsModal() {
   const [newQuickFilter, setNewQuickFilter] = useState('');
 
   const isEn = appSettings.language === 'en';
+  const settingsHostIp = settingsHost.trim().split(':')[0] ?? '';
 
   const applySettings = useCallback((next: AppSettings) => {
     persistSettings(next);
@@ -138,8 +135,16 @@ export default function SettingsModal() {
       realtimeTransport: settingsDraft.realtimeTransport,
       socketHost: settingsDraft.socketHost.trim(),
     };
+    const hostVal = settingsHost.trim();
+    const prevHost = localStorage.getItem('ioBrokerHost') ?? window.__CONFIG__?.ioBrokerHost ?? '';
+    if (hostVal && hostVal !== prevHost) {
+      localStorage.setItem('ioBrokerHost', hostVal);
+      applySettings(next);
+      window.location.reload();
+      return;
+    }
     applySettings(next);
-  }, [settingsDraft, applySettings]);
+  }, [settingsDraft, settingsHost, applySettings]);
 
   const handleLanguageChangeDraft = useCallback((language: 'en' | 'de') => {
     handleLanguageChange(language);
@@ -246,24 +251,12 @@ export default function SettingsModal() {
               <div className="flex flex-col gap-3">
                 <SettingsGroupLabel isEn={isEn} en="REST API" de="REST API" />
                 <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'IP address' : 'IP-Adresse'}</span>
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Host (ioBroker.rest-api)' : 'Host (ioBroker.rest-api)'}</span>
                   <input
-                    value={settingsHostIp}
-                    onChange={(e) => { setSettingsHostIp(e.target.value); setSettingsHostError(null); }}
+                    value={settingsHost}
+                    onChange={(e) => { setSettingsHost(e.target.value); setSettingsHostError(null); setSettingsHostTestResult(null); }}
                     disabled={settingsHostTesting}
-                    placeholder="10.4.0.33"
-                    className={`px-2 py-1.5 text-xs rounded border font-mono bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none transition-colors ${
-                      settingsHostTesting ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20' : settingsHostError ? 'border-red-400' : 'border-gray-300 dark:border-gray-600 focus:ring-1 focus:ring-blue-400'
-                    }`}
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Port (ioBroker.rest-api)' : 'Port (ioBroker.rest-api)'}</span>
-                  <input
-                    value={settingsHostPort}
-                    onChange={(e) => { setSettingsHostPort(e.target.value); setSettingsHostError(null); }}
-                    disabled={settingsHostTesting}
-                    placeholder="8093"
+                    placeholder="10.4.0.33:8093"
                     className={`px-2 py-1.5 text-xs rounded border font-mono bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none transition-colors ${
                       settingsHostTesting ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20' : settingsHostError ? 'border-red-400' : 'border-gray-300 dark:border-gray-600 focus:ring-1 focus:ring-blue-400'
                     }`}
@@ -271,21 +264,22 @@ export default function SettingsModal() {
                 </div>
                 <div className="flex items-center gap-2">
                   <button
+                    type="button"
                     disabled={settingsHostTesting}
                     onClick={async () => {
-                      const ip = settingsHostIp.trim();
-                      const port = settingsHostPort.trim();
-                      if (!ip) return;
-                      const val = port ? `${ip}:${port}` : ip;
+                      const val = settingsHost.trim();
+                      if (!val) return;
                       setSettingsHostTesting(true);
                       setSettingsHostError(null);
+                      setSettingsHostTestResult(null);
                       try {
                         const res = await fetch(`http://${val}/v1/objects?limit=1`);
                         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                        localStorage.setItem('ioBrokerHost', val);
-                        window.location.reload();
+                        setSettingsHostTestResult('ok');
                       } catch {
+                        setSettingsHostTestResult('error');
                         setSettingsHostError(isEn ? 'Host not reachable' : 'Host nicht erreichbar');
+                      } finally {
                         setSettingsHostTesting(false);
                       }
                     }}
@@ -293,17 +287,22 @@ export default function SettingsModal() {
                   >
                     {settingsHostTesting
                       ? <><Loader2 size={12} className="animate-spin" />{isEn ? 'Testing…' : 'Teste…'}</>
-                      : isEn ? 'Test & Connect' : 'Test & Verbinden'
+                      : isEn ? 'Test connection' : 'Verbindung testen'
                     }
                   </button>
-                  {settingsHostError && (
+                  {settingsHostTestResult === 'ok' && (
+                    <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                      <Check size={12} /> {isEn ? 'Connected' : 'Verbunden'}
+                    </span>
+                  )}
+                  {settingsHostTestResult === 'error' && settingsHostError && (
                     <span className="flex items-center gap-1 text-xs text-red-500">
                       <AlertCircle size={12} /> {settingsHostError}
                     </span>
                   )}
-                  {settingsHostIp.trim() && settingsHostPort.trim() && (
+                  {settingsHost.trim() && (
                     <a
-                      href={`http://${settingsHostIp.trim()}:${settingsHostPort.trim()}/api-doc/`}
+                      href={`http://${settingsHost.trim()}/api-doc/`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="ml-auto flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
@@ -313,6 +312,11 @@ export default function SettingsModal() {
                     </a>
                   )}
                 </div>
+                <span className="text-[11px] text-gray-400 dark:text-gray-500">
+                  {isEn
+                    ? 'Connects briefly to verify reachability — does not save or reload. Save the form to apply the host.'
+                    : 'Verbindet kurz zur Erreichbarkeitsprüfung — speichert nicht und lädt nicht neu. Formular speichern, um den Host zu übernehmen.'}
+                </span>
               </div>
 
               <div className="border-t border-gray-200 dark:border-gray-700" />
@@ -346,7 +350,7 @@ export default function SettingsModal() {
                         setSocketTestResult(null);
                         setSocketTestError(null);
                       }}
-                      placeholder={`${settingsHostIp.trim() || '10.4.0.33'}:8084`}
+                      placeholder={`${settingsHostIp || '10.4.0.33'}:8084`}
                       className="px-2 py-1.5 text-xs rounded border font-mono bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none border-gray-300 dark:border-gray-600 focus:ring-1 focus:ring-blue-400"
                     />
                     <span className="text-[11px] text-gray-400 dark:text-gray-500">
@@ -405,9 +409,9 @@ export default function SettingsModal() {
                     className="w-full px-2 py-1.5 text-xs rounded border font-mono bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none border-gray-300 dark:border-gray-600 focus:ring-1 focus:ring-blue-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                   <span className="text-[11px] text-gray-400 dark:text-gray-500">{isEn ? 'Used for object icons and admin links.' : 'Wird für Objekt-Icons und Admin-Links verwendet.'}</span>
-                  {settingsHostIp.trim() && (
+                  {settingsHostIp && (
                     <a
-                      href={`http://${settingsHostIp.trim()}:${settingsDraft.adminPort}`}
+                      href={`http://${settingsHostIp}:${settingsDraft.adminPort}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="self-start flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
