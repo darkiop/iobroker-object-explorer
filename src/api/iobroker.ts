@@ -110,6 +110,91 @@ function scoreIndexed(idLower: string, name: string, aliasId: string, desc: stri
   return 0;
 }
 
+// ── Persisted bulk-objects cache (IndexedDB) ────────────────────────────────
+// `/objects`, `/objects?type=state` and `/objects?type=script` each return
+// 12-15MB on real-world installs. React Query's `staleTime: Infinity` only
+// avoids refetching within a session — a browser reload still re-downloads
+// all three. This cache persists the raw payloads across reloads and reuses
+// them for a configurable number of loads (`AppSettings.objectsCacheReloads`)
+// before refetching, with a 24h TTL safety net so data never goes too stale.
+// The manual refresh button always bypasses this (see *Cached wrappers below —
+// the gate is consulted only once per page lifetime, subsequent refetches
+// always hit the network and refresh the persisted entry).
+const OBJECTS_CACHE_DB = 'iobroker-explorer-cache';
+const OBJECTS_CACHE_STORE = 'bulk-objects';
+const OBJECTS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const LS_OBJECTS_CACHE_LOADCOUNT = 'iob-objects-cache-loadcount';
+
+interface BulkObjectsCacheEntry { data: Record<string, IoBrokerObject> | string; ts: number; }
+
+function openObjectsCacheDb(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(OBJECTS_CACHE_DB, 1);
+    req.onupgradeneeded = () => {
+      if (!req.result.objectStoreNames.contains(OBJECTS_CACHE_STORE)) {
+        req.result.createObjectStore(OBJECTS_CACHE_STORE);
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function readObjectsCacheEntry(key: string): Promise<BulkObjectsCacheEntry | null> {
+  try {
+    const db = await openObjectsCacheDb();
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(OBJECTS_CACHE_STORE, 'readonly');
+      const req = tx.objectStore(OBJECTS_CACHE_STORE).get(key);
+      req.onsuccess = () => resolve((req.result as BulkObjectsCacheEntry | undefined) ?? null);
+      req.onerror = () => reject(req.error);
+    });
+  } catch { return null; }
+}
+
+async function writeObjectsCacheEntry(key: string, data: BulkObjectsCacheEntry['data']): Promise<void> {
+  try {
+    const db = await openObjectsCacheDb();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(OBJECTS_CACHE_STORE, 'readwrite');
+      tx.objectStore(OBJECTS_CACHE_STORE).put({ data, ts: Date.now() } as BulkObjectsCacheEntry, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch { /* ignore quota/availability errors — cache is best-effort */ }
+}
+
+function getObjectsCacheReloadThreshold(): number {
+  try {
+    const raw = localStorage.getItem('iobroker-app-settings');
+    if (!raw) return 0;
+    const parsed = JSON.parse(raw) as { objectsCacheReloads?: string };
+    const n = parseInt(parsed.objectsCacheReloads ?? '', 10);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  } catch { return 0; }
+}
+
+// Decided once per page lifetime (module load): "is the persisted cache fresh
+// enough to reuse for this load?" — based on the configured reload threshold
+// and the 24h TTL. Subsequent calls within the same session (manual refresh,
+// auto-refresh interval) always bypass this and hit the network.
+let _objectsCacheGateDecision: boolean | null = null;
+
+async function shouldUsePersistedObjectsCache(): Promise<boolean> {
+  if (_objectsCacheGateDecision !== null) return _objectsCacheGateDecision;
+  const threshold = getObjectsCacheReloadThreshold();
+  let useCache = false;
+  if (threshold > 0) {
+    const ref = await readObjectsCacheEntry('allObjects');
+    const fresh = ref !== null && (Date.now() - ref.ts) < OBJECTS_CACHE_TTL_MS;
+    const count = parseInt(localStorage.getItem(LS_OBJECTS_CACHE_LOADCOUNT) ?? '0', 10) || 0;
+    useCache = fresh && count < threshold;
+  }
+  try { localStorage.setItem(LS_OBJECTS_CACHE_LOADCOUNT, useCache ? String((parseInt(localStorage.getItem(LS_OBJECTS_CACHE_LOADCOUNT) ?? '0', 10) || 0) + 1) : '0'); } catch { /* ignore */ }
+  _objectsCacheGateDecision = useCache;
+  return useCache;
+}
+
 let _objectsFetchPromise: Promise<Record<string, IoBrokerObject>> | null = null;
 let _fastObjectsPromise: Promise<Record<string, IoBrokerObject>> | null = null;
 
@@ -118,6 +203,24 @@ export async function getStateObjectsFast(): Promise<Record<string, IoBrokerObje
   _fastObjectsPromise = fetchApi<Record<string, IoBrokerObject>>('/objects?type=state')
     .catch(err => { _fastObjectsPromise = null; throw err; });
   return _fastObjectsPromise;
+}
+
+let _stateObjectsFastCacheChecked = false;
+
+// Gated by the persisted bulk-objects cache on the first call per page lifetime
+// (browser load); every later call (manual refresh, refetch) hits the network
+// directly and refreshes the persisted entry.
+export async function getStateObjectsFastCached(): Promise<Record<string, IoBrokerObject>> {
+  if (!_stateObjectsFastCacheChecked) {
+    _stateObjectsFastCacheChecked = true;
+    if (await shouldUsePersistedObjectsCache()) {
+      const cached = await readObjectsCacheEntry('stateObjectsFast');
+      if (cached && typeof cached.data === 'object') return cached.data as Record<string, IoBrokerObject>;
+    }
+  }
+  const fresh = await getStateObjectsFast();
+  void writeObjectsCacheEntry('stateObjectsFast', fresh);
+  return fresh;
 }
 
 export async function getAllObjects(): Promise<Record<string, IoBrokerObject>> {
@@ -155,8 +258,24 @@ export async function getAllObjects(): Promise<Record<string, IoBrokerObject>> {
   return _objectsFetchPromise;
 }
 
+let _allObjectsCacheChecked = false;
+
+// See `getStateObjectsFastCached` — same gate-once-per-page-lifetime pattern.
+export async function getAllObjectsCached(): Promise<Record<string, IoBrokerObject>> {
+  if (!_allObjectsCacheChecked) {
+    _allObjectsCacheChecked = true;
+    if (await shouldUsePersistedObjectsCache()) {
+      const cached = await readObjectsCacheEntry('allObjects');
+      if (cached && typeof cached.data === 'object') return cached.data as Record<string, IoBrokerObject>;
+    }
+  }
+  const fresh = await getAllObjects();
+  void writeObjectsCacheEntry('allObjects', fresh);
+  return fresh;
+}
+
 export async function getObjectsByPattern(pattern: string, fulltext = true, exact = false, fieldFilters?: { id?: string; name?: string; desc?: string }): Promise<Record<string, IoBrokerObject>> {
-  const all = await getAllObjects();
+  const all = await getAllObjectsCached();
 
   // Helper: apply field-specific filters as AND conditions
   function matchesFieldFilters(id: string, obj: IoBrokerObject): boolean {
@@ -409,7 +528,7 @@ export async function deleteHistoryAll(id: string): Promise<void> {
 }
 
 export async function getAllUnits(): Promise<string[]> {
-  const all = await getAllObjects();
+  const all = await getAllObjectsCached();
   const units = new Set<string>();
   for (const obj of Object.values(all)) {
     if (obj.common?.unit) units.add(obj.common.unit);
@@ -418,7 +537,7 @@ export async function getAllUnits(): Promise<string[]> {
 }
 
 export async function getAllRoles(): Promise<string[]> {
-  const all = await getAllObjects();
+  const all = await getAllObjectsCached();
   const roles = new Set<string>();
   for (const obj of Object.values(all)) {
     if (obj.common?.role) roles.add(obj.common.role);
@@ -427,7 +546,7 @@ export async function getAllRoles(): Promise<string[]> {
 }
 
 export async function getRoomMap(): Promise<Record<string, string>> {
-  const all = await getAllObjects();
+  const all = await getAllObjectsCached();
   const map: Record<string, string> = {};
   for (const [id, obj] of Object.entries(all)) {
     if (!obj.enums) continue;
@@ -565,7 +684,7 @@ export async function extendObject(id: string, obj: { common: Partial<IoBrokerOb
 }
 
 export async function getObject(id: string): Promise<IoBrokerObject> {
-  const all = await getAllObjects();
+  const all = await getAllObjectsCached();
   if (all[id]) return all[id];
   return fetchApi<IoBrokerObject>(`/object/${encodeURIComponent(id)}`);
 }
@@ -575,7 +694,7 @@ export async function getObjectFresh(id: string): Promise<IoBrokerObject> {
 }
 
 export async function getFunctionMap(): Promise<Record<string, string>> {
-  const all = await getAllObjects();
+  const all = await getAllObjectsCached();
   const map: Record<string, string> = {};
   for (const [id, obj] of Object.entries(all)) {
     if (!obj.enums) continue;
@@ -590,7 +709,7 @@ export async function getFunctionMap(): Promise<Record<string, string>> {
 }
 
 export async function getCustomSupportedInstances(): Promise<Array<{ id: string; adapterName: string }>> {
-  const all = await getAllObjects(); // cached — avoids a redundant /objects?type=instance round trip
+  const all = await getAllObjectsCached(); // cached — avoids a redundant /objects?type=instance round trip
   return Object.entries(all)
     .filter(([id, o]) => id.startsWith('system.adapter.') && o.common?.enabled === true && o.common?.supportCustoms === true)
     .map(([id]) => {
@@ -600,7 +719,7 @@ export async function getCustomSupportedInstances(): Promise<Array<{ id: string;
 }
 
 export async function getFunctionEnums(): Promise<Array<{ id: string; name: string }>> {
-  const res = await getAllObjects(); // cached — avoids a redundant /objects?type=enum round trip
+  const res = await getAllObjectsCached(); // cached — avoids a redundant /objects?type=enum round trip
   const fns: Array<{ id: string; name: string }> = [];
   for (const [id, obj] of Object.entries(res)) {
     if (!id.startsWith('enum.functions.')) continue;
@@ -613,7 +732,7 @@ export async function getFunctionEnums(): Promise<Array<{ id: string; name: stri
 
 export async function updateFunctionMembership(objectId: string, oldFnEnumId: string | null, newFnEnumId: string | null): Promise<void> {
   if (oldFnEnumId === newFnEnumId) return;
-  const res = await getAllObjects();
+  const res = await getAllObjectsCached();
 
   if (oldFnEnumId && res[oldFnEnumId]) {
     const obj = res[oldFnEnumId];
@@ -628,7 +747,7 @@ export async function updateFunctionMembership(objectId: string, oldFnEnumId: st
 }
 
 export async function updateFunctionMembershipBatch(objectIds: string[], newFnEnumId: string | null): Promise<void> {
-  const res = await getAllObjects();
+  const res = await getAllObjectsCached();
   const objectIdSet = new Set(objectIds);
 
   // Remove selected IDs from all function enums they currently belong to
@@ -650,7 +769,7 @@ export async function updateFunctionMembershipBatch(objectIds: string[], newFnEn
 }
 
 export async function getRoomEnums(): Promise<Array<{ id: string; name: string }>> {
-  const res = await getAllObjects(); // cached — avoids a redundant /objects?type=enum round trip
+  const res = await getAllObjectsCached(); // cached — avoids a redundant /objects?type=enum round trip
   const rooms: Array<{ id: string; name: string }> = [];
   for (const [id, obj] of Object.entries(res)) {
     if (!id.startsWith('enum.rooms.')) continue;
@@ -663,7 +782,7 @@ export async function getRoomEnums(): Promise<Array<{ id: string; name: string }
 
 export async function updateRoomMembership(objectId: string, oldRoomEnumId: string | null, newRoomEnumId: string | null): Promise<void> {
   if (oldRoomEnumId === newRoomEnumId) return;
-  const res = await getAllObjects();
+  const res = await getAllObjectsCached();
 
   if (oldRoomEnumId && res[oldRoomEnumId]) {
     const obj = res[oldRoomEnumId];
@@ -678,7 +797,7 @@ export async function updateRoomMembership(objectId: string, oldRoomEnumId: stri
 }
 
 export async function updateRoomMembershipBatch(objectIds: string[], newRoomEnumId: string | null): Promise<void> {
-  const res = await getAllObjects();
+  const res = await getAllObjectsCached();
   const objectIdSet = new Set(objectIds);
 
   // Remove selected IDs from all room enums they currently belong to
@@ -709,7 +828,7 @@ export async function createEnumObject(enumId: string, name: string): Promise<vo
 }
 
 export async function renameEnumObject(enumId: string, newName: string): Promise<void> {
-  const all = await getAllObjects();
+  const all = await getAllObjectsCached();
   const obj = all[enumId];
   if (!obj) throw new Error(`Enum not found: ${enumId}`);
   await putFullObject(enumId, { ...obj, common: { ...obj.common, name: newName } });
@@ -760,6 +879,23 @@ export function clearScriptUsedIdsCache(): void {
 
 export async function getAllScriptSources(): Promise<string> {
   return fetchScriptSources();
+}
+
+let _scriptSourcesCacheChecked = false;
+
+// See `getStateObjectsFastCached` — same gate-once-per-page-lifetime pattern,
+// caching the raw `/objects?type=script` payload (also large on real installs).
+export async function getAllScriptSourcesCached(): Promise<string> {
+  if (!_scriptSourcesCacheChecked) {
+    _scriptSourcesCacheChecked = true;
+    if (await shouldUsePersistedObjectsCache()) {
+      const cached = await readObjectsCacheEntry('scriptSources');
+      if (cached && typeof cached.data === 'string') return cached.data;
+    }
+  }
+  const fresh = await fetchScriptSources();
+  void writeObjectsCacheEntry('scriptSources', fresh);
+  return fresh;
 }
 
 export interface ScriptUsage {

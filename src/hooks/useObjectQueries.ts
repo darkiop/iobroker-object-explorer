@@ -1,10 +1,10 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import {
-  getObjectsByPattern, getStateObjectsFast, getStatesBatch, getState,
+  getObjectsByPattern, getStateObjectsFastCached, getStatesBatch, getState,
   getObject, getObjectFresh, getHistory, getAllRoles, getAllUnits,
-  getRoomMap, getAllObjects, getRoomEnums, getFunctionMap, getFunctionEnums,
-  buildAliasReverseMap, getCustomSupportedInstances, getAllScriptSources,
+  getRoomMap, getAllObjectsCached, getRoomEnums, getFunctionMap, getFunctionEnums,
+  buildAliasReverseMap, getCustomSupportedInstances, getAllScriptSourcesCached,
   getScriptUsedIds, findScriptsUsingObject, compilePattern, isGlobPattern,
 } from '../api/iobroker';
 import type { IoBrokerState, HistoryOptions } from '../types/iobroker';
@@ -13,7 +13,7 @@ import { queryKeys, usePageVisible } from './queryKeys';
 export function useStateObjectsFast() {
   return useQuery({
     queryKey: ['objects', 'bootstrap'] as const,
-    queryFn: getStateObjectsFast,
+    queryFn: getStateObjectsFastCached,
     staleTime: Infinity,
     gcTime: Infinity,
   });
@@ -55,7 +55,7 @@ export function useFilteredObjects(pattern: string, fulltext = true, exact = fal
 export function useAllObjects(refetchInterval?: number | false) {
   return useQuery({
     queryKey: queryKeys.objects.all,
-    queryFn: () => getAllObjects(),
+    queryFn: () => getAllObjectsCached(),
     staleTime: Infinity,
     refetchInterval: refetchInterval ?? false,
   });
@@ -75,7 +75,7 @@ export function useStateValues(ids: string[], refetchInterval: number | false = 
 export function useAliasMap() {
   return useQuery({
     queryKey: queryKeys.objects.all,
-    queryFn: getAllObjects,
+    queryFn: getAllObjectsCached,
     staleTime: Infinity,
     select: buildAliasReverseMap,
   });
@@ -195,7 +195,7 @@ export function useScriptUsedIds(allObjectIds: string[], enabled = true) {
 export function useAllScriptSources(enabled = true) {
   return useQuery({
     queryKey: ['scripts', 'sources-raw'],
-    queryFn: getAllScriptSources,
+    queryFn: getAllScriptSourcesCached,
     staleTime: 5 * 60_000,
     enabled,
   });

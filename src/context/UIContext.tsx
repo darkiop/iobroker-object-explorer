@@ -36,6 +36,12 @@ export interface AppSettings {
   realtimeTransport: 'longpolling' | 'socketio';
   /** Override host:port for the socketio adapter (default guess: <restHost>:8084). */
   socketHost: string;
+  /** Persisted (IndexedDB) cache for the large /objects bulk payloads (objects.all,
+   *  objects.bootstrap, scripts.sources): 'off' refetches on every browser load;
+   *  a number reuses the cached payload across that many loads before refetching.
+   *  A 24h TTL safety net forces a refetch regardless once the cache is that old.
+   *  The manual refresh button always bypasses this and fetches fresh. */
+  objectsCacheReloads: 'off' | '5' | '10' | '20' | '50';
 }
 
 const PAGE_SIZE_OPTIONS = [200, 500, 1000, 3000];
@@ -71,6 +77,7 @@ export function getDefaultAppSettings(): AppSettings {
     panel2Open: false,
     realtimeTransport: 'longpolling',
     socketHost: '',
+    objectsCacheReloads: '10',
   };
 }
 
@@ -148,6 +155,7 @@ export function loadAppSettings(): AppSettings {
       panel2Open: parsed.panel2Open === true,
       realtimeTransport: parsed.realtimeTransport === 'socketio' ? 'socketio' : 'longpolling',
       socketHost: typeof parsed.socketHost === 'string' ? parsed.socketHost.trim() : '',
+      objectsCacheReloads: (['off','5','10','20','50'] as const).includes(parsed.objectsCacheReloads as 'off'|'5'|'10'|'20'|'50') ? parsed.objectsCacheReloads as 'off'|'5'|'10'|'20'|'50' : '10',
     };
   } catch { return fallback; }
 }

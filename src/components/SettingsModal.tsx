@@ -125,6 +125,7 @@ export default function SettingsModal() {
       treeViewMode: settingsDraft.treeViewMode,
       adminPort: settingsDraft.adminPort,
       objectsRefreshInterval: settingsDraft.objectsRefreshInterval,
+      objectsCacheReloads: settingsDraft.objectsCacheReloads,
       includeScripts: settingsDraft.includeScripts,
       showObjectIcons: settingsDraft.showObjectIcons,
       showObjectTypeIcons: settingsDraft.showObjectTypeIcons,
@@ -551,6 +552,21 @@ export default function SettingsModal() {
                     <option value="1m">1m</option>
                     <option value="5m">5m</option>
                     <option value="10m">10m</option>
+                  </select>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400" title={isEn
+                    ? 'Persists the large object/script payloads (IndexedDB) across browser reloads and reuses them for this many loads before refetching. A 24h safety net refetches regardless. The manual refresh button always fetches fresh data.'
+                    : 'Speichert die großen Objekt-/Skript-Antworten (IndexedDB) über Browser-Neuladen hinweg und nutzt sie für so viele Ladevorgänge, bevor neu abgerufen wird. Ein 24h-Sicherheitsnetz erzwingt trotzdem ein Neuladen. Der manuelle Aktualisieren-Button ruft immer frische Daten ab.'}>
+                    {isEn ? 'Cache objects across reloads' : 'Objekte über Neuladen cachen'}
+                  </span>
+                  <select value={settingsDraft.objectsCacheReloads} onChange={(e) => setSettingsDraft((prev) => ({ ...prev, objectsCacheReloads: e.target.value as 'off'|'5'|'10'|'20'|'50' }))}
+                    className="h-7 px-2 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400">
+                    <option value="off">{isEn ? 'Off' : 'Aus'}</option>
+                    <option value="5">{isEn ? 'Every 5 loads' : 'Alle 5 Ladevorgänge'}</option>
+                    <option value="10">{isEn ? 'Every 10 loads' : 'Alle 10 Ladevorgänge'}</option>
+                    <option value="20">{isEn ? 'Every 20 loads' : 'Alle 20 Ladevorgänge'}</option>
+                    <option value="50">{isEn ? 'Every 50 loads' : 'Alle 50 Ladevorgänge'}</option>
                   </select>
                 </div>
               </div>
