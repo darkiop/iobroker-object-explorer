@@ -348,6 +348,25 @@ function AppContent() {
   );
   const totalPages = paginationDisabled ? 1 : Math.ceil(totalCount / appSettings.pageSize);
 
+  // Only fetch state values for rows currently visible in the StateList viewport
+  // (reported by its virtualizer), falling back to the full page until that's known
+  // or after a page/filter change invalidates the previous selection.
+  const [visibleIds, setVisibleIds] = useState<string[]>([]);
+  useEffect(() => {
+    setVisibleIds([]);
+  }, [pageIds]);
+  const valueIds = useMemo(() => {
+    // Before the virtualizer reports its visible range (or right after a page/filter
+    // change resets it), don't request the *entire* un-paginated table — that can be
+    // thousands of IDs, forcing getStatesBatch into its full-DB-dump fallback. Cap to
+    // a page's worth; the virtualizer corrects this to the real viewport moments later.
+    const fallback = pageIds.length > appSettings.pageSize ? pageIds.slice(0, appSettings.pageSize) : pageIds;
+    if (visibleIds.length === 0) return fallback;
+    const pageIdSet = new Set(pageIds);
+    const filtered = visibleIds.filter((id) => pageIdSet.has(id));
+    return filtered.length > 0 ? filtered : fallback;
+  }, [visibleIds, pageIds, appSettings.pageSize]);
+
   // Realtime push transport — scoped to visible page IDs only, no global * subscription.
   // Selectable in Settings: 'longpolling' (default, REST-only, works everywhere) or
   // 'socketio' (experimental — requires a separate `socketio` adapter instance).
@@ -367,7 +386,7 @@ function AppContent() {
   lpConnectedRef.current = lpStatus.connected;
 
   const { data: stateValues, refetch: refetchStateValues, dataUpdatedAt: statesUpdatedAt } = useStateValues(
-    pageIds,
+    valueIds,
     lpStatus.connected ? false : 10_000,
   );
   const lastValidUpdatedAt = useRef<number>(0);
@@ -825,6 +844,7 @@ function AppContent() {
             <StateList
               ref={stateListRef}
               ids={pageIds}
+              onVisibleIdsChange={setVisibleIds}
               states={stateValues ?? EMPTY_STATES}
               objects={stateObjects}
               roomMap={roomMap}

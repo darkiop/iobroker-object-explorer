@@ -256,7 +256,8 @@ export async function getState(id: string): Promise<IoBrokerState> {
 let _bulkStatesSupported: boolean | null = null;
 let _commandStatesSupported: boolean | null = null;
 
-// Max IDs for the URL-based bulk endpoint before URL becomes too long
+// Chunk size for the URL-based bulk endpoint — keeps the comma-separated ID list
+// in the URL path short enough to avoid hitting server/proxy URL-length limits.
 const BULK_MAX_IDS = 200;
 
 async function getStatesBulkSmall(ids: string[]): Promise<Record<string, IoBrokerState> | null> {
@@ -304,22 +305,27 @@ async function getStatesViaCommand(ids: string[]): Promise<Record<string, IoBrok
 export async function getStatesBatch(ids: string[]): Promise<Record<string, IoBrokerState>> {
   if (ids.length === 0) return {};
 
-  // For small batches: try the URL-based bulk endpoint (fast single request, minimal data).
-  // Only test/disable this path for small batches — large batches would create URLs that are
-  // too long and would permanently disable the endpoint even though small batches work fine.
-  if (ids.length <= BULK_MAX_IDS && _bulkStatesSupported !== false) {
+  // Bulk-by-id endpoint (/state/id1,id2,...): chunk into URL-safe groups and fetch
+  // in parallel. Payload scales with the number of *requested* IDs, not with the
+  // size of the whole DB — unlike the pattern=* command fallback below.
+  if (_bulkStatesSupported !== false) {
     try {
-      const result = await getStatesBulkSmall(ids);
-      if (result !== null) {
+      const chunks: string[][] = [];
+      for (let i = 0; i < ids.length; i += BULK_MAX_IDS) chunks.push(ids.slice(i, i + BULK_MAX_IDS));
+      const chunkResults = await Promise.all(chunks.map((chunk) => getStatesBulkSmall(chunk)));
+      if (chunkResults.every((r) => r !== null)) {
         _bulkStatesSupported = true;
-        return result;
+        const merged: Record<string, IoBrokerState> = {};
+        for (const r of chunkResults) Object.assign(merged, r);
+        return merged;
       }
     } catch { /* fall through */ }
     if (_bulkStatesSupported === null) _bulkStatesSupported = false;
   }
 
-  // For large batches (or if small-batch bulk failed): fetch all states in one request,
-  // then filter to the requested IDs. One request beats hundreds of individual ones.
+  // Bulk endpoint unsupported by this adapter version: fetch all states in one
+  // request, then filter to the requested IDs. One request beats hundreds of
+  // individual ones (though it transfers the whole DB — only used as fallback).
   const commandResult = await getStatesViaCommand(ids);
   if (commandResult !== null) return commandResult;
 
