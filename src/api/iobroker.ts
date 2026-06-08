@@ -125,30 +125,25 @@ export async function getAllObjects(): Promise<Record<string, IoBrokerObject>> {
   // `/objects` returns every object on modern adapters, but on some REST-API
   // versions it omits whole categories (folder/device/channel/enum) rather than
   // just leaving them untyped — e.g. plain `/objects` can come back with zero
-  // `enum.*` entries even though `?type=enum` has them. Detecting "untyped
-  // objects present" alone misses that "category absent entirely" case (which
-  // is exactly what broke the Enum-Manager: room/function enums vanished from
-  // `allObjects`). So: always merge in `?type=enum` (small, cheap, and critical
-  // for rooms/functions/EnumManager) and only pay for the heavier
-  // folder/device/channel legacy requests when we detect actual untyped objects.
+  // `enum.*` entries (or zero `device`/`channel`/`folder` entries, even though
+  // the objects exist and ARE typed) even though `?type=X` has them. Detecting
+  // "untyped objects present" alone misses that "category absent entirely"
+  // case (this is what broke the Enum-Manager, and also hid e.g. an
+  // `alias.0.*` device-type object from the StateList). So: always merge in
+  // `?type=enum/folder/device/channel` explicitly rather than relying on
+  // heuristics to decide whether the legacy fetches are needed.
   _objectsFetchPromise = Promise.all([
     fetchApi<Record<string, IoBrokerObject>>('/objects'),
     fetchApi<Record<string, IoBrokerObject>>('/objects?type=enum'),
+    fetchApi<Record<string, IoBrokerObject>>('/objects?type=folder'),
+    fetchApi<Record<string, IoBrokerObject>>('/objects?type=device'),
+    fetchApi<Record<string, IoBrokerObject>>('/objects?type=channel'),
   ])
-    .then(async ([baseAll, enums]) => {
-      let all = { ...baseAll, ...enums };
-      const untyped = Object.entries(all).filter(([, obj]) => obj && !obj.type);
-      if (untyped.length > 0) {
-        const [folders, devices, channels] = await Promise.all([
-          fetchApi<Record<string, IoBrokerObject>>('/objects?type=folder'),
-          fetchApi<Record<string, IoBrokerObject>>('/objects?type=device'),
-          fetchApi<Record<string, IoBrokerObject>>('/objects?type=channel'),
-        ]);
-        const foldersTyped = Object.fromEntries(
-          Object.entries(folders).map(([k, v]) => [k, { ...v, type: v.type ?? 'folder' }])
-        ) as Record<string, IoBrokerObject>;
-        all = { ...all, ...foldersTyped, ...devices, ...channels };
-      }
+    .then(([baseAll, enums, folders, devices, channels]) => {
+      const foldersTyped = Object.fromEntries(
+        Object.entries(folders).map(([k, v]) => [k, { ...v, type: v.type ?? 'folder' }])
+      ) as Record<string, IoBrokerObject>;
+      const all = { ...baseAll, ...enums, ...foldersTyped, ...devices, ...channels };
       _objectsFetchPromise = null;
       _fastObjectsPromise = null;
       return all;
