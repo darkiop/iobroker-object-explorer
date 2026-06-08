@@ -39,9 +39,13 @@ export interface AppSettings {
   /** Persisted (IndexedDB) cache for the large /objects bulk payloads (objects.all,
    *  objects.bootstrap, scripts.sources): 'off' refetches on every browser load;
    *  a number reuses the cached payload across that many loads before refetching.
-   *  A 24h TTL safety net forces a refetch regardless once the cache is that old.
-   *  The manual refresh button always bypasses this and fetches fresh. */
+   *  Whichever of [[objectsCacheReloads]] / [[objectsCacheTTL]] triggers first
+   *  forces a fresh fetch (and resets the reload counter). The manual refresh
+   *  button always bypasses both and fetches fresh. */
   objectsCacheReloads: 'off' | '5' | '10' | '20' | '50';
+  /** Max age of the persisted objects cache before it's considered stale,
+   *  regardless of [[objectsCacheReloads]] — see that field for how they combine. */
+  objectsCacheTTL: 'off' | '1h' | '6h' | '24h' | '7d';
 }
 
 const PAGE_SIZE_OPTIONS = [200, 500, 1000, 3000];
@@ -78,6 +82,7 @@ export function getDefaultAppSettings(): AppSettings {
     realtimeTransport: 'longpolling',
     socketHost: '',
     objectsCacheReloads: '10',
+    objectsCacheTTL: '24h',
   };
 }
 
@@ -156,6 +161,7 @@ export function loadAppSettings(): AppSettings {
       realtimeTransport: parsed.realtimeTransport === 'socketio' ? 'socketio' : 'longpolling',
       socketHost: typeof parsed.socketHost === 'string' ? parsed.socketHost.trim() : '',
       objectsCacheReloads: (['off','5','10','20','50'] as const).includes(parsed.objectsCacheReloads as 'off'|'5'|'10'|'20'|'50') ? parsed.objectsCacheReloads as 'off'|'5'|'10'|'20'|'50' : '10',
+      objectsCacheTTL: (['off','1h','6h','24h','7d'] as const).includes(parsed.objectsCacheTTL as 'off'|'1h'|'6h'|'24h'|'7d') ? parsed.objectsCacheTTL as 'off'|'1h'|'6h'|'24h'|'7d' : '24h',
     };
   } catch { return fallback; }
 }

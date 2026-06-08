@@ -126,6 +126,7 @@ export default function SettingsModal() {
       adminPort: settingsDraft.adminPort,
       objectsRefreshInterval: settingsDraft.objectsRefreshInterval,
       objectsCacheReloads: settingsDraft.objectsCacheReloads,
+      objectsCacheTTL: settingsDraft.objectsCacheTTL,
       includeScripts: settingsDraft.includeScripts,
       showObjectIcons: settingsDraft.showObjectIcons,
       showObjectTypeIcons: settingsDraft.showObjectTypeIcons,
@@ -476,25 +477,23 @@ export default function SettingsModal() {
               {/* ── Table ── */}
               <div className="flex flex-col gap-3">
                 <SettingsGroupLabel isEn={isEn} en="Table" de="Tabelle" />
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex flex-col gap-1.5">
-                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Font size' : 'Schriftgröße'}</span>
-                    <div className="flex gap-1.5">
-                      {(['small', 'normal', 'large', 'xl'] as UiFontSize[]).map((s) => (
-                        <button key={s} type="button" onClick={() => setSettingsDraft((prev) => ({ ...prev, tableFontSize: s }))}
-                          className={`flex-1 py-1 text-xs rounded border transition-colors ${settingsDraft.tableFontSize === s ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
-                          {s === 'small' ? (isEn ? 'S' : 'K') : s === 'large' ? (isEn ? 'L' : 'G') : s === 'xl' ? 'XL' : 'M'}
-                        </button>
-                      ))}
-                    </div>
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Font size' : 'Schriftgröße'}</span>
+                  <div className="flex gap-1.5">
+                    {(['small', 'normal', 'large', 'xl'] as UiFontSize[]).map((s) => (
+                      <button key={s} type="button" onClick={() => setSettingsDraft((prev) => ({ ...prev, tableFontSize: s }))}
+                        className={`flex-1 py-1 text-xs rounded border transition-colors ${settingsDraft.tableFontSize === s ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
+                        {s === 'small' ? (isEn ? 'S' : 'K') : s === 'large' ? (isEn ? 'L' : 'G') : s === 'xl' ? 'XL' : 'M'}
+                      </button>
+                    ))}
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Rows per page' : 'Zeilen pro Seite'}</span>
-                    <select value={settingsDraft.pageSize} onChange={(e) => setSettingsDraft((prev) => ({ ...prev, pageSize: parseInt(e.target.value, 10) }))}
-                      className="h-7 px-2 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400">
-                      {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
-                    </select>
-                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Rows per page' : 'Zeilen pro Seite'}</span>
+                  <select value={settingsDraft.pageSize} onChange={(e) => setSettingsDraft((prev) => ({ ...prev, pageSize: parseInt(e.target.value, 10) }))}
+                    className="h-7 px-2 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400">
+                    {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
+                  </select>
                 </div>
                 <SettingsToggleRow isEn={isEn} labelEn="Group table by path" labelDe="Tabelle nach Pfad gruppieren"
                   value={settingsDraft.groupByPath} onToggle={() => setSettingsDraft((prev) => ({ ...prev, groupByPath: !prev.groupByPath }))} />
@@ -554,19 +553,35 @@ export default function SettingsModal() {
                     <option value="10m">10m</option>
                   </select>
                 </div>
+                <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
+                  {isEn
+                    ? 'Persists the large object/script payloads (IndexedDB) so a browser reload doesn’t redownload them every time. Both settings below gate the cache together — whichever limit is hit first triggers a fresh fetch and resets the load counter: the cached data is reused only while it’s both within the load count AND younger than the max age. The manual refresh button always bypasses both and fetches fresh data.'
+                    : 'Speichert die großen Objekt-/Skript-Antworten (IndexedDB), damit ein Browser-Neuladen sie nicht jedes Mal neu herunterlädt. Beide Einstellungen unten wirken zusammen — was zuerst erreicht wird, löst ein frisches Laden aus und setzt den Lade-Zähler zurück: die gecachten Daten werden nur verwendet, solange sie sowohl innerhalb der Lade-Anzahl ALS AUCH jünger als das Max-Alter sind. Der manuelle Aktualisieren-Button umgeht beides immer und lädt frische Daten.'}
+                </p>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400" title={isEn
-                    ? 'Persists the large object/script payloads (IndexedDB) across browser reloads and reuses them for this many loads before refetching. A 24h safety net refetches regardless. The manual refresh button always fetches fresh data.'
-                    : 'Speichert die großen Objekt-/Skript-Antworten (IndexedDB) über Browser-Neuladen hinweg und nutzt sie für so viele Ladevorgänge, bevor neu abgerufen wird. Ein 24h-Sicherheitsnetz erzwingt trotzdem ein Neuladen. Der manuelle Aktualisieren-Button ruft immer frische Daten ab.'}>
-                    {isEn ? 'Cache objects across reloads' : 'Objekte über Neuladen cachen'}
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                    {isEn ? 'Reuse cache for up to' : 'Cache wiederverwenden für bis zu'}
                   </span>
                   <select value={settingsDraft.objectsCacheReloads} onChange={(e) => setSettingsDraft((prev) => ({ ...prev, objectsCacheReloads: e.target.value as 'off'|'5'|'10'|'20'|'50' }))}
                     className="h-7 px-2 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400">
-                    <option value="off">{isEn ? 'Off' : 'Aus'}</option>
-                    <option value="5">{isEn ? 'Every 5 loads' : 'Alle 5 Ladevorgänge'}</option>
-                    <option value="10">{isEn ? 'Every 10 loads' : 'Alle 10 Ladevorgänge'}</option>
-                    <option value="20">{isEn ? 'Every 20 loads' : 'Alle 20 Ladevorgänge'}</option>
-                    <option value="50">{isEn ? 'Every 50 loads' : 'Alle 50 Ladevorgänge'}</option>
+                    <option value="off">{isEn ? 'Off (always fresh)' : 'Aus (immer frisch)'}</option>
+                    <option value="5">{isEn ? '5 loads' : '5 Ladevorgänge'}</option>
+                    <option value="10">{isEn ? '10 loads' : '10 Ladevorgänge'}</option>
+                    <option value="20">{isEn ? '20 loads' : '20 Ladevorgänge'}</option>
+                    <option value="50">{isEn ? '50 loads' : '50 Ladevorgänge'}</option>
+                  </select>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                    {isEn ? 'Max. cache age' : 'Max. Cache-Alter'}
+                  </span>
+                  <select value={settingsDraft.objectsCacheTTL} onChange={(e) => setSettingsDraft((prev) => ({ ...prev, objectsCacheTTL: e.target.value as 'off'|'1h'|'6h'|'24h'|'7d' }))}
+                    className="h-7 px-2 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400">
+                    <option value="off">{isEn ? 'Off (no limit)' : 'Aus (kein Limit)'}</option>
+                    <option value="1h">{isEn ? '1 hour' : '1 Stunde'}</option>
+                    <option value="6h">{isEn ? '6 hours' : '6 Stunden'}</option>
+                    <option value="24h">{isEn ? '24 hours' : '24 Stunden'}</option>
+                    <option value="7d">{isEn ? '7 days' : '7 Tage'}</option>
                   </select>
                 </div>
               </div>

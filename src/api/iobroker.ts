@@ -115,15 +115,20 @@ function scoreIndexed(idLower: string, name: string, aliasId: string, desc: stri
 // 12-15MB on real-world installs. React Query's `staleTime: Infinity` only
 // avoids refetching within a session — a browser reload still re-downloads
 // all three. This cache persists the raw payloads across reloads and reuses
-// them for a configurable number of loads (`AppSettings.objectsCacheReloads`)
-// before refetching, with a 24h TTL safety net so data never goes too stale.
-// The manual refresh button always bypasses this (see *Cached wrappers below —
+// them across reloads, gated by two independent, configurable settings —
+// whichever fires first forces a fresh fetch (and resets the reload counter):
+//   - `AppSettings.objectsCacheReloads`: reuse the cache for at most N loads
+//   - `AppSettings.objectsCacheTTL`: treat the cache as stale once it's older
+//     than this, regardless of the reload counter
+// The manual refresh button always bypasses both (see *Cached wrappers below —
 // the gate is consulted only once per page lifetime, subsequent refetches
 // always hit the network and refresh the persisted entry).
 const OBJECTS_CACHE_DB = 'iobroker-explorer-cache';
 const OBJECTS_CACHE_STORE = 'bulk-objects';
-const OBJECTS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const LS_OBJECTS_CACHE_LOADCOUNT = 'iob-objects-cache-loadcount';
+const OBJECTS_CACHE_TTL_MS_MAP: Record<string, number | null> = {
+  off: null, '1h': 3600_000, '6h': 6 * 3600_000, '24h': 24 * 3600_000, '7d': 7 * 24 * 3600_000,
+};
 
 interface BulkObjectsCacheEntry { data: Record<string, IoBrokerObject> | string; ts: number; }
 
@@ -164,31 +169,37 @@ async function writeObjectsCacheEntry(key: string, data: BulkObjectsCacheEntry['
   } catch { /* ignore quota/availability errors — cache is best-effort */ }
 }
 
-function getObjectsCacheReloadThreshold(): number {
+function getObjectsCacheSettings(): { reloadThreshold: number; ttlMs: number | null } {
   try {
     const raw = localStorage.getItem('iobroker-app-settings');
-    if (!raw) return 0;
-    const parsed = JSON.parse(raw) as { objectsCacheReloads?: string };
+    if (!raw) return { reloadThreshold: 0, ttlMs: null };
+    const parsed = JSON.parse(raw) as { objectsCacheReloads?: string; objectsCacheTTL?: string };
     const n = parseInt(parsed.objectsCacheReloads ?? '', 10);
-    return Number.isFinite(n) && n > 0 ? n : 0;
-  } catch { return 0; }
+    const reloadThreshold = Number.isFinite(n) && n > 0 ? n : 0;
+    const ttlMs = OBJECTS_CACHE_TTL_MS_MAP[parsed.objectsCacheTTL ?? ''] ?? OBJECTS_CACHE_TTL_MS_MAP['24h'];
+    return { reloadThreshold, ttlMs };
+  } catch { return { reloadThreshold: 0, ttlMs: null }; }
 }
 
 // Decided once per page lifetime (module load): "is the persisted cache fresh
-// enough to reuse for this load?" — based on the configured reload threshold
-// and the 24h TTL. Subsequent calls within the same session (manual refresh,
-// auto-refresh interval) always bypass this and hit the network.
+// enough to reuse for this load?" Both gates must pass to reuse the cache —
+// whichever fires first forces a fresh fetch (and resets the reload counter):
+//   - reload counter: cache reused for at most `objectsCacheReloads` loads
+//   - TTL: cache older than `objectsCacheTTL` is always considered stale
+// Either set to 'off' disables that particular gate. Subsequent calls within
+// the same session (manual refresh, auto-refresh interval) always bypass this
+// and hit the network directly.
 let _objectsCacheGateDecision: boolean | null = null;
 
 async function shouldUsePersistedObjectsCache(): Promise<boolean> {
   if (_objectsCacheGateDecision !== null) return _objectsCacheGateDecision;
-  const threshold = getObjectsCacheReloadThreshold();
+  const { reloadThreshold, ttlMs } = getObjectsCacheSettings();
   let useCache = false;
-  if (threshold > 0) {
+  if (reloadThreshold > 0) {
     const ref = await readObjectsCacheEntry('allObjects');
-    const fresh = ref !== null && (Date.now() - ref.ts) < OBJECTS_CACHE_TTL_MS;
+    const withinTtl = ref !== null && (ttlMs === null || (Date.now() - ref.ts) < ttlMs);
     const count = parseInt(localStorage.getItem(LS_OBJECTS_CACHE_LOADCOUNT) ?? '0', 10) || 0;
-    useCache = fresh && count < threshold;
+    useCache = withinTtl && count < reloadThreshold;
   }
   try { localStorage.setItem(LS_OBJECTS_CACHE_LOADCOUNT, useCache ? String((parseInt(localStorage.getItem(LS_OBJECTS_CACHE_LOADCOUNT) ?? '0', 10) || 0) + 1) : '0'); } catch { /* ignore */ }
   _objectsCacheGateDecision = useCache;
