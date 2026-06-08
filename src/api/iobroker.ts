@@ -256,9 +256,29 @@ export async function getState(id: string): Promise<IoBrokerState> {
 let _bulkStatesSupported: boolean | null = null;
 let _commandStatesSupported: boolean | null = null;
 
-// Chunk size for the URL-based bulk endpoint — keeps the comma-separated ID list
-// in the URL path short enough to avoid hitting server/proxy URL-length limits.
-const BULK_MAX_IDS = 200;
+// Max encoded URL length for the bulk-by-id endpoint — keeps the request line
+// under typical reverse-proxy header-size limits (~8KB). Count-based chunking
+// breaks down when adapters (homeconnect, mercedesme, ...) emit very long IDs,
+// so chunks are sized by accumulated encoded length instead of item count.
+const BULK_MAX_URL_LEN = 4000;
+
+function chunkIdsByLength(ids: string[], baseLen: number): string[][] {
+  const chunks: string[][] = [];
+  let current: string[] = [];
+  let len = baseLen;
+  for (const id of ids) {
+    const encodedLen = encodeURIComponent(id).length + 1; // +1 for separator comma
+    if (current.length > 0 && len + encodedLen > BULK_MAX_URL_LEN) {
+      chunks.push(current);
+      current = [];
+      len = baseLen;
+    }
+    current.push(id);
+    len += encodedLen;
+  }
+  if (current.length > 0) chunks.push(current);
+  return chunks;
+}
 
 async function getStatesBulkSmall(ids: string[]): Promise<Record<string, IoBrokerState> | null> {
   // /v1/states only takes a `filter` pattern (not explicit ids — unknown query
@@ -310,8 +330,8 @@ export async function getStatesBatch(ids: string[]): Promise<Record<string, IoBr
   // size of the whole DB — unlike the pattern=* command fallback below.
   if (_bulkStatesSupported !== false) {
     try {
-      const chunks: string[][] = [];
-      for (let i = 0; i < ids.length; i += BULK_MAX_IDS) chunks.push(ids.slice(i, i + BULK_MAX_IDS));
+      const baseLen = `${getBaseUrl()}/state/`.length;
+      const chunks = chunkIdsByLength(ids, baseLen);
       const chunkResults = await Promise.all(chunks.map((chunk) => getStatesBulkSmall(chunk)));
       if (chunkResults.every((r) => r !== null)) {
         _bulkStatesSupported = true;
