@@ -265,61 +265,63 @@ export default function SettingsModal() {
                     }`}
                   />
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={settingsHostTesting}
-                    onClick={async () => {
-                      const val = settingsHost.trim();
-                      if (!val) return;
-                      setSettingsHostTesting(true);
-                      setSettingsHostError(null);
-                      setSettingsHostTestResult(null);
-                      try {
-                        const res = await fetch(`http://${val}/v1/objects?limit=1`);
-                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                        setSettingsHostTestResult('ok');
-                      } catch {
-                        setSettingsHostTestResult('error');
-                        setSettingsHostError(isEn ? 'Host not reachable' : 'Host nicht erreichbar');
-                      } finally {
-                        setSettingsHostTesting(false);
-                      }
-                    }}
-                    className="px-2.5 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 transition-colors flex items-center gap-1.5"
-                  >
-                    {settingsHostTesting
-                      ? <><Loader2 size={12} className="animate-spin" />{isEn ? 'Testing…' : 'Teste…'}</>
-                      : isEn ? 'Test connection' : 'Verbindung testen'
-                    }
-                  </button>
-                  {settingsHostTestResult === 'ok' && (
-                    <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
-                      <Check size={12} /> {isEn ? 'Connected' : 'Verbunden'}
-                    </span>
-                  )}
-                  {settingsHostTestResult === 'error' && settingsHostError && (
-                    <span className="flex items-center gap-1 text-xs text-red-500">
-                      <AlertCircle size={12} /> {settingsHostError}
-                    </span>
-                  )}
-                  {settingsHost.trim() && (
-                    <a
-                      href={`http://${settingsHost.trim()}/api-doc/`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="ml-auto flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={settingsHostTesting}
+                      onClick={async () => {
+                        const val = settingsHost.trim();
+                        if (!val) return;
+                        setSettingsHostTesting(true);
+                        setSettingsHostError(null);
+                        setSettingsHostTestResult(null);
+                        try {
+                          const res = await fetch(`http://${val}/v1/objects?limit=1`);
+                          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                          setSettingsHostTestResult('ok');
+                        } catch {
+                          setSettingsHostTestResult('error');
+                          setSettingsHostError(isEn ? 'Host not reachable' : 'Host nicht erreichbar');
+                        } finally {
+                          setSettingsHostTesting(false);
+                        }
+                      }}
+                      className="px-2.5 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 transition-colors flex items-center gap-1.5"
                     >
-                      <ExternalLink size={11} />
-                      Swagger UI
-                    </a>
-                  )}
+                      {settingsHostTesting
+                        ? <><Loader2 size={12} className="animate-spin" />{isEn ? 'Testing…' : 'Teste…'}</>
+                        : isEn ? 'Test connection' : 'Verbindung testen'
+                      }
+                    </button>
+                    {settingsHostTestResult === 'ok' && (
+                      <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                        <Check size={12} /> {isEn ? 'Connected' : 'Verbunden'}
+                      </span>
+                    )}
+                    {settingsHostTestResult === 'error' && settingsHostError && (
+                      <span className="flex items-center gap-1 text-xs text-red-500">
+                        <AlertCircle size={12} /> {settingsHostError}
+                      </span>
+                    )}
+                    {settingsHost.trim() && (
+                      <a
+                        href={`http://${settingsHost.trim()}/api-doc/`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="ml-auto flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                      >
+                        <ExternalLink size={11} />
+                        Swagger UI
+                      </a>
+                    )}
+                  </div>
+                  <span className="text-[11px] text-gray-400 dark:text-gray-500 pl-1">
+                    {isEn
+                      ? 'Connects briefly to verify reachability — does not save or reload. Save the form to apply the host.'
+                      : 'Verbindet kurz zur Erreichbarkeitsprüfung — speichert nicht und lädt nicht neu. Formular speichern, um den Host zu übernehmen.'}
+                  </span>
                 </div>
-                <span className="text-[11px] text-gray-400 dark:text-gray-500">
-                  {isEn
-                    ? 'Connects briefly to verify reachability — does not save or reload. Save the form to apply the host.'
-                    : 'Verbindet kurz zur Erreichbarkeitsprüfung — speichert nicht und lädt nicht neu. Formular speichern, um den Host zu übernehmen.'}
-                </span>
               </div>
 
               <div className="border-t border-gray-200 dark:border-gray-700" />
@@ -327,7 +329,7 @@ export default function SettingsModal() {
               {/* ── Realtime ── */}
               <div className="flex flex-col gap-3">
                 <SettingsGroupLabel isEn={isEn} en="Realtime updates" de="Echtzeit-Updates" />
-                <div className="flex flex-col gap-1.5">
+                <div className="flex flex-col gap-1">
                   <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Transport' : 'Übertragung'}</span>
                   <select
                     value={settingsDraft.realtimeTransport}
@@ -337,58 +339,62 @@ export default function SettingsModal() {
                     <option value="longpolling">{isEn ? 'Long polling (default — REST only)' : 'Long Polling (Standard — nur REST)'}</option>
                     <option value="socketio">{isEn ? 'Socket.IO (experimental — requires socketio adapter)' : 'Socket.IO (experimentell — benötigt socketio-Adapter)'}</option>
                   </select>
-                  <span className="text-[11px] text-gray-400 dark:text-gray-500">
+                  <span className="text-[11px] text-gray-400 dark:text-gray-500 pl-1">
                     {isEn
                       ? 'Long polling works out of the box via the REST API. Socket.IO connects directly to a separate `socketio` adapter instance for lower-latency push updates.'
                       : 'Long Polling funktioniert ohne weitere Voraussetzungen über die REST-API. Socket.IO verbindet sich direkt mit einer separaten socketio-Adapter-Instanz für Updates mit geringerer Latenz.'}
                   </span>
                 </div>
                 {settingsDraft.realtimeTransport === 'socketio' && (
-                  <div className="flex flex-col gap-1.5">
-                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Socket.IO host (optional override)' : 'Socket.IO-Host (optionaler Override)'}</span>
-                    <input
-                      value={settingsDraft.socketHost}
-                      onChange={(e) => {
-                        setSettingsDraft((prev) => ({ ...prev, socketHost: e.target.value }));
-                        setSocketTestResult(null);
-                        setSocketTestError(null);
-                      }}
-                      placeholder={`${settingsHostIp || '10.4.0.33'}:8084`}
-                      className="px-2 py-1.5 text-xs rounded border font-mono bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none border-gray-300 dark:border-gray-600 focus:ring-1 focus:ring-blue-400"
-                    />
-                    <span className="text-[11px] text-gray-400 dark:text-gray-500">
-                      {isEn
-                        ? 'Leave empty to guess from the REST host (default port 8084 — the socketio adapter’s standard port).'
-                        : 'Leer lassen, um den Wert vom REST-Host abzuleiten (Standardport 8084 des socketio-Adapters).'}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        disabled={socketTesting}
-                        onClick={testSocketConnection}
-                        className="px-2.5 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 transition-colors flex items-center gap-1.5"
-                      >
-                        {socketTesting
-                          ? <><Loader2 size={12} className="animate-spin" />{isEn ? 'Testing…' : 'Teste…'}</>
-                          : isEn ? 'Test connection' : 'Verbindung testen'
-                        }
-                      </button>
-                      {socketTestResult === 'ok' && (
-                        <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
-                          <Check size={12} /> {isEn ? 'Connected' : 'Verbunden'}
-                        </span>
-                      )}
-                      {socketTestResult === 'error' && (
-                        <span className="flex items-center gap-1 text-xs text-red-500">
-                          <AlertCircle size={12} /> {socketTestError}
-                        </span>
-                      )}
+                  <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Socket.IO host (optional override)' : 'Socket.IO-Host (optionaler Override)'}</span>
+                      <input
+                        value={settingsDraft.socketHost}
+                        onChange={(e) => {
+                          setSettingsDraft((prev) => ({ ...prev, socketHost: e.target.value }));
+                          setSocketTestResult(null);
+                          setSocketTestError(null);
+                        }}
+                        placeholder={`${settingsHostIp || '10.4.0.33'}:8084`}
+                        className="px-2 py-1.5 text-xs rounded border font-mono bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none border-gray-300 dark:border-gray-600 focus:ring-1 focus:ring-blue-400"
+                      />
+                      <span className="text-[11px] text-gray-400 dark:text-gray-500 pl-1">
+                        {isEn
+                          ? "Leave empty to guess from the REST host (default port 8084 — the socketio adapter's standard port)."
+                          : 'Leer lassen, um den Wert vom REST-Host abzuleiten (Standardport 8084 des socketio-Adapters).'}
+                      </span>
                     </div>
-                    <span className="text-[11px] text-gray-400 dark:text-gray-500">
-                      {isEn
-                        ? 'Connects briefly to verify reachability — does not save or reload. Save the form to apply the host override.'
-                        : 'Verbindet kurz zur Erreichbarkeitsprüfung — speichert nicht und lädt nicht neu. Formular speichern, um den Host-Override zu übernehmen.'}
-                    </span>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={socketTesting}
+                          onClick={testSocketConnection}
+                          className="px-2.5 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 transition-colors flex items-center gap-1.5"
+                        >
+                          {socketTesting
+                            ? <><Loader2 size={12} className="animate-spin" />{isEn ? 'Testing…' : 'Teste…'}</>
+                            : isEn ? 'Test connection' : 'Verbindung testen'
+                          }
+                        </button>
+                        {socketTestResult === 'ok' && (
+                          <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                            <Check size={12} /> {isEn ? 'Connected' : 'Verbunden'}
+                          </span>
+                        )}
+                        {socketTestResult === 'error' && (
+                          <span className="flex items-center gap-1 text-xs text-red-500">
+                            <AlertCircle size={12} /> {socketTestError}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[11px] text-gray-400 dark:text-gray-500 pl-1">
+                        {isEn
+                          ? 'Connects briefly to verify reachability — does not save or reload. Save the form to apply the host override.'
+                          : 'Verbindet kurz zur Erreichbarkeitsprüfung — speichert nicht und lädt nicht neu. Formular speichern, um den Host-Override zu übernehmen.'}
+                      </span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -398,7 +404,7 @@ export default function SettingsModal() {
               {/* ── Admin ── */}
               <div className="flex flex-col gap-3">
                 <SettingsGroupLabel isEn={isEn} en="Admin UI" de="Admin-Oberfläche" />
-                <div className="flex flex-col gap-1.5">
+                <div className="flex flex-col gap-1">
                   <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Port (ioBroker Admin)' : 'Port (ioBroker Admin)'}</span>
                   <input
                     type="number"
@@ -411,7 +417,7 @@ export default function SettingsModal() {
                     }}
                     className="w-full px-2 py-1.5 text-xs rounded border font-mono bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none border-gray-300 dark:border-gray-600 focus:ring-1 focus:ring-blue-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
-                  <span className="text-[11px] text-gray-400 dark:text-gray-500">{isEn ? 'Used for object icons and admin links.' : 'Wird für Objekt-Icons und Admin-Links verwendet.'}</span>
+                  <span className="text-[11px] text-gray-400 dark:text-gray-500 pl-1">{isEn ? 'Used for object icons and admin links.' : 'Wird für Objekt-Icons und Admin-Links verwendet.'}</span>
                   {settingsHostIp && (
                     <a
                       href={`http://${settingsHostIp}:${settingsDraft.adminPort}`}
@@ -469,13 +475,15 @@ export default function SettingsModal() {
                     <DateFormatDropdown value={settingsDraft.dateFormat} onChange={(dateFormat) => setSettingsDraft((prev) => ({ ...prev, dateFormat }))} />
                   </div>
                 </div>
-                <SettingsToggleRow isEn={isEn} labelEn="Toolbar button labels" labelDe="Beschriftungen in der Toolbar"
-                  value={settingsDraft.toolbarLabels} onToggle={() => setSettingsDraft((prev) => ({ ...prev, toolbarLabels: !prev.toolbarLabels }))} />
-                <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
-                  {isEn
-                    ? 'Shows text next to the icons in the toolbar buttons; off shows icons only.'
-                    : 'Zeigt Text neben den Icons der Toolbar-Buttons an; aus zeigt nur die Icons.'}
-                </p>
+                <div className="flex flex-col gap-1">
+                  <SettingsToggleRow isEn={isEn} labelEn="Toolbar button labels" labelDe="Beschriftungen in der Toolbar"
+                    value={settingsDraft.toolbarLabels} onToggle={() => setSettingsDraft((prev) => ({ ...prev, toolbarLabels: !prev.toolbarLabels }))} />
+                  <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed pl-1">
+                    {isEn
+                      ? 'Shows text next to the icons in the toolbar buttons; off shows icons only.'
+                      : 'Zeigt Text neben den Icons der Toolbar-Buttons an; aus zeigt nur die Icons.'}
+                  </p>
+                </div>
               </div>
 
               <div className="border-t border-gray-200 dark:border-gray-700" />
@@ -494,18 +502,20 @@ export default function SettingsModal() {
                     ))}
                   </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Rows per page' : 'Zeilen pro Seite'}</span>
-                  <select value={settingsDraft.pageSize} onChange={(e) => setSettingsDraft((prev) => ({ ...prev, pageSize: parseInt(e.target.value, 10) }))}
-                    className="h-7 px-2 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400">
-                    {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
-                  </select>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Rows per page' : 'Zeilen pro Seite'}</span>
+                    <select value={settingsDraft.pageSize} onChange={(e) => setSettingsDraft((prev) => ({ ...prev, pageSize: parseInt(e.target.value, 10) }))}
+                      className="h-7 px-2 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400">
+                      {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                  </div>
+                  <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed pl-1">
+                    {isEn
+                      ? "Number of rows shown per page in the table; also controls how many rows' state values are fetched and polled at once."
+                      : 'Anzahl der pro Seite angezeigten Zeilen in der Tabelle; bestimmt zudem, für wie viele Zeilen State-Werte gleichzeitig geladen und abgefragt werden.'}
+                  </p>
                 </div>
-                <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
-                  {isEn
-                    ? 'Number of rows shown per page in the table; also controls how many rows’ state values are fetched and polled at once.'
-                    : 'Anzahl der pro Seite angezeigten Zeilen in der Tabelle; bestimmt zudem, für wie viele Zeilen State-Werte gleichzeitig geladen und abgefragt werden.'}
-                </p>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                   <div className="flex flex-col gap-1">
                     <SettingsToggleRow isEn={isEn} labelEn="Group table by path" labelDe="Tabelle nach Pfad gruppieren"
@@ -521,7 +531,7 @@ export default function SettingsModal() {
                       value={settingsDraft.showDesc} onToggle={() => setSettingsDraft((prev) => ({ ...prev, showDesc: !prev.showDesc }))} />
                     <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
                       {isEn
-                        ? 'Shows the object’s description as a small second line under its name in the table.'
+                        ? "Shows the object's description as a small second line under its name in the table."
                         : 'Zeigt die Beschreibung des Objekts als kleine zweite Zeile unter seinem Namen in der Tabelle an.'}
                     </p>
                   </div>
@@ -530,7 +540,7 @@ export default function SettingsModal() {
                       value={settingsDraft.showObjectIcons} onToggle={() => setSettingsDraft((prev) => ({ ...prev, showObjectIcons: !prev.showObjectIcons }))} />
                     <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
                       {isEn
-                        ? 'Shows the adapter/object icon (from the object’s common.icon) in front of the name.'
+                        ? "Shows the adapter/object icon (from the object's common.icon) in front of the name."
                         : 'Zeigt das Adapter-/Objekt-Icon (aus common.icon des Objekts) vor dem Namen an.'}
                     </p>
                   </div>
@@ -557,7 +567,7 @@ export default function SettingsModal() {
                       value={settingsDraft.hideAliasSubRows ?? false} onToggle={() => setSettingsDraft((prev) => ({ ...prev, hideAliasSubRows: !prev.hideAliasSubRows }))} />
                     <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
                       {isEn
-                        ? 'Hides the extra sub-rows that show an alias’s source/target datapoint beneath the alias row.'
+                        ? "Hides the extra sub-rows that show an alias's source/target datapoint beneath the alias row."
                         : 'Blendet die zusätzlichen Unterzeilen aus, die das Quell-/Ziel-Datenpunkt eines Alias unter dessen Zeile anzeigen.'}
                     </p>
                   </div>
@@ -580,21 +590,23 @@ export default function SettingsModal() {
                     ))}
                   </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Count badge' : 'Anzahl-Badge'}</span>
-                  <select value={settingsDraft.treeCountMode} onChange={(e) => setSettingsDraft((prev) => ({ ...prev, treeCountMode: e.target.value as 'off'|'states'|'objects'|'both' }))}
-                    className="h-7 px-2 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400">
-                    <option value="off">{isEn ? 'Off' : 'Aus'}</option>
-                    <option value="objects">{isEn ? 'Objects only' : 'Nur Objekte'}</option>
-                    <option value="states">{isEn ? 'States only' : 'Nur States'}</option>
-                    <option value="both">{isEn ? 'Both (States / Objects)' : 'Beides (States / Objekte)'}</option>
-                  </select>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Count badge' : 'Anzahl-Badge'}</span>
+                    <select value={settingsDraft.treeCountMode} onChange={(e) => setSettingsDraft((prev) => ({ ...prev, treeCountMode: e.target.value as 'off'|'states'|'objects'|'both' }))}
+                      className="h-7 px-2 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400">
+                      <option value="off">{isEn ? 'Off' : 'Aus'}</option>
+                      <option value="objects">{isEn ? 'Objects only' : 'Nur Objekte'}</option>
+                      <option value="states">{isEn ? 'States only' : 'Nur States'}</option>
+                      <option value="both">{isEn ? 'Both (States / Objects)' : 'Beides (States / Objekte)'}</option>
+                    </select>
+                  </div>
+                  <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed pl-1">
+                    {isEn
+                      ? 'Shows a small badge next to each tree node with the number of states and/or objects nested beneath it.'
+                      : 'Zeigt neben jedem Baumknoten ein kleines Badge mit der Anzahl der darunter liegenden States und/oder Objekte an.'}
+                  </p>
                 </div>
-                <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
-                  {isEn
-                    ? 'Shows a small badge next to each tree node with the number of states and/or objects nested beneath it.'
-                    : 'Zeigt neben jedem Baumknoten ein kleines Badge mit der Anzahl der darunter liegenden States und/oder Objekte an.'}
-                </p>
               </div>
 
               <div className="border-t border-gray-200 dark:border-gray-700" />
@@ -602,55 +614,73 @@ export default function SettingsModal() {
               {/* ── Data ── */}
               <div className="flex flex-col gap-3">
                 <SettingsGroupLabel isEn={isEn} en="Data" de="Daten" />
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Auto-refresh objects' : 'Objekte auto-aktualisieren'}</span>
-                  <select value={settingsDraft.objectsRefreshInterval} onChange={(e) => setSettingsDraft((prev) => ({ ...prev, objectsRefreshInterval: e.target.value as 'off'|'30s'|'1m'|'5m'|'10m' }))}
-                    className="h-7 px-2 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400">
-                    <option value="off">{isEn ? 'Off' : 'Aus'}</option>
-                    <option value="30s">30s</option>
-                    <option value="1m">1m</option>
-                    <option value="5m">5m</option>
-                    <option value="10m">10m</option>
-                  </select>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Auto-refresh objects' : 'Objekte auto-aktualisieren'}</span>
+                    <select value={settingsDraft.objectsRefreshInterval} onChange={(e) => setSettingsDraft((prev) => ({ ...prev, objectsRefreshInterval: e.target.value as 'off'|'30s'|'1m'|'5m'|'10m' }))}
+                      className="h-7 px-2 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400">
+                      <option value="off">{isEn ? 'Off' : 'Aus'}</option>
+                      <option value="30s">30s</option>
+                      <option value="1m">1m</option>
+                      <option value="5m">5m</option>
+                      <option value="10m">10m</option>
+                    </select>
+                  </div>
+                  <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed pl-1">
+                    {isEn
+                      ? 'Periodically reloads the full object list in the background — useful when ioBroker adapters add or remove objects during normal operation.'
+                      : 'Lädt die vollständige Objektliste periodisch im Hintergrund neu — nützlich, wenn ioBroker-Adapter während des Betriebs Objekte hinzufügen oder entfernen.'}
+                  </p>
                 </div>
-                <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
-                  {isEn
-                    ? 'Persists the large object/script payloads (IndexedDB) so a browser reload doesn’t redownload them every time. Both settings below gate the cache together — whichever limit is hit first triggers a fresh fetch and resets the load counter: the cached data is reused only while it’s both within the load count AND younger than the max age. The manual refresh button always bypasses both and fetches fresh data.'
-                    : 'Speichert die großen Objekt-/Skript-Antworten (IndexedDB), damit ein Browser-Neuladen sie nicht jedes Mal neu herunterlädt. Beide Einstellungen unten wirken zusammen — was zuerst erreicht wird, löst ein frisches Laden aus und setzt den Lade-Zähler zurück: die gecachten Daten werden nur verwendet, solange sie sowohl innerhalb der Lade-Anzahl ALS AUCH jünger als das Max-Alter sind. Der manuelle Aktualisieren-Button umgeht beides immer und lädt frische Daten.'}
-                </p>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                    {isEn ? 'Reuse cache for up to' : 'Cache wiederverwenden für bis zu'}
-                  </span>
-                  <select value={settingsDraft.objectsCacheReloads} onChange={(e) => setSettingsDraft((prev) => ({ ...prev, objectsCacheReloads: e.target.value as 'off'|'5'|'10'|'20'|'50' }))}
-                    className="h-7 px-2 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400">
-                    <option value="off">{isEn ? 'Off (always fresh)' : 'Aus (immer frisch)'}</option>
-                    <option value="5">{isEn ? '5 loads' : '5 Ladevorgänge'}</option>
-                    <option value="10">{isEn ? '10 loads' : '10 Ladevorgänge'}</option>
-                    <option value="20">{isEn ? '20 loads' : '20 Ladevorgänge'}</option>
-                    <option value="50">{isEn ? '50 loads' : '50 Ladevorgänge'}</option>
-                  </select>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                      {isEn ? 'Reuse cache for up to' : 'Cache wiederverwenden für bis zu'}
+                    </span>
+                    <select value={settingsDraft.objectsCacheReloads} onChange={(e) => setSettingsDraft((prev) => ({ ...prev, objectsCacheReloads: e.target.value as 'off'|'5'|'10'|'20'|'50' }))}
+                      className="h-7 px-2 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400">
+                      <option value="off">{isEn ? 'Off (always fresh)' : 'Aus (immer frisch)'}</option>
+                      <option value="5">{isEn ? '5 loads' : '5 Ladevorgänge'}</option>
+                      <option value="10">{isEn ? '10 loads' : '10 Ladevorgänge'}</option>
+                      <option value="20">{isEn ? '20 loads' : '20 Ladevorgänge'}</option>
+                      <option value="50">{isEn ? '50 loads' : '50 Ladevorgänge'}</option>
+                    </select>
+                  </div>
+                  <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed pl-1">
+                    {isEn
+                      ? 'Stores the object list in IndexedDB and reuses it for up to this many page loads instead of re-downloading it every time. The manual refresh button always forces a fresh fetch.'
+                      : 'Speichert die Objektliste in der IndexedDB und verwendet sie für bis zu so viele Seitenladevorgänge wieder, statt sie jedes Mal neu zu laden. Der manuelle Aktualisieren-Button erzwingt immer ein frisches Laden.'}
+                  </p>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                    {isEn ? 'Max. cache age' : 'Max. Cache-Alter'}
-                  </span>
-                  <select value={settingsDraft.objectsCacheTTL} onChange={(e) => setSettingsDraft((prev) => ({ ...prev, objectsCacheTTL: e.target.value as 'off'|'1h'|'6h'|'24h'|'7d' }))}
-                    className="h-7 px-2 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400">
-                    <option value="off">{isEn ? 'Off (no limit)' : 'Aus (kein Limit)'}</option>
-                    <option value="1h">{isEn ? '1 hour' : '1 Stunde'}</option>
-                    <option value="6h">{isEn ? '6 hours' : '6 Stunden'}</option>
-                    <option value="24h">{isEn ? '24 hours' : '24 Stunden'}</option>
-                    <option value="7d">{isEn ? '7 days' : '7 Tage'}</option>
-                  </select>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                      {isEn ? 'Max. cache age' : 'Max. Cache-Alter'}
+                    </span>
+                    <select value={settingsDraft.objectsCacheTTL} onChange={(e) => setSettingsDraft((prev) => ({ ...prev, objectsCacheTTL: e.target.value as 'off'|'1h'|'6h'|'24h'|'7d' }))}
+                      className="h-7 px-2 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400">
+                      <option value="off">{isEn ? 'Off (no limit)' : 'Aus (kein Limit)'}</option>
+                      <option value="1h">{isEn ? '1 hour' : '1 Stunde'}</option>
+                      <option value="6h">{isEn ? '6 hours' : '6 Stunden'}</option>
+                      <option value="24h">{isEn ? '24 hours' : '24 Stunden'}</option>
+                      <option value="7d">{isEn ? '7 days' : '7 Tage'}</option>
+                    </select>
+                  </div>
+                  <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed pl-1">
+                    {isEn
+                      ? "Discards the cached object list once it exceeds this age, even if the load count limit hasn't been reached yet."
+                      : 'Verwirft die gecachte Objektliste, sobald sie dieses Alter überschreitet — auch wenn das Lade-Limit noch nicht erreicht wurde.'}
+                  </p>
                 </div>
-                <SettingsToggleRow isEn={isEn} labelEn="Fetch state values for visible rows only" labelDe="State-Werte nur für sichtbare Zeilen laden"
-                  value={settingsDraft.loadOnlyVisibleStateValues} onToggle={() => setSettingsDraft((prev) => ({ ...prev, loadOnlyVisibleStateValues: !prev.loadOnlyVisibleStateValues }))} />
-                <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
-                  {isEn
-                    ? 'Reduces request size on large pages by only fetching values for rows scrolled into view (reported by the table virtualizer), instead of the whole page. Rows scrolled into view briefly show as loading. Off by default — fetches the full page.'
-                    : 'Reduziert die Anfragegröße bei großen Seiten, indem nur Werte für Zeilen geladen werden, die gerade sichtbar sind (vom Tabellen-Virtualizer gemeldet), statt der ganzen Seite. Neu eingeblendete Zeilen zeigen kurz „lädt“. Standardmäßig aus — lädt die ganze Seite.'}
-                </p>
+                <div className="flex flex-col gap-1">
+                  <SettingsToggleRow isEn={isEn} labelEn="Fetch state values for visible rows only" labelDe="State-Werte nur für sichtbare Zeilen laden"
+                    value={settingsDraft.loadOnlyVisibleStateValues} onToggle={() => setSettingsDraft((prev) => ({ ...prev, loadOnlyVisibleStateValues: !prev.loadOnlyVisibleStateValues }))} />
+                  <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed pl-1">
+                    {isEn
+                      ? 'Reduces request size on large pages by only fetching values for rows scrolled into view (reported by the table virtualizer), instead of the whole page. Rows scrolled into view briefly show as loading. Off by default — fetches the full page.'
+                      : 'Reduziert die Anfragegröße bei großen Seiten, indem nur Werte für Zeilen geladen werden, die gerade sichtbar sind (vom Tabellen-Virtualizer gemeldet), statt der ganzen Seite. Neu eingeblendete Zeilen zeigen kurz „lädt". Standardmäßig aus — lädt die ganze Seite.'}
+                  </p>
+                </div>
               </div>
 
             </div>
