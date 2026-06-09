@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import HostConnectedButton from './HostConnectedButton';
 import { useUIContext } from '../context/UIContext';
 import { useFilterContext } from '../context/FilterContext';
+import { formatTooltipTime } from './historyChartUtils';
 
 const LS_HOST_KEY = 'ioBrokerHost';
 
@@ -284,7 +285,7 @@ export default function Layout({ sidebar, children, apiConnected = true, realtim
               </p>
               {scriptLastUpdated && (
                 <p className="text-xs text-gray-400 dark:text-gray-500 font-mono mb-1">
-                  {language === 'en' ? 'Last update:' : 'Zuletzt:'} {new Date(scriptLastUpdated).toLocaleTimeString()}
+                  {language === 'en' ? 'Last update:' : 'Zuletzt:'} {formatTooltipTime(scriptLastUpdated, appSettings.dateFormat)}
                 </p>
               )}
               <p className="text-xs text-gray-500 dark:text-gray-400">
