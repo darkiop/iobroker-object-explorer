@@ -46,11 +46,11 @@ const SEARCH_COMMANDS: SearchCommand[] = [
 
 export default function HelpModal({ onClose, language = 'en' }: Props) {
   const isEn = language === 'en';
-  const [open, setOpen] = useState<Record<string, boolean>>({});
+  const [openKey, setOpenKey] = useState<string | null>(null);
 
   useEscapeKey(onClose);
 
-  const toggle = (key: string) => setOpen((prev) => ({ ...prev, [key]: !prev[key] }));
+  const toggle = (key: string) => setOpenKey((prev) => (prev === key ? null : key));
 
   return createPortal(
     <div
@@ -87,7 +87,7 @@ export default function HelpModal({ onClose, language = 'en' }: Props) {
           {/* Aliases + History + Script + SmartName */}
           <AccordionItem
             id="features"
-            open={!!open['features']}
+            open={openKey === 'features'}
             onToggle={() => toggle('features')}
             icon={<ArrowLeftRight size={13} />}
             label={isEn ? 'Features & Quick filters' : 'Features & Schnellfilter'}
@@ -100,8 +100,8 @@ export default function HelpModal({ onClose, language = 'en' }: Props) {
               </SubSection>
               <SubSection icon={<History size={12} />} label={isEn ? 'History' : 'Verlauf'}>
                 {isEn
-                  ? 'States with a history adapter configured (e.g. sql.0) show a history icon in the table. Click it to open the History modal with a zoomable chart, aggregation options, min/max/avg statistics, and multi-datapoint comparison. History data is fetched on demand and cached for the session.'
-                  : 'Zustände mit konfiguriertem History-Adapter (z. B. sql.0) zeigen ein Verlauf-Symbol in der Tabelle. Klicke darauf, um das Verlaufs-Modal zu öffnen: zoom­bares Diagramm, Aggregations­optionen, Min/Max/Avg-Statistiken und Mehrfach-Datenpunkt-Vergleich. Verlaufsdaten werden bei Bedarf geladen und für die Sitzung gecacht.'}
+                  ? 'States with a history adapter configured (e.g. sql.0) show a history icon in the table. Click it to open the full-screen History modal: choose a time range and aggregation, compare up to 4 extra series side by side, overlay a previous period (±1 week / ±1 month) for comparison, zoom with the mouse wheel and pan by dragging, view min/max/avg/last stat badges, delete individual data points, and export the chart as a PNG image. History data is fetched on demand and cached for the session (sql.0 adapter only).'
+                  : 'Zustände mit konfiguriertem History-Adapter (z. B. sql.0) zeigen ein Verlauf-Symbol in der Tabelle. Klicke darauf, um das Vollbild-Verlaufs-Modal zu öffnen: Zeitraum und Aggregation wählen, bis zu 4 zusätzliche Reihen zum Vergleich anzeigen, einen vorherigen Zeitraum (±1 Woche / ±1 Monat) zum Vergleich überlagern, mit dem Mausrad zoomen und per Ziehen verschieben, Min/Max/Durchschnitt/Letzter-Wert-Badges ansehen, einzelne Datenpunkte löschen und das Diagramm als PNG exportieren. Verlaufsdaten werden bei Bedarf geladen und für die Sitzung gecacht (nur sql.0-Adapter).'}
               </SubSection>
               <SubSection icon={<Code2 size={12} />} label={isEn ? 'Script usage' : 'Skriptverwendung'}>
                 {isEn
@@ -124,7 +124,7 @@ export default function HelpModal({ onClose, language = 'en' }: Props) {
           {/* Auto Alias */}
           <AccordionItem
             id="autoalias"
-            open={!!open['autoalias']}
+            open={openKey === 'autoalias'}
             onToggle={() => toggle('autoalias')}
             icon={<Wand2 size={13} />}
             label={isEn ? 'Auto Alias' : 'Auto-Alias'}
@@ -139,7 +139,7 @@ export default function HelpModal({ onClose, language = 'en' }: Props) {
           {/* Batch editing */}
           <AccordionItem
             id="batch"
-            open={!!open['batch']}
+            open={openKey === 'batch'}
             onToggle={() => toggle('batch')}
             icon={<CheckSquare size={13} />}
             label={isEn ? 'Batch editing' : 'Mehrfachbearbeitung'}
@@ -154,7 +154,7 @@ export default function HelpModal({ onClose, language = 'en' }: Props) {
           {/* Context menu */}
           <AccordionItem
             id="context"
-            open={!!open['context']}
+            open={openKey === 'context'}
             onToggle={() => toggle('context')}
             icon={<MousePointerClick size={13} />}
             label={isEn ? 'Context menu' : 'Kontextmenü'}
@@ -169,7 +169,7 @@ export default function HelpModal({ onClose, language = 'en' }: Props) {
           {/* Dual-pane */}
           <AccordionItem
             id="dualpane"
-            open={!!open['dualpane']}
+            open={openKey === 'dualpane'}
             onToggle={() => toggle('dualpane')}
             icon={<Columns2 size={13} />}
             label={isEn ? 'Dual-pane view' : 'Zwei-Panel-Ansicht'}
@@ -208,7 +208,7 @@ export default function HelpModal({ onClose, language = 'en' }: Props) {
           {/* Keyboard shortcuts */}
           <AccordionItem
             id="keys"
-            open={!!open['keys']}
+            open={openKey === 'keys'}
             onToggle={() => toggle('keys')}
             icon={<Keyboard size={13} />}
             label={isEn ? 'Keyboard shortcuts' : 'Tastenkürzel'}
@@ -237,7 +237,7 @@ export default function HelpModal({ onClose, language = 'en' }: Props) {
           {/* Optimize */}
           <AccordionItem
             id="optimize"
-            open={!!open['optimize']}
+            open={openKey === 'optimize'}
             onToggle={() => toggle('optimize')}
             icon={<BarChart2 size={13} />}
             label={isEn ? 'Optimize' : 'Optimieren'}
@@ -252,7 +252,7 @@ export default function HelpModal({ onClose, language = 'en' }: Props) {
           {/* Search commands */}
           <AccordionItem
             id="search"
-            open={!!open['search']}
+            open={openKey === 'search'}
             onToggle={() => toggle('search')}
             icon={<Search size={13} />}
             label={isEn ? 'Search commands' : 'Suchbefehle'}
