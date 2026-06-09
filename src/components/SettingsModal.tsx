@@ -103,7 +103,8 @@ export default function SettingsModal() {
   }, [persistSettings, setPage, setQuickPatterns, setSettingsOpen]);
 
   const saveSettings = useCallback(() => {
-    const nextCols = settingsDraft.visibleCols.filter((k) => ALL_COLUMNS.some((c) => c.key === k));
+    let nextCols = settingsDraft.visibleCols.filter((k) => ALL_COLUMNS.some((c) => c.key === k));
+    if (settingsDraft.showUnitInValue) nextCols = nextCols.filter((k) => k !== 'unit');
     const normalizedExtra = [...new Set(settingsDraft.extraQuickFilters.map(normalizeQuickPattern).filter(Boolean))]
       .filter((p) => !DEFAULT_QUICK_PATTERNS.includes(p as typeof DEFAULT_QUICK_PATTERNS[number]));
     const validPageSize = PAGE_SIZE_OPTIONS.includes(settingsDraft.pageSize) ? settingsDraft.pageSize : 1000;
@@ -137,6 +138,7 @@ export default function SettingsModal() {
       panel2Open: settingsDraft.panel2Open,
       realtimeTransport: settingsDraft.realtimeTransport,
       socketHost: settingsDraft.socketHost.trim(),
+      showUnitInValue: settingsDraft.showUnitInValue ?? false,
     };
     const hostVal = settingsHost.trim();
     const prevHost = localStorage.getItem('ioBrokerHost') ?? window.__CONFIG__?.ioBrokerHost ?? '';
@@ -569,6 +571,15 @@ export default function SettingsModal() {
                       {isEn
                         ? "Hides the extra sub-rows that show an alias's source/target datapoint beneath the alias row."
                         : 'Blendet die zusätzlichen Unterzeilen aus, die das Quell-/Ziel-Datenpunkt eines Alias unter dessen Zeile anzeigen.'}
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <SettingsToggleRow isEn={isEn} labelEn="Show unit in Value column" labelDe="Einheit in der Wert-Spalte anzeigen"
+                      value={settingsDraft.showUnitInValue ?? false} onToggle={() => setSettingsDraft((prev) => ({ ...prev, showUnitInValue: !prev.showUnitInValue }))} />
+                    <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
+                      {isEn
+                        ? 'Appends the unit (e.g. "°C", "W") directly after the value in the Value column — useful when the Unit column is hidden.'
+                        : 'Hängt die Einheit (z. B. „°C", „W") direkt hinter den Wert in der Wert-Spalte — nützlich wenn die Einheit-Spalte ausgeblendet ist.'}
                     </p>
                   </div>
                 </div>

@@ -12,6 +12,7 @@ const EditableValueCell = React.memo(function EditableValueCell({
   expertMode = false,
   onOpen,
   language = 'en',
+  unitSuffix,
 }: {
   id: string;
   state: IoBrokerState | undefined;
@@ -19,6 +20,7 @@ const EditableValueCell = React.memo(function EditableValueCell({
   expertMode?: boolean;
   onOpen: (id: string) => void;
   language?: 'en' | 'de';
+  unitSuffix?: string;
 }) {
   const isEn = language === 'en';
   const setStateVal = useSetState();
@@ -113,8 +115,9 @@ const EditableValueCell = React.memo(function EditableValueCell({
             try { const u = new URL(val); if (u.protocol === 'https:' || u.protocol === 'http:') safeHref = val; } catch { /* invalid URL */ }
             if (safeHref) return <a href={safeHref} target="_blank" rel="noopener noreferrer" title={v} onClick={(e) => e.stopPropagation()} className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 underline truncate max-w-[120px] block">{v}</a>;
           }
-          const truncated = v.length > 16 ? v.slice(0, 16) + '…' : v;
-          return <span title={v}>{truncated}</span>;
+          const display = unitSuffix ? `${v} ${unitSuffix}` : v;
+          const truncated = display.length > 20 ? display.slice(0, 20) + '…' : display;
+          return <span title={display}>{truncated}</span>;
         })() : <span className="text-gray-300 dark:text-gray-600">…</span>}
         <button
           onClick={(e) => { e.stopPropagation(); onOpen(id); }}

@@ -58,6 +58,7 @@ export interface StateRowProps {
   showDesc?: boolean;
   showObjectTypeIcons?: boolean;
   hideAliasSubRows?: boolean;
+  showUnitInValue?: boolean;
   depth?: number;
   displayId?: string;
   animateEnter?: boolean;
@@ -79,7 +80,7 @@ const StateRow = React.memo(function StateRow({
   onSelect, onCheck, onContextMenu, onHistoryClick, onScriptsClick, onNavigateTo, onDeleteClick, onEditJson,
   onSelectRoom, onSelectFunction, onOpenValueModal,
   roomEditForced, fnEditForced, onRoomEditEnd, onFnEditEnd,
-  dateFormat, language, expertMode, isFocused, showDesc = true, showObjectTypeIcons = true, hideAliasSubRows = false, scriptSources, depth = 0, displayId, animateEnter, animateExit,
+  dateFormat, language, expertMode, isFocused, showDesc = true, showObjectTypeIcons = true, hideAliasSubRows = false, showUnitInValue = false, scriptSources, depth = 0, displayId, animateEnter, animateExit,
 }: StateRowProps) {
   const isEn = language === 'en';
   const trRef = useRef<HTMLTableRowElement>(null);
@@ -395,7 +396,7 @@ const StateRow = React.memo(function StateRow({
       )}
       {show('type') && <EditableTypeCell id={id} typeValue={obj?.common?.type || ''} objType={obj?.type} language={language} />}
       {show('role') && <EditableRoleCell id={id} role={obj?.common?.role || ''} objType={obj?.type} suggestions={roles} language={language} />}
-      {show('value') && (obj?.type === 'folder' || obj?.type === 'device' || obj?.type === 'channel' ? <td data-col="value" /> : <EditableValueCell id={id} state={state} obj={obj} expertMode={expertMode} onOpen={onOpenValueModal} language={language} />)}
+      {show('value') && (obj?.type === 'folder' || obj?.type === 'device' || obj?.type === 'channel' ? <td data-col="value" /> : <EditableValueCell id={id} state={state} obj={obj} expertMode={expertMode} onOpen={onOpenValueModal} language={language} unitSuffix={showUnitInValue ? unit : undefined} />)}
       {show('unit') && (obj?.type === 'folder' || obj?.type === 'device' || obj?.type === 'channel' ? <td data-col="unit" /> : <EditableUnitCell id={id} unit={unit} suggestions={units} language={language} />)}
       {show('ack') && (
         <td data-col="ack" className="px-3 py-2">

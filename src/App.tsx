@@ -169,6 +169,15 @@ function AppContent() {
   const panelContainerRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
 
+  // When showUnitInValue is enabled, auto-hide the 'unit' column in all pane views
+  useEffect(() => {
+    if (!appSettings.showUnitInValue) return;
+    setP1DualCols(p1DualCols.filter((k) => k !== 'unit'));
+    setP2VisibleCols((prev) => prev.filter((k) => k !== 'unit'));
+  // intentionally only re-run when the flag changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appSettings.showUnitInValue]);
+
   const setP2Pattern = useCallback((p: string) => {
     setP2PatternRaw(p);
     setP2Page(0);

@@ -89,7 +89,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const { appSettings, expertMode, scriptUsedIds, scriptsFetching, scriptLastUpdated, setScriptUsedIds, setConfirmScriptRefresh, handleToggleGroupByPath: _handleToggleGroupByPath, persistSettings } = useAppSettingsContext();
   const onToggleGroupByPath = onToggleGroupByPathOverride ?? _handleToggleGroupByPath;
 
-  const { language = 'en', dateFormat = 'de', visibleCols: settingsVisibleCols, toolbarLabels = true, tableFontSize = 'normal', showDesc = true, groupByPath: settingsGroupByPath = false, shortenGroupPaths = true, showObjectIcons = false, showObjectTypeIcons = true, customDefaultWidths, customMinWidths, customMaxWidths, pageSize, animateGroupExpand = false, hideAliasSubRows = false } = appSettings;
+  const { language = 'en', dateFormat = 'de', visibleCols: settingsVisibleCols, toolbarLabels = true, tableFontSize = 'normal', showDesc = true, groupByPath: settingsGroupByPath = false, shortenGroupPaths = true, showObjectIcons = false, showObjectTypeIcons = true, customDefaultWidths, customMinWidths, customMaxWidths, pageSize, animateGroupExpand = false, hideAliasSubRows = false, showUnitInValue = false } = appSettings;
   const groupByPath = groupByPathOverride !== undefined ? groupByPathOverride : settingsGroupByPath;
   const onOpenEnumManager = React.useCallback(() => setEnumManagerOpen(true), [setEnumManagerOpen]);
   const onOpenAliasReplace = React.useCallback((initialStr?: string) => setAliasReplaceInitialStr(initialStr ?? null), [setAliasReplaceInitialStr]);
@@ -1912,6 +1912,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                   isFocused={focusedId === id && selectedId !== id}
                   showDesc={showDesc} showObjectTypeIcons={showObjectTypeIcons}
                   hideAliasSubRows={hideAliasSubRows}
+                  showUnitInValue={showUnitInValue}
                   depth={item.depth}
                   animateEnter={animateGroupExpand && !!item.parentPrefix && animatingPrefixes.has(item.parentPrefix)}
                   animateExit={animateGroupExpand && !!item.parentPrefix && collapsingPrefixes.has(item.parentPrefix)}

@@ -51,6 +51,9 @@ export interface AppSettings {
    *  cuts request size on large pages, at the cost of a brief "loading" flicker
    *  for rows scrolled into view. Off by default: fetches the full page, as before. */
   loadOnlyVisibleStateValues: boolean;
+  /** When on, the unit (common.unit) is appended to the value in the Value column
+   *  so the unit is visible even when the Unit column is hidden. Off by default. */
+  showUnitInValue: boolean;
 }
 
 const PAGE_SIZE_OPTIONS = [200, 500, 1000, 3000];
@@ -89,6 +92,7 @@ export function getDefaultAppSettings(): AppSettings {
     objectsCacheReloads: '10',
     objectsCacheTTL: '24h',
     loadOnlyVisibleStateValues: false,
+    showUnitInValue: false,
   };
 }
 
@@ -168,6 +172,8 @@ export function loadAppSettings(): AppSettings {
       socketHost: typeof parsed.socketHost === 'string' ? parsed.socketHost.trim() : '',
       objectsCacheReloads: (['off','5','10','20','50'] as const).includes(parsed.objectsCacheReloads as 'off'|'5'|'10'|'20'|'50') ? parsed.objectsCacheReloads as 'off'|'5'|'10'|'20'|'50' : '10',
       objectsCacheTTL: (['off','1h','6h','24h','7d'] as const).includes(parsed.objectsCacheTTL as 'off'|'1h'|'6h'|'24h'|'7d') ? parsed.objectsCacheTTL as 'off'|'1h'|'6h'|'24h'|'7d' : '24h',
+      loadOnlyVisibleStateValues: parsed.loadOnlyVisibleStateValues === true,
+      showUnitInValue: parsed.showUnitInValue === true,
     };
   } catch { return fallback; }
 }
