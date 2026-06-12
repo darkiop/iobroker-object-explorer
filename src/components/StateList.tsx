@@ -1,25 +1,13 @@
 import React, { useState, useMemo, useRef, useEffect, useImperativeHandle } from 'react';
-import { createPortal } from 'react-dom';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { X, History, Mic2, Maximize2, Trash2, Plus, Minus, Lock, Search, Link2, FileEdit, Download, ChevronDown, ChevronRight, Wrench, PenLine, FolderInput, Home, Upload, RotateCcw, Tag, FolderOpen, Folder, Cpu, Layers, FileCode2, BarChart2, Copy, Check, Pencil, List, Zap, Indent, Columns2, EyeOff, Wand2 } from 'lucide-react';
+import { X, History, Mic2, Trash2, Plus, Minus, Lock, Link2, ChevronDown, ChevronRight, Wrench, FolderOpen, Folder, Cpu, Layers, FileCode2, Copy, Pencil } from 'lucide-react';
 import { useExtendObject, useAllRoles, useAllUnits, useDeleteObject, useRoomEnums, useUpdateRoomMembership, useUpdateRoomMembershipBatch, useFunctionEnums, useUpdateFunctionMembership, useUpdateFunctionMembershipBatch, useAllScriptSources } from '../hooks/useStates';
-import ContextMenu from './ContextMenu';
-import type { ContextMenuEntry } from './ContextMenu';
-import NewDatapointModal from './NewDatapointModal';
-import ImportDatapointsModal from './ImportDatapointsModal';
-import OptimizeModal from './OptimizeModal';
-import ObjectEditModal from './ObjectEditModal';
-import CreateAliasModal from './CreateAliasModal';
-import CopyDatapointModal from './CopyDatapointModal';
-import RenameDatapointModal from './RenameDatapointModal';
-import MoveDatapointModal from './MoveDatapointModal';
-import HistoryModal from './HistoryModal';
-import ConfirmDialog from './ConfirmDialog';
-import MultiDeleteDialog from './MultiDeleteDialog';
-import ValueEditModal from './ValueEditModal';
 import { hasHistory, hasSmartName, isGlobPattern } from '../api/iobroker';
+import { useStateListModals } from '../hooks/useStateListModals';
+import { useStateListView } from '../hooks/useStateListView';
+import StateListToolbar from './StateListToolbar';
+import StateListModals from './StateListModals';
 import { useAllObjects } from '../hooks/useStates';
-import TreeStatsModal from './TreeStatsModal';
 import type { IoBrokerState, IoBrokerObject } from '../types/iobroker';
 import { copyText, copyToClipboard } from '../utils/clipboard';
 import { formatValue, formatTimestamp } from '../utils/format';
@@ -32,9 +20,7 @@ import { useSelectionContext } from '../context/SelectionContext';
 import { useAppSettingsContext } from '../context/UIContext';
 import BatchComboControl, { EMPTY_SENTINEL } from './BatchComboControl';
 import TsRangeFilterControl, { parseTsFilter } from './TsRangeFilterControl';
-import ColPicker from './ColPicker';
 import SortHeader from './SortHeader';
-import type { SortDir } from './SortHeader';
 import StyledCheckbox from './StyledCheckbox';
 import StateRow from './StateRow';
 import { getObjectName } from './stateListUtils';
@@ -75,13 +61,6 @@ import type { SortKey } from './stateListColumns';
 import { DEFAULT_COLS, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MIN_WIDTHS, BUILTIN_MAX_WIDTHS } from './stateListColumns';
 
 
-function patternToInitialId(pattern: string): string {
-  if (!pattern || pattern === '*') return '';
-  if (pattern.endsWith('.*')) return pattern.slice(0, -1); // e.g. "javascript.0.*" → "javascript.0."
-  if (pattern.endsWith('*')) return pattern.slice(0, -1);
-  return pattern;
-}
-
 
 function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allObjectIds, exportIds, onNavigateTo, onOpenInOtherPanel, forceHideToolbarLabels, visibleColsOverride, onVisibleColsChange, groupByPathOverride, onToggleGroupByPathOverride, historyIds, smartIds, onVisibleIdsChange }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
   const { colFilters, handleColFilterChange: onColFilterChange, pattern, treeFilter, handleClearTreeFilter: onClearTreeFilter, sidebarToggleSeq, fulltextEnabled, handleTreeScope } = usePanelContext();
@@ -100,11 +79,20 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const effectiveMin: Partial<Record<SortKey, number>> = { ...BUILTIN_MIN_WIDTHS, ...(customMinWidths ?? {}) };
   const effectiveMax: Partial<Record<SortKey, number>> = { ...BUILTIN_MAX_WIDTHS, ...(customMaxWidths ?? {}) };
   const isEn = language === 'en';
-  const [sortKey, setSortKey] = useState<SortKey>('id');
-  const [sortDir, setSortDir] = useState<SortDir>('asc');
-  const [visibleCols, setVisibleCols] = useState<SortKey[]>(() => visibleColsOverride ?? settingsVisibleCols ?? DEFAULT_COLS);
+  const {
+    sortKey, setSortKey,
+    sortDir, setSortDir,
+    visibleCols, setVisibleCols,
+    showStats, setShowStats,
+    collapsedPrefixes, setCollapsedPrefixes,
+    animatingPrefixes, setAnimatingPrefixes,
+    collapsingPrefixes, setCollapsingPrefixes,
+    animTimersRef,
+    collapseTimersRef,
+    allSepPrefixesRef,
+    animatedSepEls,
+  } = useStateListView(visibleColsOverride ?? settingsVisibleCols ?? DEFAULT_COLS);
   const { data: scriptSources } = useAllScriptSources(visibleCols.includes('scripts'));
-  const [showStats, setShowStats] = useState(false);
   const { data: allObjectsData } = useAllObjects();
   const allObjects = allObjectsData ?? {} as Record<string, IoBrokerObject>;
   const allHistoryIds = useMemo(() => {
@@ -123,33 +111,38 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   });
 
   const isFilterActive = !!(pattern && pattern !== '*') || !!treeFilter;
-  // null = "all collapsed". new Set() = all expanded.
-  const [collapsedPrefixes, setCollapsedPrefixes] = useState<Set<string> | null>(null);
-  const [animatingPrefixes, setAnimatingPrefixes] = useState<Set<string>>(new Set());
-  const [collapsingPrefixes, setCollapsingPrefixes] = useState<Set<string>>(new Set());
-  const animTimersRef = React.useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
-  const collapseTimersRef = React.useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
-  const allSepPrefixesRef = React.useRef<Set<string>>(new Set());
-  const animatedSepEls = React.useRef<WeakSet<Element>>(new WeakSet());
   const [headerHeight, setHeaderHeight] = useState(0);
-  const [newDatapointOpen, setNewDatapointOpen] = useState(false);
-  const [newDatapointPrefix, setNewDatapointPrefix] = useState<string | null>(null);
-  const [newAliasOpen, setNewAliasOpen] = useState(false);
-  const [newMenuOpen, setNewMenuOpen] = useState(false);
-  const newMenuRef = useRef<HTMLDivElement>(null);
-  const [importOpen, setImportOpen] = useState(false);
-  const [optimizeOpen, setOptimizeOpen] = useState(false);
-  const [optimizePath, setOptimizePath] = useState<string | undefined>(undefined);
-  const [historyModalId, setHistoryModalId] = useState<string | null>(null);
-  const [historyInitialExtra, setHistoryInitialExtra] = useState<import('./HistoryChart').ExtraSeries[]>([]);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [deletingGroupPrefix, setDeletingGroupPrefix] = useState<string | null>(null);
-  const [valueEditId, setValueEditId] = useState<string | null>(null);
-  const [confirmResetLs, setConfirmResetLs] = useState(false);
+  const {
+    newDatapointOpen, setNewDatapointOpen,
+    newDatapointPrefix, setNewDatapointPrefix,
+    newAliasOpen, setNewAliasOpen,
+    newMenuOpen, setNewMenuOpen,
+    newMenuRef,
+    importOpen, setImportOpen,
+    optimizeOpen, setOptimizeOpen,
+    optimizePath, setOptimizePath,
+    historyModalId, setHistoryModalId,
+    historyInitialExtra, setHistoryInitialExtra,
+    deletingId, setDeletingId,
+    deletingGroupPrefix, setDeletingGroupPrefix,
+    valueEditId, setValueEditId,
+    confirmResetLs, setConfirmResetLs,
+    multiDeleteOpen, setMultiDeleteOpen,
+    aliasSourceId, setAliasSourceId,
+    copySourceId, setCopySourceId,
+    renameId, setRenameId,
+    moveId, setMoveId,
+    editObjId, setEditObjId,
+    editObjInitialTab, setEditObjInitialTab,
+    exportMenuOpen, setExportMenuOpen,
+    exportMenuRef,
+    ctxMenu, setCtxMenu,
+    sepCtxMenu, setSepCtxMenu,
+    checkedSepPrefix, setCheckedSepPrefix,
+  } = useStateListModals();
   const showToolbarLabels = forceHideToolbarLabels ? false : toolbarLabels;
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [focusedId, setFocusedId] = useState<string | null>(null);
-  const [multiDeleteOpen, setMultiDeleteOpen] = useState(false);
   const [colFiltersDraft, setColFiltersDraft] = useState<Partial<Record<SortKey, string>>>(colFilters);
   const colFilterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const propagatingRef = useRef(false);
@@ -184,19 +177,8 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
     showToast,
     isEn,
   });
-  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; id: string } | null>(null);
-  const [sepCtxMenu, setSepCtxMenu] = useState<{ x: number; y: number; prefix: string } | null>(null);
-  const [checkedSepPrefix, setCheckedSepPrefix] = useState<string | null>(null);
   const [roomEditId, setRoomEditId] = useState<string | null>(null);
   const [fnEditId, setFnEditId] = useState<string | null>(null);
-  const [aliasSourceId, setAliasSourceId] = useState<string | null>(null);
-  const [copySourceId, setCopySourceId] = useState<string | null>(null);
-  const [renameId, setRenameId] = useState<string | null>(null);
-  const [moveId, setMoveId] = useState<string | null>(null);
-  const [editObjId, setEditObjId] = useState<string | null>(null);
-  const [editObjInitialTab, setEditObjInitialTab] = useState<'details' | 'json' | 'alias' | 'custom'>('details');
-  const [exportMenuOpen, setExportMenuOpen] = useState(false);
-  const exportMenuRef = useRef<HTMLDivElement>(null);
   const updateRoomMutateRef = useRef(updateRoom.mutate);
   const updateFnMutateRef = useRef(updateFn.mutate);
 
@@ -207,28 +189,6 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   useEffect(() => {
     updateFnMutateRef.current = updateFn.mutate;
   }, [updateFn.mutate]);
-
-  useEffect(() => {
-    if (!exportMenuOpen) return;
-    function handleClickOutside(e: MouseEvent) {
-      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
-        setExportMenuOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [exportMenuOpen]);
-
-  useEffect(() => {
-    if (!newMenuOpen) return;
-    function handleClickOutside(e: MouseEvent) {
-      if (newMenuRef.current && !newMenuRef.current.contains(e.target as Node)) {
-        setNewMenuOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [newMenuOpen]);
 
   function handleColChange(cols: SortKey[]) {
     if (onVisibleColsChange) {
@@ -707,269 +667,6 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
     URL.revokeObjectURL(url);
   }
 
-  const toolbar = (
-    <div className="flex items-center justify-between pl-1 pr-3 py-1 shrink-0 border-b border-gray-200 dark:border-gray-800">
-      <div className="flex items-center gap-2">
-        <div className="relative" ref={newMenuRef}>
-          <button
-            onClick={() => setNewMenuOpen((v) => !v)}
-            title={isEn ? 'New…' : 'Neu…'}
-            className={`flex items-center gap-1.5 rounded-lg transition-colors ${newMenuOpen ? 'text-blue-600 bg-blue-500/15 dark:text-blue-400 dark:bg-blue-500/20' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10'} ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
-          >
-            <Plus size={16} />
-            {showToolbarLabels && <span>{isEn ? 'New' : 'Neu'}</span>}
-          </button>
-          {newMenuOpen && (
-            <div className="absolute left-0 top-full mt-1 z-50 flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg overflow-hidden min-w-[150px]">
-              <button
-                onClick={() => { setNewDatapointOpen(true); setNewMenuOpen(false); }}
-                className="flex items-center gap-2 px-3 py-1.5 text-xs text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-              >
-                <Plus size={13} />
-                {isEn ? 'New datapoint' : 'Neuer Datenpunkt'}
-              </button>
-              <button
-                onClick={() => { setNewAliasOpen(true); setNewMenuOpen(false); }}
-                className="flex items-center gap-2 px-3 py-1.5 text-xs text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-              >
-                <Link2 size={13} />
-                {isEn ? 'New alias' : 'Neuer Alias'}
-              </button>
-            </div>
-          )}
-        </div>
-        <div className="relative" ref={exportMenuRef}>
-          <button
-            onClick={() => setExportMenuOpen((v) => !v)}
-            title={isEn ? 'Export' : 'Exportieren'}
-            className={`flex items-center gap-1.5 rounded-lg transition-colors ${exportMenuOpen ? 'text-blue-600 bg-blue-500/15 dark:text-blue-400 dark:bg-blue-500/20' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10'} ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
-          >
-            <Download size={16} />
-            {showToolbarLabels && <span>Export</span>}
-          </button>
-          {exportMenuOpen && (
-            <div className="absolute left-0 top-full mt-1 z-50 flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg overflow-hidden min-w-[130px]">
-              <button onClick={() => { handleExport('csv'); setExportMenuOpen(false); }} className="px-3 py-1.5 text-xs text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">CSV</button>
-              <button onClick={() => { handleExport('json'); setExportMenuOpen(false); }} className="px-3 py-1.5 text-xs text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">JSON</button>
-              <button onClick={() => { handleCopyJson(); setExportMenuOpen(false); }} className="px-3 py-1.5 text-xs text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" title={isEn ? 'Copy filtered list as JSON to clipboard' : 'Gefilterte Liste als JSON in die Zwischenablage kopieren'}>{isEn ? 'JSON (Clipboard)' : 'JSON (Zwischenablage)'}</button>
-            </div>
-          )}
-        </div>
-        <button
-          onClick={() => setImportOpen(true)}
-          title={isEn ? 'Import datapoints (JSON)' : 'Datenpunkte importieren (JSON)'}
-          className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
-        >
-          <Upload size={16} />
-          {showToolbarLabels && <span>Import</span>}
-        </button>
-        <button
-          onClick={() => onOpenEnumManager?.()}
-          title={isEn ? 'Manage enums (rooms & functions)' : 'Enums verwalten (Räume & Funktionen)'}
-          className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
-        >
-          <Tag size={15} />
-          {showToolbarLabels && <span>{isEn ? 'Enums' : 'Enums'}</span>}
-        </button>
-        <button
-          onClick={() => setShowStats(true)}
-          title={isEn ? 'Statistics' : 'Statistik'}
-          className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
-        >
-          <BarChart2 size={15} />
-          {showToolbarLabels && <span>{isEn ? 'Statistics' : 'Statistik'}</span>}
-        </button>
-        <button
-          onClick={() => setConfirmScriptRefresh(true)}
-          disabled={scriptsFetching}
-          title={scriptLastUpdated
-            ? `${isEn ? 'Refresh script usage index' : 'Skript-Index aktualisieren'} · ${isEn ? 'Last update' : 'Zuletzt'}: ${new Date(scriptLastUpdated).toLocaleTimeString()}`
-            : isEn ? 'Refresh script usage index' : 'Skript-Index aktualisieren'}
-          className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
-        >
-          <RotateCcw size={15} className={scriptsFetching ? 'animate-spin' : ''} />
-          {showToolbarLabels && <span>{isEn ? 'Script Index' : 'Skript-Index'}</span>}
-        </button>
-        <button
-          onClick={() => { setOptimizePath(undefined); setOptimizeOpen(true); }}
-          title={isEn ? 'Analyze datapoints' : 'Datenpunkte analysieren'}
-          className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
-        >
-          <Wand2 size={15} />
-          {showToolbarLabels && <span>{isEn ? 'Optimize' : 'Optimieren'}</span>}
-        </button>
-        {[...checkedIds].some((id) => id.startsWith('alias.')) && (
-          <button
-            onClick={() => {
-              const firstAliasId = [...checkedIds].find((id) => id.startsWith('alias.'));
-              const rawTarget = firstAliasId ? objects[firstAliasId]?.common?.alias?.id : undefined;
-              const initialStr = typeof rawTarget === 'string' ? rawTarget : (rawTarget?.read ?? rawTarget?.write ?? '');
-              onOpenAliasReplace?.(initialStr);
-            }}
-            title={isEn ? 'Find & Replace in alias targets' : 'Alias-Ziele suchen & ersetzen'}
-            className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
-          >
-            <Link2 size={15} />
-            {showToolbarLabels && <span>{isEn ? 'Alias Replace' : 'Alias Ersetzen'}</span>}
-          </button>
-        )}
-        {(() => {
-          const idFilter = colFilters.id?.trim() ?? '';
-          const autoAliasTarget = (() => {
-            const t = checkedSepPrefix
-              ?? (treeFilter ? treeFilter.replace(/\.$/, '') : null)
-              ?? (!isGlobPattern(idFilter) && idFilter.includes('.') ? idFilter : null);
-            return t && t.startsWith('alias.') ? null : t;
-          })();
-          return (
-            <button
-              onClick={() => autoAliasTarget && setAutoAliasDeviceId(autoAliasTarget)}
-              disabled={!autoAliasTarget}
-              title={autoAliasTarget
-                ? (isEn ? `Auto-create aliases for: ${autoAliasTarget}` : `Aliases auto-erstellen für: ${autoAliasTarget}`)
-                : (isEn ? 'Set a tree filter or ID filter to a device path first' : 'Zuerst einen Baum- oder ID-Filter auf einen Gerätepfad setzen')}
-              className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
-            >
-              <Link2 size={15} />
-              {showToolbarLabels && <span>{isEn ? 'Auto Alias' : 'Auto Alias'}</span>}
-            </button>
-          );
-        })()}
-        {(() => {
-          const checkedArr = [...checkedIds];
-          const historyChecked = checkedArr.filter(id => allHistoryIds.has(id));
-          const enabled = checkedArr.length >= 1 && checkedArr.length <= 2 && checkedArr.every(id => allHistoryIds.has(id));
-          const hasAnyHistory = historyChecked.length > 0;
-          return (
-            <button
-              disabled={!enabled}
-              onClick={() => {
-                if (!enabled) return;
-                const [primary, secondary] = checkedArr;
-                const extra = secondary ? [{
-                  id: secondary,
-                  label: (() => { const n = objects[secondary]?.common?.name; return (typeof n === 'string' ? n : (n?.de || n?.en)) || secondary.split('.').slice(-2).join('.'); })(),
-                  unit: objects[secondary]?.common?.unit,
-                }] : [];
-                setHistoryInitialExtra(extra);
-                setHistoryModalId(primary);
-              }}
-              title={
-                enabled
-                  ? (isEn ? 'History' : 'Verlauf')
-                  : hasAnyHistory
-                    ? (isEn ? 'Select 1–2 datapoints with history' : '1–2 Datenpunkte mit History auswählen')
-                    : (isEn ? 'No datapoint with history selected' : 'Kein Datenpunkt mit History ausgewählt')
-              }
-              className={`flex items-center gap-1.5 rounded-lg transition-colors disabled:cursor-not-allowed ${
-                enabled
-                  ? `text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10`
-                  : `text-gray-300 dark:text-gray-600`
-              } ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
-            >
-              <History size={15} />
-              {showToolbarLabels && <span>History</span>}
-            </button>
-          );
-        })()}
-        {checkedIds.size > 0 && (
-          <button
-            onClick={() => setMultiDeleteOpen(true)}
-            title={isEn ? 'Delete selected datapoints' : 'Ausgewählte Datenpunkte löschen'}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-red-600 bg-red-500/10 hover:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/20 transition-colors"
-          >
-            <Trash2 size={13} />
-            {isEn ? `Delete ${checkedIds.size}` : `${checkedIds.size} löschen`}
-          </button>
-        )}
-      </div>
-      <div className="flex flex-col items-center gap-0.5">
-        {treeFilter && onClearTreeFilter && (
-          <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-blue-500/15 border border-blue-400/30 text-blue-600 dark:text-blue-400 text-sm font-mono max-w-[520px]">
-            <span className="truncate">{treeFilter.replace(/\.$/, '')}</span>
-            <button onClick={onClearTreeFilter} title="Filter entfernen" className="shrink-0 hover:text-blue-800 dark:hover:text-blue-200">
-              <X size={10} />
-            </button>
-          </span>
-        )}
-        {fulltextEnabled && pattern && !isGlobPattern(pattern) && pattern !== '*' && (
-          <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-violet-500/15 border border-violet-400/30 text-violet-600 dark:text-violet-400 text-sm font-mono max-w-[520px]">
-            <span className="truncate">Volltext: {pattern}</span>
-          </span>
-        )}
-      </div>
-      <div className="flex items-center gap-1">
-        <button
-          onClick={() => persistSettings({ ...appSettings, hideAliasSubRows: !hideAliasSubRows })}
-          title={hideAliasSubRows
-            ? (isEn ? 'Show alias source/target lines' : 'Alias-Quell-/Zielzeilen anzeigen')
-            : (isEn ? 'Hide alias source/target lines' : 'Alias-Quell-/Zielzeilen ausblenden')}
-          className={`p-2 rounded-lg transition-colors ${
-            hideAliasSubRows
-              ? 'text-blue-600 bg-blue-500/15 hover:bg-blue-500/25 dark:text-blue-400 dark:hover:bg-blue-500/20'
-              : 'text-gray-400 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-500 dark:hover:text-blue-400 dark:hover:bg-blue-500/10'
-          }`}
-        >
-          <EyeOff size={17} />
-        </button>
-        <button
-          onClick={() => onToggleGroupByPath?.()}
-          title={groupByPath ? (isEn ? 'Switch to flat view' : 'Flache Ansicht') : (isEn ? 'Switch to grouped view' : 'Gruppierte Ansicht')}
-          className={`p-2 rounded-lg transition-colors ${
-            !groupByPath
-              ? 'text-blue-600 bg-blue-500/15 hover:bg-blue-500/25 dark:text-blue-400 dark:hover:bg-blue-500/20'
-              : 'text-gray-400 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-500 dark:hover:text-blue-400 dark:hover:bg-blue-500/10'
-          }`}
-        >
-          <span className="group/gbp">
-            {groupByPath
-              ? <><FolderOpen size={17} className="group-hover/gbp:hidden" /><List size={17} className="hidden group-hover/gbp:block" /></>
-              : <><List size={17} className="group-hover/gbp:hidden" /><FolderOpen size={17} className="hidden group-hover/gbp:block" /></>
-            }
-          </span>
-        </button>
-        {groupByPath && (
-          <button
-            onClick={() => persistSettings({ ...appSettings, shortenGroupPaths: !shortenGroupPaths })}
-            title={shortenGroupPaths ? (isEn ? 'Show full paths' : 'Vollständige Pfade anzeigen') : (isEn ? 'Shorten paths' : 'Pfade kürzen')}
-            className={`p-2 rounded-lg transition-colors ${
-              shortenGroupPaths
-                ? 'text-blue-600 bg-blue-500/15 hover:bg-blue-500/25 dark:text-blue-400 dark:hover:bg-blue-500/20'
-                : 'text-gray-400 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-500 dark:hover:text-blue-400 dark:hover:bg-blue-500/10'
-            }`}
-          >
-            <Indent size={17} />
-          </button>
-        )}
-        <button
-          onClick={fitToContainer}
-          title={isEn ? 'Stretch columns to 100%' : 'Spalten auf 100% strecken'}
-          className="p-2 rounded-lg transition-colors text-gray-400 hover:text-gray-600 hover:bg-gray-200 dark:text-gray-500 dark:hover:text-gray-300 dark:hover:bg-gray-700"
-        >
-          <Maximize2 size={17} />
-        </button>
-        <button
-          onClick={() => setConfirmResetLs(true)}
-          title={isEn ? 'Reset settings (local storage)' : 'Einstellungen zurücksetzen'}
-          className="p-2 rounded-lg transition-colors text-gray-400 hover:text-red-500 hover:bg-red-500/10 dark:text-gray-500 dark:hover:text-red-400 dark:hover:bg-red-500/10"
-        >
-          <RotateCcw size={17} />
-        </button>
-        {!groupByPath && pageSize !== undefined && onPageSizeChange && (
-          <select
-            value={pageSize}
-            onChange={(e) => onPageSizeChange(parseInt(e.target.value, 10))}
-            title={isEn ? 'Rows per page' : 'Zeilen pro Seite'}
-            className="h-8 px-1.5 text-xs rounded-lg border border-gray-200 bg-white text-gray-600 hover:border-gray-300 focus:outline-none focus:border-blue-400 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:border-gray-600 dark:focus:border-blue-500 cursor-pointer"
-          >
-            {[200, 500, 1000, 3000].map((n) => <option key={n} value={n}>{n}</option>)}
-          </select>
-        )}
-        <ColPicker visible={visibleCols} onChange={handleColChange} language={language} />
-      </div>
-    </div>
-  );
-
   const existingIds = useMemo(() => new Set(Object.keys(objects)), [objects]);
 
   const noRoomLabel = isEn ? '— No room —' : '— Kein Raum —';
@@ -1083,7 +780,54 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   return (
     <>
     <div className="flex flex-col h-full">
-      {toolbar}
+      <StateListToolbar
+        isEn={isEn}
+        language={language as 'en' | 'de'}
+        showToolbarLabels={showToolbarLabels}
+        groupByPath={groupByPath}
+        shortenGroupPaths={shortenGroupPaths}
+        hideAliasSubRows={hideAliasSubRows}
+        treeFilter={treeFilter}
+        pattern={pattern}
+        fulltextEnabled={fulltextEnabled}
+        colFilters={colFilters}
+        checkedIds={checkedIds}
+        checkedSepPrefix={checkedSepPrefix}
+        pageSize={pageSize ?? 50}
+        visibleCols={visibleCols}
+        scriptsFetching={scriptsFetching}
+        scriptLastUpdated={scriptLastUpdated}
+        allHistoryIds={allHistoryIds}
+        objects={objects}
+        newMenuOpen={newMenuOpen}
+        exportMenuOpen={exportMenuOpen}
+        newMenuRef={newMenuRef}
+        exportMenuRef={exportMenuRef}
+        onNewMenuToggle={() => setNewMenuOpen((v) => !v)}
+        onNewDatapoint={() => { setNewDatapointOpen(true); setNewMenuOpen(false); }}
+        onNewAlias={() => { setNewAliasOpen(true); setNewMenuOpen(false); }}
+        onExportMenuToggle={() => setExportMenuOpen((v) => !v)}
+        onExportCsv={() => { handleExport('csv'); setExportMenuOpen(false); }}
+        onExportJson={() => { handleExport('json'); setExportMenuOpen(false); }}
+        onExportJsonClipboard={() => { handleCopyJson(); setExportMenuOpen(false); }}
+        onImport={() => setImportOpen(true)}
+        onEnums={onOpenEnumManager}
+        onStats={() => setShowStats(true)}
+        onScriptRefresh={() => setConfirmScriptRefresh(true)}
+        onOptimize={() => { setOptimizePath(undefined); setOptimizeOpen(true); }}
+        onAliasReplace={(str) => onOpenAliasReplace?.(str)}
+        onAutoAlias={(target) => setAutoAliasDeviceId(target)}
+        onHistoryOpen={(id, extra) => { setHistoryInitialExtra(extra); setHistoryModalId(id); }}
+        onDeleteSelected={() => setMultiDeleteOpen(true)}
+        onClearTreeFilter={onClearTreeFilter}
+        onToggleHideAliasSubRows={() => persistSettings({ ...appSettings, hideAliasSubRows: !hideAliasSubRows })}
+        onToggleGroupByPath={() => onToggleGroupByPath?.()}
+        onToggleShortenGroupPaths={() => persistSettings({ ...appSettings, shortenGroupPaths: !shortenGroupPaths })}
+        onFitToContainer={fitToContainer}
+        onResetLs={() => setConfirmResetLs(true)}
+        onPageSizeChange={onPageSizeChange}
+        onColChange={handleColChange}
+      />
       <div className={`flex items-center gap-2 px-3 py-1.5 shrink-0 border-b border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20 flex-wrap transition-all ${checkedIds.size > 0 ? 'visible' : 'invisible h-0 py-0 overflow-hidden border-0'}`}>
           <span className="text-xs text-blue-600 dark:text-blue-400 font-medium shrink-0 whitespace-nowrap">
             {checkedIds.size} {isEn ? 'selected:' : 'ausgewählt:'}
@@ -1170,295 +914,6 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
             {isEn ? 'Apply' : 'Anwenden'}
           </button>
       </div>
-      {newDatapointOpen && (
-        <NewDatapointModal
-          onClose={() => { setNewDatapointOpen(false); setNewDatapointPrefix(null); }}
-          existingIds={existingIds}
-          initialId={newDatapointPrefix !== null ? newDatapointPrefix + '.' : patternToInitialId(pattern)}
-          language={language}
-          allObjectIds={allObjectIds}
-        />
-      )}
-      {newAliasOpen && (() => {
-        const singleChecked = checkedIds.size === 1 ? [...checkedIds][0] : undefined;
-        return (
-          <CreateAliasModal
-            sourceId={singleChecked ?? ''}
-            sourceObj={singleChecked ? objects[singleChecked] : undefined}
-            existingIds={allObjectIds}
-            language={language}
-            onClose={() => setNewAliasOpen(false)}
-            onCreated={(newId) => { setNewAliasOpen(false); onNavigateTo?.([newId]); }}
-          />
-        );
-      })()}
-      {importOpen && (
-        <ImportDatapointsModal
-          onClose={() => setImportOpen(false)}
-          language={language}
-          existingIds={allObjectIds}
-        />
-      )}
-      {optimizeOpen && (
-        <OptimizeModal
-          onClose={() => { setOptimizeOpen(false); setOptimizePath(undefined); }}
-          language={language}
-          allObjects={allObjects}
-          roomMap={Object.fromEntries(roomEnums.map(r => [r.id, r.name]))}
-          functionMap={Object.fromEntries(fnEnums.map(f => [f.id, f.name]))}
-          roomEnums={roomEnums}
-          fnEnums={fnEnums}
-          initialPath={optimizePath}
-          onOpenEdit={(id) => { setOptimizeOpen(false); setOptimizePath(undefined); onSelect(id); }}
-        />
-      )}
-      {historyModalId && (
-        <HistoryModal
-          stateId={historyModalId}
-          unit={objects[historyModalId]?.common?.unit}
-          objects={objects}
-          language={language}
-          initialExtraSeries={historyInitialExtra.length > 0 ? historyInitialExtra : undefined}
-          onClose={() => { setHistoryModalId(null); setHistoryInitialExtra([]); }}
-        />
-      )}
-      {valueEditId && (
-        <ValueEditModal
-          id={valueEditId}
-          state={states[valueEditId]}
-          obj={objects[valueEditId]}
-          language={language}
-          onClose={() => setValueEditId(null)}
-        />
-      )}
-      {deletingId && (
-        <ConfirmDialog
-          title={isEn ? 'Delete 1 datapoint' : '1 Datenpunkt löschen'}
-          message={deletingId}
-          onConfirm={() => { deleteObject.mutate(deletingId); setDeletingId(null); }}
-          onCancel={() => setDeletingId(null)}
-          language={language}
-        />
-      )}
-      {deletingGroupPrefix !== null && (() => {
-        const groupIds = filteredIds.filter((id) => {
-          const p = id.split('.');
-          return (p.length > 1 ? p.slice(0, -1).join('.') : '') === deletingGroupPrefix;
-        });
-        return (
-          <ConfirmDialog
-            title={isEn ? `Delete group (${groupIds.length})` : `Gruppe löschen (${groupIds.length})`}
-            message={deletingGroupPrefix || 'root'}
-            onConfirm={() => { handleDeleteAll(groupIds); setDeletingGroupPrefix(null); }}
-            onCancel={() => setDeletingGroupPrefix(null)}
-            language={language}
-          />
-        );
-      })()}
-      {confirmResetLs && (
-        <ConfirmDialog
-          title={isEn ? 'Reset local settings' : 'Lokale Einstellungen zurücksetzen'}
-          description={isEn ? 'The following local storage entries will be deleted:' : 'Folgende Local-Storage-Einträge werden gelöscht:'}
-          message={`${LS_WIDTHS_KEY}`}
-          confirmLabel={isEn ? 'Reset' : 'Zurücksetzen'}
-          onConfirm={() => {
-            localStorage.removeItem(LS_WIDTHS_KEY);
-            setVisibleCols(DEFAULT_COLS);
-            setColWidths({ ...effectiveDefaults });
-            setDraftAndPropagate({});
-            setConfirmResetLs(false);
-          }}
-          onCancel={() => setConfirmResetLs(false)}
-          language={language}
-        />
-      )}
-      {multiDeleteOpen && (
-        <MultiDeleteDialog
-          ids={[...checkedIds]}
-          onDeleteOne={handleDeleteOne}
-          onDeleteAll={handleDeleteAll}
-          onClose={() => setMultiDeleteOpen(false)}
-          language={language}
-        />
-      )}
-      {aliasSourceId && (
-        <CreateAliasModal
-          sourceId={aliasSourceId}
-          sourceObj={objects[aliasSourceId]}
-          existingIds={allObjectIds}
-          language={language}
-          onClose={() => setAliasSourceId(null)}
-          onCreated={(newId) => onNavigateTo?.([newId])}
-        />
-      )}
-      {copySourceId && (
-        <CopyDatapointModal
-          sourceId={copySourceId}
-          sourceObj={objects[copySourceId]}
-          existingIds={existingIds}
-          language={language}
-          onClose={() => setCopySourceId(null)}
-        />
-      )}
-      {renameId && objects[renameId] && (
-        <RenameDatapointModal
-          sourceId={renameId}
-          sourceObj={objects[renameId]}
-          sourceState={states[renameId]}
-          existingIds={existingIds}
-          language={language}
-          onClose={() => setRenameId(null)}
-          onRenamed={(newId) => { setRenameId(null); onNavigateTo?.([newId]); }}
-        />
-      )}
-      {moveId && objects[moveId] && (
-        <MoveDatapointModal
-          sourceId={moveId}
-          sourceObj={objects[moveId]}
-          sourceState={states[moveId]}
-          existingIds={existingIds}
-          language={language}
-          onClose={() => setMoveId(null)}
-          onMoved={(newId) => { setMoveId(null); onNavigateTo?.([newId]); }}
-        />
-      )}
-      {editObjId && objects[editObjId] && (
-        <ObjectEditModal
-          id={editObjId}
-          obj={objects[editObjId]}
-          language={language}
-          initialTab={editObjInitialTab}
-          onClose={() => { setEditObjId(null); setEditObjInitialTab('details'); }}
-          onOpenHistory={hasHistory(objects[editObjId]) ? () => setHistoryModalId(editObjId) : undefined}
-        />
-      )}
-
-      {ctxMenu && (() => {
-        const { x, y, id: ctxId } = ctxMenu;
-        const ctxState = states[ctxId];
-        const ctxObj = objects[ctxId];
-        const ctxName = getObjectName(ctxObj);
-        const items: ContextMenuEntry[] = [];
-        items.push({ icon: <Copy size={13} />, label: isEn ? 'Copy ID' : 'ID kopieren', onClick: () => copyText(ctxId) });
-        if (ctxName) items.push({ icon: <Copy size={13} />, label: isEn ? 'Copy name' : 'Name kopieren', onClick: () => copyText(ctxName) });
-        if (ctxState) items.push({ icon: <Copy size={13} />, label: isEn ? 'Copy value' : 'Wert kopieren', onClick: () => copyText(formatValue(ctxState.val)) });
-        items.push({ separator: true } as const);
-        if (ctxObj && hasHistory(ctxObj)) {
-          const secondaryId = checkedIds.size === 2 && checkedIds.has(ctxId)
-            ? [...checkedIds].find(id => id !== ctxId && allHistoryIds.has(id))
-            : undefined;
-          items.push({ icon: <History size={13} />, label: isEn ? 'Show history' : 'History anzeigen', onClick: () => {
-            if (secondaryId) {
-              const n = objects[secondaryId]?.common?.name;
-              setHistoryInitialExtra([{
-                id: secondaryId,
-                label: (typeof n === 'string' ? n : (n?.de || n?.en)) || secondaryId.split('.').slice(-2).join('.'),
-                unit: objects[secondaryId]?.common?.unit,
-              }]);
-            } else {
-              setHistoryInitialExtra([]);
-            }
-            setHistoryModalId(ctxId);
-          }});
-          items.push({ separator: true } as const);
-        }
-        items.push({ icon: <Search size={13} />, label: isEn ? 'Set as filter' : 'Als Filter setzen', onClick: () => setDraftAndPropagate({ ...colFiltersDraft, id: ctxId }) });
-        items.push({ icon: <BarChart2 size={13} />, label: isEn ? 'Set as filter & Optimize…' : 'Als Filter setzen & Optimieren…', onClick: () => { setOptimizeOpen(true); setOptimizePath(ctxId); setCtxMenu(null); } });
-        items.push({ icon: <Home size={13} />, label: isEn ? 'Edit room' : 'Raum bearbeiten', onClick: () => setRoomEditId(ctxId) });
-        items.push({ icon: <Zap size={13} />, label: isEn ? 'Edit function' : 'Funktion bearbeiten', onClick: () => setFnEditId(ctxId) });
-        items.push({ icon: <FileEdit size={13} />, label: isEn ? 'Edit object' : 'Objekt bearbeiten', onClick: () => setEditObjId(ctxId) });
-        if (onOpenInOtherPanel) {
-          items.push({ icon: <Columns2 size={13} />, label: isEn ? 'Open in other panel' : 'Im anderen Panel öffnen', onClick: () => { onOpenInOtherPanel(ctxId); setCtxMenu(null); } });
-        }
-        items.push({ separator: true } as const);
-        items.push({ icon: <Copy size={13} />, label: isEn ? 'Copy datapoint' : 'Datenpunkt kopieren', onClick: () => setCopySourceId(ctxId) });
-        items.push({ icon: <PenLine size={13} />, label: isEn ? 'Rename datapoint' : 'Datenpunkt umbenennen', onClick: () => setRenameId(ctxId) });
-        items.push({ icon: <FolderInput size={13} />, label: isEn ? 'Move datapoint' : 'Datenpunkt verschieben', onClick: () => setMoveId(ctxId) });
-        if (!ctxId.startsWith('alias.0.')) {
-          items.push({ icon: <Link2 size={13} />, label: isEn ? 'Create alias' : 'Alias anlegen', onClick: () => setAliasSourceId(ctxId) });
-        }
-        items.push({ separator: true } as const);
-        const exportIds = checkedIds.has(ctxId) && checkedIds.size > 1 ? [...checkedIds] : [ctxId];
-        const exportLabel = exportIds.length > 1
-          ? (isEn ? `Export ${exportIds.length} datapoints (JSON)` : `${exportIds.length} Datenpunkte exportieren (JSON)`)
-          : (isEn ? 'Export datapoint (JSON)' : 'Datenpunkt exportieren (JSON)');
-        items.push({ icon: <Download size={13} />, label: exportLabel, onClick: () => exportDatapointsToJson(exportIds) });
-        const copyJsonIds = checkedIds.has(ctxId) && checkedIds.size > 1 ? [...checkedIds] : [ctxId];
-        const copyJsonLabel = copyJsonIds.length > 1
-          ? (isEn ? `Copy ${copyJsonIds.length} datapoints as JSON` : `${copyJsonIds.length} Datenpunkte als JSON kopieren`)
-          : (isEn ? 'Copy datapoint as JSON' : 'Datenpunkt als JSON kopieren');
-        items.push({ icon: <Copy size={13} />, label: copyJsonLabel, onClick: () => {
-          const result: Record<string, object> = {};
-          for (const id of copyJsonIds) {
-            const obj = objects[id] ?? { _id: id };
-            const { enums: _enums, ...rest } = obj as unknown as Record<string, unknown>;
-            result[id] = rest;
-          }
-          copyText(JSON.stringify(result, null, 2));
-        }});
-        items.push({ separator: true } as const);
-        items.push({ icon: <Trash2 size={13} />, label: isEn ? 'Delete datapoint' : 'Datenpunkt löschen', onClick: () => setDeletingId(ctxId), danger: true });
-        return <ContextMenu x={x} y={y} items={items} onClose={() => setCtxMenu(null)} />;
-      })()}
-
-      {sepCtxMenu && (() => {
-        const { x, y, prefix } = sepCtxMenu;
-        const groupIds = filteredIds.filter((id) => {
-          const p = id.split('.');
-          return (p.length > 1 ? p.slice(0, -1).join('.') : '') === prefix;
-        });
-        const isCollapsed = collapsedPrefixes === null || collapsedPrefixes.has(prefix);
-        const allChecked = groupIds.length > 0 && groupIds.every((id) => checkedIds.has(id));
-        const sepItems: ContextMenuEntry[] = [];
-        if (prefix) {
-          sepItems.push({ icon: <Copy size={13} />, label: isEn ? 'Copy path' : 'Pfad kopieren', onClick: () => copyToClipboard(prefix).then(() => showToast(prefix, 'success')).catch(() => showToast(isEn ? 'Copy failed' : 'Kopieren fehlgeschlagen')) });
-          sepItems.push({ icon: <Search size={13} />, label: isEn ? 'Set as filter' : 'Als Filter setzen', onClick: () => setDraftAndPropagate({ ...colFiltersDraft, id: prefix }) });
-          sepItems.push({ separator: true } as const);
-        }
-        sepItems.push({
-          icon: isCollapsed ? <ChevronDown size={13} /> : <ChevronRight size={13} />,
-          label: isCollapsed ? (isEn ? 'Expand group' : 'Gruppe aufklappen') : (isEn ? 'Collapse group' : 'Gruppe einklappen'),
-          onClick: () => setCollapsedPrefixes((prev) => {
-            const base = prev === null ? new Set(allSepPrefixes) : new Set(prev);
-            isCollapsed ? base.delete(prefix) : base.add(prefix);
-            return base;
-          }),
-        });
-        sepItems.push({
-          icon: allChecked ? <X size={13} /> : <Check size={13} />,
-          label: allChecked
-            ? (isEn ? `Deselect all (${groupIds.length})` : `Alle abwählen (${groupIds.length})`)
-            : (isEn ? `Select all (${groupIds.length})` : `Alle auswählen (${groupIds.length})`),
-          onClick: () => setCheckedIds((prev) => {
-            const next = new Set(prev);
-            allChecked ? groupIds.forEach((id) => next.delete(id)) : groupIds.forEach((id) => next.add(id));
-            return next;
-          }),
-        });
-        if (prefix) {
-          sepItems.push({ separator: true } as const);
-          sepItems.push({ icon: <Link2 size={13} />, label: isEn ? 'Auto-create aliases…' : 'Aliases auto-erstellen…', onClick: () => setAutoAliasDeviceId(prefix) });
-        }
-        sepItems.push({ separator: true } as const);
-        sepItems.push({
-          icon: <BarChart2 size={13} />,
-          label: isEn ? 'Optimize…' : 'Optimieren…',
-          onClick: () => {
-            setOptimizePath(prefix + '.*');
-            setOptimizeOpen(true);
-            setSepCtxMenu(null);
-          },
-        });
-        sepItems.push({ separator: true } as const);
-        sepItems.push({
-          icon: <Trash2 size={13} />,
-          label: isEn ? `Delete all datapoints (${groupIds.length})` : `Alle Datenpunkte löschen (${groupIds.length})`,
-          onClick: () => setDeletingGroupPrefix(prefix),
-          danger: true,
-        });
-        return <ContextMenu x={x} y={y} items={sepItems} onClose={() => setSepCtxMenu(null)} />;
-      })()}
-
       <div ref={containerRef} onKeyDown={handleContainerKeyDown} tabIndex={0} className="overflow-x-auto overflow-y-auto flex-1 outline-none bg-white dark:bg-gray-900" data-table-fontsize={tableFontSize}>
         <table className="text-xs text-left table-fixed" style={{ width: totalWidth }}>
           <thead ref={theadRef} className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-white dark:bg-gray-800 sticky top-0 z-10">
@@ -1928,42 +1383,127 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
         </table>
       </div>
     </div>
-    {showStats && (
-      <TreeStatsModal
-        onClose={() => setShowStats(false)}
-        allObjects={allObjects}
-        historyIds={allHistoryIds}
-        smartIds={allSmartIds}
-        language={language}
-        onSelectNamespace={(ns) => handleTreeScope(`${ns}.`)}
-        scriptUsedIds={scriptUsedIds}
-        scriptsFetching={scriptsFetching}
-        includeScripts={appSettings.includeScripts}
-        onIncludeScriptsChange={(v) => persistSettings({ ...appSettings, includeScripts: v })}
-        onScriptUsedIdsChange={(ids) => setScriptUsedIds(ids)}
-        onRequestRefreshScripts={() => setConfirmScriptRefresh(true)}
-      />
-    )}
-    {batchProgress && createPortal(
-      <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/40 backdrop-blur-sm">
-        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 px-8 py-6 flex flex-col items-center gap-4 min-w-[240px]">
-          <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-            {isEn ? 'Applying changes…' : 'Änderungen werden angewendet…'}
-          </p>
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
-            <div
-              className="h-2 rounded-full bg-blue-500 transition-all duration-150"
-              style={{ width: `${Math.round((batchProgress.done / batchProgress.total) * 100)}%` }}
-            />
-          </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-            {batchProgress.done} / {batchProgress.total}
-          </p>
-        </div>
-      </div>,
-      document.body
-    )}
-    </>
+    <StateListModals
+      isEn={isEn}
+      language={language as 'en' | 'de'}
+      objects={objects}
+      states={states}
+      allObjects={allObjects}
+      existingIds={existingIds}
+      allObjectIds={allObjectIds}
+      filteredIds={filteredIds}
+      checkedIds={checkedIds}
+      pattern={pattern}
+      roomEnums={roomEnums}
+      fnEnums={fnEnums}
+      collapsedPrefixes={collapsedPrefixes}
+      allHistoryIds={allHistoryIds}
+      allSmartIds={allSmartIds}
+      scriptUsedIds={scriptUsedIds}
+      scriptsFetching={scriptsFetching}
+      includeScripts={appSettings.includeScripts}
+      batchProgress={batchProgress}
+      onOpenInOtherPanel={onOpenInOtherPanel}
+      newDatapointOpen={newDatapointOpen}
+      newDatapointPrefix={newDatapointPrefix}
+      newAliasOpen={newAliasOpen}
+      importOpen={importOpen}
+      optimizeOpen={optimizeOpen}
+      optimizePath={optimizePath}
+      historyModalId={historyModalId}
+      historyInitialExtra={historyInitialExtra}
+      deletingId={deletingId}
+      deletingGroupPrefix={deletingGroupPrefix}
+      valueEditId={valueEditId}
+      confirmResetLs={confirmResetLs}
+      multiDeleteOpen={multiDeleteOpen}
+      aliasSourceId={aliasSourceId}
+      copySourceId={copySourceId}
+      renameId={renameId}
+      moveId={moveId}
+      editObjId={editObjId}
+      editObjInitialTab={editObjInitialTab}
+      ctxMenu={ctxMenu}
+      sepCtxMenu={sepCtxMenu}
+      showStats={showStats}
+      onCloseNewDatapoint={() => { setNewDatapointOpen(false); setNewDatapointPrefix(null); }}
+      onNewAliasCreated={(newId) => onNavigateTo?.([newId])}
+      onCloseNewAlias={() => setNewAliasOpen(false)}
+      onCloseImport={() => setImportOpen(false)}
+      onCloseOptimize={() => { setOptimizeOpen(false); setOptimizePath(undefined); }}
+      onOpenEditFromOptimize={(id) => { setOptimizeOpen(false); setOptimizePath(undefined); onSelect(id); }}
+      onCloseHistory={() => { setHistoryModalId(null); setHistoryInitialExtra([]); }}
+      onCloseValueEdit={() => setValueEditId(null)}
+      onConfirmDeleteId={() => { deleteObject.mutate(deletingId!); setDeletingId(null); }}
+      onCancelDeleteId={() => setDeletingId(null)}
+      onConfirmResetLs={() => {
+        localStorage.removeItem(LS_WIDTHS_KEY);
+        setVisibleCols(DEFAULT_COLS);
+        setColWidths({ ...effectiveDefaults });
+        setDraftAndPropagate({});
+        setConfirmResetLs(false);
+      }}
+      onCancelResetLs={() => setConfirmResetLs(false)}
+      onCloseMultiDelete={() => setMultiDeleteOpen(false)}
+      onDeleteOne={handleDeleteOne}
+      onDeleteAll={handleDeleteAll}
+      onCloseAliasSource={() => setAliasSourceId(null)}
+      onAliasSourceCreated={(newId) => onNavigateTo?.([newId])}
+      onCloseCopySource={() => setCopySourceId(null)}
+      onCloseRename={() => setRenameId(null)}
+      onRenamed={(newId) => onNavigateTo?.([newId])}
+      onCloseMove={() => setMoveId(null)}
+      onMoved={(newId) => onNavigateTo?.([newId])}
+      onCloseEditObj={() => { setEditObjId(null); setEditObjInitialTab('details'); }}
+      onOpenHistoryFromEdit={() => setHistoryModalId(editObjId)}
+      onCloseStats={() => setShowStats(false)}
+      onCloseCtxMenu={() => setCtxMenu(null)}
+      onCloseSepCtxMenu={() => setSepCtxMenu(null)}
+      onCtxSetFilter={(id) => setDraftAndPropagate({ ...colFiltersDraft, id })}
+      onCtxOptimize={(id) => { setOptimizeOpen(true); setOptimizePath(id); setCtxMenu(null); }}
+      onCtxEditRoom={(id) => setRoomEditId(id)}
+      onCtxEditFunction={(id) => setFnEditId(id)}
+      onCtxEditObject={(id) => setEditObjId(id)}
+      onCtxCopySource={(id) => setCopySourceId(id)}
+      onCtxRename={(id) => setRenameId(id)}
+      onCtxMove={(id) => setMoveId(id)}
+      onCtxCreateAlias={(id) => setAliasSourceId(id)}
+      onCtxExportJson={(ids) => exportDatapointsToJson(ids)}
+      onCtxDelete={(id) => setDeletingId(id)}
+      onCtxShowHistory={(id, secondaryId) => {
+        if (secondaryId) {
+          const n = objects[secondaryId]?.common?.name;
+          setHistoryInitialExtra([{
+            id: secondaryId,
+            label: (typeof n === 'string' ? n : (n?.de || n?.en)) || secondaryId.split('.').slice(-2).join('.'),
+            unit: objects[secondaryId]?.common?.unit,
+          }]);
+        } else {
+          setHistoryInitialExtra([]);
+        }
+        setHistoryModalId(id);
+      }}
+      onSepSetFilter={(prefix) => setDraftAndPropagate({ ...colFiltersDraft, id: prefix })}
+      onSepToggleCollapse={(prefix, isCollapsed) => setCollapsedPrefixes((prev) => {
+        const base = prev === null ? new Set(allSepPrefixes) : new Set(prev);
+        isCollapsed ? base.delete(prefix) : base.add(prefix);
+        return base;
+      })}
+      onSepSelectAll={(_prefix, groupIds, allChecked) => setCheckedIds((prev) => {
+        const next = new Set(prev);
+        allChecked ? groupIds.forEach((id) => next.delete(id)) : groupIds.forEach((id) => next.add(id));
+        return next;
+      })}
+      onSepAutoAlias={(prefix) => setAutoAliasDeviceId(prefix)}
+      onSepOptimize={(prefix) => { setOptimizePath(prefix + '.*'); setOptimizeOpen(true); setSepCtxMenu(null); }}
+      onSepDelete={(prefix) => setDeletingGroupPrefix(prefix)}
+      onStatsSelectNamespace={(ns) => handleTreeScope(`${ns}.`)}
+      onStatsIncludeScriptsChange={(v) => persistSettings({ ...appSettings, includeScripts: v })}
+      onStatsScriptUsedIdsChange={(ids) => setScriptUsedIds(ids)}
+      onStatsRequestRefreshScripts={() => setConfirmScriptRefresh(true)}
+      showToast={showToast}
+    />
+</>
   );
 }
 
