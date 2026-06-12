@@ -52,8 +52,9 @@ export default function Layout({ sidebar, children, apiConnected = true, realtim
     const stored = parseInt(localStorage.getItem(LS_SIDEBAR_WIDTH) ?? '', 10);
     return Number.isFinite(stored) ? Math.max(180, Math.min(600, stored)) : 360;
   });
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
   const [collapsed, setCollapsed] = useState(() =>
-    localStorage.getItem(LS_SIDEBAR_COLLAPSED) === 'true'
+    window.innerWidth < 768 ? true : localStorage.getItem(LS_SIDEBAR_COLLAPSED) === 'true'
   );
   const dragging = useRef(false);
   const startX = useRef(0);
@@ -67,6 +68,19 @@ export default function Layout({ sidebar, children, apiConnected = true, realtim
     document.addEventListener('fullscreenchange', handler);
     return () => document.removeEventListener('fullscreenchange', handler);
   }, []);
+
+  useEffect(() => {
+    const handler = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) {
+        setCollapsed(true);
+        if (onSidebarToggle) setTimeout(onSidebarToggle, 0);
+      }
+    };
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, [onSidebarToggle]);
 
   function toggleFullscreen() {
     if (!document.fullscreenElement) {
@@ -161,13 +175,13 @@ export default function Layout({ sidebar, children, apiConnected = true, realtim
             {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
           </button>
           <img src="/favicon.svg" alt="" className="w-6 h-6 shrink-0" />
-          <h1 className="text-lg font-semibold text-gray-900 dark:text-white">ioBroker Object Explorer</h1>
-          <div className="w-px h-4 bg-gray-300 dark:bg-gray-600" />
+          <h1 className="hidden sm:block text-lg font-semibold text-gray-900 dark:text-white">ioBroker Object Explorer</h1>
+          <div className="hidden sm:block w-px h-4 bg-gray-300 dark:bg-gray-600" />
           <button
             onClick={goBack}
             disabled={!canGoBack}
             title={language === 'en' ? 'Back (filter history)' : 'Zurück (Filter-Verlauf)'}
-            className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            className="hidden sm:block p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             <ArrowLeft size={15} />
           </button>
@@ -175,7 +189,7 @@ export default function Layout({ sidebar, children, apiConnected = true, realtim
             onClick={goForward}
             disabled={!canGoForward}
             title={language === 'en' ? 'Forward (filter history)' : 'Vorwärts (Filter-Verlauf)'}
-            className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            className="hidden sm:block p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             <ArrowRight size={15} />
           </button>
@@ -201,14 +215,14 @@ export default function Layout({ sidebar, children, apiConnected = true, realtim
             lastUpdated={lastUpdated}
             onManualRefresh={onManualRefresh}
           />
-          <div className="w-px h-4 bg-gray-300 dark:bg-gray-600" />
-          <span className="text-[10px] font-mono text-gray-400 dark:text-gray-600 select-none" title="App version">v{__APP_VERSION__}</span>
+          <div className="hidden sm:block w-px h-4 bg-gray-300 dark:bg-gray-600" />
+          <span className="hidden sm:inline text-[10px] font-mono text-gray-400 dark:text-gray-600 select-none" title="App version">v{__APP_VERSION__}</span>
           {currentHost && (
             <a
               href={`http://${currentHost.split(':')[0]}:${adminPort}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
+              className="hidden sm:block p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
               title={language === 'en' ? 'Open ioBroker Admin' : 'ioBroker Admin öffnen'}
               aria-label={language === 'en' ? 'Open ioBroker Admin' : 'ioBroker Admin öffnen'}
             >
@@ -217,7 +231,7 @@ export default function Layout({ sidebar, children, apiConnected = true, realtim
           )}
           <button
             onClick={cycle}
-            className="p-1.5 rounded-lg transition-colors text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700"
+            className="hidden sm:block p-1.5 rounded-lg transition-colors text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700"
             title={theme === 'light' ? 'Dark Mode' : theme === 'dark' ? 'Obsidian Mode' : 'Light Mode'}
             aria-label={theme === 'light' ? 'Dark Mode' : theme === 'dark' ? 'Obsidian Mode' : 'Light Mode'}
           >
@@ -225,7 +239,7 @@ export default function Layout({ sidebar, children, apiConnected = true, realtim
           </button>
           <button
             onClick={() => persistSettings({ ...appSettings, panel2Open: !appSettings.panel2Open })}
-            className={`p-1.5 rounded-lg transition-colors ${appSettings.panel2Open ? 'text-blue-600 bg-blue-500/15 hover:bg-blue-500/25 dark:text-blue-400 dark:bg-blue-500/20 dark:hover:bg-blue-500/30' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700'}`}
+            className={`hidden sm:block p-1.5 rounded-lg transition-colors ${appSettings.panel2Open ? 'text-blue-600 bg-blue-500/15 hover:bg-blue-500/25 dark:text-blue-400 dark:bg-blue-500/20 dark:hover:bg-blue-500/30' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700'}`}
             title={language === 'en' ? 'Dual pane view' : 'Zwei-Panel-Ansicht'}
             aria-label={language === 'en' ? 'Dual pane view' : 'Zwei-Panel-Ansicht'}
           >
@@ -242,7 +256,7 @@ export default function Layout({ sidebar, children, apiConnected = true, realtim
           </button>
           <button
             onClick={onShowShortcuts}
-            className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
+            className="hidden sm:block p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
             title={language === 'en' ? 'Help (?)' : 'Hilfe (?)'}
             aria-label={language === 'en' ? 'Help' : 'Hilfe'}
           >
@@ -250,7 +264,7 @@ export default function Layout({ sidebar, children, apiConnected = true, realtim
           </button>
           <button
             onClick={toggleFullscreen}
-            className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
+            className="hidden sm:block p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
             title={isFullscreen ? (language === 'en' ? 'Exit fullscreen' : 'Vollbild beenden') : (language === 'en' ? 'Fullscreen' : 'Vollbild')}
             aria-label={isFullscreen ? (language === 'en' ? 'Exit fullscreen' : 'Vollbild beenden') : (language === 'en' ? 'Fullscreen' : 'Vollbild')}
           >
@@ -260,23 +274,37 @@ export default function Layout({ sidebar, children, apiConnected = true, realtim
       </header>
 
       {/* Body */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Mobile backdrop */}
+        {isMobile && !collapsed && (
+          <div
+            className="fixed inset-0 z-30 bg-black/40"
+            onClick={() => { setCollapsed(true); if (onSidebarToggle) setTimeout(onSidebarToggle, 210); }}
+          />
+        )}
+
+        {/* Sidebar – flex on desktop, fixed drawer on mobile */}
         <aside
-          className="border-r border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900 overflow-hidden shrink-0 transition-[width] duration-200"
-          style={{ width: collapsed ? 0 : sidebarWidth }}
+          className={`border-r border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900 overflow-hidden shrink-0 transition-[width,transform] duration-200 ${
+            isMobile
+              ? 'fixed top-0 left-0 h-full z-40 pt-[52px]'
+              : ''
+          }`}
+          style={isMobile
+            ? { width: sidebarWidth, transform: collapsed ? `translateX(-${sidebarWidth}px)` : 'translateX(0)' }
+            : { width: collapsed ? 0 : sidebarWidth }
+          }
         >
           {sidebar}
         </aside>
 
-        {/* Resize Handle – nur wenn ausgeklappt */}
-        {!collapsed && (
+        {/* Resize Handle – desktop only, nur wenn ausgeklappt */}
+        {!isMobile && !collapsed && (
           <div
             className="w-1 shrink-0 cursor-col-resize hover:bg-blue-500/50 active:bg-blue-500/70 transition-colors"
             onMouseDown={handleMouseDown}
           />
         )}
-
 
         {/* Main Content */}
         <main className="flex-1 overflow-hidden flex flex-col bg-white dark:bg-gray-900">

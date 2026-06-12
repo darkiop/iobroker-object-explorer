@@ -36,7 +36,9 @@ export function loadColWidths(
             .filter(([k, v]) => ALL_COLUMNS.some((c) => c.key === k) && typeof v === 'number')
             .map(([k, v]) => [k, v as number])
         ) as Partial<Record<SortKey, number>>;
-        return clampColWidthsWith({ ...effectiveDefaults, ...validated }, effectiveMin, effectiveMax);
+        // Only enforce min on load — max is a drag-time UX limit, not a hard constraint.
+        // Explicitly auto-fitted widths (handleAutoFit) may exceed the design max and must survive reload.
+        return clampColWidthsWith({ ...effectiveDefaults, ...validated }, effectiveMin, {});
       }
     }
   } catch { /* ignore */ }
