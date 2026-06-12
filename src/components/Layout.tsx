@@ -8,6 +8,7 @@ import { useFilterContext } from '../context/FilterContext';
 import { formatTooltipTime } from './historyChartUtils';
 
 const LS_HOST_KEY = 'ioBrokerHost';
+const isMac = typeof navigator !== 'undefined' && /mac/i.test(navigator.platform);
 
 interface LayoutProps {
   sidebar: React.ReactNode;
@@ -22,12 +23,13 @@ interface LayoutProps {
   onConfirmScriptRefresh?: () => void;
   headerExtra?: React.ReactNode;
   onExtraReset?: () => void;
+  onFocusSearch?: () => void;
 }
 
 const LS_SIDEBAR_WIDTH = 'iobroker-explorer-sidebar-width';
 const LS_SIDEBAR_COLLAPSED = 'iobroker-explorer-sidebar-collapsed';
 
-export default function Layout({ sidebar, children, apiConnected = true, realtimeTransport, realtimeStatus, realtimeFallback = false, browserOffline = false, lastUpdated, onManualRefresh, onConfirmScriptRefresh, headerExtra, onExtraReset }: LayoutProps) {
+export default function Layout({ sidebar, children, apiConnected = true, realtimeTransport, realtimeStatus, realtimeFallback = false, browserOffline = false, lastUpdated, onManualRefresh, onConfirmScriptRefresh, headerExtra, onExtraReset, onFocusSearch }: LayoutProps) {
   const {
     appSettings, confirmScriptRefresh, scriptLastUpdated,
     setConfirmScriptRefresh, openSettings, setShortcutsOpen,
@@ -105,10 +107,18 @@ export default function Layout({ sidebar, children, apiConnected = true, realtim
         e.preventDefault();
         onShowShortcuts?.();
       }
+      if (e.key === '.' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        onOpenSettings?.();
+      }
+      if (e.key === 'f' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        onFocusSearch?.();
+      }
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onShowShortcuts]);
+  }, [onShowShortcuts, onOpenSettings, onFocusSearch]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     dragging.current = true;
@@ -145,7 +155,7 @@ export default function Layout({ sidebar, children, apiConnected = true, realtim
           <button
             onClick={() => { setCollapsed((c) => { const next = !c; localStorage.setItem(LS_SIDEBAR_COLLAPSED, String(next)); return next; }); if (onSidebarToggle) setTimeout(onSidebarToggle, 210); }}
             className={`p-1.5 rounded-lg transition-colors ${collapsed ? 'text-blue-600 bg-blue-500/15 hover:bg-blue-500/25 dark:text-blue-400 dark:bg-blue-500/20 dark:hover:bg-blue-500/30' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700'}`}
-            title={collapsed ? (language === 'en' ? 'Expand sidebar' : 'Sidebar ausklappen') : (language === 'en' ? 'Collapse sidebar' : 'Sidebar einklappen')}
+            title={collapsed ? (language === 'en' ? `Expand sidebar (${isMac ? '⌘B' : 'Ctrl+B'})` : `Sidebar ausklappen (${isMac ? '⌘B' : 'Ctrl+B'})`) : (language === 'en' ? `Collapse sidebar (${isMac ? '⌘B' : 'Ctrl+B'})` : `Sidebar einklappen (${isMac ? '⌘B' : 'Ctrl+B'})`)}
             aria-label={collapsed ? (language === 'en' ? 'Expand sidebar' : 'Sidebar ausklappen') : (language === 'en' ? 'Collapse sidebar' : 'Sidebar einklappen')}
           >
             {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
@@ -225,7 +235,7 @@ export default function Layout({ sidebar, children, apiConnected = true, realtim
           <button
             onClick={onOpenSettings}
             className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
-            title={language === 'en' ? 'Settings' : 'Einstellungen'}
+            title={language === 'en' ? `Settings (${isMac ? '⌘.' : 'Ctrl+.'})` : `Einstellungen (${isMac ? '⌘.' : 'Ctrl+.'})`}
             aria-label={language === 'en' ? 'Settings' : 'Einstellungen'}
           >
             <Settings size={16} />
@@ -233,7 +243,7 @@ export default function Layout({ sidebar, children, apiConnected = true, realtim
           <button
             onClick={onShowShortcuts}
             className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
-            title={language === 'en' ? 'Help' : 'Hilfe'}
+            title={language === 'en' ? 'Help (?)' : 'Hilfe (?)'}
             aria-label={language === 'en' ? 'Help' : 'Hilfe'}
           >
             <CircleHelp size={16} />

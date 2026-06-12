@@ -24,6 +24,8 @@ interface SearchCommand {
 
 const SHORTCUTS: Shortcut[] = [
   { keys: [isMac ? '⌘ B' : 'Ctrl B'], descEn: 'Toggle sidebar', descDe: 'Seitenleiste ein-/ausblenden' },
+  { keys: [isMac ? '⌘ F' : 'Ctrl F'], descEn: 'Focus search', descDe: 'Suche fokussieren' },
+  { keys: [isMac ? '⌘ .' : 'Ctrl .'], descEn: 'Open settings', descDe: 'Einstellungen öffnen' },
   { keys: ['?'], descEn: 'Show this help', descDe: 'Diese Hilfe anzeigen' },
   { keys: ['Esc'], descEn: 'Close modal / deselect', descDe: 'Modal schließen / Auswahl aufheben' },
   { keys: ['↑', '↓'], descEn: 'Navigate rows in table', descDe: 'Zeilen in Tabelle navigieren' },

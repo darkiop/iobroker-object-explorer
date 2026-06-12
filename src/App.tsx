@@ -6,7 +6,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
 import ToastContainer from './components/ToastContainer';
 import Layout from './components/Layout';
-import SearchBar from './components/SearchBar';
+import SearchBar, { type SearchBarHandle } from './components/SearchBar';
 import StateTree from './components/StateTree';
 import StateList from './components/StateList';
 import ObjectEditModal from './components/ObjectEditModal';
@@ -118,6 +118,7 @@ const ENUM_COLORS = [
 function AppContent() {
   const stateListRef = useRef<StateListHandle>(null);
   const p2StateListRef = useRef<StateListHandle>(null);
+  const searchBarRef = useRef<SearchBarHandle>(null);
   const [resetSeq, setResetSeq] = useState(0);
 
   // ── Filter Context ───────────────────────────────────────────────────────
@@ -522,6 +523,7 @@ function AppContent() {
       browserOffline={!browserOnline}
       lastUpdated={lastValidUpdatedAt.current > 0 ? lastValidUpdatedAt.current : undefined}
       onManualRefresh={handleManualRefresh}
+      onFocusSearch={() => searchBarRef.current?.focus()}
       onConfirmScriptRefresh={() => handleScriptRefreshConfirmed(Object.keys(allObjects))}
       onExtraReset={() => {
         setP2Pattern('*');
@@ -543,6 +545,7 @@ function AppContent() {
         <div className="flex flex-col h-full">
           <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex flex-col gap-2">
             <SearchBar
+              ref={searchBarRef}
               key={`searchbar-p${activePanelIdx}-r${resetSeq}`}
               onSearch={activePanelIdx === 0 ? handleSearch : setP2Pattern}
               initialPattern={activePanelIdx === 0 ? pattern : p2Pattern}

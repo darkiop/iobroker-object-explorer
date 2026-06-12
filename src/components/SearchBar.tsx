@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
 import { X, Check } from 'lucide-react';
 
 const SEARCH_ALL = '*';
@@ -23,6 +23,10 @@ interface SearchBarProps {
   roleNames?: string[];
   allObjectIds?: string[];
   saveButton?: React.ReactNode;
+}
+
+export interface SearchBarHandle {
+  focus: () => void;
 }
 
 interface Suggestion {
@@ -130,7 +134,7 @@ function CheckToggle({ checked, onChange, label }: { checked: boolean; onChange:
   );
 }
 
-export default function SearchBar({
+const SearchBar = forwardRef<SearchBarHandle, SearchBarProps>(function SearchBar({
   onSearch,
   initialPattern,
   onReset,
@@ -146,11 +150,13 @@ export default function SearchBar({
   roleNames = [],
   allObjectIds = [],
   saveButton,
-}: SearchBarProps) {
+}: SearchBarProps, ref) {
   const [value, setValue] = useState('');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [activeIndex, setActiveIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useImperativeHandle(ref, () => ({ focus: () => { inputRef.current?.focus(); inputRef.current?.select(); } }), []);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const isEn = language === 'en';
 
@@ -307,4 +313,6 @@ export default function SearchBar({
       </div>
     </form>
   );
-}
+});
+
+export default SearchBar;
