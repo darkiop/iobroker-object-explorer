@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from 'vite'
 import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
+import { VitePWA } from 'vite-plugin-pwa'
 import pkg from './package.json'
 
 function devConfigPlugin(ioBrokerTarget: string): Plugin {
@@ -27,6 +28,29 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       react(),
+      VitePWA({
+        manifest: false,
+        strategies: 'generateSW',
+        filename: 'sw.js',
+        registerType: 'autoUpdate',
+        injectRegister: null,
+        workbox: {
+          globPatterns: ['**/*.{js,css,html,png,svg,ico,webmanifest}'],
+          globIgnores: ['**/config.js'],
+          runtimeCaching: [
+            {
+              urlPattern: /\/v1\/objects/,
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: 'iobroker-objects-v1',
+                networkTimeoutSeconds: 3,
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+          ],
+        },
+        devOptions: { enabled: false },
+      }),
       ...(IOBROKER_TARGET ? [devConfigPlugin(IOBROKER_TARGET)] : []),
     ],
     server: {

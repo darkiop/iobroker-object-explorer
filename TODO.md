@@ -34,7 +34,7 @@
 <tr style="background-color:#1a3a1f"><td>FE-029</td><td>Color coding for state values: boolean green/red, numbers with trend arrows, highlight null values.</td><td>UX</td><td>low</td><td>S</td><td>done</td></tr>
 <tr style="background-color:#1a3a1f"><td>FE-030</td><td>Export function: export filtered datapoint list as JSON or CSV.</td><td>Feature</td><td>low</td><td>M</td><td>done</td></tr>
 <tr style="background-color:#1a3a1f"><td>FE-031</td><td>Full-text search: search in names, descriptions, and alias targets with relevance ranking.</td><td>Feature</td><td>low</td><td>L</td><td>done</td></tr>
-<tr><td>FE-032</td><td>Progressive Web App (PWA): service worker + offline support for cached objects.</td><td>Feature</td><td>low</td><td>L</td><td>open</td></tr>
+<tr style="background-color:#1a3a1f"><td>FE-032</td><td>Progressive Web App (PWA): service worker + offline support for cached objects.</td><td>Feature</td><td>low</td><td>L</td><td>done</td></tr>
 <tr><td>FE-033</td><td>Undo/redo for edits (name, role, unit, room, function), especially after batch operations.</td><td>Feature</td><td>low</td><td>L</td><td>open</td></tr>
 <tr style="background-color:#1a3a1f"><td>FE-034</td><td>Localization: hardcoded German; add English and additional languages.</td><td>Feature</td><td>low</td><td>L</td><td>done</td></tr>
 <tr style="background-color:#1a3a1f"><td>FE-035</td><td>Multi-datapoint comparison in chart: multiple history-enabled states simultaneously on one time axis.</td><td>Chart</td><td>high</td><td>L</td><td>done</td></tr>
