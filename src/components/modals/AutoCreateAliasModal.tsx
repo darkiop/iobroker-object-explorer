@@ -1,13 +1,13 @@
 import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Link2, Check, AlertTriangle, RefreshCw, Search } from 'lucide-react';
-import { useEscapeKey } from '../hooks/useEscapeKey';
+import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { useQueryClient } from '@tanstack/react-query';
-import { createObject, updateRoomMembership, updateFunctionMembership } from '../api/iobroker';
-import { useRoomEnums, useFunctionEnums, useAllRoles, useAllUnits } from '../hooks/useStates';
-import type { IoBrokerObject, IoBrokerObjectCommon } from '../types/iobroker';
-import { isValidIoBrokerId } from '../utils/validation';
-import { compilePattern, isGlobPattern } from '../api/iobroker';
+import { createObject, updateRoomMembership, updateFunctionMembership } from '../../api/iobroker';
+import { useRoomEnums, useFunctionEnums, useAllRoles, useAllUnits } from '../../hooks/useStates';
+import type { IoBrokerObject, IoBrokerObjectCommon } from '../../types/iobroker';
+import { isValidIoBrokerId } from '../../utils/validation';
+import { compilePattern, isGlobPattern } from '../../api/iobroker';
 
 interface Props {
   deviceId: string;

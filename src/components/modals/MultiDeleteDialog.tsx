@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useEscapeKey } from '../hooks/useEscapeKey';
+import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { createPortal } from 'react-dom';
 import { AlertTriangle, X, Trash2 } from 'lucide-react';
 

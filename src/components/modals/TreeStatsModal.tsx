@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, BarChart2, ChevronUp, ChevronDown, Trash2, AlertTriangle, RotateCcw, Info } from 'lucide-react';
-import { useEscapeKey } from '../hooks/useEscapeKey';
-import { useDeleteSubtree } from '../hooks/useStates';
-import { getScriptUsedIds, clearScriptUsedIdsCache } from '../api/iobroker';
-import type { IoBrokerObject } from '../types/iobroker';
+import { useEscapeKey } from '../../hooks/useEscapeKey';
+import { useDeleteSubtree } from '../../hooks/useStates';
+import { getScriptUsedIds, clearScriptUsedIdsCache } from '../../api/iobroker';
+import type { IoBrokerObject } from '../../types/iobroker';
 
 interface Props {
   onClose: () => void;

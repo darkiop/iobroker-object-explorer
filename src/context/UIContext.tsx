@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react';
-import { DEFAULT_COLS, ALL_COLUMNS } from '../components/stateListColumns';
-import type { SortKey, DateFormatSetting } from '../components/stateListColumns';
+import { DEFAULT_COLS, ALL_COLUMNS } from '../components/statelist/StateListColumns';
+import type { SortKey, DateFormatSetting } from '../components/statelist/StateListColumns';
 import { clearScriptUsedIdsCache, getScriptUsedIds } from '../api/iobroker';
 
 export type UiFontSize = 'small' | 'normal' | 'large' | 'xl';

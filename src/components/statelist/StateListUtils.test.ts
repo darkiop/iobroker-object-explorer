@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { getThresholdStatus, getObjectName, resolveI18n } from './stateListUtils'
-import type { IoBrokerObject } from '../types/iobroker'
+import { getThresholdStatus, getObjectName, resolveI18n } from './StateListUtils'
+import type { IoBrokerObject } from '../../types/iobroker'
 
 function obj(name: IoBrokerObject['common']['name']): IoBrokerObject {
   return { _id: 'test.0.x', type: 'state', common: { name }, native: {} }

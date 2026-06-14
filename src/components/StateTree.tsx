@@ -1,10 +1,10 @@
 import { useState, useMemo, useEffect, useCallback, memo } from 'react';
 import { ChevronRight, ChevronDown, ChevronsUpDown, ChevronsDownUp, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil, LayoutList, LayoutGrid, Plus, FileCode2, Link2, UserRound, ShieldAlert, Download, Trash2, Filter } from 'lucide-react';
 import type { TreeNode, IoBrokerObject } from '../types/iobroker';
-import ObjectEditModal from './ObjectEditModal';
-import ContextMenu from './ContextMenu';
-import type { ContextMenuEntry } from './ContextMenu';
-import ConfirmDialog from './ConfirmDialog';
+import ObjectEditModal from './modals/ObjectEditModal';
+import ContextMenu from './ui/ContextMenu';
+import type { ContextMenuEntry } from './ui/ContextMenu';
+import ConfirmDialog from './modals/ConfirmDialog';
 import { useDeleteSubtree } from '../hooks/useStates';
 import { copyText } from '../utils/clipboard';
 import { useTreeState } from '../hooks/useTreeState';

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Parser as ExprParser } from 'expr-eval';
 import { Link2, Check } from 'lucide-react';
 import type { IoBrokerObject } from '../../types/iobroker';
-import IdSuggestInput from '../IdSuggestInput';
+import IdSuggestInput from '../ui/IdSuggestInput';
 
 const inputCls = 'px-2.5 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500';
 

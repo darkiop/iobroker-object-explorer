@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
-import type { SortKey } from '../components/stateListColumns';
-import { ALL_COLUMNS } from '../components/stateListColumns';
-import { DEL_COL_WIDTH } from '../components/stateListConstants';
+import type { SortKey } from '../components/statelist/StateListColumns';
+import { ALL_COLUMNS } from '../components/statelist/StateListColumns';
+import { DEL_COL_WIDTH } from '../components/statelist/StateListConstants';
 
 const MIN_COL_WIDTHS: Partial<Record<SortKey, number>> = { id: 150, name: 120 };
 export function minColWidth(key: SortKey) { return MIN_COL_WIDTHS[key] ?? 40; }

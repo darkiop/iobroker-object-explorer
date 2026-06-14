@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
-import type { SortKey } from '../components/stateListColumns';
+import type { SortKey } from '../components/statelist/StateListColumns';
 import { PanelContextProvider } from './PanelContext';
 import type { PanelContextValue } from './PanelContext';
 

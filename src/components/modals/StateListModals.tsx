@@ -1,4 +1,4 @@
-import type { ToastType } from '../context/ToastContext';
+import type { ToastType } from '../../context/ToastContext';
 import { createPortal } from 'react-dom';
 import { X, History, Trash2, Plus, Link2, FileEdit, Download, ChevronDown, ChevronRight, BarChart2, Copy, Check, Search, Zap, FolderInput, PenLine, Columns2 } from 'lucide-react';
 import NewDatapointModal from './NewDatapointModal';
@@ -14,14 +14,14 @@ import ConfirmDialog from './ConfirmDialog';
 import MultiDeleteDialog from './MultiDeleteDialog';
 import ValueEditModal from './ValueEditModal';
 import TreeStatsModal from './TreeStatsModal';
-import ContextMenu from './ContextMenu';
-import type { ContextMenuEntry } from './ContextMenu';
-import type { IoBrokerState, IoBrokerObject } from '../types/iobroker';
-import type { ExtraSeries } from './HistoryChart';
-import { hasHistory } from '../api/iobroker';
-import { copyText, copyToClipboard } from '../utils/clipboard';
-import { formatValue } from '../utils/format';
-import { getObjectName } from './stateListUtils';
+import ContextMenu from '../ui/ContextMenu';
+import type { ContextMenuEntry } from '../ui/ContextMenu';
+import type { IoBrokerState, IoBrokerObject } from '../../types/iobroker';
+import type { ExtraSeries } from '../history/HistoryChart';
+import { hasHistory } from '../../api/iobroker';
+import { copyText, copyToClipboard } from '../../utils/clipboard';
+import { formatValue } from '../../utils/format';
+import { getObjectName } from '../statelist/StateListUtils';
 
 interface BatchProgress { done: number; total: number; }
 

@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
-import { useEscapeKey } from '../hooks/useEscapeKey';
+import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { createPortal } from 'react-dom';
 import { X, Check } from 'lucide-react';
-import { useCreateDatapoint, useAllRoles } from '../hooks/useStates';
-import { isValidIoBrokerId } from '../utils/validation';
+import { useCreateDatapoint, useAllRoles } from '../../hooks/useStates';
+import { isValidIoBrokerId } from '../../utils/validation';
 
 const STATE_TYPES = ['number', 'string', 'boolean', 'mixed'] as const;
 const OBJECT_TYPES = ['state', 'folder', 'device', 'channel'] as const;

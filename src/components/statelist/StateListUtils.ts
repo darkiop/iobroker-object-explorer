@@ -1,4 +1,4 @@
-import type { IoBrokerObject } from '../types/iobroker';
+import type { IoBrokerObject } from '../../types/iobroker';
 
 export function getThresholdStatus(
   val: unknown,

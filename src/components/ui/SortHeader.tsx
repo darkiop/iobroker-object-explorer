@@ -1,6 +1,6 @@
 import React from 'react';
 import { ArrowUp, ArrowDown, Minus } from 'lucide-react';
-import type { SortKey } from './stateListColumns';
+import type { SortKey } from '../statelist/StateListColumns';
 
 export type SortDir = 'asc' | 'desc';
 

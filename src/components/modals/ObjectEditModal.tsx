@@ -1,20 +1,20 @@
 import { useState, useRef, useEffect, useLayoutEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Save, Wrench, Trash2, Copy, PenLine, FolderInput, Lock } from 'lucide-react';
-import { usePutObject, useExtendObject, useStateDetail, useSetState, useAllRoles, useAllUnits, useDeleteObject, useAllObjects, useRoomEnums, useFunctionEnums, useUpdateRoomMembership, useUpdateFunctionMembership, useCustomSupportedInstances, useObjectFresh, useScriptUsages } from '../hooks/useStates';
+import { usePutObject, useExtendObject, useStateDetail, useSetState, useAllRoles, useAllUnits, useDeleteObject, useAllObjects, useRoomEnums, useFunctionEnums, useUpdateRoomMembership, useUpdateFunctionMembership, useCustomSupportedInstances, useObjectFresh, useScriptUsages } from '../../hooks/useStates';
 import ConfirmDialog from './ConfirmDialog';
 import CopyDatapointModal from './CopyDatapointModal';
 import RenameDatapointModal from './RenameDatapointModal';
 import MoveDatapointModal from './MoveDatapointModal';
-import type { IoBrokerObject, IoBrokerObjectCommon } from '../types/iobroker';
-import { useToast } from '../context/ToastContext';
-import { useAppSettingsContext } from '../context/UIContext';
-import { ColoredId } from '../utils/coloredId';
-import DetailsTab from './tabs/DetailsTab';
-import JsonTab from './tabs/JsonTab';
-import AliasTab from './tabs/AliasTab';
-import CustomTab from './tabs/CustomTab';
-import ScriptsTab from './tabs/ScriptsTab';
+import type { IoBrokerObject, IoBrokerObjectCommon } from '../../types/iobroker';
+import { useToast } from '../../context/ToastContext';
+import { useAppSettingsContext } from '../../context/UIContext';
+import { ColoredId } from '../../utils/coloredId';
+import DetailsTab from '../tabs/DetailsTab';
+import JsonTab from '../tabs/JsonTab';
+import AliasTab from '../tabs/AliasTab';
+import CustomTab from '../tabs/CustomTab';
+import ScriptsTab from '../tabs/ScriptsTab';
 
 interface Props {
   id: string;

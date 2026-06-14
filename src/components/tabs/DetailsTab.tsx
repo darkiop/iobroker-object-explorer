@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { Lock, ChevronDown, Check, Zap, Maximize2 } from 'lucide-react';
 import { hasHistory } from '../../api/iobroker';
 import { formatTimestamp, formatValue } from '../../utils/format';
-import HistoryChart from '../HistoryChart';
+import HistoryChart from '../history/HistoryChart';
 import type { IoBrokerObject, IoBrokerState } from '../../types/iobroker';
 import { getRoleColor } from '../../utils/roleColor';
 

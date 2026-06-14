@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { CalendarDays, X } from 'lucide-react';
-import { TS_RANGE_PREFIX, TS_RANGE_SEP } from './stateListConstants';
+import { TS_RANGE_PREFIX, TS_RANGE_SEP } from '../statelist/StateListConstants';
 
 export function parseTsFilter(raw: string): { mode: 'none' | 'text' | 'range'; text?: string; from?: number; to?: number } {
   const trimmed = raw.trim();

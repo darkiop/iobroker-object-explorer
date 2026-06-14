@@ -4,7 +4,7 @@ import { Pencil } from 'lucide-react';
 import { useExtendObject } from '../../hooks/useStates';
 import { useToast } from '../../context/ToastContext';
 import { getTypeColor } from '../../utils/typeColor';
-import { TYPE_OPTIONS } from '../stateListConstants';
+import { TYPE_OPTIONS } from '../statelist/StateListConstants';
 
 const EditableTypeCell = React.memo(function EditableTypeCell({ id, typeValue, objType, language = 'en' }: { id: string; typeValue: string; objType?: string; language?: 'en' | 'de' }) {
   const isEn = language === 'en';

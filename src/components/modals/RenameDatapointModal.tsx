@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X, PenLine, AlertTriangle } from 'lucide-react';
-import { useEscapeKey } from '../hooks/useEscapeKey';
-import { useRenameDatapoint } from '../hooks/useStates';
-import type { IoBrokerObject, IoBrokerState } from '../types/iobroker';
-import { isValidIoBrokerId } from '../utils/validation';
+import { useEscapeKey } from '../../hooks/useEscapeKey';
+import { useRenameDatapoint } from '../../hooks/useStates';
+import type { IoBrokerObject, IoBrokerState } from '../../types/iobroker';
+import { isValidIoBrokerId } from '../../utils/validation';
 
 interface Props {
   sourceId: string;

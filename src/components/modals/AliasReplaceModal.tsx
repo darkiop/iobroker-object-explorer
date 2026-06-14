@@ -1,10 +1,10 @@
 import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { X, RefreshCw, Check, AlertTriangle } from 'lucide-react';
-import { useEscapeKey } from '../hooks/useEscapeKey';
+import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { useQueryClient } from '@tanstack/react-query';
-import { putFullObject } from '../api/iobroker';
-import type { IoBrokerObject } from '../types/iobroker';
+import { putFullObject } from '../../api/iobroker';
+import type { IoBrokerObject } from '../../types/iobroker';
 
 interface Props {
   allObjects: Record<string, IoBrokerObject>;

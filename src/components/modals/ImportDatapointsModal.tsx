@@ -1,12 +1,12 @@
 import { useState, useRef, useCallback } from 'react';
 import DOMPurify from 'dompurify';
-import { useEscapeKey } from '../hooks/useEscapeKey';
+import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { createPortal } from 'react-dom';
 import { X, Upload, AlertTriangle, FileJson, FilePlus, CheckCircle2, RefreshCw, XCircle } from 'lucide-react';
-import { useImportDatapoints } from '../hooks/useStates';
-import type { ImportResult, ImportItemResult } from '../api/iobroker';
-import { useTheme } from '../context/ThemeContext';
-import type { IoBrokerObject } from '../types/iobroker';
+import { useImportDatapoints } from '../../hooks/useStates';
+import type { ImportResult, ImportItemResult } from '../../api/iobroker';
+import { useTheme } from '../../context/ThemeContext';
+import type { IoBrokerObject } from '../../types/iobroker';
 
 interface Props {
   onClose: () => void;

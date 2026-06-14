@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
-import type { SortDir } from '../components/SortHeader';
-import type { SortKey } from '../components/stateListColumns';
+import type { SortDir } from '../components/ui/SortHeader';
+import type { SortKey } from '../components/statelist/StateListColumns';
 
 export function useStateListView(initialVisibleCols: SortKey[]) {
   const [sortKey, setSortKey] = useState<SortKey>('id');

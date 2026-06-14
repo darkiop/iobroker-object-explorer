@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import StyledCheckbox from './StyledCheckbox';
-import type { SortKey } from './stateListColumns';
-import { ALL_COLUMNS, getColumnLabel } from './stateListColumns';
+import type { SortKey } from '../statelist/StateListColumns';
+import { ALL_COLUMNS, getColumnLabel } from '../statelist/StateListColumns';
 
 function ColPicker({ visible, onChange, language = 'de' }: { visible: SortKey[]; onChange: (cols: SortKey[]) => void; language?: 'en' | 'de' }) {
   const [open, setOpen] = useState(false);

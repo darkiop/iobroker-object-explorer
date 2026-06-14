@@ -1,10 +1,10 @@
 import React from 'react';
 import { X, History, Maximize2, Trash2, Plus, Link2, Download, Wand2, Upload, Tag, BarChart2, RotateCcw, EyeOff, Indent, FolderOpen, List } from 'lucide-react';
-import { isGlobPattern } from '../api/iobroker';
-import ColPicker from './ColPicker';
-import type { SortKey } from './stateListColumns';
-import type { IoBrokerObject } from '../types/iobroker';
-import type { ExtraSeries } from './HistoryChart';
+import { isGlobPattern } from '../../api/iobroker';
+import ColPicker from '../ui/ColPicker';
+import type { SortKey } from './StateListColumns';
+import type { IoBrokerObject } from '../../types/iobroker';
+import type { ExtraSeries } from './history/HistoryChart';
 
 interface StateListToolbarProps {
   isEn: boolean;

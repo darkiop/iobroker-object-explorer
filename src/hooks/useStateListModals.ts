@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import type { ExtraSeries } from '../components/HistoryChart';
+import type { ExtraSeries } from '../components/history/HistoryChart';
 
 export function useStateListModals() {
   const [newDatapointOpen, setNewDatapointOpen] = useState(false);

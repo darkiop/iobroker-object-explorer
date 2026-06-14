@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ChevronRight, ChevronDown, Pencil, Trash2, Plus, Check, Loader2 } from 'lucide-react';
-import { useEscapeKey } from '../hooks/useEscapeKey';
-import type { IoBrokerObject } from '../types/iobroker';
-import { useCreateEnum, useRenameEnum, useDeleteEnum, useUpdateRoomMembership, useUpdateFunctionMembership } from '../hooks/useStates';
+import { useEscapeKey } from '../../hooks/useEscapeKey';
+import type { IoBrokerObject } from '../../types/iobroker';
+import { useCreateEnum, useRenameEnum, useDeleteEnum, useUpdateRoomMembership, useUpdateFunctionMembership } from '../../hooks/useStates';
 
 interface EnumManagerModalProps {
   allObjects: Record<string, IoBrokerObject>;

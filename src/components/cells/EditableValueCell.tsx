@@ -3,7 +3,7 @@ import { ArrowUp, ArrowDown, AlertTriangle, Zap, Pencil } from 'lucide-react';
 import type { IoBrokerState, IoBrokerObject } from '../../types/iobroker';
 import { useSetState } from '../../hooks/useStates';
 import { formatValue } from '../../utils/format';
-import { getThresholdStatus } from '../stateListUtils';
+import { getThresholdStatus } from '../statelist/StateListUtils';
 
 const EditableValueCell = React.memo(function EditableValueCell({
   id,

@@ -5,7 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import HostConnectedButton from './HostConnectedButton';
 import { useUIContext } from '../context/UIContext';
 import { useFilterContext } from '../context/FilterContext';
-import { formatTooltipTime } from './historyChartUtils';
+import { formatTooltipTime } from './history/HistoryChartUtils';
 
 const LS_HOST_KEY = 'ioBrokerHost';
 const isMac = typeof navigator !== 'undefined' && /mac/i.test(navigator.platform);

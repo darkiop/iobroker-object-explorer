@@ -1,11 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useEscapeKey } from '../hooks/useEscapeKey';
+import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { X, BarChart2, Play, ChevronDown, CheckCircle2, Pencil, ChevronRight, Check as CheckIcon } from 'lucide-react';
-import type { IoBrokerObject, IoBrokerObjectCommon } from '../types/iobroker';
-import { useExtendObject, useUpdateRoomMembershipBatch, useUpdateFunctionMembershipBatch, useUpdateRoomMembership, useUpdateFunctionMembership, useAllRoles, useAllUnits } from '../hooks/useStates';
-import { useToast } from '../context/ToastContext';
-import BatchComboControl, { EMPTY_SENTINEL } from './BatchComboControl';
+import type { IoBrokerObject, IoBrokerObjectCommon } from '../../types/iobroker';
+import { useExtendObject, useUpdateRoomMembershipBatch, useUpdateFunctionMembershipBatch, useUpdateRoomMembership, useUpdateFunctionMembership, useAllRoles, useAllUnits } from '../../hooks/useStates';
+import { useToast } from '../../context/ToastContext';
+import BatchComboControl, { EMPTY_SENTINEL } from '../statelist/BatchComboControl';
 
 interface Props {
   onClose: () => void;

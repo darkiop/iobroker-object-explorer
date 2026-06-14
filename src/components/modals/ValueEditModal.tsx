@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useEscapeKey } from '../hooks/useEscapeKey';
+import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { createPortal } from 'react-dom';
 import DOMPurify from 'dompurify';
 import { Check, X } from 'lucide-react';
-import type { IoBrokerObject, IoBrokerState } from '../types/iobroker';
-import { useSetState } from '../hooks/useStates';
-import { ColoredId } from '../utils/coloredId';
-import { getTypeColor } from '../utils/typeColor';
-import { getRoleColor } from '../utils/roleColor';
+import type { IoBrokerObject, IoBrokerState } from '../../types/iobroker';
+import { useSetState } from '../../hooks/useStates';
+import { ColoredId } from '../../utils/coloredId';
+import { getTypeColor } from '../../utils/typeColor';
+import { getRoleColor } from '../../utils/roleColor';
 
 interface ValueEditModalProps {
   id: string;

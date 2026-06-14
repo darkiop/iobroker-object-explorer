@@ -1,11 +1,11 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
-import { useEscapeKey } from '../hooks/useEscapeKey';
+import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { createPortal } from 'react-dom';
 import { X, Plus } from 'lucide-react';
-import HistoryChart from './HistoryChart';
-import type { ExtraSeries } from './HistoryChart';
-import type { IoBrokerObject } from '../types/iobroker';
-import { hasHistory } from '../api/iobroker';
+import HistoryChart from '../history/HistoryChart';
+import type { ExtraSeries } from '../history/HistoryChart';
+import type { IoBrokerObject } from '../../types/iobroker';
+import { hasHistory } from '../../api/iobroker';
 
 interface Props {
   stateId: string;

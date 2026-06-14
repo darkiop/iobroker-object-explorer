@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Copy, Link2 } from 'lucide-react';
-import { useEscapeKey } from '../hooks/useEscapeKey';
-import { useCreateDatapoint } from '../hooks/useStates';
-import type { IoBrokerObject } from '../types/iobroker';
-import { isValidIoBrokerId } from '../utils/validation';
+import { useEscapeKey } from '../../hooks/useEscapeKey';
+import { useCreateDatapoint } from '../../hooks/useStates';
+import type { IoBrokerObject } from '../../types/iobroker';
+import { isValidIoBrokerId } from '../../utils/validation';
 
 interface Props {
   sourceId: string;

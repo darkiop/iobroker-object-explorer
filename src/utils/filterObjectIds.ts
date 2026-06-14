@@ -1,5 +1,5 @@
 import type { IoBrokerObject } from '../types/iobroker';
-import { EMPTY_SENTINEL } from '../components/BatchComboControl';
+import { EMPTY_SENTINEL } from '../components/statelist/BatchComboControl';
 
 type ColumnFilterKey = 'id' | 'name' | 'room' | 'function' | 'type' | 'role' | 'unit' | 'write' | 'history' | 'custom' | 'smart' | 'alias' | 'scripts';
 type ColumnFilters = Partial<Record<ColumnFilterKey, string>>;

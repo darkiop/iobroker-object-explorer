@@ -1,17 +1,17 @@
 import { useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { useEscapeKey } from '../hooks/useEscapeKey';
-import LanguageDropdown from './LanguageDropdown';
+import { useEscapeKey } from '../../hooks/useEscapeKey';
+import LanguageDropdown from '../LanguageDropdown';
 import { X, ChevronDown, Check, Loader2, AlertCircle, Trash2, ExternalLink } from 'lucide-react';
-import type { DateFormatSetting } from './stateListColumns';
-import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel, CONFIGURABLE_WIDTH_COLS, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MIN_WIDTHS, BUILTIN_MAX_WIDTHS } from './stateListColumns';
-import { useAppSettingsContext, useUIOverlayContext, DEFAULT_QUICK_PATTERNS, getDefaultAppSettings, normalizeQuickPattern } from '../context/UIContext';
-import type { AppSettings, UiFontSize } from '../context/UIContext';
-import { useFilterContext } from '../context/FilterContext';
+import type { DateFormatSetting } from '../statelist/StateListColumns';
+import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel, CONFIGURABLE_WIDTH_COLS, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MIN_WIDTHS, BUILTIN_MAX_WIDTHS } from '../statelist/StateListColumns';
+import { useAppSettingsContext, useUIOverlayContext, DEFAULT_QUICK_PATTERNS, getDefaultAppSettings, normalizeQuickPattern } from '../../context/UIContext';
+import type { AppSettings, UiFontSize } from '../../context/UIContext';
+import { useFilterContext } from '../../context/FilterContext';
 import io from 'socket.io-client';
-import { getSocketUrl } from '../hooks/useSocketIO';
-import { useTheme } from '../context/ThemeContext';
-import type { Theme } from '../context/ThemeContext';
+import { getSocketUrl } from '../../hooks/useSocketIO';
+import { useTheme } from '../../context/ThemeContext';
+import type { Theme } from '../../context/ThemeContext';
 
 const PAGE_SIZE_OPTIONS = [200, 500, 1000, 3000];
 

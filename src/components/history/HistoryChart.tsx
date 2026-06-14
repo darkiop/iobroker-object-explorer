@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { useTheme } from '../context/ThemeContext';
+import { useTheme } from '../../context/ThemeContext';
 import {
   ComposedChart,
   Line,
@@ -15,13 +15,13 @@ import {
   ReferenceDot,
 } from 'recharts';
 import { Trash2, CircleDot, Download, ChevronDown, ChevronRight, Table2, BarChart2 } from 'lucide-react';
-import { useHistory, useDeleteHistory } from '../hooks/useStates';
-import type { HistoryOptions } from '../types/iobroker';
+import { useHistory, useDeleteHistory } from '../../hooks/useStates';
+import type { HistoryOptions } from '../../types/iobroker';
 import {
   ExtraSeries, SERIES_COLORS, ChartType, ViewMode, CompareOffset, ConfirmAction,
   CHART_TYPES, PRESETS, AGGREGATES, COMPARE_OFFSETS,
   toLocalDatetime, formatTime, formatTooltipTime, makeAxes,
-} from './historyChartUtils';
+} from './HistoryChartUtils';
 
 export type { ExtraSeries };
 

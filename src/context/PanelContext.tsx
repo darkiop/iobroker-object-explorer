@@ -1,5 +1,5 @@
 import { createContext, useContext, type ReactNode } from 'react';
-import type { SortKey } from '../components/stateListColumns';
+import type { SortKey } from '../components/statelist/StateListColumns';
 
 export interface PanelContextValue {
   colFilters: Partial<Record<SortKey, string>>;

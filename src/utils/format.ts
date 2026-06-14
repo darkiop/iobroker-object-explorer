@@ -1,4 +1,4 @@
-import type { DateFormatSetting } from '../components/stateListColumns';
+import type { DateFormatSetting } from '../components/statelist/StateListColumns';
 
 export function formatTimestamp(ts: number, dateFormat: DateFormatSetting = 'de'): string {
   if (!Number.isFinite(ts)) return '';

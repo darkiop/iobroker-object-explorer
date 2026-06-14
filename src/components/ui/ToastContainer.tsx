@@ -1,6 +1,6 @@
 import { createPortal } from 'react-dom';
 import { X, CheckCircle, AlertCircle } from 'lucide-react';
-import { useToasts } from '../context/ToastContext';
+import { useToasts } from '../../context/ToastContext';
 
 export default function ToastContainer() {
   const { toasts, dismiss } = useToasts();
