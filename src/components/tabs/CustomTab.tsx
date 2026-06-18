@@ -192,7 +192,7 @@ export default function CustomTab({
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {allChips.map(({ id: instanceId, adapterName }) => {
-                    const active = shownAdapters.has(instanceId);
+                    const active = customDraft[instanceId]?.enabled === true;
                     return (
                       <label
                         key={instanceId}
@@ -217,8 +217,6 @@ export default function CustomTab({
                                 ? { ...prev, [instanceId]: { ...prev[instanceId], enabled: false } }
                                 : prev
                               );
-                              setShownAdapters((prev) => { const next = new Set(prev); next.delete(instanceId); return next; });
-                              setExpandedAdapters((prev) => { const next = new Set(prev); next.delete(instanceId); return next; });
                             }
                           }}
                           className="sr-only"
@@ -267,11 +265,6 @@ export default function CustomTab({
                       </button>
                       {isExpanded && (
                         <div className="px-3 py-2 flex flex-col">
-                          <CustomSettingRow
-                            fieldKey="enabled"
-                            value={settings.enabled ?? false}
-                            onChange={(v) => setCustomField(adapterId, 'enabled', v)}
-                          />
                           {otherEntries.map(([key, val]) => (
                             <CustomSettingRow
                               key={key}
