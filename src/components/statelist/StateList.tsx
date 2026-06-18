@@ -1338,7 +1338,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                   isSelected={selectedId === id}
                   isChecked={checkedIds.has(id)}
                   aliasIds={aliasMap?.get(id)}
-                  ownTargetExists={!objects[id]?.common?.alias?.id || (allObjectIds ? allObjectIds.has(objects[id]!.common!.alias!.id as string) : !!objects[objects[id]!.common!.alias!.id as string])}
+                  ownTargetExists={(() => { const aliasId = objects[id]?.common?.alias?.id; return !aliasId || (allObjectIds ? allObjectIds.has(aliasId as string) : !!objects[aliasId as string]); })()}
                   visibleCols={visibleCols}
                   colWidths={colWidths}
                   roles={roles}

@@ -206,6 +206,8 @@ export default function DetailsTab({
   const [editValue, setEditValue] = useState(false);
   const [frozenVal, setFrozenVal] = useState<unknown>(undefined);
 
+  useEffect(() => { setEditValue(false); setFrozenVal(undefined); }, [id]);
+
   function saveField(field: string, value: string) {
     onExtend({ [field]: value });
   }
@@ -261,8 +263,7 @@ export default function DetailsTab({
                     <label className="inline-flex items-center gap-1.5 ml-2 cursor-pointer select-none shrink-0">
                       <input
                         type="checkbox"
-                        checked={false}
-                        onChange={(e) => { if (e.target.checked) { setFrozenVal(state.val); setEditValue(true); } }}
+                        onChange={() => { setFrozenVal(state.val); setEditValue(true); }}
                         className="sr-only peer"
                       />
                       <span className="w-3.5 h-3.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 flex items-center justify-center peer-focus:ring-1 peer-focus:ring-blue-400" />
