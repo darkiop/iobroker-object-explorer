@@ -162,6 +162,85 @@ html:not(.dark) * {
 .obsidian .dark\:outline-blue-500 { outline-color: #89b4fa !important; }
 .obsidian .dark\:caret-gray-100 { caret-color: #cdd6f4 !important; }
 
+/* ============================================================
+   Abyss Theme — OLED pure black
+   Applied via .abyss class on <html> alongside .dark
+   ============================================================ */
+
+/* Scrollbar */
+.abyss ::-webkit-scrollbar-thumb { background: #2a2a2a; }
+.abyss ::-webkit-scrollbar-thumb:hover { background: #3a3a3a; }
+.abyss * { scrollbar-color: #2a2a2a transparent; }
+
+/* --- Backgrounds (gray) --- */
+.abyss .dark\:bg-gray-900  { background-color: #000000 !important; }
+.abyss .dark\:bg-gray-800  { background-color: #0a0a0a !important; }
+.abyss .dark\:bg-gray-700  { background-color: #111111 !important; }
+.abyss .dark\:bg-gray-600  { background-color: #1c1c1c !important; }
+.abyss .dark\:bg-gray-500  { background-color: #2e2e2e !important; }
+.abyss .dark\:bg-gray-300  { background-color: #6b6b6b !important; }
+
+.abyss .dark\:bg-gray-800\/20 { background-color: rgb(10 10 10 / 0.2) !important; }
+.abyss .dark\:bg-gray-800\/30 { background-color: rgb(10 10 10 / 0.3) !important; }
+.abyss .dark\:bg-gray-800\/40 { background-color: rgb(10 10 10 / 0.4) !important; }
+.abyss .dark\:bg-gray-800\/50 { background-color: rgb(10 10 10 / 0.5) !important; }
+.abyss .dark\:bg-gray-800\/60 { background-color: rgb(10 10 10 / 0.6) !important; }
+.abyss .dark\:bg-gray-800\/70 { background-color: rgb(10 10 10 / 0.7) !important; }
+.abyss .dark\:bg-gray-700\/50 { background-color: rgb(17 17 17 / 0.5) !important; }
+.abyss .dark\:bg-gray-700\/60 { background-color: rgb(17 17 17 / 0.6) !important; }
+.abyss .dark\:bg-gray-700\/70 { background-color: rgb(17 17 17 / 0.7) !important; }
+.abyss .dark\:bg-gray-500\/40 { background-color: rgb(46 46 46 / 0.4) !important; }
+
+/* --- Hover backgrounds --- */
+.abyss .dark\:hover\:bg-gray-600:hover  { background-color: #1c1c1c !important; }
+.abyss .dark\:hover\:bg-gray-700:hover  { background-color: #111111 !important; }
+.abyss .dark\:hover\:bg-gray-800:hover  { background-color: #0a0a0a !important; }
+.abyss .dark\:hover\:bg-gray-600\/60:hover  { background-color: rgb(28 28 28 / 0.6) !important; }
+.abyss .dark\:hover\:bg-gray-700\/50:hover  { background-color: rgb(17 17 17 / 0.5) !important; }
+.abyss .dark\:hover\:bg-gray-700\/60:hover  { background-color: rgb(17 17 17 / 0.6) !important; }
+.abyss .dark\:hover\:bg-gray-700\/80:hover  { background-color: rgb(17 17 17 / 0.8) !important; }
+.abyss .dark\:hover\:bg-gray-800\/40:hover  { background-color: rgb(10 10 10 / 0.4) !important; }
+.abyss .dark\:hover\:bg-gray-800\/50:hover  { background-color: rgb(10 10 10 / 0.5) !important; }
+
+/* --- Text --- */
+.abyss .dark\:text-gray-100 { color: #f0f0f0 !important; }
+.abyss .dark\:text-gray-200 { color: #d8d8d8 !important; }
+.abyss .dark\:text-gray-300 { color: #b0b0b0 !important; }
+.abyss .dark\:text-gray-400 { color: #737373 !important; }
+.abyss .dark\:text-gray-500 { color: #525252 !important; }
+.abyss .dark\:text-gray-600 { color: #3a3a3a !important; }
+.abyss .dark\:text-gray-700 { color: #2a2a2a !important; }
+
+/* --- Hover text --- */
+.abyss .dark\:hover\:text-gray-200:hover { color: #d8d8d8 !important; }
+.abyss .dark\:hover\:text-gray-300:hover { color: #b0b0b0 !important; }
+.abyss .dark\:hover\:text-gray-400:hover { color: #737373 !important; }
+
+/* --- Borders --- */
+.abyss .dark\:border-gray-900 { border-color: #000000 !important; }
+.abyss .dark\:border-gray-800 { border-color: #0a0a0a !important; }
+.abyss .dark\:border-gray-700 { border-color: #1c1c1c !important; }
+.abyss .dark\:border-gray-600 { border-color: #2e2e2e !important; }
+.abyss .dark\:border-gray-500 { border-color: #3a3a3a !important; }
+
+.abyss .dark\:border-gray-800\/60 { border-color: rgb(10 10 10 / 0.6) !important; }
+.abyss .dark\:border-gray-700\/60 { border-color: rgb(28 28 28 / 0.6) !important; }
+.abyss .dark\:border-gray-600\/50 { border-color: rgb(46 46 46 / 0.5) !important; }
+.abyss .dark\:border-gray-600\/60 { border-color: rgb(46 46 46 / 0.6) !important; }
+.abyss .dark\:border-gray-600\/70 { border-color: rgb(46 46 46 / 0.7) !important; }
+
+/* --- Hover border --- */
+.abyss .dark\:hover\:border-gray-600:hover { border-color: #2e2e2e !important; }
+
+/* --- Placeholder --- */
+.abyss .dark\:placeholder-gray-400::placeholder { color: #737373 !important; }
+.abyss .dark\:placeholder-gray-500::placeholder { color: #525252 !important; }
+.abyss .dark\:placeholder-gray-600::placeholder { color: #3a3a3a !important; }
+
+/* --- Divide --- */
+.abyss .dark\:divide-gray-700 > * + * { border-color: #1c1c1c !important; }
+.abyss .dark\:divide-gray-800 > * + * { border-color: #0a0a0a !important; }
+
 /* Group expand/collapse animation */
 @keyframes group-row-in {
   from { opacity: 0; }
