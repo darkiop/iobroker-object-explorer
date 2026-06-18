@@ -1,6 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Sun, Moon, Gem, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Maximize, Minimize, RefreshCw, ExternalLink, Info, WifiOff, FilterX, Columns2, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Sun, Moon, Gem, Eclipse, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Maximize, Minimize, RefreshCw, ExternalLink, Info, WifiOff, FilterX, Columns2, ArrowLeft, ArrowRight, Server, ChevronDown, Check } from 'lucide-react';
+import { getConnections, getActiveConnectionId, switchToConnection } from '../api/iobroker';
+import type { SavedConnection } from '../api/iobroker';
 import { useTheme } from '../context/ThemeContext';
 import HostConnectedButton from './HostConnectedButton';
 import { useUIContext } from '../context/UIContext';
@@ -91,6 +93,19 @@ export default function Layout({ sidebar, children, apiConnected = true, realtim
   }
 
   const currentHost = localStorage.getItem(LS_HOST_KEY) ?? window.__CONFIG__?.ioBrokerHost ?? '';
+  const [connections] = useState<SavedConnection[]>(() => getConnections());
+  const [activeConnId] = useState<string | null>(() => getActiveConnectionId());
+  const activeConn = connections.find((c) => c.id === activeConnId) ?? connections[0] ?? null;
+  const [connDropdownOpen, setConnDropdownOpen] = useState(false);
+  const connDropdownRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!connDropdownOpen) return;
+    const close = (e: MouseEvent) => {
+      if (!connDropdownRef.current?.contains(e.target as Node)) setConnDropdownOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [connDropdownOpen]);
 
   useEffect(() => {
     sidebarWidthRef.current = sidebarWidth;
@@ -207,6 +222,63 @@ export default function Layout({ sidebar, children, apiConnected = true, realtim
           </div>
         )}
         <div className="flex items-center gap-3">
+          {connections.length > 0 && (
+            <div ref={connDropdownRef} className="relative">
+              <button
+                onClick={() => setConnDropdownOpen((v) => !v)}
+                className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs transition-colors text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700"
+                title={language === 'en' ? 'Switch connection' : 'Verbindung wechseln'}
+              >
+                <Server size={12} className="shrink-0 text-gray-400 dark:text-gray-500" />
+                <span className="max-w-[100px] truncate hidden sm:inline">{activeConn?.name ?? currentHost}</span>
+                <ChevronDown size={11} className={`shrink-0 text-gray-400 transition-transform ${connDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {connDropdownOpen && (
+                <div className="absolute right-0 top-full mt-1 z-50 min-w-[200px] rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl overflow-hidden">
+                  <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-700">
+                    <span className="text-[11px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">
+                      {language === 'en' ? 'Connections' : 'Verbindungen'}
+                    </span>
+                  </div>
+                  <ul>
+                    {connections.map((conn) => {
+                      const isActive = conn.id === activeConnId || conn.id === activeConn?.id;
+                      return (
+                        <li key={conn.id}>
+                          <button
+                            onClick={() => {
+                              if (isActive) { setConnDropdownOpen(false); return; }
+                              void switchToConnection(conn);
+                            }}
+                            className={`w-full px-3 py-2.5 text-left flex items-center gap-2.5 transition-colors ${
+                              isActive
+                                ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                            }`}
+                          >
+                            <Server size={12} className="shrink-0 opacity-60" />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs font-medium truncate">{conn.name}</div>
+                              <div className="text-[11px] font-mono text-gray-400 dark:text-gray-500 truncate">{conn.host}</div>
+                            </div>
+                            {isActive && <Check size={12} className="shrink-0" />}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <div className="px-3 py-2 border-t border-gray-100 dark:border-gray-700">
+                    <button
+                      onClick={() => { setConnDropdownOpen(false); openSettings(); }}
+                      className="text-[11px] text-blue-500 dark:text-blue-400 hover:underline"
+                    >
+                      {language === 'en' ? 'Manage connections...' : 'Verbindungen verwalten...'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           <HostConnectedButton
             apiConnected={apiConnected}
             realtimeTransport={realtimeTransport}
@@ -232,10 +304,10 @@ export default function Layout({ sidebar, children, apiConnected = true, realtim
           <button
             onClick={cycle}
             className="hidden sm:block p-1.5 rounded-lg transition-colors text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700"
-            title={theme === 'light' ? 'Dark Mode' : theme === 'dark' ? 'Obsidian Mode' : 'Light Mode'}
-            aria-label={theme === 'light' ? 'Dark Mode' : theme === 'dark' ? 'Obsidian Mode' : 'Light Mode'}
+            title={theme === 'light' ? 'Dark Mode' : theme === 'dark' ? 'Obsidian Mode' : theme === 'obsidian' ? 'Abyss Mode' : 'Light Mode'}
+            aria-label={theme === 'light' ? 'Dark Mode' : theme === 'dark' ? 'Obsidian Mode' : theme === 'obsidian' ? 'Abyss Mode' : 'Light Mode'}
           >
-            {theme === 'light' ? <Moon size={16} /> : theme === 'dark' ? <Gem size={16} /> : <Sun size={16} />}
+            {theme === 'light' ? <Moon size={16} /> : theme === 'dark' ? <Gem size={16} /> : theme === 'obsidian' ? <Eclipse size={16} /> : <Sun size={16} />}
           </button>
           <button
             onClick={() => persistSettings({ ...appSettings, panel2Open: !appSettings.panel2Open })}

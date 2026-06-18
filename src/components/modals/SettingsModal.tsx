@@ -2,12 +2,14 @@ import { useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 import LanguageDropdown from '../LanguageDropdown';
-import { X, ChevronDown, Check, Loader2, AlertCircle, Trash2, ExternalLink } from 'lucide-react';
+import { X, ChevronDown, Check, Loader2, AlertCircle, Trash2, ExternalLink, Plus, Pencil, Server } from 'lucide-react';
 import type { DateFormatSetting } from '../statelist/StateListColumns';
 import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel, CONFIGURABLE_WIDTH_COLS, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MIN_WIDTHS, BUILTIN_MAX_WIDTHS } from '../statelist/StateListColumns';
 import { useAppSettingsContext, useUIOverlayContext, DEFAULT_QUICK_PATTERNS, getDefaultAppSettings, normalizeQuickPattern } from '../../context/UIContext';
 import type { AppSettings, UiFontSize } from '../../context/UIContext';
 import { useFilterContext } from '../../context/FilterContext';
+import { clearObjectsCache, getConnections, setConnections, getActiveConnectionId, switchToConnection } from '../../api/iobroker';
+import type { SavedConnection } from '../../api/iobroker';
 import io from 'socket.io-client';
 import { getSocketUrl } from '../../hooks/useSocketIO';
 import { useTheme } from '../../context/ThemeContext';
@@ -72,7 +74,7 @@ function initDraftFromSettings(appSettings: AppSettings): AppSettings {
   return { ...appSettings };
 }
 
-export default function SettingsModal() {
+export default function SettingsModal({ namespaceSuggestions = [] }: { namespaceSuggestions?: string[] }) {
   const { appSettings, persistSettings, handleLanguageChange } = useAppSettingsContext();
   const { theme, setTheme } = useTheme();
   const { setSettingsOpen } = useUIOverlayContext();
@@ -80,19 +82,30 @@ export default function SettingsModal() {
   const onClose = () => setSettingsOpen(false);
   useEscapeKey(onClose);
 
-  const [settingsTab, setSettingsTab] = useState<'connection' | 'display' | 'columns' | 'filters'>('connection');
-  const [settingsHost, setSettingsHost] = useState(() => initHostState());
-  const [settingsHostTesting, setSettingsHostTesting] = useState(false);
-  const [settingsHostError, setSettingsHostError] = useState<string | null>(null);
-  const [settingsHostTestResult, setSettingsHostTestResult] = useState<'ok' | 'error' | null>(null);
-  const [socketTesting, setSocketTesting] = useState(false);
-  const [socketTestResult, setSocketTestResult] = useState<'ok' | 'error' | null>(null);
-  const [socketTestError, setSocketTestError] = useState<string | null>(null);
+  const [settingsTab, setSettingsTab] = useState<'connections' | 'display' | 'columns' | 'filters' | 'namespaces'>('connections');
   const [settingsDraft, setSettingsDraft] = useState<AppSettings>(() => initDraftFromSettings(appSettings));
   const [newQuickFilter, setNewQuickFilter] = useState('');
+  const [newStripPrefix, setNewStripPrefix] = useState('');
+  const [connections, setConnectionsState] = useState<SavedConnection[]>(() => getConnections());
+  const [activeConnId] = useState<string | null>(() => getActiveConnectionId());
+  const [switchingConnId, setSwitchingConnId] = useState<string | null>(null);
+
+  // Per-connection inline edit form
+  type EditingConnForm = {
+    id: string; name: string; host: string;
+    socketHost: string; realtimeTransport: 'longpolling' | 'socketio'; adminPort: number;
+  };
+  const [editingConn, setEditingConn] = useState<EditingConnForm | null>(null);
+  const [connHostTesting, setConnHostTesting] = useState(false);
+  const [connHostTestResult, setConnHostTestResult] = useState<'ok' | 'error' | null>(null);
+  const [connHostTestError, setConnHostTestError] = useState<string | null>(null);
+  const [connSioTesting, setConnSioTesting] = useState(false);
+  const [connSioTestResult, setConnSioTestResult] = useState<'ok' | 'error' | null>(null);
+  const [connSioTestError, setConnSioTestError] = useState<string | null>(null);
+  const [newConnName, setNewConnName] = useState('');
+  const [newConnHost, setNewConnHost] = useState('');
 
   const isEn = appSettings.language === 'en';
-  const settingsHostIp = settingsHost.trim().split(':')[0] ?? '';
 
   const applySettings = useCallback((next: AppSettings) => {
     persistSettings(next);
@@ -139,17 +152,10 @@ export default function SettingsModal() {
       realtimeTransport: settingsDraft.realtimeTransport,
       socketHost: settingsDraft.socketHost.trim(),
       showUnitInValue: settingsDraft.showUnitInValue ?? false,
+      includeIdPrefixes: settingsDraft.includeIdPrefixes ?? [],
     };
-    const hostVal = settingsHost.trim();
-    const prevHost = localStorage.getItem('ioBrokerHost') ?? window.__CONFIG__?.ioBrokerHost ?? '';
-    if (hostVal && hostVal !== prevHost) {
-      localStorage.setItem('ioBrokerHost', hostVal);
-      applySettings(next);
-      window.location.reload();
-      return;
-    }
     applySettings(next);
-  }, [settingsDraft, settingsHost, applySettings]);
+  }, [settingsDraft, applySettings]);
 
   const handleLanguageChangeDraft = useCallback((language: 'en' | 'de') => {
     handleLanguageChange(language);
@@ -172,20 +178,26 @@ export default function SettingsModal() {
     setNewQuickFilter('');
   }, [newQuickFilter]);
 
-  const testSocketConnection = useCallback(() => {
-    if (socketTesting) return;
-    setSocketTesting(true);
-    setSocketTestResult(null);
-    setSocketTestError(null);
+  const addStripPrefix = useCallback((directVal?: string) => {
+    let val = (directVal ?? newStripPrefix).trim();
+    if (!val) return;
+    if (!val.endsWith('.')) val = `${val}.`;
+    setSettingsDraft((prev) => ({
+      ...prev,
+      includeIdPrefixes: (prev.includeIdPrefixes ?? []).includes(val)
+        ? prev.includeIdPrefixes
+        : [...(prev.includeIdPrefixes ?? []), val],
+    }));
+    setNewStripPrefix('');
+  }, [newStripPrefix]);
 
-    const url = getSocketUrl(settingsDraft.socketHost);
-    const socket = io(url, {
-      transports: ['websocket', 'polling'],
-      reconnection: false,
-      timeout: 5_000,
-      forceNew: true,
-    });
-
+  const testConnSocketConnection = useCallback(() => {
+    if (connSioTesting || !editingConn) return;
+    setConnSioTesting(true);
+    setConnSioTestResult(null);
+    setConnSioTestError(null);
+    const url = getSocketUrl(editingConn.socketHost);
+    const socket = io(url, { transports: ['websocket', 'polling'], reconnection: false, timeout: 5_000, forceNew: true });
     let settled = false;
     const finish = (ok: boolean, err?: string) => {
       if (settled) return;
@@ -193,17 +205,16 @@ export default function SettingsModal() {
       clearTimeout(timer);
       socket.removeAllListeners();
       socket.disconnect();
-      setSocketTesting(false);
-      setSocketTestResult(ok ? 'ok' : 'error');
-      setSocketTestError(ok ? null : err ?? (isEn ? 'Connection failed' : 'Verbindung fehlgeschlagen'));
+      setConnSioTesting(false);
+      setConnSioTestResult(ok ? 'ok' : 'error');
+      setConnSioTestError(ok ? null : err ?? (isEn ? 'Connection failed' : 'Verbindung fehlgeschlagen'));
     };
-
     const timer = setTimeout(() => finish(false, isEn ? 'Timed out' : 'Zeitüberschreitung'), 6_000);
     socket.on('connect', () => finish(true));
     socket.on('connect_error', (err: { message?: string } | Error) =>
       finish(false, err?.message || (isEn ? 'Connection failed' : 'Verbindung fehlgeschlagen'))
     );
-  }, [socketTesting, settingsDraft.socketHost, isEn]);
+  }, [connSioTesting, editingConn, isEn]);
 
   const resetSettingsToDefault = useCallback(() => {
     const defaults = getDefaultAppSettings();
@@ -225,12 +236,13 @@ export default function SettingsModal() {
         </div>
         {/* Tab bar */}
         <div className="flex border-b border-gray-200 dark:border-gray-700 px-4">
-          {(['connection', 'display', 'columns', 'filters'] as const).map((tab) => {
+          {(['connections', 'display', 'columns', 'filters', 'namespaces'] as const).map((tab) => {
             const label = {
-              connection: isEn ? 'Connection' : 'Verbindung',
-              display:    isEn ? 'Display'    : 'Anzeige',
-              columns:    isEn ? 'Table'      : 'Tabelle',
-              filters:    isEn ? 'Quick Filters' : 'Schnellfilter',
+              connections: isEn ? 'Connections'   : 'Verbindungen',
+              display:     isEn ? 'Display'       : 'Anzeige',
+              columns:     isEn ? 'Table'         : 'Tabelle',
+              filters:     isEn ? 'Quick Filters' : 'Schnellfilter',
+              namespaces:  isEn ? 'Namespaces'    : 'Namespaces',
             }[tab];
             return (
               <button
@@ -248,194 +260,6 @@ export default function SettingsModal() {
           })}
         </div>
         <div className="p-4 flex flex-col gap-4 h-[65vh] overflow-y-auto">
-          {/* Tab: Verbindung */}
-          {settingsTab === 'connection' && (
-            <div className="flex flex-col gap-5">
-
-              {/* ── REST API ── */}
-              <div className="flex flex-col gap-3">
-                <SettingsGroupLabel isEn={isEn} en="REST API" de="REST API" />
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Host (ioBroker.rest-api)' : 'Host (ioBroker.rest-api)'}</span>
-                  <input
-                    value={settingsHost}
-                    onChange={(e) => { setSettingsHost(e.target.value); setSettingsHostError(null); setSettingsHostTestResult(null); }}
-                    disabled={settingsHostTesting}
-                    placeholder="10.4.0.33:8093"
-                    className={`px-2 py-1.5 text-xs rounded border font-mono bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none transition-colors ${
-                      settingsHostTesting ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20' : settingsHostError ? 'border-red-400' : 'border-gray-300 dark:border-gray-600 focus:ring-1 focus:ring-blue-400'
-                    }`}
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      disabled={settingsHostTesting}
-                      onClick={async () => {
-                        const val = settingsHost.trim();
-                        if (!val) return;
-                        setSettingsHostTesting(true);
-                        setSettingsHostError(null);
-                        setSettingsHostTestResult(null);
-                        try {
-                          const res = await fetch(`http://${val}/v1/objects?limit=1`);
-                          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                          setSettingsHostTestResult('ok');
-                        } catch {
-                          setSettingsHostTestResult('error');
-                          setSettingsHostError(isEn ? 'Host not reachable' : 'Host nicht erreichbar');
-                        } finally {
-                          setSettingsHostTesting(false);
-                        }
-                      }}
-                      className="px-2.5 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 transition-colors flex items-center gap-1.5"
-                    >
-                      {settingsHostTesting
-                        ? <><Loader2 size={12} className="animate-spin" />{isEn ? 'Testing…' : 'Teste…'}</>
-                        : isEn ? 'Test connection' : 'Verbindung testen'
-                      }
-                    </button>
-                    {settingsHostTestResult === 'ok' && (
-                      <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
-                        <Check size={12} /> {isEn ? 'Connected' : 'Verbunden'}
-                      </span>
-                    )}
-                    {settingsHostTestResult === 'error' && settingsHostError && (
-                      <span className="flex items-center gap-1 text-xs text-red-500">
-                        <AlertCircle size={12} /> {settingsHostError}
-                      </span>
-                    )}
-                    {settingsHost.trim() && (
-                      <a
-                        href={`http://${settingsHost.trim()}/api-doc/`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="ml-auto flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                      >
-                        <ExternalLink size={11} />
-                        Swagger UI
-                      </a>
-                    )}
-                  </div>
-                  <span className="text-[11px] text-gray-400 dark:text-gray-500 pl-1">
-                    {isEn
-                      ? 'Connects briefly to verify reachability — does not save or reload. Save the form to apply the host.'
-                      : 'Verbindet kurz zur Erreichbarkeitsprüfung — speichert nicht und lädt nicht neu. Formular speichern, um den Host zu übernehmen.'}
-                  </span>
-                </div>
-              </div>
-
-              <div className="border-t border-gray-200 dark:border-gray-700" />
-
-              {/* ── Realtime ── */}
-              <div className="flex flex-col gap-3">
-                <SettingsGroupLabel isEn={isEn} en="Realtime updates" de="Echtzeit-Updates" />
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Transport' : 'Übertragung'}</span>
-                  <select
-                    value={settingsDraft.realtimeTransport}
-                    onChange={(e) => setSettingsDraft((prev) => ({ ...prev, realtimeTransport: e.target.value as 'longpolling' | 'socketio' }))}
-                    className="px-2 py-1.5 text-xs rounded border bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                  >
-                    <option value="longpolling">{isEn ? 'Long polling (default — REST only)' : 'Long Polling (Standard — nur REST)'}</option>
-                    <option value="socketio">{isEn ? 'Socket.IO (experimental — requires socketio adapter)' : 'Socket.IO (experimentell — benötigt socketio-Adapter)'}</option>
-                  </select>
-                  <span className="text-[11px] text-gray-400 dark:text-gray-500 pl-1">
-                    {isEn
-                      ? 'Long polling works out of the box via the REST API. Socket.IO connects directly to a separate `socketio` adapter instance for lower-latency push updates.'
-                      : 'Long Polling funktioniert ohne weitere Voraussetzungen über die REST-API. Socket.IO verbindet sich direkt mit einer separaten socketio-Adapter-Instanz für Updates mit geringerer Latenz.'}
-                  </span>
-                </div>
-                {settingsDraft.realtimeTransport === 'socketio' && (
-                  <div className="flex flex-col gap-3">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Socket.IO host (optional override)' : 'Socket.IO-Host (optionaler Override)'}</span>
-                      <input
-                        value={settingsDraft.socketHost}
-                        onChange={(e) => {
-                          setSettingsDraft((prev) => ({ ...prev, socketHost: e.target.value }));
-                          setSocketTestResult(null);
-                          setSocketTestError(null);
-                        }}
-                        placeholder={`${settingsHostIp || '10.4.0.33'}:8084`}
-                        className="px-2 py-1.5 text-xs rounded border font-mono bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none border-gray-300 dark:border-gray-600 focus:ring-1 focus:ring-blue-400"
-                      />
-                      <span className="text-[11px] text-gray-400 dark:text-gray-500 pl-1">
-                        {isEn
-                          ? "Leave empty to guess from the REST host (default port 8084 — the socketio adapter's standard port)."
-                          : 'Leer lassen, um den Wert vom REST-Host abzuleiten (Standardport 8084 des socketio-Adapters).'}
-                      </span>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          disabled={socketTesting}
-                          onClick={testSocketConnection}
-                          className="px-2.5 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 transition-colors flex items-center gap-1.5"
-                        >
-                          {socketTesting
-                            ? <><Loader2 size={12} className="animate-spin" />{isEn ? 'Testing…' : 'Teste…'}</>
-                            : isEn ? 'Test connection' : 'Verbindung testen'
-                          }
-                        </button>
-                        {socketTestResult === 'ok' && (
-                          <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
-                            <Check size={12} /> {isEn ? 'Connected' : 'Verbunden'}
-                          </span>
-                        )}
-                        {socketTestResult === 'error' && (
-                          <span className="flex items-center gap-1 text-xs text-red-500">
-                            <AlertCircle size={12} /> {socketTestError}
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-[11px] text-gray-400 dark:text-gray-500 pl-1">
-                        {isEn
-                          ? 'Connects briefly to verify reachability — does not save or reload. Save the form to apply the host override.'
-                          : 'Verbindet kurz zur Erreichbarkeitsprüfung — speichert nicht und lädt nicht neu. Formular speichern, um den Host-Override zu übernehmen.'}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="border-t border-gray-200 dark:border-gray-700" />
-
-              {/* ── Admin ── */}
-              <div className="flex flex-col gap-3">
-                <SettingsGroupLabel isEn={isEn} en="Admin UI" de="Admin-Oberfläche" />
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Port (ioBroker Admin)' : 'Port (ioBroker Admin)'}</span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={65535}
-                    value={settingsDraft.adminPort}
-                    onChange={(e) => {
-                      const v = parseInt(e.target.value, 10);
-                      if (!isNaN(v)) setSettingsDraft((prev) => ({ ...prev, adminPort: v }));
-                    }}
-                    className="w-full px-2 py-1.5 text-xs rounded border font-mono bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none border-gray-300 dark:border-gray-600 focus:ring-1 focus:ring-blue-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  />
-                  <span className="text-[11px] text-gray-400 dark:text-gray-500 pl-1">{isEn ? 'Used for object icons and admin links.' : 'Wird für Objekt-Icons und Admin-Links verwendet.'}</span>
-                  {settingsHostIp && (
-                    <a
-                      href={`http://${settingsHostIp}:${settingsDraft.adminPort}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="self-start flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                    >
-                      <ExternalLink size={11} />
-                      ioBroker Admin
-                    </a>
-                  )}
-                </div>
-              </div>
-
-            </div>
-          )}
           {/* Tab: Anzeige */}
           {settingsTab === 'display' && (
             <div className="flex flex-col gap-5">
@@ -450,6 +274,7 @@ export default function SettingsModal() {
                       { value: 'light',   labelEn: 'Light',   labelDe: 'Hell',     preview: 'bg-white border-gray-300 text-gray-800' },
                       { value: 'dark',    labelEn: 'Dark',    labelDe: 'Dunkel',   preview: 'bg-gray-800 border-gray-600 text-gray-100' },
                       { value: 'obsidian',labelEn: 'Obsidian',labelDe: 'Obsidian', preview: 'bg-[#1e1e2e] border-[#45475a] text-[#cdd6f4]' },
+                      { value: 'abyss',   labelEn: 'Abyss',   labelDe: 'Abyss',   preview: 'bg-[#000000] border-[#2e2e2e] text-[#f0f0f0]' },
                     ] as { value: Theme; labelEn: string; labelDe: string; preview: string }[]).map(({ value, labelEn, labelDe, preview }) => (
                       <button
                         key={value}
@@ -838,14 +663,392 @@ export default function SettingsModal() {
 
             </div>
           )}
+
+          {/* Tab: Verbindungen */}
+          {settingsTab === 'connections' && (
+            <div className="flex flex-col gap-4">
+              <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
+                {isEn
+                  ? 'Manage multiple ioBroker instances. Switch between them via the dropdown in the title bar.'
+                  : 'Mehrere ioBroker-Instanzen verwalten. Wechsel über das Dropdown in der Titelleiste.'}
+              </p>
+
+              {/* Connection list */}
+              <div className="rounded border border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/40 overflow-hidden">
+                {connections.length === 0 ? (
+                  <div className="px-3 py-3 text-xs text-gray-400 dark:text-gray-500">
+                    {isEn ? 'No saved connections' : 'Keine gespeicherten Verbindungen'}
+                  </div>
+                ) : (
+                  <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {connections.map((conn) => {
+                      const isActive = conn.id === activeConnId;
+                      const isEditing = editingConn?.id === conn.id;
+                      return (
+                        <li key={conn.id} className={`flex flex-col ${isActive ? 'bg-blue-500/5' : ''}`}>
+                          {/* Collapsed row */}
+                          <div className="px-3 py-2.5 flex items-center gap-2">
+                            <Server size={12} className={isActive ? 'text-blue-500 dark:text-blue-400 shrink-0' : 'text-gray-400 dark:text-gray-500 shrink-0'} />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-medium text-gray-700 dark:text-gray-200 truncate">{conn.name}</span>
+                                {isActive && <span className="shrink-0 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-500/15 text-blue-600 dark:text-blue-400">{isEn ? 'Active' : 'Aktiv'}</span>}
+                              </div>
+                              <div className="text-[11px] font-mono text-gray-400 dark:text-gray-500 truncate">{conn.host}</div>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              {!isActive && (
+                                <button
+                                  onClick={() => { setSwitchingConnId(conn.id); void switchToConnection(conn); }}
+                                  disabled={switchingConnId === conn.id}
+                                  title={isEn ? 'Switch to this connection' : 'Zu dieser Verbindung wechseln'}
+                                  className="px-2 py-1 text-xs rounded bg-blue-600/10 text-blue-600 dark:text-blue-400 hover:bg-blue-600/20 transition-colors disabled:opacity-50"
+                                >
+                                  {switchingConnId === conn.id ? <Loader2 size={11} className="animate-spin" /> : (isEn ? 'Switch' : 'Wechseln')}
+                                </button>
+                              )}
+                              <button
+                                onClick={() => {
+                                  if (isEditing) {
+                                    setEditingConn(null);
+                                  } else {
+                                    setEditingConn({
+                                      id: conn.id,
+                                      name: conn.name,
+                                      host: conn.host,
+                                      socketHost: conn.socketHost ?? '',
+                                      realtimeTransport: conn.realtimeTransport ?? 'longpolling',
+                                      adminPort: conn.adminPort ?? 8081,
+                                    });
+                                    setConnHostTestResult(null);
+                                    setConnHostTestError(null);
+                                    setConnSioTestResult(null);
+                                    setConnSioTestError(null);
+                                  }
+                                }}
+                                title={isEditing ? (isEn ? 'Collapse' : 'Einklappen') : (isEn ? 'Edit' : 'Bearbeiten')}
+                                className={`p-1 rounded transition-colors ${isEditing ? 'text-blue-500 bg-blue-500/10' : 'text-gray-400 hover:text-blue-500 hover:bg-blue-500/10'}`}
+                              >
+                                <Pencil size={12} />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const updated = connections.filter((c) => c.id !== conn.id);
+                                  setConnectionsState(updated);
+                                  setConnections(updated);
+                                  if (isEditing) setEditingConn(null);
+                                  if (isActive && updated.length > 0) {
+                                    setSwitchingConnId(updated[0].id);
+                                    void switchToConnection(updated[0]);
+                                  }
+                                }}
+                                title={isEn ? 'Delete' : 'Löschen'}
+                                className="p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Expanded edit form */}
+                          {isEditing && editingConn && (
+                            <div className="px-3 pb-3 flex flex-col gap-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 pt-3">
+
+                              {/* Name */}
+                              <div className="flex flex-col gap-1">
+                                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Name' : 'Name'}</span>
+                                <input
+                                  value={editingConn.name}
+                                  onChange={(e) => setEditingConn((prev) => prev ? { ...prev, name: e.target.value } : prev)}
+                                  placeholder={isEn ? 'e.g. Home' : 'z.B. Zuhause'}
+                                  className="px-2 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                                />
+                              </div>
+
+                              {/* REST API host */}
+                              <div className="flex flex-col gap-1.5">
+                                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'REST API host (ioBroker.rest-api)' : 'REST-API-Host (ioBroker.rest-api)'}</span>
+                                <input
+                                  value={editingConn.host}
+                                  onChange={(e) => { setEditingConn((prev) => prev ? { ...prev, host: e.target.value } : prev); setConnHostTestResult(null); setConnHostTestError(null); }}
+                                  placeholder="10.4.0.33:8093"
+                                  disabled={connHostTesting}
+                                  className={`px-2 py-1.5 text-xs rounded border font-mono bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none transition-colors ${
+                                    connHostTesting ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20' : connHostTestError ? 'border-red-400' : 'border-gray-300 dark:border-gray-600 focus:ring-1 focus:ring-blue-400'
+                                  }`}
+                                />
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={connHostTesting}
+                                    onClick={async () => {
+                                      const val = editingConn.host.trim();
+                                      if (!val) return;
+                                      setConnHostTesting(true);
+                                      setConnHostTestResult(null);
+                                      setConnHostTestError(null);
+                                      try {
+                                        const res = await fetch(`http://${val}/v1/objects?limit=1`);
+                                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                                        setConnHostTestResult('ok');
+                                      } catch {
+                                        setConnHostTestResult('error');
+                                        setConnHostTestError(isEn ? 'Host not reachable' : 'Host nicht erreichbar');
+                                      } finally {
+                                        setConnHostTesting(false);
+                                      }
+                                    }}
+                                    className="px-2.5 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 transition-colors flex items-center gap-1.5"
+                                  >
+                                    {connHostTesting
+                                      ? <><Loader2 size={12} className="animate-spin" />{isEn ? 'Testing…' : 'Teste…'}</>
+                                      : isEn ? 'Test' : 'Testen'
+                                    }
+                                  </button>
+                                  {connHostTestResult === 'ok' && (
+                                    <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400"><Check size={12} /> {isEn ? 'Connected' : 'Verbunden'}</span>
+                                  )}
+                                  {connHostTestResult === 'error' && connHostTestError && (
+                                    <span className="flex items-center gap-1 text-xs text-red-500"><AlertCircle size={12} /> {connHostTestError}</span>
+                                  )}
+                                  {editingConn.host.trim() && (
+                                    <a
+                                      href={`http://${editingConn.host.trim()}/api-doc/`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="ml-auto flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                                    >
+                                      <ExternalLink size={11} /> Swagger UI
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Realtime transport */}
+                              <div className="flex flex-col gap-1">
+                                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Realtime transport' : 'Echtzeit-Übertragung'}</span>
+                                <select
+                                  value={editingConn.realtimeTransport}
+                                  onChange={(e) => setEditingConn((prev) => prev ? { ...prev, realtimeTransport: e.target.value as 'longpolling' | 'socketio' } : prev)}
+                                  className="px-2 py-1.5 text-xs rounded border bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                                >
+                                  <option value="longpolling">{isEn ? 'Long polling (default — REST only)' : 'Long Polling (Standard — nur REST)'}</option>
+                                  <option value="socketio">{isEn ? 'Socket.IO (experimental — requires socketio adapter)' : 'Socket.IO (experimentell — benötigt socketio-Adapter)'}</option>
+                                </select>
+                              </div>
+
+                              {/* Socket.IO host (only when socketio selected) */}
+                              {editingConn.realtimeTransport === 'socketio' && (
+                                <div className="flex flex-col gap-1.5">
+                                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Socket.IO host (optional override)' : 'Socket.IO-Host (optionaler Override)'}</span>
+                                  <input
+                                    value={editingConn.socketHost}
+                                    onChange={(e) => { setEditingConn((prev) => prev ? { ...prev, socketHost: e.target.value } : prev); setConnSioTestResult(null); setConnSioTestError(null); }}
+                                    placeholder={`${editingConn.host.trim().split(':')[0] || '10.4.0.33'}:8084`}
+                                    className="px-2 py-1.5 text-xs rounded border font-mono bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none border-gray-300 dark:border-gray-600 focus:ring-1 focus:ring-blue-400"
+                                  />
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      disabled={connSioTesting}
+                                      onClick={testConnSocketConnection}
+                                      className="px-2.5 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 transition-colors flex items-center gap-1.5"
+                                    >
+                                      {connSioTesting
+                                        ? <><Loader2 size={12} className="animate-spin" />{isEn ? 'Testing…' : 'Teste…'}</>
+                                        : isEn ? 'Test' : 'Testen'
+                                      }
+                                    </button>
+                                    {connSioTestResult === 'ok' && (
+                                      <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400"><Check size={12} /> {isEn ? 'Connected' : 'Verbunden'}</span>
+                                    )}
+                                    {connSioTestResult === 'error' && (
+                                      <span className="flex items-center gap-1 text-xs text-red-500"><AlertCircle size={12} /> {connSioTestError}</span>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Admin port */}
+                              <div className="flex flex-col gap-1">
+                                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Admin UI port (ioBroker Admin)' : 'Admin-Port (ioBroker Admin)'}</span>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={65535}
+                                  value={editingConn.adminPort}
+                                  onChange={(e) => { const v = parseInt(e.target.value, 10); if (!isNaN(v)) setEditingConn((prev) => prev ? { ...prev, adminPort: v } : prev); }}
+                                  className="w-full px-2 py-1.5 text-xs rounded border font-mono bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none border-gray-300 dark:border-gray-600 focus:ring-1 focus:ring-blue-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
+                                {editingConn.host.trim() && (
+                                  <a
+                                    href={`http://${editingConn.host.trim().split(':')[0]}:${editingConn.adminPort}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="self-start flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                                  >
+                                    <ExternalLink size={11} /> ioBroker Admin
+                                  </a>
+                                )}
+                              </div>
+
+                              {/* Save / Cancel buttons */}
+                              <div className="flex gap-2 pt-1">
+                                <button
+                                  onClick={() => {
+                                    const name = editingConn.name.trim();
+                                    const host = editingConn.host.trim();
+                                    if (!name || !host) return;
+                                    const updated = connections.map((c) =>
+                                      c.id === editingConn.id
+                                        ? { ...c, name, host, socketHost: editingConn.socketHost.trim() || undefined, realtimeTransport: editingConn.realtimeTransport, adminPort: editingConn.adminPort }
+                                        : c
+                                    );
+                                    setConnectionsState(updated);
+                                    setConnections(updated);
+                                    // If editing active connection: update appSettings draft + persist transport/host/adminPort
+                                    if (isActive) {
+                                      const prevHost = localStorage.getItem('ioBrokerHost') ?? '';
+                                      localStorage.setItem('ioBrokerHost', host);
+                                      setSettingsDraft((prev) => ({
+                                        ...prev,
+                                        realtimeTransport: editingConn.realtimeTransport,
+                                        socketHost: editingConn.socketHost.trim(),
+                                        adminPort: editingConn.adminPort,
+                                      }));
+                                      if (prevHost !== host) {
+                                        // host changed — reload after cache clear
+                                        void (async () => {
+                                          await clearObjectsCache();
+                                          window.location.reload();
+                                        })();
+                                        return;
+                                      }
+                                    }
+                                    setEditingConn(null);
+                                  }}
+                                  disabled={!editingConn.name.trim() || !editingConn.host.trim()}
+                                  className="px-2.5 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                                >
+                                  {isEn ? 'Save' : 'Speichern'}
+                                </button>
+                                <button
+                                  onClick={() => setEditingConn(null)}
+                                  className="px-2.5 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                >
+                                  {isEn ? 'Cancel' : 'Abbrechen'}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+
+              {/* Add new connection */}
+              <div className="flex flex-col gap-2">
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Add Connection' : 'Neue Verbindung'}</span>
+                <div className="flex gap-2">
+                  <input
+                    value={newConnName}
+                    onChange={(e) => setNewConnName(e.target.value)}
+                    placeholder={isEn ? 'Name (e.g. Home)' : 'Name (z.B. Zuhause)'}
+                    className="flex-1 px-2 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                  />
+                  <input
+                    value={newConnHost}
+                    onChange={(e) => setNewConnHost(e.target.value)}
+                    placeholder="10.4.0.33:8093"
+                    onKeyDown={(e) => { if (e.key === 'Enter') document.getElementById('add-conn-btn')?.click(); }}
+                    className="flex-1 px-2 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 font-mono focus:outline-none focus:ring-1 focus:ring-blue-400"
+                  />
+                  <button
+                    id="add-conn-btn"
+                    onClick={() => {
+                      const name = newConnName.trim();
+                      const host = newConnHost.trim();
+                      if (!name || !host) return;
+                      const newConn: SavedConnection = { id: Date.now().toString(36) + Math.random().toString(36).slice(2), name, host };
+                      const updated = [...connections, newConn];
+                      setConnectionsState(updated);
+                      setConnections(updated);
+                      setNewConnName('');
+                      setNewConnHost('');
+                    }}
+                    disabled={!newConnName.trim() || !newConnHost.trim()}
+                    className="p-1.5 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Tab: Namespaces */}
+          {settingsTab === 'namespaces' && (
+            <div className="flex flex-col gap-5">
+
+              {/* ── ID prefix stripping ── */}
+              <div className="flex flex-col gap-3">
+                <SettingsGroupLabel isEn={isEn} en="Included namespaces" de="Inkludierte Namespaces" />
+                <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
+                  {isEn
+                    ? 'When configured, only objects from these namespaces are fetched from the API — reducing transfer size and processing. Enums (rooms/functions) are always fetched. Empty = fetch everything. Example: "alias.0." fetches only alias objects.'
+                    : 'Wenn konfiguriert, werden nur Objekte aus diesen Namespaces von der API abgerufen — weniger Daten, weniger Verarbeitung. Enums (Räume/Funktionen) werden immer geladen. Leer = alles laden. Beispiel: "alias.0." lädt nur Alias-Objekte.'}
+                </p>
+                <div className="flex items-center gap-2">
+                  <NamespaceInput
+                    value={newStripPrefix}
+                    onChange={setNewStripPrefix}
+                    onAdd={addStripPrefix}
+                    suggestions={namespaceSuggestions.filter((s) => !(settingsDraft.includeIdPrefixes ?? []).includes(s))}
+                    isEn={isEn}
+                  />
+                  <button onClick={addStripPrefix} className="px-2.5 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors">
+                    {isEn ? 'Add' : 'Hinzufügen'}
+                  </button>
+                </div>
+                <div className="rounded border border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/40">
+                  {(settingsDraft.includeIdPrefixes ?? []).length === 0 ? (
+                    <div className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">
+                      {isEn ? 'No prefixes configured' : 'Keine Präfixe konfiguriert'}
+                    </div>
+                  ) : (
+                    <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                      {(settingsDraft.includeIdPrefixes ?? []).map((prefix) => (
+                        <li key={prefix} className="flex items-center justify-between gap-2 px-3 py-2">
+                          <span className="text-xs font-mono text-gray-700 dark:text-gray-300 truncate">{prefix}</span>
+                          <button
+                            onClick={() => setSettingsDraft((prev) => ({ ...prev, includeIdPrefixes: (prev.includeIdPrefixes ?? []).filter((p) => p !== prefix) }))}
+                            title={isEn ? 'Remove' : 'Entfernen'}
+                            className="shrink-0 p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-500/10 dark:hover:text-red-400 transition-colors"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+
+            </div>
+          )}
         </div>
         <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
-          <button
-            onClick={resetSettingsToDefault}
-            className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors"
-          >
-            {isEn ? 'Reset settings' : 'Einstellungen zurücksetzen'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={resetSettingsToDefault}
+              className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors"
+            >
+              {isEn ? 'Reset settings' : 'Einstellungen zurücksetzen'}
+            </button>
+            <ClearLocalStorageButton isEn={isEn} />
+          </div>
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
@@ -864,6 +1067,110 @@ export default function SettingsModal() {
       </div>
     </div>,
     document.body
+  );
+}
+
+function NamespaceInput({ value, onChange, onAdd, suggestions, isEn }: {
+  value: string;
+  onChange: (v: string) => void;
+  onAdd: (directVal?: string) => void;
+  suggestions: string[];
+  isEn: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const filtered = value.trim()
+    ? suggestions.filter((s) => s.toLowerCase().includes(value.toLowerCase()))
+    : suggestions;
+
+  const pick = (s: string) => {
+    onChange(s);
+    setOpen(false);
+  };
+
+  return (
+    <div className="relative flex-1">
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => { onChange(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') { onAdd(); setOpen(false); }
+          else if (e.key === 'Escape') setOpen(false);
+        }}
+        placeholder={isEn ? 'e.g. mqtt.0.' : 'z.B. mqtt.0.'}
+        className="w-full px-2 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 font-mono"
+      />
+      {open && filtered.length > 0 && (
+        <ul className="absolute left-0 top-full mt-1 z-50 w-full max-h-48 overflow-y-auto rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg">
+          {filtered.map((s) => (
+            <li key={s}>
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => { pick(s); onAdd(s); }}
+                className="w-full px-2.5 py-1.5 text-left text-xs font-mono text-gray-700 dark:text-gray-300 hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                {s}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function ClearLocalStorageButton({ isEn }: { isEn: boolean }) {
+  const [open, setOpen] = useState(false);
+
+  const handleConfirm = () => {
+    localStorage.clear();
+    window.location.reload();
+  };
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors"
+      >
+        {isEn ? 'Clear local storage' : 'Local Storage löschen'}
+      </button>
+      {open && createPortal(
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" onClick={() => setOpen(false)}>
+          <div className="w-80 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl p-5 flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                {isEn ? 'Clear local storage?' : 'Local Storage löschen?'}
+              </span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {isEn
+                  ? 'All settings, column widths, and cached data will be deleted. The page reloads afterwards.'
+                  : 'Alle Einstellungen, Spaltenbreiten und gecachte Daten werden gelöscht. Die Seite lädt danach neu.'}
+              </span>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setOpen(false)}
+                className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                {isEn ? 'Cancel' : 'Abbrechen'}
+              </button>
+              <button
+                onClick={handleConfirm}
+                className="px-3 py-1.5 text-xs rounded bg-red-600 text-white hover:bg-red-700 transition-colors"
+              >
+                {isEn ? 'Delete & reload' : 'Löschen & neu laden'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
   );
 }
 

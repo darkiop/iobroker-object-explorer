@@ -54,6 +54,11 @@ export interface AppSettings {
   /** When on, the unit (common.unit) is appended to the value in the Value column
    *  so the unit is visible even when the Unit column is hidden. Off by default. */
   showUnitInValue: boolean;
+  /** When non-empty, only objects whose IDs start with one of these prefixes are fetched.
+   *  Reduces data size for installs with large adapters you don't need to browse.
+   *  Enums (rooms/functions) are always fetched regardless of this setting.
+   *  E.g. ["alias.0.", "javascript.0."] fetches only those two namespaces. */
+  includeIdPrefixes: string[];
 }
 
 const PAGE_SIZE_OPTIONS = [200, 500, 1000, 3000];
@@ -93,6 +98,7 @@ export function getDefaultAppSettings(): AppSettings {
     objectsCacheTTL: '24h',
     loadOnlyVisibleStateValues: false,
     showUnitInValue: false,
+    includeIdPrefixes: [],
   };
 }
 
@@ -174,6 +180,9 @@ export function loadAppSettings(): AppSettings {
       objectsCacheTTL: (['off','1h','6h','24h','7d'] as const).includes(parsed.objectsCacheTTL as 'off'|'1h'|'6h'|'24h'|'7d') ? parsed.objectsCacheTTL as 'off'|'1h'|'6h'|'24h'|'7d' : '24h',
       loadOnlyVisibleStateValues: parsed.loadOnlyVisibleStateValues === true,
       showUnitInValue: parsed.showUnitInValue === true,
+      includeIdPrefixes: Array.isArray(parsed.includeIdPrefixes)
+        ? parsed.includeIdPrefixes.filter((x): x is string => typeof x === 'string' && x.length > 0)
+        : [],
     };
   } catch { return fallback; }
 }

@@ -2,6 +2,64 @@ import type { IoBrokerState, IoBrokerObject, IoBrokerObjectCommon, HistoryEntry,
 import { getLocalizedName, getAllNamesForSearch } from '../utils/i18n';
 
 const LS_HOST_KEY = 'ioBrokerHost';
+const LS_CONNECTIONS_KEY = 'iob-connections';
+const LS_ACTIVE_CONNECTION_ID = 'iob-active-connection-id';
+
+export interface SavedConnection {
+  id: string;
+  name: string;
+  host: string;
+  socketHost?: string;
+  realtimeTransport?: 'longpolling' | 'socketio';
+  adminPort?: number;
+}
+
+function genId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
+export function getConnections(): SavedConnection[] {
+  try {
+    const raw = localStorage.getItem(LS_CONNECTIONS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as SavedConnection[];
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch { /* ignore */ }
+  // Migrate existing host to default connection
+  const host = localStorage.getItem(LS_HOST_KEY) ?? window.__CONFIG__?.ioBrokerHost ?? '';
+  if (host) {
+    const conn: SavedConnection = { id: genId(), name: 'Default', host };
+    try { localStorage.setItem(LS_CONNECTIONS_KEY, JSON.stringify([conn])); } catch { /* ignore */ }
+    try { localStorage.setItem(LS_ACTIVE_CONNECTION_ID, conn.id); } catch { /* ignore */ }
+    return [conn];
+  }
+  return [];
+}
+
+export function setConnections(connections: SavedConnection[]): void {
+  try { localStorage.setItem(LS_CONNECTIONS_KEY, JSON.stringify(connections)); } catch { /* ignore */ }
+}
+
+export function getActiveConnectionId(): string | null {
+  return localStorage.getItem(LS_ACTIVE_CONNECTION_ID);
+}
+
+export async function switchToConnection(conn: SavedConnection): Promise<void> {
+  localStorage.setItem(LS_HOST_KEY, conn.host);
+  localStorage.setItem(LS_ACTIVE_CONNECTION_ID, conn.id);
+  // Apply per-connection AppSettings overrides so they're ready after reload
+  try {
+    const raw = localStorage.getItem('iobroker-app-settings');
+    const current = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+    if (conn.realtimeTransport !== undefined) current['realtimeTransport'] = conn.realtimeTransport;
+    if (conn.socketHost !== undefined) current['socketHost'] = conn.socketHost;
+    if (conn.adminPort !== undefined) current['adminPort'] = conn.adminPort;
+    localStorage.setItem('iobroker-app-settings', JSON.stringify(current));
+  } catch { /* ignore */ }
+  await clearObjectsCache();
+  window.location.reload();
+}
 
 export function getBaseUrl(): string {
   if (window.location.protocol === 'https:') {
@@ -169,6 +227,19 @@ async function writeObjectsCacheEntry(key: string, data: BulkObjectsCacheEntry['
   } catch { /* ignore quota/availability errors — cache is best-effort */ }
 }
 
+export async function clearObjectsCache(): Promise<void> {
+  try {
+    const db = await openObjectsCacheDb();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(OBJECTS_CACHE_STORE, 'readwrite');
+      tx.objectStore(OBJECTS_CACHE_STORE).clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch { /* ignore */ }
+  try { localStorage.removeItem(LS_OBJECTS_CACHE_LOADCOUNT); } catch { /* ignore */ }
+}
+
 function getObjectsCacheSettings(): { reloadThreshold: number; ttlMs: number | null } {
   try {
     const raw = localStorage.getItem('iobroker-app-settings');
@@ -209,9 +280,51 @@ async function shouldUsePersistedObjectsCache(): Promise<boolean> {
 let _objectsFetchPromise: Promise<Record<string, IoBrokerObject>> | null = null;
 let _fastObjectsPromise: Promise<Record<string, IoBrokerObject>> | null = null;
 
+// ── Namespace inclusion filter ────────────────────────────────────────────────
+let _includeNamespaces: string[] = [];
+
+export function setIncludeNamespaces(namespaces: string[]): void {
+  const prev = _includeNamespaces.slice().sort().join('\0');
+  const next = namespaces.slice().sort().join('\0');
+  if (prev === next) return;
+  _includeNamespaces = namespaces;
+  _objectsFetchPromise = null;
+  _fastObjectsPromise = null;
+  _allObjectsCacheChecked = false;
+  _stateObjectsFastCacheChecked = false;
+}
+
+async function fetchObjectView(type: string, namespacePrefix: string): Promise<Record<string, IoBrokerObject>> {
+  const res = await fetch(`${getBaseUrl()}/command/getObjectView`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ design: 'system', search: type, params: { startkey: namespacePrefix, endkey: namespacePrefix + '￿' } }),
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
+  const envelope = await res.json() as { result?: { rows?: Array<{ id: string; value: IoBrokerObject }> } };
+  const rows = envelope?.result?.rows ?? [];
+  return Object.fromEntries(rows.map((r) => [r.id, r.value ?? {}]));
+}
+
+async function getStateObjectsForNamespaces(namespaces: string[]): Promise<Record<string, IoBrokerObject>> {
+  const results = await Promise.all(namespaces.map((ns) => fetchObjectView('state', ns)));
+  return Object.assign({}, ...results) as Record<string, IoBrokerObject>;
+}
+
+async function getAllObjectsForNamespaces(namespaces: string[]): Promise<Record<string, IoBrokerObject>> {
+  const types = ['state', 'channel', 'device', 'folder'] as const;
+  const namespacedFetches = namespaces.flatMap((ns) => types.map((t) => fetchObjectView(t, ns)));
+  const enumFetch = fetchApi<Record<string, IoBrokerObject>>('/objects?type=enum');
+  const [enums, ...rest] = await Promise.all([enumFetch, ...namespacedFetches]);
+  return Object.assign({}, enums, ...rest) as Record<string, IoBrokerObject>;
+}
+
 export async function getStateObjectsFast(): Promise<Record<string, IoBrokerObject>> {
   if (_fastObjectsPromise) return _fastObjectsPromise;
-  _fastObjectsPromise = fetchApi<Record<string, IoBrokerObject>>('/objects?type=state')
+  const fetcher = _includeNamespaces.length > 0
+    ? getStateObjectsForNamespaces(_includeNamespaces)
+    : fetchApi<Record<string, IoBrokerObject>>('/objects?type=state');
+  _fastObjectsPromise = (fetcher as Promise<Record<string, IoBrokerObject>>)
     .catch(err => { _fastObjectsPromise = null; throw err; });
   return _fastObjectsPromise;
 }
@@ -236,6 +349,14 @@ export async function getStateObjectsFastCached(): Promise<Record<string, IoBrok
 
 export async function getAllObjects(): Promise<Record<string, IoBrokerObject>> {
   if (_objectsFetchPromise) return _objectsFetchPromise;
+
+  if (_includeNamespaces.length > 0) {
+    _objectsFetchPromise = getAllObjectsForNamespaces(_includeNamespaces)
+      .then((all) => { _objectsFetchPromise = null; _fastObjectsPromise = null; return all; })
+      .catch((err) => { _objectsFetchPromise = null; throw err; });
+    return _objectsFetchPromise;
+  }
+
   // `/objects` returns every object on modern adapters, but on some REST-API
   // versions it omits whole categories (folder/device/channel/enum) rather than
   // just leaving them untyped — e.g. plain `/objects` can come back with zero
@@ -314,7 +435,7 @@ export async function getObjectsByPattern(pattern: string, fulltext = true, exac
     const result: Record<string, IoBrokerObject> = {};
     const regex = compilePattern(pattern);
     for (const [id, obj] of Object.entries(all)) {
-      if (!!obj && regex.test(id) && matchesFieldFilters(id, obj)) {
+      if (!!obj && obj.type !== 'enum' && regex.test(id) && matchesFieldFilters(id, obj)) {
         result[id] = obj;
       }
     }
@@ -326,7 +447,7 @@ export async function getObjectsByPattern(pattern: string, fulltext = true, exac
       const q = pattern.toLowerCase();
       const result: Record<string, IoBrokerObject> = {};
       for (const [id, obj] of Object.entries(all)) {
-        if (!!obj && id.toLowerCase() === q) {
+        if (!!obj && obj.type !== 'enum' && id.toLowerCase() === q) {
           result[id] = obj;
           break;
         }
@@ -337,7 +458,7 @@ export async function getObjectsByPattern(pattern: string, fulltext = true, exac
     const q = pattern.toLowerCase();
     const result: Record<string, IoBrokerObject> = {};
     for (const [id, obj] of Object.entries(all)) {
-      if (!!obj && id.toLowerCase().includes(q) && matchesFieldFilters(id, obj)) {
+      if (!!obj && obj.type !== 'enum' && id.toLowerCase().includes(q) && matchesFieldFilters(id, obj)) {
         result[id] = obj;
       }
     }
@@ -348,7 +469,7 @@ export async function getObjectsByPattern(pattern: string, fulltext = true, exac
     const q = pattern.toLowerCase();
     const result: Record<string, IoBrokerObject> = {};
     for (const [id, obj] of Object.entries(all)) {
-      if (!obj) continue;
+      if (!obj || obj.type === 'enum') continue;
       if (id.toLowerCase() === q) {
         result[id] = obj;
         break;
@@ -367,7 +488,7 @@ export async function getObjectsByPattern(pattern: string, fulltext = true, exac
   for (let i = 0; i < idx.ids.length; i++) {
     const id = idx.ids[i];
     const obj = all[id];
-    if (!obj) continue;
+    if (!obj || obj.type === 'enum') continue;
     if (!matchesFieldFilters(id, obj)) continue;
     const score = pattern === '*' ? 1 : scoreIndexed(idx.idLower[i], idx.names[i], idx.aliasIds[i], idx.descs[i], q);
     if (score > 0) scored.push([id, obj, score]);
@@ -720,8 +841,9 @@ export async function getFunctionMap(): Promise<Record<string, string>> {
 }
 
 export async function getCustomSupportedInstances(): Promise<Array<{ id: string; adapterName: string }>> {
-  const all = await getAllObjectsCached(); // cached — avoids a redundant /objects?type=instance round trip
-  return Object.entries(all)
+  // Fetch instances directly — getAllObjectsCached() omits system.adapter.* when includeIdPrefixes is set
+  const instances = await fetchApi<Record<string, IoBrokerObject>>('/objects?type=instance');
+  return Object.entries(instances)
     .filter(([id, o]) => id.startsWith('system.adapter.') && o.common?.enabled === true && o.common?.supportCustoms === true)
     .map(([id]) => {
       const instanceId = id.replace('system.adapter.', '');
