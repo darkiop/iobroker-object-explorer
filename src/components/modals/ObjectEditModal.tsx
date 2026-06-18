@@ -303,7 +303,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
         onClick={() => { if (isDirtyRef.current) { openCloseConfirm(); } else { onClose(); } }}
       >
         <div
-          className="bg-white dark:bg-gray-900 animate-modal-in rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-2xl flex flex-col h-[90vh]"
+          className="bg-white dark:bg-gray-900 animate-modal-in rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-4xl flex flex-col h-[90vh]"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
