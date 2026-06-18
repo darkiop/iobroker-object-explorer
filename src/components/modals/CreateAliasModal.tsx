@@ -12,6 +12,7 @@ interface Props {
   onClose: () => void;
   onCreated?: (aliasId: string) => void;
   language?: 'en' | 'de';
+  initialAliasId?: string;
 }
 
 const ALIAS_PREFIX = 'alias.0.';
@@ -28,11 +29,14 @@ function getObjectName(obj: IoBrokerObject | undefined): string {
 }
 
 
-export default function CreateAliasModal({ sourceId = '', sourceObj, existingIds, onClose, onCreated, language = 'en' }: Props) {
+export default function CreateAliasModal({ sourceId = '', sourceObj, existingIds, onClose, onCreated, language = 'en', initialAliasId }: Props) {
   const isEn = language === 'en';
   const freeSource = sourceId === '';
   const [localSourceId, setLocalSourceId] = useState(sourceId);
-  const [aliasId, setAliasId] = useState(() => suggestAliasSuffix(sourceId));
+  const [aliasId, setAliasId] = useState(() => {
+    if (initialAliasId?.startsWith(ALIAS_PREFIX)) return initialAliasId.slice(ALIAS_PREFIX.length);
+    return suggestAliasSuffix(sourceId);
+  });
   const [name, setName] = useState(() => getObjectName(sourceObj));
   const [role, setRole] = useState(() => (sourceObj?.common?.role as string) ?? '');
   const [unit, setUnit] = useState(() => (sourceObj?.common?.unit as string) ?? '');

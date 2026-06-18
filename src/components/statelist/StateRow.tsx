@@ -193,11 +193,16 @@ const StateRow = React.memo(function StateRow({
     )}
     <tr
       ref={trRef}
+      draggable={true}
+      onDragStart={(e) => {
+        e.dataTransfer.setData('application/iobroker-id', id);
+        e.dataTransfer.effectAllowed = 'copy';
+      }}
       onClick={() => startTransition(() => onSelect(id))}
       onContextMenu={(e) => { e.preventDefault(); onContextMenu(e.clientX, e.clientY, id); }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className={`group border-b border-gray-200 dark:border-gray-800 cursor-pointer transition-colors ${
+      className={`group border-b border-gray-200 dark:border-gray-800 cursor-grab select-none transition-colors ${
         isSelected
           ? 'bg-blue-600/20 text-blue-700 dark:text-blue-200'
           : isFocused

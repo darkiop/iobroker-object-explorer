@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, memo } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef, memo } from 'react';
 import { ChevronRight, ChevronDown, ChevronsUpDown, ChevronsDownUp, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil, LayoutList, LayoutGrid, Plus, FileCode2, Link2, UserRound, ShieldAlert, Download, Trash2, Filter } from 'lucide-react';
 import type { TreeNode, IoBrokerObject } from '../types/iobroker';
 import ObjectEditModal from './modals/ObjectEditModal';
@@ -20,6 +20,7 @@ interface StateTreeProps {
   onCreateAtPath: (prefix: string) => void;
   onSearch: (pattern: string) => void;
   onTreeScope: (prefix: string) => void;
+  onDropAlias?: (sourceId: string, targetPath: string) => void;
 }
 
 
@@ -75,6 +76,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   onAddToTreeFilter,
   nodeFontClass = 'text-sm',
   treeCountMode = 'objects' as 'off' | 'states' | 'objects' | 'both',
+  onDropAlias,
 }: {
   node: TreeNode;
   depth: number;
@@ -98,6 +100,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   onAddToTreeFilter: (path: string) => void;
   nodeFontClass?: string;
   treeCountMode?: 'off' | 'states' | 'objects' | 'both';
+  onDropAlias?: (sourceId: string, targetPath: string) => void;
 }) {
   const isEn = language === 'en';
   const [expanded, setExpanded] = useState(false);
@@ -141,6 +144,38 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   const isHistoryEnabled = node.isLeaf && historyIds.has(node.fullPath);
   const isSmartEnabled = node.isLeaf && smartIds.has(node.fullPath);
   const isActiveScope = (!!treeFilter && treeFilter === node.fullPath + '.') || (!!pattern && pattern === node.fullPath + '.*');
+  const isAliasDropTarget = !node.isLeaf && node.fullPath.startsWith('alias.');
+  const [isDragOver, setIsDragOver] = useState(false);
+  const dropDivRef = useRef<HTMLDivElement>(null);
+  // Use a mutable ref so native listeners always have the latest onDropAlias + fullPath
+  const dropPropsRef = useRef({ onDropAlias, fullPath: node.fullPath });
+  dropPropsRef.current = { onDropAlias, fullPath: node.fullPath };
+  useEffect(() => {
+    if (!isAliasDropTarget) return;
+    const el = dropDivRef.current;
+    if (!el) return;
+    const onEnter = (e: DragEvent) => { e.preventDefault(); setIsDragOver(true); };
+    const onOver = (e: DragEvent) => { e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'; setIsDragOver(true); };
+    const onLeave = (e: DragEvent) => { if (el.contains(e.relatedTarget as Node)) return; setIsDragOver(false); };
+    const onDrop = (e: DragEvent) => {
+      e.preventDefault();
+      setIsDragOver(false);
+      const sourceId = e.dataTransfer?.getData('application/iobroker-id');
+      if (sourceId && !sourceId.startsWith('alias.')) {
+        dropPropsRef.current.onDropAlias?.(sourceId, dropPropsRef.current.fullPath);
+      }
+    };
+    el.addEventListener('dragenter', onEnter);
+    el.addEventListener('dragover', onOver);
+    el.addEventListener('dragleave', onLeave);
+    el.addEventListener('drop', onDrop);
+    return () => {
+      el.removeEventListener('dragenter', onEnter);
+      el.removeEventListener('dragover', onOver);
+      el.removeEventListener('dragleave', onLeave);
+      el.removeEventListener('drop', onDrop);
+    };
+  }, [isAliasDropTarget]);
   const sortedChildren = useMemo(
     () => [...node.children.values()].sort((a, b) => a.name.localeCompare(b.name)),
     [node.children]
@@ -202,6 +237,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
             onAddToTreeFilter={onAddToTreeFilter}
             nodeFontClass={nodeFontClass}
             treeCountMode={treeCountMode}
+            onDropAlias={onDropAlias}
           />
         ))}
       </>
@@ -276,10 +312,13 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
       })()}
 
       <div
+        ref={dropDivRef}
         className={`group/row flex items-center gap-1.5 px-2 py-1 cursor-pointer rounded ${nodeFontClass} ${
-          selectedId === node.fullPath
-            ? 'bg-blue-600/30 text-blue-600 dark:text-blue-300 hover:bg-blue-600/35'
-            : `hover:bg-gray-200/50 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-300 ${namespaceRowClass}`
+          isDragOver
+            ? 'bg-emerald-500/20 ring-1 ring-inset ring-emerald-500/50 text-emerald-700 dark:text-emerald-300'
+            : selectedId === node.fullPath
+              ? 'bg-blue-600/30 text-blue-600 dark:text-blue-300 hover:bg-blue-600/35'
+              : `hover:bg-gray-200/50 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-300 ${namespaceRowClass}`
         }`}
         style={{ paddingLeft: `${depth * 14 + 4}px` }}
         onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY }); }}
@@ -440,6 +479,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
             onAddToTreeFilter={onAddToTreeFilter}
             nodeFontClass={nodeFontClass}
             treeCountMode={treeCountMode}
+            onDropAlias={onDropAlias}
           />
         ))}
     </div>
@@ -467,7 +507,8 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
     prev.onAutoCreateAlias !== next.onAutoCreateAlias ||
     prev.onAddToTreeFilter !== next.onAddToTreeFilter ||
     prev.nodeFontClass !== next.nodeFontClass ||
-    prev.treeCountMode !== next.treeCountMode
+    prev.treeCountMode !== next.treeCountMode ||
+    prev.onDropAlias !== next.onDropAlias
   ) return false;
 
   if (prev.selectedId === next.selectedId) return true;
@@ -481,7 +522,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
 });
 
 
-function StateTree({ stateIds, allObjects, historyIds, smartIds, onCreateAtPath, onSearch, onTreeScope }: StateTreeProps) {
+function StateTree({ stateIds, allObjects, historyIds, smartIds, onCreateAtPath, onSearch, onTreeScope, onDropAlias }: StateTreeProps) {
   const { treeFilter, treeSearch, setTreeSearch, treeExpandSignal, pattern, historyOnly, smartOnly } = useFilterContext();
   const { selectedId, setSelectedId, setAliasReplaceInitialStr, setAutoAliasDeviceId } = useSelectionContext();
   const { appSettings, persistSettings } = useAppSettingsContext();
@@ -618,6 +659,7 @@ function StateTree({ stateIds, allObjects, historyIds, smartIds, onCreateAtPath,
               onAddToTreeFilter={setTreeSearch}
               nodeFontClass={nodeFontClass}
               treeCountMode={treeCountMode}
+              onDropAlias={onDropAlias}
             />
           ))
         )}
