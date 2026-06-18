@@ -16,12 +16,14 @@ import HelpModal from './components/modals/HelpModal';
 import EnumManagerModal from './components/modals/EnumManagerModal';
 import AliasReplaceModal from './components/modals/AliasReplaceModal';
 import AutoCreateAliasModal from './components/modals/AutoCreateAliasModal';
+import CreateAliasModal from './components/modals/CreateAliasModal';
 import SettingsModal from './components/modals/SettingsModal';
 import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunctionMap, useRoomEnums, useFunctionEnums, useAliasMap } from './hooks/useStates';
 import { useApiConnectivity } from './hooks/useApiConnectivity';
 import { useLongPolling } from './hooks/useLongPolling';
 import { useSocketIO } from './hooks/useSocketIO';
-import { hasHistory, hasSmartName, hasCustomEnabled } from './api/iobroker';
+import { hasHistory, hasSmartName, hasCustomEnabled, setIncludeNamespaces } from './api/iobroker';
+import { useQueryClient } from '@tanstack/react-query';
 import type { StateListHandle } from './components/statelist/StateList';
 import { filterObjectIds } from './utils/filterObjectIds';
 import type { IoBrokerObject, IoBrokerState } from './types/iobroker';
@@ -154,6 +156,14 @@ function AppContent() {
     appSettings, settingsOpen, setSettingsOpen, shortcutsOpen, setShortcutsOpen,
     handleScriptRefreshConfirmed, expertMode, handleToggleExpertMode,
   } = useUIContext();
+  const queryClient = useQueryClient();
+
+  // Sync namespace inclusion filter to API layer; invalidate object caches on change.
+  useEffect(() => {
+    const prefixes = appSettings.includeIdPrefixes ?? [];
+    setIncludeNamespaces(prefixes);
+    void queryClient.invalidateQueries({ queryKey: ['objects'] });
+  }, [appSettings.includeIdPrefixes, queryClient]);
 
   // ── Panel 2 State ────────────────────────────────────────────────────────
   const [activePanelIdx, setActivePanelIdx] = useState<0 | 1>(0);
@@ -312,6 +322,17 @@ function AppContent() {
   }, [allObjects]);
 
   const { allStateIds, treeHistoryIds, treeSmartIds, existingIds, allRoleNames, danglingAliasCount } = allObjectsDerived;
+
+  const namespaceSuggestions = useMemo(() => {
+    const prefixes = new Set<string>();
+    for (const id of Object.keys(allObjects)) {
+      const parts = id.split('.');
+      if (parts.length >= 2) prefixes.add(`${parts[0]}.${parts[1]}.`);
+    }
+    return [...prefixes].sort();
+  }, [allObjects]);
+
+  const [dropAliasSource, setDropAliasSource] = useState<{ sourceId: string; targetPath: string } | null>(null);
 
   const { data: aliasMapData } = useAliasMap();
   const aliasMap = aliasMapData ?? EMPTY_ALIAS_MAP;
@@ -770,6 +791,7 @@ function AppContent() {
               onCreateAtPath={handleCreateDatapointAtPath}
               onSearch={activePanelIdx === 0 ? handleSearch : setP2Pattern}
               onTreeScope={activePanelIdx === 0 ? handleTreeScope : p2HandleTreeScope}
+              onDropAlias={(sourceId, targetPath) => setDropAliasSource({ sourceId, targetPath })}
             />
           </div>
         </div>
@@ -831,6 +853,17 @@ function AppContent() {
             onCreated={(ids) => { handleNavigateTo(ids.length === 1 ? ids : ['alias.0.*']); }}
           />
         )}
+        {dropAliasSource && (
+          <CreateAliasModal
+            sourceId={dropAliasSource.sourceId}
+            sourceObj={allObjects[dropAliasSource.sourceId]}
+            initialAliasId={dropAliasSource.targetPath + '.'}
+            existingIds={existingIds}
+            language={appSettings.language}
+            onClose={() => setDropAliasSource(null)}
+            onCreated={() => setDropAliasSource(null)}
+          />
+        )}
         {shortcutsOpen && (
           <HelpModal
             language={appSettings.language}
@@ -845,7 +878,7 @@ function AppContent() {
             language={appSettings.language}
           />
         )}
-        {settingsOpen && <SettingsModal />}
+        {settingsOpen && <SettingsModal namespaceSuggestions={namespaceSuggestions} />}
         </ErrorBoundary>
 
         <div ref={panelContainerRef} className="flex-1 min-h-0 flex flex-row overflow-hidden">
