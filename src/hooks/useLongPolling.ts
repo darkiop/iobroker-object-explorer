@@ -7,6 +7,9 @@ import { queryKeys } from './queryKeys';
 const POLLING_TIMEOUT_MS = 30_000;
 const RECONNECT_INTERVAL_MS = 5_000;
 const CLIENT_ABORT_BUFFER_MS = 1_500;
+// Minimum time between polls when the server returns immediately with no data (_).
+// Prevents tight-loop hammering when the adapter doesn't hold the connection open.
+const MIN_POLL_INTERVAL_MS = 2_000;
 
 // Module-level: some adapters support /states/subscribe but 404 on /states/unsubscribe.
 // Once detected, skip unsubscribe calls entirely to avoid spamming devtools with 404s.
@@ -169,6 +172,7 @@ export function useLongPolling(visibleIds: string[]): LongPollingStatus {
     }
 
     async function poll(isStart: boolean): Promise<'continue' | 'reconnect' | 'stop'> {
+      const pollStart = Date.now();
       const controller = new AbortController();
       abortRef.current = controller;
       const abortTimer = setTimeout(
@@ -196,7 +200,15 @@ export function useLongPolling(visibleIds: string[]): LongPollingStatus {
           return 'stop';
         }
 
-        if (!text || text.trim() === '_') return 'continue';
+        if (!text || text.trim() === '_') {
+          // Server returned immediately with no data — adapter doesn't hold the connection.
+          // Enforce a minimum interval to avoid tight-loop hammering.
+          const elapsed = Date.now() - pollStart;
+          if (elapsed < MIN_POLL_INTERVAL_MS) {
+            await new Promise<void>((r) => setTimeout(r, MIN_POLL_INTERVAL_MS - elapsed));
+          }
+          return 'continue';
+        }
 
         let data: LongPollingEvent;
         try {

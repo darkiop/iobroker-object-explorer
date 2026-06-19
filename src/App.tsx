@@ -389,12 +389,16 @@ function AppContent() {
     setVisibleIds([]);
   }, [pageIds]);
   const valueIds = useMemo(() => {
-    // Before the virtualizer reports its visible range (or right after a page/filter
-    // change resets it), don't request the *entire* un-paginated table — that can be
-    // thousands of IDs, forcing getStatesBatch into its full-DB-dump fallback. Cap to
-    // a page's worth; the virtualizer corrects this to the real viewport moments later.
+    // loadOnlyVisible OFF: fetch values for *all* rendered rows. With groupByPath the
+    // table is un-paginated (pageIds === full tableIds), so capping here to pageSize
+    // would leave every row past the cap permanently showing "—" (the virtualizer's
+    // visible range is only consulted in the loadOnlyVisible branch below).
+    // getStatesBatch chunks by URL length + parallel bulk, so thousands of IDs are fine.
+    if (!appSettings.loadOnlyVisibleStateValues) return pageIds;
+    // loadOnlyVisible ON: before the virtualizer reports its visible range (or right
+    // after a page/filter change resets it), cap to a page's worth as a guard — the
+    // virtualizer corrects this to the real viewport moments later.
     const fallback = pageIds.length > appSettings.pageSize ? pageIds.slice(0, appSettings.pageSize) : pageIds;
-    if (!appSettings.loadOnlyVisibleStateValues) return fallback;
     if (visibleIds.length === 0) return fallback;
     const pageIdSet = new Set(pageIds);
     const filtered = visibleIds.filter((id) => pageIdSet.has(id));

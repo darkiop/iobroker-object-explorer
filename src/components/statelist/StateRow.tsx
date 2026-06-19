@@ -162,9 +162,9 @@ const StateRow = React.memo(function StateRow({
   if (!show('alias') && ownTarget) hiddenColRows.push(['Alias', ownTarget]);
 
   const tooltipStateRows: [string, string][] = state ? [
-    ['Timestamp',    formatTimestamp(state.ts, dateFormat)],
+    ...(show('ts')  ? [['Timestamp',    formatTimestamp(state.ts, dateFormat)] as [string, string]] : []),
     ['Last Change',  formatTimestamp(state.lc, dateFormat)],
-    ['Acknowledged', state.ack ? 'Yes' : 'No'],
+    ...(show('ack') ? [['Acknowledged', state.ack ? 'Yes' : 'No'] as [string, string]] : []),
     ['Quality',      String(state.q)],
     ['From',         state.from || '–'],
   ] : [];

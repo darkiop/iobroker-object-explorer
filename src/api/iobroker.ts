@@ -587,7 +587,14 @@ export async function getStatesBatch(ids: string[]): Promise<Record<string, IoBr
       if (chunkResults.every((r) => r !== null)) {
         _bulkStatesSupported = true;
         const merged: Record<string, IoBrokerState> = {};
-        for (const r of chunkResults) Object.assign(merged, r);
+        for (const r of chunkResults) {
+          Object.assign(merged, r);
+          // Yield to let the browser handle pending input events between chunks.
+          // Prevents the merge loop from becoming a long task that delays clicks.
+          if ('scheduler' in globalThis && typeof (globalThis as any).scheduler?.yield === 'function') {
+            await (globalThis as any).scheduler.yield();
+          }
+        }
         return merged;
       }
     } catch { /* fall through */ }
