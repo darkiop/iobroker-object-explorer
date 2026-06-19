@@ -81,7 +81,8 @@ export default function CreateAliasModal({ sourceId = '', sourceObj, existingIds
     : [];
 
   useEffect(() => {
-    inputRef.current?.select();
+    const el = inputRef.current;
+    if (el) { el.focus(); const len = el.value.length; el.setSelectionRange(len, len); }
   }, []);
 
   useEscapeKey(onClose);

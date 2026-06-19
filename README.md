@@ -22,7 +22,7 @@ npx tsc --noEmit   # Type check only
 
 > **⚠️ No auth support:** Neither the REST API nor the optional Socket.io realtime transport currently support authentication (login/token). Only use this dashboard against ioBroker instances reachable solely from a trusted network — do not expose the REST API or Socket.io adapter to the internet.
 
-The ioBroker address can be configured directly in the browser: click the connection badge in the header → enter `host:port` → press Enter. The browser connects directly to the ioBroker REST API (no server-side proxy required).
+The ioBroker address can be configured in the browser via **Settings → Connection**: enter `host:port` and use "Test & Connect" (saved in `localStorage`, reloads on connect). The browser connects directly to the ioBroker REST API (no server-side proxy required).
 
 **Dev server configuration:** Copy `.env.local.example` to `.env.local` and set `VITE_IOBROKER_TARGET`. The Vite dev server proxies `/api` to this address as a fallback when no host is set in the browser.
 
@@ -30,7 +30,7 @@ The ioBroker address can be configured directly in the browser: click the connec
 
 ## Docker
 
-The Nginx container proxies `/api` to the ioBroker REST API. `IOBROKER_HOST` is **required** — the container exits on startup if the variable is missing. The entrypoint generates `/config.js` with `window.__CONFIG__`, used as the initial host value in the browser. The host can be changed at any time via the header badge (saved in localStorage).
+The Nginx container proxies `/api` to the ioBroker REST API. `IOBROKER_HOST` is **required** — the container exits on startup if the variable is missing. The entrypoint generates `/config.js` with `window.__CONFIG__`, used as the initial host value in the browser. The host can be changed at any time via Settings → Connection (saved in localStorage).
 
 ### docker-compose (recommended)
 
@@ -91,11 +91,11 @@ The app is then reachable at `http://localhost:8080`.
 - **Drag-resize**: divider between sidebar and main area is draggable (180–600 px); width persisted in `localStorage`
 - **Fullscreen mode**: Maximize/Minimize button in header; press ESC to exit
 - **Theme**: Light / Dark / Obsidian — switchable in Settings, saved in `localStorage`
-- **Language toggle**: EN/DE selector in header, saved in settings
+- **Language toggle**: EN/DE selector in Settings → Display, saved in settings
 - **Filter history navigation**: Back / Forward arrow buttons in the header (next to the app title) navigate through the history of applied search filters — works like browser back/forward for filter state
 - **Expert mode toggle**: Wrench icon in the header (left of Settings); amber when active
 - **Saved filters**: frequently used filter combinations can be named and saved; accessible via the bookmark icon in the search bar; persisted to `localStorage`
-- **Connection status**: host badge in the header (left of the version number); click to change the ioBroker host
+- **Connection status**: host badge in the header (left of the version number) shows status + current host with a refresh button; change the host in Settings → Connection
 
 ---
 
@@ -110,6 +110,7 @@ Toggle with the **Columns2** icon in the header. Shows two independent datapoint
 - **Reduced default columns** in dual-pane: ID, Room, Function, Type, Role, Value, Unit (to save horizontal space); each panel's column selection is saved independently
 - **Stretch to 100%** is automatically triggered when dual-pane is closed
 - **Cross-panel**: right-click → **"Open in other panel"** navigates the other panel to the selected datapoint's namespace
+- **Drag & drop to create aliases** (opt-in, dual-pane only): drag a datapoint from one pane onto an `alias.0.*` row or folder/device/channel header in the other to open the Create Alias dialog — see [Drag & drop to create aliases](#drag--drop-to-create-aliases)
 - **Reset Filters** button resets both panels simultaneously
 - **Hidden column tooltips**: when columns are hidden (e.g. Name, Ack, Timestamp), their values appear highlighted in blue at the top of the row hover tooltip
 
@@ -159,7 +160,7 @@ Toggle with the **Columns2** icon in the header. Shows two independent datapoint
 | Room | Derived from `enum.rooms.*`; editable on click (dropdown with all available rooms) |
 | Function | Derived from `enum.functions.*`; editable on click (dropdown with all available functions) |
 | Role | Inline-editable with autocomplete (portal dropdown) |
-| Value | Right-aligned; truncated to 16 chars (tooltip shows full value); yellow/red highlight when value is outside `min`/`max` range |
+| Value | Left-aligned; truncated to 20 chars (tooltip shows full value). Inline indicators: green ▲ / red ▼ trend arrow when a numeric value rose/fell since the last refresh; ⚠ triangle when the value is near (yellow) or outside (red) the `min`/`max` range; pencil (on hover) opens the value editor. Booleans show green (true) / red (false), `null` is greyed out. Editable datapoints with role `switch` render a toggle, role `button` a ⚡ trigger button (non-expert mode); `url` values render as clickable links |
 | Unit | Unit of the value |
 | Ack | Green (acknowledged) / yellow (unacknowledged) dot |
 | Last Update | Timestamp `DD.MM.YYYY HH:MM:SS` |
@@ -218,7 +219,7 @@ All data columns (except + and Delete) can be toggled via the **column picker dr
 - **Import**: opens ImportDatapointsModal to import datapoints from a JSON file
 - **Enums**: opens the Enum Manager modal to manage rooms and functions
 - **Statistics**: opens the TreeStatsModal — namespace-level statistics table (total objects, states, structure nodes, history-enabled, smart, aliases, scripts) with subtree delete and namespace navigation
-- **Script Index**: rebuilds and shows the script-usage index — which datapoint IDs are referenced by `javascript.0` scripts; cached in `localStorage` for 24 h
+- **Script Index**: rebuilds and shows the script-usage index — which datapoint IDs are referenced by `javascript.0` scripts; cached in `localStorage` for 1 h
 - **Optimize**: opens OptimizeModal — scans datapoints for missing metadata (room, function, role, name, description, unit, min/max, type) and allows bulk-fixing them inline with batch controls
 - **Alias Replace button** (Link icon): appears when at least one checked row has an ID starting with `alias.`; opens the Find & Replace in Alias Targets modal pre-filled with the target of the first selected alias
 - **Count display**: centered — shows total number of filtered datapoints
@@ -267,6 +268,7 @@ Opened via the gear icon in the header. Changes are applied only on **Save** (dr
 | Show type icons | on/off | on | Shows a small type icon (state/device/channel/folder) in the table |
 | Animate group expand/collapse | on/off | off | Smooth CSS animation when expanding/collapsing path groups |
 | Hide alias source/target lines | on/off | off | Hides the extra sub-rows showing an alias's source/target datapoint beneath the alias row |
+| Drag & drop to create aliases | on/off | off | Lets you drag a datapoint row onto an `alias.0.*` row or folder/device/channel header (dual-pane view only) to open the Create Alias dialog pre-filled; off by default to avoid click latency from the native `draggable` attribute — see [Drag & drop to create aliases](#drag--drop-to-create-aliases) |
 | Sidebar tree font size | S / M / L / XL | M | Text size in the object tree |
 | Tree count badge | Off / Objects / States / Both | Objects | What count is shown in the badge next to each tree node |
 | Auto-refresh objects | Off / 30 s / 1 m / 5 m / 10 m | Off | Periodic background re-fetch of the full object cache |
@@ -307,6 +309,15 @@ Opened via **right-click → "Create alias"** (non-`alias.0.*` datapoints only).
 - Copies type, role, unit, read/write permissions from the source datapoint
 - Sets `common.alias.id` to the source ID
 - Alias ID must start with `alias.0.` (validated)
+
+#### Drag & drop to create aliases
+
+Enable **"Drag & drop to create aliases"** in Settings → Display (**off by default**). Only active in **dual-pane view**:
+
+- Drag a source datapoint row from one pane and drop it onto a target in the other pane — an `alias.0.*` row, or (in grouped view) a **folder / device / channel** header below `alias.0`
+- The drop target is highlighted in green while hovering
+- On drop, the Create Alias dialog opens **pre-filled**: target path + the source's leaf name, e.g. dragging `0_userdata.0.test-2` onto `alias.0.test1` suggests `alias.0.test1.test-2`
+- Off by default because the native `draggable` attribute can add a slight delay to row clicks
 
 ---
 
@@ -394,7 +405,7 @@ Opened via **toolbar → Statistics**.
 - Namespace-level overview table: adapter instance → total objects, states, structure nodes (folders/devices/channels), history-enabled states, SmartName states, aliases, script-referenced IDs
 - **Sortable** by any column
 - **Click a namespace row** to navigate directly to that namespace in the main table
-- **Script Index** toggle: includes or excludes script-referenced ID counts; requires a script index scan (cached 24 h in `localStorage`)
+- **Script Index** toggle: includes or excludes script-referenced ID counts; requires a script index scan (cached 1 h in `localStorage`)
 - **Delete subtree**: select a namespace and delete all objects under it with a confirmation dialog and progress indicator
 
 ---
@@ -774,7 +785,7 @@ All writes go directly to the REST API. React Query optimistic updates (`onMutat
 | `iobroker-explorer-sidebar-collapsed` | Sidebar collapsed state (`"true"` / `"false"`) |
 | `ioBrokerHost` | Last configured ioBroker host string (`ip:port`) |
 | `iob-script-used-ids-v1` | JSON array of datapoint IDs referenced in javascript.0 scripts (script index cache) |
-| `iob-script-used-ids-ts` | Unix timestamp of when the script index was last built (24 h TTL) |
+| `iob-script-used-ids-ts` | Unix timestamp of when the script index was last built (1 h TTL) |
 | `theme` | `"light"`, `"dark"`, or `"obsidian"` |
 
 ---

@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, History, Maximize2, Trash2, Plus, Link2, Download, Wand2, Upload, Tag, BarChart2, RotateCcw, EyeOff, Indent, FolderOpen, List } from 'lucide-react';
+import { X, History, Maximize2, Trash2, Plus, Link2, Download, Wand2, Upload, Tag, BarChart2, RotateCcw, EyeOff, Indent, FolderOpen, List, AlignLeft } from 'lucide-react';
 import { isGlobPattern } from '../../api/iobroker';
 import ColPicker from '../ui/ColPicker';
 import type { SortKey } from './StateListColumns';
@@ -12,6 +12,7 @@ interface StateListToolbarProps {
   showToolbarLabels: boolean;
   groupByPath: boolean;
   shortenGroupPaths: boolean;
+  showDesc: boolean;
   hideAliasSubRows: boolean;
   treeFilter: string | null | undefined;
   pattern: string | null | undefined;
@@ -46,6 +47,7 @@ interface StateListToolbarProps {
   onHistoryOpen: (primary: string, extra: ExtraSeries[]) => void;
   onDeleteSelected: () => void;
   onClearTreeFilter: () => void;
+  onToggleShowDesc: () => void;
   onToggleHideAliasSubRows: () => void;
   onToggleGroupByPath: () => void;
   onToggleShortenGroupPaths: () => void;
@@ -57,7 +59,7 @@ interface StateListToolbarProps {
 
 export default function StateListToolbar({
   isEn, language, showToolbarLabels,
-  groupByPath, shortenGroupPaths, hideAliasSubRows,
+  groupByPath, shortenGroupPaths, showDesc, hideAliasSubRows,
   treeFilter, pattern, fulltextEnabled, colFilters,
   checkedIds, checkedSepPrefix, pageSize, visibleCols,
   scriptsFetching, scriptLastUpdated,
@@ -68,7 +70,7 @@ export default function StateListToolbar({
   onImport, onEnums, onStats, onScriptRefresh, onOptimize,
   onAliasReplace, onAutoAlias, onHistoryOpen,
   onDeleteSelected, onClearTreeFilter,
-  onToggleHideAliasSubRows, onToggleGroupByPath, onToggleShortenGroupPaths,
+  onToggleShowDesc, onToggleHideAliasSubRows, onToggleGroupByPath, onToggleShortenGroupPaths,
   onFitToContainer, onResetLs, onPageSizeChange, onColChange,
 }: StateListToolbarProps) {
   const checkedArr = [...checkedIds];
@@ -262,6 +264,19 @@ export default function StateListToolbar({
         )}
       </div>
       <div className="flex items-center gap-1">
+        <button
+          onClick={onToggleShowDesc}
+          title={showDesc
+            ? (isEn ? 'Hide description in Name column' : 'Beschreibung in der Name-Spalte ausblenden')
+            : (isEn ? 'Show description in Name column' : 'Beschreibung in der Name-Spalte anzeigen')}
+          className={`p-2 rounded-lg transition-colors ${
+            showDesc
+              ? 'text-blue-600 bg-blue-500/15 hover:bg-blue-500/25 dark:text-blue-400 dark:hover:bg-blue-500/20'
+              : 'text-gray-400 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-500 dark:hover:text-blue-400 dark:hover:bg-blue-500/10'
+          }`}
+        >
+          <AlignLeft size={17} />
+        </button>
         <button
           onClick={onToggleHideAliasSubRows}
           title={hideAliasSubRows

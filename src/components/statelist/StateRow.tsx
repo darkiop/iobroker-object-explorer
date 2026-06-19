@@ -64,6 +64,7 @@ export interface StateRowProps {
   animateEnter?: boolean;
   animateExit?: boolean;
   dragEnabled?: boolean;
+  onDropAlias?: (sourceId: string, targetPath: string) => void;
 }
 
 function aliasIdsEqual(a?: string[], b?: string[]): boolean {
@@ -81,10 +82,15 @@ const StateRow = React.memo(function StateRow({
   onSelect, onCheck, onContextMenu, onHistoryClick, onScriptsClick, onNavigateTo, onDeleteClick, onEditJson,
   onSelectRoom, onSelectFunction, onOpenValueModal,
   roomEditForced, fnEditForced, onRoomEditEnd, onFnEditEnd,
-  dateFormat, language, expertMode, isFocused, showDesc = true, showObjectTypeIcons = true, hideAliasSubRows = false, showUnitInValue = false, scriptSources, depth = 0, displayId, animateEnter, animateExit, dragEnabled = false,
+  dateFormat, language, expertMode, isFocused, showDesc = true, showObjectTypeIcons = true, hideAliasSubRows = false, showUnitInValue = false, scriptSources, depth = 0, displayId, animateEnter, animateExit, dragEnabled = false, onDropAlias,
 }: StateRowProps) {
   const isEn = language === 'en';
   const trRef = useRef<HTMLTableRowElement>(null);
+  const [dropHover, setDropHover] = useState(false);
+
+  // A row under the alias.0.* namespace can receive a dragged source datapoint to
+  // create a new alias at its parent path. Source must be a non-alias datapoint.
+  const isAliasDropTarget = dragEnabled && !!onDropAlias && id.startsWith('alias.');
 
   // Enter animation: apply class once on mount via DOM, decoupled from React className
   // so re-renders (e.g. isChecked change) never restart it.
@@ -199,11 +205,22 @@ const StateRow = React.memo(function StateRow({
         e.dataTransfer.setData('application/iobroker-id', id);
         e.dataTransfer.effectAllowed = 'copy';
       } : undefined}
+      onDragOver={isAliasDropTarget ? (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; if (!dropHover) setDropHover(true); } : undefined}
+      onDragEnter={isAliasDropTarget ? (e) => { e.preventDefault(); setDropHover(true); } : undefined}
+      onDragLeave={isAliasDropTarget ? (e) => { if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) setDropHover(false); } : undefined}
+      onDrop={isAliasDropTarget ? (e) => {
+        e.preventDefault();
+        setDropHover(false);
+        const sourceId = e.dataTransfer.getData('application/iobroker-id');
+        if (sourceId && !sourceId.startsWith('alias.') && sourceId !== id) {
+          onDropAlias!(sourceId, id.split('.').slice(0, -1).join('.'));
+        }
+      } : undefined}
       onClick={() => startTransition(() => onSelect(id))}
       onContextMenu={(e) => { e.preventDefault(); onContextMenu(e.clientX, e.clientY, id); }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className={`group border-b border-gray-200 dark:border-gray-800 ${dragEnabled ? 'cursor-grab' : 'cursor-pointer'} select-none transition-colors ${
+      className={`group border-b border-gray-200 dark:border-gray-800 ${dragEnabled ? 'cursor-grab' : 'cursor-pointer'} select-none transition-colors ${dropHover ? 'outline outline-2 -outline-offset-2 outline-emerald-500 bg-emerald-500/15 ' : ''}${
         isSelected
           ? 'bg-blue-600/20 text-blue-700 dark:text-blue-200'
           : isFocused
@@ -466,7 +483,8 @@ const StateRow = React.memo(function StateRow({
     prev.displayId === next.displayId &&
     prev.animateExit === next.animateExit &&
     prev.hideAliasSubRows === next.hideAliasSubRows &&
-    prev.dragEnabled === next.dragEnabled
+    prev.dragEnabled === next.dragEnabled &&
+    prev.onDropAlias === next.onDropAlias
   );
 });
 
