@@ -333,6 +333,7 @@ function AppContent() {
   }, [allObjects]);
 
   const [dropAliasSource, setDropAliasSource] = useState<{ sourceId: string; targetPath: string } | null>(null);
+  const handleDropAlias = useCallback((sourceId: string, targetPath: string) => setDropAliasSource({ sourceId, targetPath }), []);
 
   const { data: aliasMapData } = useAliasMap();
   const aliasMap = aliasMapData ?? EMPTY_ALIAS_MAP;
@@ -791,7 +792,7 @@ function AppContent() {
               onCreateAtPath={handleCreateDatapointAtPath}
               onSearch={activePanelIdx === 0 ? handleSearch : setP2Pattern}
               onTreeScope={activePanelIdx === 0 ? handleTreeScope : p2HandleTreeScope}
-              onDropAlias={(sourceId, targetPath) => setDropAliasSource({ sourceId, targetPath })}
+              onDropAlias={handleDropAlias}
             />
           </div>
         </div>
@@ -857,7 +858,7 @@ function AppContent() {
           <CreateAliasModal
             sourceId={dropAliasSource.sourceId}
             sourceObj={allObjects[dropAliasSource.sourceId]}
-            initialAliasId={dropAliasSource.targetPath + '.'}
+            initialAliasId={dropAliasSource.targetPath + '.' + dropAliasSource.sourceId.split('.').pop()}
             existingIds={existingIds}
             language={appSettings.language}
             onClose={() => setDropAliasSource(null)}
@@ -910,6 +911,7 @@ function AppContent() {
               historyIds={treeHistoryIds}
               smartIds={treeSmartIds}
               dragEnabled={appSettings.panel2Open && appSettings.dragDropEnabled}
+              onDropAlias={handleDropAlias}
             />
             {!appSettings.groupByPath && (
               <div className="py-2 px-1 border-t border-gray-200 dark:border-gray-700 shrink-0">
@@ -984,6 +986,7 @@ function AppContent() {
                   historyIds={treeHistoryIds}
                   smartIds={treeSmartIds}
                   dragEnabled={appSettings.panel2Open && appSettings.dragDropEnabled}
+                  onDropAlias={handleDropAlias}
                 />
                 {p2TotalPages > 1 && !p2GroupByPath && (
                   <div className="py-2 px-1 border-t border-gray-200 dark:border-gray-700 shrink-0">

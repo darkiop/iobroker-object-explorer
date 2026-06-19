@@ -52,6 +52,7 @@ interface StateListProps {
   smartIds?: Set<string>;
   onVisibleIdsChange?: (ids: string[]) => void;
   dragEnabled?: boolean;
+  onDropAlias?: (sourceId: string, targetPath: string) => void;
 }
 
 
@@ -63,7 +64,7 @@ import { DEFAULT_COLS, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MIN_WIDTHS, BUILTIN_MAX_W
 
 
 
-function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allObjectIds, exportIds, onNavigateTo, onOpenInOtherPanel, forceHideToolbarLabels, visibleColsOverride, onVisibleColsChange, groupByPathOverride, onToggleGroupByPathOverride, historyIds, smartIds, onVisibleIdsChange, dragEnabled = false }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
+function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allObjectIds, exportIds, onNavigateTo, onOpenInOtherPanel, forceHideToolbarLabels, visibleColsOverride, onVisibleColsChange, groupByPathOverride, onToggleGroupByPathOverride, historyIds, smartIds, onVisibleIdsChange, dragEnabled = false, onDropAlias }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
   const { colFilters, handleColFilterChange: onColFilterChange, pattern, treeFilter, handleClearTreeFilter: onClearTreeFilter, sidebarToggleSeq, fulltextEnabled, handleTreeScope } = usePanelContext();
   const { selectedId, setSelectedId: onSelect, setHistoryModalId: _setHistoryModalId, setEnumManagerOpen, setAliasReplaceInitialStr, setEditInitialTab, setAutoAliasDeviceId } = useSelectionContext();
   const { appSettings, expertMode, scriptUsedIds, scriptsFetching, scriptLastUpdated, setScriptUsedIds, setConfirmScriptRefresh, handleToggleGroupByPath: _handleToggleGroupByPath, persistSettings } = useAppSettingsContext();
@@ -144,6 +145,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const showToolbarLabels = forceHideToolbarLabels ? false : toolbarLabels;
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [focusedId, setFocusedId] = useState<string | null>(null);
+  const [dropHoverPrefix, setDropHoverPrefix] = useState<string | null>(null);
   const [colFiltersDraft, setColFiltersDraft] = useState<Partial<Record<SortKey, string>>>(colFilters);
   const colFilterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const propagatingRef = useRef(false);
@@ -787,6 +789,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
         showToolbarLabels={showToolbarLabels}
         groupByPath={groupByPath}
         shortenGroupPaths={shortenGroupPaths}
+        showDesc={showDesc}
         hideAliasSubRows={hideAliasSubRows}
         treeFilter={treeFilter}
         pattern={pattern}
@@ -821,6 +824,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
         onHistoryOpen={(id, extra) => { setHistoryInitialExtra(extra); setHistoryModalId(id); }}
         onDeleteSelected={() => setMultiDeleteOpen(true)}
         onClearTreeFilter={onClearTreeFilter}
+        onToggleShowDesc={() => persistSettings({ ...appSettings, showDesc: !showDesc })}
         onToggleHideAliasSubRows={() => persistSettings({ ...appSettings, hideAliasSubRows: !hideAliasSubRows })}
         onToggleGroupByPath={() => onToggleGroupByPath?.()}
         onToggleShortenGroupPaths={() => persistSettings({ ...appSettings, shortenGroupPaths: !shortenGroupPaths })}
@@ -1130,8 +1134,21 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                 const hasCheckedInside = isCollapsed && [...checkedIds].some((id) => id.startsWith(item.prefix + '.') || id === item.prefix);
                 const hasFocusedInside = isCollapsed && focusedId !== null && (focusedId.startsWith(item.prefix + '.') || focusedId === item.prefix);
                 const hasHiddenSelection = hasCheckedInside || hasFocusedInside;
+                const isSepDropTarget = dragEnabled && !!onDropAlias && !!item.prefix && item.prefix.startsWith('alias.');
                 return (
-                  <tr key={`sep_${item.prefix}`} ref={(el) => {
+                  <tr key={`sep_${item.prefix}`}
+                    onDragOver={isSepDropTarget ? (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; if (dropHoverPrefix !== item.prefix) setDropHoverPrefix(item.prefix); } : undefined}
+                    onDragEnter={isSepDropTarget ? (e) => { e.preventDefault(); setDropHoverPrefix(item.prefix); } : undefined}
+                    onDragLeave={isSepDropTarget ? (e) => { if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) setDropHoverPrefix((p) => p === item.prefix ? null : p); } : undefined}
+                    onDrop={isSepDropTarget ? (e) => {
+                      e.preventDefault();
+                      setDropHoverPrefix(null);
+                      const sourceId = e.dataTransfer.getData('application/iobroker-id');
+                      if (sourceId && !sourceId.startsWith('alias.') && sourceId !== item.prefix) {
+                        onDropAlias!(sourceId, item.prefix);
+                      }
+                    } : undefined}
+                    ref={(el) => {
                       if (!el) return;
                       if (animateGroupExpand && item.parentPrefix) {
                         if (animatingPrefixes.has(item.parentPrefix) && !animatedSepEls.current.has(el)) {
@@ -1145,7 +1162,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                           el.classList.remove('group-row-exit');
                         }
                       }
-                    }} className="group/sep cursor-pointer select-none" onContextMenu={(e) => { e.preventDefault(); setSepCtxMenu({ x: e.clientX, y: e.clientY, prefix: item.prefix }); }} onClick={() => {
+                    }} className={`group/sep cursor-pointer select-none ${dropHoverPrefix === item.prefix ? 'outline outline-2 -outline-offset-2 outline-emerald-500' : ''}`} onContextMenu={(e) => { e.preventDefault(); setSepCtxMenu({ x: e.clientX, y: e.clientY, prefix: item.prefix }); }} onClick={() => {
                       const prefix = item.prefix;
                       const base = collapsedPrefixes === null ? new Set(allSepPrefixesRef.current) : new Set(collapsedPrefixes);
                       const wasCollapsed = base.has(prefix);
@@ -1370,6 +1387,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                   hideAliasSubRows={hideAliasSubRows}
                   showUnitInValue={showUnitInValue}
                   dragEnabled={dragEnabled}
+                  onDropAlias={onDropAlias}
                   depth={item.depth}
                   animateEnter={animateGroupExpand && !!item.parentPrefix && animatingPrefixes.has(item.parentPrefix)}
                   animateExit={animateGroupExpand && !!item.parentPrefix && collapsingPrefixes.has(item.parentPrefix)}
