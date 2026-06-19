@@ -4,7 +4,7 @@ import { isGlobPattern } from '../../api/iobroker';
 import ColPicker from '../ui/ColPicker';
 import type { SortKey } from './StateListColumns';
 import type { IoBrokerObject } from '../../types/iobroker';
-import type { ExtraSeries } from './history/HistoryChart';
+import type { ExtraSeries } from '../history/HistoryChart';
 
 interface StateListToolbarProps {
   isEn: boolean;

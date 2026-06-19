@@ -65,11 +65,6 @@ function DateFormatDropdown({ value, onChange }: { value: DateFormatSetting; onC
   );
 }
 
-function initHostState(): string {
-  const stored = localStorage.getItem('ioBrokerHost') ?? window.__CONFIG__?.ioBrokerHost ?? '';
-  return stored || '10.4.0.33:8093';
-}
-
 function initDraftFromSettings(appSettings: AppSettings): AppSettings {
   return { ...appSettings };
 }
@@ -1018,7 +1013,7 @@ export default function SettingsModal({ namespaceSuggestions = [] }: { namespace
                     suggestions={namespaceSuggestions.filter((s) => !(settingsDraft.includeIdPrefixes ?? []).includes(s))}
                     isEn={isEn}
                   />
-                  <button onClick={addStripPrefix} className="px-2.5 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors">
+                  <button onClick={() => addStripPrefix()} className="px-2.5 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors">
                     {isEn ? 'Add' : 'Hinzufügen'}
                   </button>
                 </div>
