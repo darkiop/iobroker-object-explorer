@@ -909,6 +909,7 @@ function AppContent() {
               onVisibleColsChange={appSettings.panel2Open ? setP1DualCols : undefined}
               historyIds={treeHistoryIds}
               smartIds={treeSmartIds}
+              dragEnabled={appSettings.panel2Open && appSettings.dragDropEnabled}
             />
             {!appSettings.groupByPath && (
               <div className="py-2 px-1 border-t border-gray-200 dark:border-gray-700 shrink-0">
@@ -982,6 +983,7 @@ function AppContent() {
                   onToggleGroupByPathOverride={() => setP2GroupByPath((v) => !v)}
                   historyIds={treeHistoryIds}
                   smartIds={treeSmartIds}
+                  dragEnabled={appSettings.panel2Open && appSettings.dragDropEnabled}
                 />
                 {p2TotalPages > 1 && !p2GroupByPath && (
                   <div className="py-2 px-1 border-t border-gray-200 dark:border-gray-700 shrink-0">

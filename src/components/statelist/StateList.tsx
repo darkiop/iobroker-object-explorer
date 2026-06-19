@@ -51,6 +51,7 @@ interface StateListProps {
   historyIds?: Set<string>;
   smartIds?: Set<string>;
   onVisibleIdsChange?: (ids: string[]) => void;
+  dragEnabled?: boolean;
 }
 
 
@@ -62,7 +63,7 @@ import { DEFAULT_COLS, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MIN_WIDTHS, BUILTIN_MAX_W
 
 
 
-function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allObjectIds, exportIds, onNavigateTo, onOpenInOtherPanel, forceHideToolbarLabels, visibleColsOverride, onVisibleColsChange, groupByPathOverride, onToggleGroupByPathOverride, historyIds, smartIds, onVisibleIdsChange }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
+function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allObjectIds, exportIds, onNavigateTo, onOpenInOtherPanel, forceHideToolbarLabels, visibleColsOverride, onVisibleColsChange, groupByPathOverride, onToggleGroupByPathOverride, historyIds, smartIds, onVisibleIdsChange, dragEnabled = false }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
   const { colFilters, handleColFilterChange: onColFilterChange, pattern, treeFilter, handleClearTreeFilter: onClearTreeFilter, sidebarToggleSeq, fulltextEnabled, handleTreeScope } = usePanelContext();
   const { selectedId, setSelectedId: onSelect, setHistoryModalId: _setHistoryModalId, setEnumManagerOpen, setAliasReplaceInitialStr, setEditInitialTab, setAutoAliasDeviceId } = useSelectionContext();
   const { appSettings, expertMode, scriptUsedIds, scriptsFetching, scriptLastUpdated, setScriptUsedIds, setConfirmScriptRefresh, handleToggleGroupByPath: _handleToggleGroupByPath, persistSettings } = useAppSettingsContext();
@@ -1368,6 +1369,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                   showDesc={showDesc} showObjectTypeIcons={showObjectTypeIcons}
                   hideAliasSubRows={hideAliasSubRows}
                   showUnitInValue={showUnitInValue}
+                  dragEnabled={dragEnabled}
                   depth={item.depth}
                   animateEnter={animateGroupExpand && !!item.parentPrefix && animatingPrefixes.has(item.parentPrefix)}
                   animateExit={animateGroupExpand && !!item.parentPrefix && collapsingPrefixes.has(item.parentPrefix)}

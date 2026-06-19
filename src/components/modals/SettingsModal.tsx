@@ -153,6 +153,7 @@ export default function SettingsModal({ namespaceSuggestions = [] }: { namespace
       socketHost: settingsDraft.socketHost.trim(),
       showUnitInValue: settingsDraft.showUnitInValue ?? false,
       includeIdPrefixes: settingsDraft.includeIdPrefixes ?? [],
+      dragDropEnabled: settingsDraft.dragDropEnabled ?? false,
     };
     applySettings(next);
   }, [settingsDraft, applySettings]);
@@ -396,6 +397,15 @@ export default function SettingsModal({ namespaceSuggestions = [] }: { namespace
                       {isEn
                         ? "Hides the extra sub-rows that show an alias's source/target datapoint beneath the alias row."
                         : 'Blendet die zusätzlichen Unterzeilen aus, die das Quell-/Ziel-Datenpunkt eines Alias unter dessen Zeile anzeigen.'}
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <SettingsToggleRow isEn={isEn} labelEn="Drag & drop to create aliases" labelDe="Drag & Drop für Aliase"
+                      value={settingsDraft.dragDropEnabled ?? false} onToggle={() => setSettingsDraft((prev) => ({ ...prev, dragDropEnabled: !prev.dragDropEnabled }))} />
+                    <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
+                      {isEn
+                        ? 'Lets you drag a StateList row onto an alias.0.* tree node to create an alias. Only active in dual-pane view. Off by default — the native draggable attribute can add a slight delay to row clicks.'
+                        : 'Erlaubt das Ziehen einer StateList-Zeile auf einen alias.0.*-Baumknoten, um einen Alias zu erstellen. Nur in der Zwei-Panel-Ansicht aktiv. Standardmäßig aus — das native draggable-Attribut kann Klicks leicht verzögern.'}
                     </p>
                   </div>
                   <div className="flex flex-col gap-1">

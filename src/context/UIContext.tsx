@@ -59,6 +59,10 @@ export interface AppSettings {
    *  Enums (rooms/functions) are always fetched regardless of this setting.
    *  E.g. ["alias.0.", "javascript.0."] fetches only those two namespaces. */
   includeIdPrefixes: string[];
+  /** When on, StateList rows are draggable onto alias.0.* tree nodes to create an
+   *  alias (only active in dual-pane view). Off by default — avoids click latency
+   *  from the native draggable attribute. */
+  dragDropEnabled: boolean;
 }
 
 const PAGE_SIZE_OPTIONS = [200, 500, 1000, 3000];
@@ -99,6 +103,7 @@ export function getDefaultAppSettings(): AppSettings {
     loadOnlyVisibleStateValues: false,
     showUnitInValue: false,
     includeIdPrefixes: [],
+    dragDropEnabled: false,
   };
 }
 
@@ -183,6 +188,7 @@ export function loadAppSettings(): AppSettings {
       includeIdPrefixes: Array.isArray(parsed.includeIdPrefixes)
         ? parsed.includeIdPrefixes.filter((x): x is string => typeof x === 'string' && x.length > 0)
         : [],
+      dragDropEnabled: parsed.dragDropEnabled === true,
     };
   } catch { return fallback; }
 }

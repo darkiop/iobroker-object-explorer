@@ -63,6 +63,7 @@ export interface StateRowProps {
   displayId?: string;
   animateEnter?: boolean;
   animateExit?: boolean;
+  dragEnabled?: boolean;
 }
 
 function aliasIdsEqual(a?: string[], b?: string[]): boolean {
@@ -80,7 +81,7 @@ const StateRow = React.memo(function StateRow({
   onSelect, onCheck, onContextMenu, onHistoryClick, onScriptsClick, onNavigateTo, onDeleteClick, onEditJson,
   onSelectRoom, onSelectFunction, onOpenValueModal,
   roomEditForced, fnEditForced, onRoomEditEnd, onFnEditEnd,
-  dateFormat, language, expertMode, isFocused, showDesc = true, showObjectTypeIcons = true, hideAliasSubRows = false, showUnitInValue = false, scriptSources, depth = 0, displayId, animateEnter, animateExit,
+  dateFormat, language, expertMode, isFocused, showDesc = true, showObjectTypeIcons = true, hideAliasSubRows = false, showUnitInValue = false, scriptSources, depth = 0, displayId, animateEnter, animateExit, dragEnabled = false,
 }: StateRowProps) {
   const isEn = language === 'en';
   const trRef = useRef<HTMLTableRowElement>(null);
@@ -193,16 +194,16 @@ const StateRow = React.memo(function StateRow({
     )}
     <tr
       ref={trRef}
-      draggable={true}
-      onDragStart={(e) => {
+      draggable={dragEnabled || undefined}
+      onDragStart={dragEnabled ? (e) => {
         e.dataTransfer.setData('application/iobroker-id', id);
         e.dataTransfer.effectAllowed = 'copy';
-      }}
+      } : undefined}
       onClick={() => startTransition(() => onSelect(id))}
       onContextMenu={(e) => { e.preventDefault(); onContextMenu(e.clientX, e.clientY, id); }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className={`group border-b border-gray-200 dark:border-gray-800 cursor-grab select-none transition-colors ${
+      className={`group border-b border-gray-200 dark:border-gray-800 ${dragEnabled ? 'cursor-grab' : 'cursor-pointer'} select-none transition-colors ${
         isSelected
           ? 'bg-blue-600/20 text-blue-700 dark:text-blue-200'
           : isFocused
@@ -464,7 +465,8 @@ const StateRow = React.memo(function StateRow({
     prev.isFocused === next.isFocused &&
     prev.displayId === next.displayId &&
     prev.animateExit === next.animateExit &&
-    prev.hideAliasSubRows === next.hideAliasSubRows
+    prev.hideAliasSubRows === next.hideAliasSubRows &&
+    prev.dragEnabled === next.dragEnabled
   );
 });
 
