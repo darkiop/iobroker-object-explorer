@@ -241,6 +241,126 @@ html:not(.dark) * {
 .abyss .dark\:divide-gray-700 > * + * { border-color: #1c1c1c !important; }
 .abyss .dark\:divide-gray-800 > * + * { border-color: #0a0a0a !important; }
 
+/* ============================================================
+   Catppuccin Theme — Frappé palette
+   Applied via .catppuccin class on <html> alongside .dark
+   ============================================================ */
+
+/* Scrollbar */
+.catppuccin ::-webkit-scrollbar-thumb { background: #626880; }
+.catppuccin ::-webkit-scrollbar-thumb:hover { background: #737994; }
+.catppuccin * { scrollbar-color: #626880 transparent; }
+
+/* --- Backgrounds (gray) --- */
+.catppuccin .dark\:bg-gray-900  { background-color: #303446 !important; }
+.catppuccin .dark\:bg-gray-800  { background-color: #292c3c !important; }
+.catppuccin .dark\:bg-gray-700  { background-color: #414559 !important; }
+.catppuccin .dark\:bg-gray-600  { background-color: #51576d !important; }
+.catppuccin .dark\:bg-gray-500  { background-color: #626880 !important; }
+.catppuccin .dark\:bg-gray-300  { background-color: #949cbb !important; }
+
+.catppuccin .dark\:bg-gray-800\/20 { background-color: rgb(41 44 60 / 0.2) !important; }
+.catppuccin .dark\:bg-gray-800\/30 { background-color: rgb(41 44 60 / 0.3) !important; }
+.catppuccin .dark\:bg-gray-800\/40 { background-color: rgb(41 44 60 / 0.4) !important; }
+.catppuccin .dark\:bg-gray-800\/50 { background-color: rgb(41 44 60 / 0.5) !important; }
+.catppuccin .dark\:bg-gray-800\/60 { background-color: rgb(41 44 60 / 0.6) !important; }
+.catppuccin .dark\:bg-gray-800\/70 { background-color: rgb(41 44 60 / 0.7) !important; }
+.catppuccin .dark\:bg-gray-700\/50 { background-color: rgb(65 69 89 / 0.5) !important; }
+.catppuccin .dark\:bg-gray-700\/60 { background-color: rgb(65 69 89 / 0.6) !important; }
+.catppuccin .dark\:bg-gray-700\/70 { background-color: rgb(65 69 89 / 0.7) !important; }
+.catppuccin .dark\:bg-gray-500\/40 { background-color: rgb(98 104 128 / 0.4) !important; }
+
+/* --- Hover backgrounds --- */
+.catppuccin .dark\:hover\:bg-gray-600:hover  { background-color: #51576d !important; }
+.catppuccin .dark\:hover\:bg-gray-700:hover  { background-color: #414559 !important; }
+.catppuccin .dark\:hover\:bg-gray-800:hover  { background-color: #292c3c !important; }
+.catppuccin .dark\:hover\:bg-gray-600\/60:hover  { background-color: rgb(81 87 109 / 0.6) !important; }
+.catppuccin .dark\:hover\:bg-gray-700\/50:hover  { background-color: rgb(65 69 89 / 0.5) !important; }
+.catppuccin .dark\:hover\:bg-gray-700\/60:hover  { background-color: rgb(65 69 89 / 0.6) !important; }
+.catppuccin .dark\:hover\:bg-gray-700\/80:hover  { background-color: rgb(65 69 89 / 0.8) !important; }
+.catppuccin .dark\:hover\:bg-gray-800\/40:hover  { background-color: rgb(41 44 60 / 0.4) !important; }
+.catppuccin .dark\:hover\:bg-gray-800\/50:hover  { background-color: rgb(41 44 60 / 0.5) !important; }
+
+/* --- Text --- */
+.catppuccin .dark\:text-gray-100 { color: #c6d0f5 !important; }
+.catppuccin .dark\:text-gray-200 { color: #b5bfe2 !important; }
+.catppuccin .dark\:text-gray-300 { color: #a5adce !important; }
+.catppuccin .dark\:text-gray-400 { color: #838ba7 !important; }
+.catppuccin .dark\:text-gray-500 { color: #737994 !important; }
+.catppuccin .dark\:text-gray-600 { color: #626880 !important; }
+.catppuccin .dark\:text-gray-700 { color: #51576d !important; }
+
+/* --- Hover text --- */
+.catppuccin .dark\:hover\:text-gray-200:hover { color: #b5bfe2 !important; }
+.catppuccin .dark\:hover\:text-gray-300:hover { color: #a5adce !important; }
+.catppuccin .dark\:hover\:text-gray-400:hover { color: #838ba7 !important; }
+
+/* --- Borders --- */
+.catppuccin .dark\:border-gray-900 { border-color: #303446 !important; }
+.catppuccin .dark\:border-gray-800 { border-color: #292c3c !important; }
+.catppuccin .dark\:border-gray-700 { border-color: #414559 !important; }
+.catppuccin .dark\:border-gray-600 { border-color: #51576d !important; }
+.catppuccin .dark\:border-gray-500 { border-color: #626880 !important; }
+
+.catppuccin .dark\:border-gray-800\/60 { border-color: rgb(41 44 60 / 0.6) !important; }
+.catppuccin .dark\:border-gray-700\/60 { border-color: rgb(65 69 89 / 0.6) !important; }
+.catppuccin .dark\:border-gray-600\/50 { border-color: rgb(81 87 109 / 0.5) !important; }
+.catppuccin .dark\:border-gray-600\/60 { border-color: rgb(81 87 109 / 0.6) !important; }
+.catppuccin .dark\:border-gray-600\/70 { border-color: rgb(81 87 109 / 0.7) !important; }
+
+/* --- Hover border --- */
+.catppuccin .dark\:hover\:border-gray-600:hover { border-color: #51576d !important; }
+
+/* --- Placeholder --- */
+.catppuccin .dark\:placeholder-gray-400::placeholder { color: #838ba7 !important; }
+.catppuccin .dark\:placeholder-gray-500::placeholder { color: #737994 !important; }
+.catppuccin .dark\:placeholder-gray-600::placeholder { color: #626880 !important; }
+
+/* --- Divide --- */
+.catppuccin .dark\:divide-gray-700 > * + * { border-color: #414559 !important; }
+.catppuccin .dark\:divide-gray-800 > * + * { border-color: #292c3c !important; }
+
+/* -------------------------------------------------------
+   Blue → Frappé Blue/Lavender accent overrides
+   ------------------------------------------------------- */
+.catppuccin .dark\:text-blue-100 { color: #e5e7ff !important; }
+.catppuccin .dark\:text-blue-200 { color: #cacbf8 !important; }
+.catppuccin .dark\:text-blue-300 { color: #babbf1 !important; }
+.catppuccin .dark\:text-blue-400 { color: #babbf1 !important; }
+.catppuccin .dark\:text-blue-500 { color: #8caaee !important; }
+
+.catppuccin .dark\:hover\:text-blue-200:hover { color: #cacbf8 !important; }
+.catppuccin .dark\:hover\:text-blue-300:hover { color: #babbf1 !important; }
+.catppuccin .dark\:hover\:text-blue-400:hover { color: #babbf1 !important; }
+
+.catppuccin .dark\:bg-blue-400\/25  { background-color: rgb(186 187 241 / 0.25) !important; }
+.catppuccin .dark\:bg-blue-500      { background-color: #8caaee !important; }
+.catppuccin .dark\:bg-blue-500\/10  { background-color: rgb(186 187 241 / 0.1) !important; }
+.catppuccin .dark\:bg-blue-500\/20  { background-color: rgb(186 187 241 / 0.2) !important; }
+.catppuccin .dark\:bg-blue-900\/20  { background-color: rgb(140 170 238 / 0.15) !important; }
+.catppuccin .dark\:bg-blue-900\/30  { background-color: rgb(140 170 238 / 0.2) !important; }
+.catppuccin .dark\:bg-blue-900\/40  { background-color: rgb(140 170 238 / 0.25) !important; }
+
+.catppuccin .dark\:hover\:bg-blue-500\/10:hover { background-color: rgb(186 187 241 / 0.1) !important; }
+.catppuccin .dark\:hover\:bg-blue-500\/20:hover { background-color: rgb(186 187 241 / 0.2) !important; }
+.catppuccin .dark\:hover\:bg-blue-500\/30:hover { background-color: rgb(186 187 241 / 0.3) !important; }
+.catppuccin .dark\:hover\:bg-blue-800\/60:hover { background-color: rgb(140 170 238 / 0.35) !important; }
+.catppuccin .dark\:hover\:bg-blue-900\/20:hover { background-color: rgb(140 170 238 / 0.15) !important; }
+.catppuccin .dark\:hover\:bg-blue-900\/30:hover { background-color: rgb(140 170 238 / 0.2) !important; }
+
+.catppuccin .dark\:border-blue-500     { border-color: #8caaee !important; }
+.catppuccin .dark\:border-blue-500\/30 { border-color: rgb(186 187 241 / 0.3) !important; }
+.catppuccin .dark\:border-blue-600     { border-color: #7195e6 !important; }
+.catppuccin .dark\:border-blue-800     { border-color: #5a6fa8 !important; }
+
+.catppuccin .dark\:hover\:border-blue-600\/70:hover { border-color: rgb(113 149 230 / 0.7) !important; }
+
+/* --- focus:ring-blue — map to Frappé Lavender --- */
+.catppuccin .dark\:focus\:border-blue-500:focus { border-color: #8caaee !important; }
+.catppuccin .dark\:focus\:ring-blue-500:focus { --tw-ring-color: #8caaee !important; }
+.catppuccin .dark\:outline-blue-500 { outline-color: #8caaee !important; }
+.catppuccin .dark\:caret-gray-100 { caret-color: #c6d0f5 !important; }
+
 /* Group expand/collapse animation */
 @keyframes group-row-in {
   from { opacity: 0; }
