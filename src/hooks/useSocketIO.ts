@@ -36,8 +36,15 @@ export function getSocketUrl(hostOverride?: string): string {
   if (override) {
     return /^https?:\/\//.test(override) ? override : `http://${override}`;
   }
-  // Fallback heuristic: same host as REST target, default socketio adapter port 8084
-  const raw = localStorage.getItem('ioBrokerHost') ?? window.__CONFIG__?.ioBrokerHost;
+  // Docker mode: nginx proxies /socket.io/ → ioBroker:SOCKETIO_PORT.
+  // Detected by window.__CONFIG__.ioBrokerHost being non-empty (set by entrypoint.sh).
+  // Use same origin so the request goes through the nginx proxy — port 8084
+  // does not need to be directly reachable from the browser.
+  if (window.__CONFIG__?.ioBrokerHost) {
+    return `${window.location.protocol}//${window.location.host}`;
+  }
+  // Dev fallback heuristic: same host as REST target, port 8084
+  const raw = localStorage.getItem('ioBrokerHost');
   if (raw) {
     const host = raw.replace(/:\d+$/, '');
     return `http://${host}:8084`;
