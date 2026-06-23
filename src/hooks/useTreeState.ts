@@ -102,6 +102,19 @@ interface UseTreeStateParams {
   persistSettings: (s: AppSettings) => void;
 }
 
+export function matchesTreeSearchStandalone(id: string, lower: string, treeViewMode: 'adapter' | 'path'): boolean {
+  if (!lower) return true;
+  const idLower = id.toLowerCase();
+  if (lower.includes('.')) {
+    return idLower === lower || idLower.startsWith(lower + '.');
+  }
+  const parts = id.split('.');
+  const topLevel = treeViewMode === 'adapter'
+    ? (parts.length >= 2 ? `${parts[0]}.${parts[1]}` : parts[0])
+    : parts[0];
+  return topLevel.toLowerCase().includes(lower);
+}
+
 export function useTreeState({
   stateIds,
   allObjects,
@@ -134,16 +147,7 @@ export function useTreeState({
   }
 
   function matchesTreeSearch(id: string, lower: string): boolean {
-    if (!lower) return true;
-    const idLower = id.toLowerCase();
-    if (lower.includes('.')) {
-      return idLower === lower || idLower.startsWith(lower + '.');
-    }
-    const parts = id.split('.');
-    const topLevel = treeViewMode === 'adapter'
-      ? (parts.length >= 2 ? `${parts[0]}.${parts[1]}` : parts[0])
-      : parts[0];
-    return topLevel.toLowerCase().includes(lower);
+    return matchesTreeSearchStandalone(id, lower, treeViewMode);
   }
 
   const filteredIds = useMemo(() => {

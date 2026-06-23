@@ -19,6 +19,7 @@ import AutoCreateAliasModal from './components/modals/AutoCreateAliasModal';
 import CreateAliasModal from './components/modals/CreateAliasModal';
 import SettingsModal from './components/modals/SettingsModal';
 import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunctionMap, useRoomEnums, useFunctionEnums, useAliasMap } from './hooks/useStates';
+import { matchesTreeSearchStandalone } from './hooks/useTreeState';
 import { useApiConnectivity } from './hooks/useApiConnectivity';
 import { useLongPolling } from './hooks/useLongPolling';
 import { useSocketIO } from './hooks/useSocketIO';
@@ -128,7 +129,7 @@ function AppContent() {
     pattern, page, setPage, historyOnly, setHistoryOnly, smartOnly, setSmartOnly,
     danglingAliasFilter, setDanglingAliasFilter,
     colFilters, roomFilters, functionFilters, quickPatterns,
-    treeFilter,
+    treeFilter, treeSearch,
     fulltextEnabled, exactEnabled, idSuggestEnabled, setIdSuggestEnabled,
     idFilter, nameFilter, descFilter,
     savedFiltersList, savedFiltersOpen, setSavedFiltersOpen,
@@ -362,10 +363,15 @@ function AppContent() {
     });
   }, [stateObjects, allObjects, historyOnly, historyIds, customIds, smartOnly, smartIds, colFilters, roomMap, functionMap, aliasMap, roomFilters, functionFilters, quickPatterns, roomFilter, functionFilter, typeFilter, danglingAliasFilter, existingIds]);
 
-  const tableIds = useMemo(
-    () => treeFilter ? objectIds.filter((id) => id.startsWith(treeFilter)) : objectIds,
-    [objectIds, treeFilter]
-  );
+  const tableIds = useMemo(() => {
+    let ids = treeFilter ? objectIds.filter((id) => id.startsWith(treeFilter)) : objectIds;
+    if (treeSearch) {
+      const lower = treeSearch.toLowerCase();
+      const mode = appSettings.treeViewMode ?? 'adapter';
+      ids = ids.filter((id) => matchesTreeSearchStandalone(id, lower, mode));
+    }
+    return ids;
+  }, [objectIds, treeFilter, treeSearch, appSettings.treeViewMode]);
 
   const isFilterActive = pattern !== '*' || historyOnly || smartOnly ||
     Object.keys(colFilters).length > 0 || roomFilters.size > 0 ||
