@@ -26,7 +26,7 @@ import { useSocketIO } from './hooks/useSocketIO';
 import { hasHistory, hasSmartName, hasCustomEnabled, setIncludeNamespaces } from './api/iobroker';
 import { useQueryClient } from '@tanstack/react-query';
 import type { StateListHandle } from './components/statelist/StateList';
-import { filterObjectIds } from './utils/filterObjectIds';
+import { filterObjectIds, NO_ROOM_SENTINEL } from './utils/filterObjectIds';
 import type { IoBrokerObject, IoBrokerState } from './types/iobroker';
 import { Database, Mic2, ChevronDown, ChevronRight, Home, Zap, RefreshCw, Layers, X, Check, Bookmark, AlertTriangle, Tag, Wrench } from 'lucide-react';
 import { getTypeColor } from './utils/typeColor';
@@ -688,12 +688,21 @@ function AppContent() {
                 <span className="flex items-center gap-1.5 font-medium">
                   <Home size={12} />
                   {isEn ? 'Rooms' : 'Räume'}
-                  {roomFilter && <span className="px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 text-[10px]">{roomFilter}</span>}
+                  {roomFilter && <span className="px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 text-[10px]">{roomFilter === NO_ROOM_SENTINEL ? (isEn ? 'No room' : 'Kein Raum') : roomFilter}</span>}
                 </span>
                 {roomsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
               </button>
               {roomsOpen && (
                 <div className="pt-0.5 pb-1 flex flex-col">
+                  {(() => {
+                    const noRoomActive = roomFilter?.toLowerCase() === NO_ROOM_SENTINEL;
+                    return (
+                      <button onClick={() => handleRoomToggle(NO_ROOM_SENTINEL)}
+                        className={`px-3 py-1 text-left text-xs transition-colors italic text-gray-500 dark:text-gray-400 ${noRoomActive ? 'bg-gray-100 dark:bg-gray-700/70 hover:bg-gray-200 dark:hover:bg-gray-700' : 'opacity-50 hover:opacity-100 hover:bg-gray-100 dark:hover:bg-gray-700/50'}`}>
+                        {isEn ? 'No room' : 'Kein Raum'}
+                      </button>
+                    );
+                  })()}
                   {roomEnums.map(({ name }, i) => {
                     const active = roomFilter?.toLowerCase() === name.toLowerCase();
                     return (

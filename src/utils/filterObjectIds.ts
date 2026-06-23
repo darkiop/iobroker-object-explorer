@@ -1,6 +1,8 @@
 import type { IoBrokerObject } from '../types/iobroker';
 import { EMPTY_SENTINEL } from '../components/statelist/BatchComboControl';
 
+export const NO_ROOM_SENTINEL = '__no_room__';
+
 type ColumnFilterKey = 'id' | 'name' | 'room' | 'function' | 'type' | 'role' | 'unit' | 'write' | 'history' | 'custom' | 'smart' | 'alias' | 'scripts';
 type ColumnFilters = Partial<Record<ColumnFilterKey, string>>;
 
@@ -97,7 +99,10 @@ export function filterObjectIds({
     if (fRoomEmpty && room !== '') return false;
     if (fRoom && !room.toLowerCase().includes(fRoom)) return false;
     if (roomFilters.size > 0 && !roomFilters.has(roomMap[id])) return false;
-    if (fPatternRoom && !room.toLowerCase().includes(fPatternRoom)) return false;
+    if (fPatternRoom) {
+      if (fPatternRoom === NO_ROOM_SENTINEL) { if (room !== '') return false; }
+      else if (!room.toLowerCase().includes(fPatternRoom)) return false;
+    }
 
     const func = functionMap[id] || '';
     if (fFunctionEmpty && func !== '') return false;
