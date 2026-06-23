@@ -16,6 +16,7 @@ import { getTypeColor } from '../../utils/typeColor';
 import { getRoleColor } from '../../utils/roleColor';
 import { useToast } from '../../context/ToastContext';
 import { usePanelContext } from '../../context/PanelContext';
+import { useFilterContext } from '../../context/FilterContext';
 import { useSelectionContext } from '../../context/SelectionContext';
 import { useAppSettingsContext } from '../../context/UIContext';
 import BatchComboControl, { EMPTY_SENTINEL } from './BatchComboControl';
@@ -66,6 +67,7 @@ import { DEFAULT_COLS, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MIN_WIDTHS, BUILTIN_MAX_W
 
 function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allObjectIds, exportIds, onNavigateTo, onOpenInOtherPanel, forceHideToolbarLabels, visibleColsOverride, onVisibleColsChange, groupByPathOverride, onToggleGroupByPathOverride, historyIds, smartIds, onVisibleIdsChange, dragEnabled = false, onDropAlias }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
   const { colFilters, handleColFilterChange: onColFilterChange, pattern, treeFilter, handleClearTreeFilter: onClearTreeFilter, sidebarToggleSeq, fulltextEnabled, handleTreeScope } = usePanelContext();
+  const { treeSearch } = useFilterContext();
   const { selectedId, setSelectedId: onSelect, setHistoryModalId: _setHistoryModalId, setEnumManagerOpen, setAliasReplaceInitialStr, setEditInitialTab, setAutoAliasDeviceId } = useSelectionContext();
   const { appSettings, expertMode, scriptUsedIds, scriptsFetching, scriptLastUpdated, setScriptUsedIds, setConfirmScriptRefresh, handleToggleGroupByPath: _handleToggleGroupByPath, persistSettings } = useAppSettingsContext();
   const onToggleGroupByPath = onToggleGroupByPathOverride ?? _handleToggleGroupByPath;
@@ -112,7 +114,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
     effectiveDefaults, effectiveMin, effectiveMax, visibleCols, containerRef,
   });
 
-  const isFilterActive = !!(pattern && pattern !== '*') || !!treeFilter;
+  const isFilterActive = !!(pattern && pattern !== '*') || !!treeFilter || !!treeSearch;
   const [headerHeight, setHeaderHeight] = useState(0);
   const {
     newDatapointOpen, setNewDatapointOpen,
