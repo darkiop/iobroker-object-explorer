@@ -249,7 +249,7 @@ Opened via the gear icon in the header. Changes are applied only on **Save** (dr
 | REST API IP / Port | ioBroker host and REST API adapter port; "Test & Connect" probes connectivity then reloads |
 | Admin UI Port | ioBroker Admin port (default 8081); used for object icon URLs and direct admin links |
 | Swagger UI link | Opens the REST API adapter's built-in Swagger UI for the configured host |
-| Realtime transport | Long Polling (default) / Socket.io (experimental); selects the push transport for live state/object updates — see [Realtime Updates](#realtime-updates--long-polling--socketio) |
+| Realtime transport | Socket.io (default) / Long Polling (fallback); selects the push transport for live state/object updates — see [Realtime Updates](#realtime-updates--long-polling--socketio) |
 | Socket host | Override `host:port` for the Socket.io adapter (default guess: `<restHost>:8084`); only shown when transport is set to Socket.io |
 
 **Tab: Display**
@@ -555,7 +555,7 @@ graph TD
     LS -.->|persisted AppSettings| UI
 ```
 
-Realtime updates default to long polling against the standard REST adapter (always available). An experimental Socket.io transport can be enabled in Settings for lower-latency push — it requires a separate `socketio` adapter instance and automatically falls back to long polling if unreachable. See [`CLAUDE.md`](CLAUDE.md) for details on both transports.
+Realtime updates default to **Socket.io** for low-latency push (requires the `socketio` adapter, port 8084). If the adapter is unreachable, the app automatically falls back to long polling against the standard REST adapter. Long polling can also be selected manually in Settings as the sole transport. See [`CLAUDE.md`](CLAUDE.md) for details on both transports.
 
 ---
 
@@ -672,10 +672,10 @@ The app probes Tier 1 on the first call and caches the result (`_bulkStatesSuppo
 
 The app supports two interchangeable push transports for live state/object updates, selectable in **Settings → Connection → Realtime transport**:
 
-- **Long Polling** (default) — HTTP long-hold against the standard REST API adapter, always available, no extra setup
-- **Socket.io** (experimental, opt-in) — connects to a separate `socketio` adapter instance (default port `8084`, requires `socket.io-client@2`/v2.x server) for lower-latency push; subscribes per-pattern to both state and object changes (`stateChange`/`objectChange`), live-patching the React Query caches directly. If the adapter is unreachable, the app automatically activates long-polling in parallel as a fallback and reflects the *effective* active transport in the connection-status badge (with an amber fallback marker), recovering automatically once Socket.io reconnects.
+- **Socket.io** (default) — connects to a separate `socketio` adapter instance (default port `8084`, requires `socket.io-client@2`/v2.x server) for low-latency push; subscribes per-pattern to both state and object changes (`stateChange`/`objectChange`), live-patching the React Query caches directly. If the adapter is unreachable, the app automatically activates long-polling as a fallback and reflects the *effective* transport in the connection-status badge (amber fallback marker), recovering automatically once Socket.io reconnects.
+- **Long Polling** (fallback / manual) — HTTP long-hold against the standard REST API adapter, always available, no extra setup. Activates automatically when Socket.io is unreachable, or can be selected explicitly in Settings.
 
-Both transports share the same `{ supported, connected }` status shape, so the rest of the app (subscription scoping, cache patching, status display) is transport-agnostic. The long-polling path is documented in detail below as it's the default and always-available transport.
+Both transports share the same `{ supported, connected }` status shape, so the rest of the app (subscription scoping, cache patching, status display) is transport-agnostic. The long-polling path is documented in detail below.
 
 **Long-polling protocol overview:**
 

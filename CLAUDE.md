@@ -52,8 +52,8 @@ SearchBar (pattern input)
 - **`src/utils/`** — Pure utility functions (format, i18n, clipboard, coloredId, filterObjectIds, roleColor, typeColor, validation)
 
 ### Realtime Transport (Long-Polling / Socket.io)
-- **`src/hooks/useLongPolling.ts`** — default transport (`AppSettings.realtimeTransport: 'longpolling'`). Polls REST API `/states/subscribe`/`unsubscribe` for namespace patterns derived from visible IDs (`derivePatterns()`). Always available, works with the standard REST adapter.
-- **`src/hooks/useSocketIO.ts`** — experimental alternative transport (`'socketio'`, opt-in via Settings). Connects to a separate `socketio` adapter instance (default port `8084`, `socket.io-client@2` — the adapter runs a v2.x server, v3/v4 clients are incompatible). Subscribes per-pattern to both `subscribe`/`unsubscribe` (→ `stateChange`) and `subscribeObjects`/`unsubscribeObjects` (→ `objectChange`), live-patching the React Query caches (`states.values*`, `states.detail`, `objects.all`, `objects.bootstrap`, `objects.detail`) — no waiting for polling/refresh.
+- **`src/hooks/useLongPolling.ts`** — fallback transport (`AppSettings.realtimeTransport: 'longpolling'`). Polls REST API `/states/subscribe`/`unsubscribe` for namespace patterns derived from visible IDs (`derivePatterns()`). Always available, works with the standard REST adapter. Activates automatically when socket.io is unreachable.
+- **`src/hooks/useSocketIO.ts`** — default transport (`'socketio'`). Connects to a separate `socketio` adapter instance. Connects to a separate `socketio` adapter instance (default port `8084`, `socket.io-client@2` — the adapter runs a v2.x server, v3/v4 clients are incompatible). Subscribes per-pattern to both `subscribe`/`unsubscribe` (→ `stateChange`) and `subscribeObjects`/`unsubscribeObjects` (→ `objectChange`), live-patching the React Query caches (`states.values*`, `states.detail`, `objects.all`, `objects.bootstrap`, `objects.detail`) — no waiting for polling/refresh.
   - **Diff-based resubscribe**: socket connection persists across page/filter changes; only the pattern *delta* (added/removed) is (un)subscribed — no full teardown+rebuild, no gap in the live stream for patterns that stay visible.
   - **Ack handling**: every `(un)subscribe(Objects)` emits with a callback; failed subscribes get one retry after 5s, errors are logged via `console.warn` (no silent data loss).
   - **Auto-fallback**: if the socket.io adapter is unreachable (`supported === false`), `App.tsx` automatically activates long polling in parallel as a live fallback and reflects the *effective* active transport in the status badge (not just the setting); recovers automatically once socket.io reconnects.
@@ -120,7 +120,7 @@ interface AppSettings {
   animateGroupExpand: boolean;         // default false
   hideAliasSubRows: boolean;           // default false
   panel2Open: boolean;                 // dual-pane mode, default false
-  realtimeTransport: 'longpolling' | 'socketio';  // default 'longpolling'
+  realtimeTransport: 'longpolling' | 'socketio';  // default 'socketio'
   socketHost: string;                  // override host:port for socketio adapter
   objectsCacheReloads: 'off'|'5'|'10'|'20'|'50'; // default '10'
   objectsCacheTTL: 'off'|'1h'|'6h'|'24h'|'7d';  // default '24h'

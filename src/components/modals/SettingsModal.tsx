@@ -91,6 +91,7 @@ export default function SettingsModal({ namespaceSuggestions = [] }: { namespace
     socketHost: string; realtimeTransport: 'longpolling' | 'socketio'; adminPort: number;
   };
   const [editingConn, setEditingConn] = useState<EditingConnForm | null>(null);
+  const [originalEditingConn, setOriginalEditingConn] = useState<EditingConnForm | null>(null);
   const [connHostTesting, setConnHostTesting] = useState(false);
   const [connHostTestResult, setConnHostTestResult] = useState<'ok' | 'error' | null>(null);
   const [connHostTestError, setConnHostTestError] = useState<string | null>(null);
@@ -718,14 +719,16 @@ export default function SettingsModal({ namespaceSuggestions = [] }: { namespace
                                   if (isEditing) {
                                     setEditingConn(null);
                                   } else {
-                                    setEditingConn({
+                                    const form: EditingConnForm = {
                                       id: conn.id,
                                       name: conn.name,
                                       host: conn.host,
                                       socketHost: conn.socketHost ?? '',
-                                      realtimeTransport: conn.realtimeTransport ?? 'longpolling',
+                                      realtimeTransport: conn.realtimeTransport ?? 'socketio',
                                       adminPort: conn.adminPort ?? 8081,
-                                    });
+                                    };
+                                    setEditingConn(form);
+                                    setOriginalEditingConn(form);
                                     setConnHostTestResult(null);
                                     setConnHostTestError(null);
                                     setConnSioTestResult(null);
@@ -757,7 +760,14 @@ export default function SettingsModal({ namespaceSuggestions = [] }: { namespace
                           </div>
 
                           {/* Expanded edit form */}
-                          {isEditing && editingConn && (
+                          {isEditing && editingConn && (() => {
+                            const isDirty = !originalEditingConn ||
+                              editingConn.name !== originalEditingConn.name ||
+                              editingConn.host !== originalEditingConn.host ||
+                              editingConn.socketHost !== originalEditingConn.socketHost ||
+                              editingConn.realtimeTransport !== originalEditingConn.realtimeTransport ||
+                              editingConn.adminPort !== originalEditingConn.adminPort;
+                            return (
                             <div className="px-3 pb-3 flex flex-col gap-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 pt-3">
 
                               {/* Name */}
@@ -838,8 +848,8 @@ export default function SettingsModal({ namespaceSuggestions = [] }: { namespace
                                   onChange={(e) => setEditingConn((prev) => prev ? { ...prev, realtimeTransport: e.target.value as 'longpolling' | 'socketio' } : prev)}
                                   className="px-2 py-1.5 text-xs rounded border bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-400"
                                 >
-                                  <option value="longpolling">{isEn ? 'Long polling (default — REST only)' : 'Long Polling (Standard — nur REST)'}</option>
-                                  <option value="socketio">{isEn ? 'Socket.IO (experimental — requires socketio adapter)' : 'Socket.IO (experimentell — benötigt socketio-Adapter)'}</option>
+                                  <option value="longpolling">{isEn ? 'Long polling (REST only, always available)' : 'Long Polling (nur REST, immer verfügbar)'}</option>
+                                  <option value="socketio">{isEn ? 'Socket.IO (default — requires socketio adapter)' : 'Socket.IO (Standard — benötigt socketio-Adapter)'}</option>
                                 </select>
                               </div>
 
@@ -934,7 +944,7 @@ export default function SettingsModal({ namespaceSuggestions = [] }: { namespace
                                     setEditingConn(null);
                                   }}
                                   disabled={!editingConn.name.trim() || !editingConn.host.trim()}
-                                  className="px-2.5 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                                  className={`px-2.5 py-1.5 text-xs rounded text-white disabled:opacity-50 transition-colors ${isDirty ? 'bg-amber-500 hover:bg-amber-600 ring-2 ring-amber-400/60' : 'bg-blue-600 hover:bg-blue-700'}`}
                                 >
                                   {isEn ? 'Save' : 'Speichern'}
                                 </button>
@@ -946,7 +956,8 @@ export default function SettingsModal({ namespaceSuggestions = [] }: { namespace
                                 </button>
                               </div>
                             </div>
-                          )}
+                          );
+                          })()}
                         </li>
                       );
                     })}

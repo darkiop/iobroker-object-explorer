@@ -67,6 +67,9 @@ export function useLongPolling(visibleIds: string[]): LongPollingStatus {
   const reconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sidRef = useRef('');
   const subscribedPatternsRef = useRef<string[]>([]);
+  // Generation counter: incremented on every start() call. Allows stale loops spawned
+  // by a race between cleanup and MIN_POLL_INTERVAL_MS sleep to detect they're obsolete.
+  const generationRef = useRef(0);
 
   useEffect(() => {
     if (patterns.length === 0) {
@@ -192,12 +195,24 @@ export function useLongPolling(visibleIds: string[]): LongPollingStatus {
         const text = await res.text();
 
         if (isStart) {
-          if (text.trim() === '_') {
+          const trimmed = text.trim();
+          if (trimmed === '_') {
             setStatus({ supported: true, connected: true });
             return 'continue';
           }
-          setStatus({ supported: false, connected: false });
-          return 'stop';
+          // Adapter may return buffered event data instead of '_' on reconnect —
+          // treat any parseable response as supported and apply the event.
+          if (trimmed) {
+            try {
+              const data = JSON.parse(trimmed) as LongPollingEvent;
+              setStatus({ supported: true, connected: true });
+              if (!('disconnect' in data) && !('error' in data)) applyEvent(data);
+              return 'continue';
+            } catch { /* fall through */ }
+          }
+          // Empty body on &connect — adapter is reachable but session may not be ready yet.
+          // Treat as transient error so we reconnect rather than stopping permanently.
+          return 'reconnect';
         }
 
         if (!text || text.trim() === '_') {
@@ -206,6 +221,9 @@ export function useLongPolling(visibleIds: string[]): LongPollingStatus {
           const elapsed = Date.now() - pollStart;
           if (elapsed < MIN_POLL_INTERVAL_MS) {
             await new Promise<void>((r) => setTimeout(r, MIN_POLL_INTERVAL_MS - elapsed));
+            // After sleep, re-check generation: cleanup may have fired and a new start()
+            // incremented the generation while we were sleeping. Returning 'stop' here lets
+            // the while-loop condition catch this on the next iteration.
           }
           return 'continue';
         }
@@ -239,9 +257,10 @@ export function useLongPolling(visibleIds: string[]): LongPollingStatus {
 
     async function start() {
       newSid();
+      const myGen = ++generationRef.current;
 
       const subResult = await subscribe();
-      if (terminateRef.current) return;
+      if (terminateRef.current || generationRef.current !== myGen) return;
 
       if (subResult === 'unsupported') {
         setStatus({ supported: false, connected: false });
@@ -253,11 +272,11 @@ export function useLongPolling(visibleIds: string[]): LongPollingStatus {
       }
 
       let isStart = true;
-      while (!terminateRef.current) {
+      while (!terminateRef.current && generationRef.current === myGen) {
         const result = await poll(isStart);
         isStart = false;
 
-        if (result === 'stop' || terminateRef.current) break;
+        if (result === 'stop' || terminateRef.current || generationRef.current !== myGen) break;
         if (result === 'reconnect') {
           setStatus(s => ({ ...s, connected: false }));
           scheduleReconnect();

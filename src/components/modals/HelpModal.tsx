@@ -397,8 +397,8 @@ export default function HelpModal({ onClose, language = 'en' }: Props) {
             <div className="space-y-4">
               <SubSection icon={<Settings size={12} />} label={isEn ? 'Connection' : 'Verbindung'}>
                 {isEn
-                  ? 'Set the ioBroker host/port and REST API port ("Test & Connect" probes then reloads), the Admin UI port (for object icons and admin links), a Swagger UI link, the realtime transport (Long Polling default / Socket.io experimental), and the Socket host override.'
-                  : 'ioBroker-Host/-Port und REST-API-Port festlegen („Testen & Verbinden" prüft und lädt neu), den Admin-UI-Port (für Objekt-Icons und Admin-Links), einen Swagger-UI-Link, den Echtzeit-Transport (Long-Polling Standard / Socket.io experimentell) und die Socket-Host-Überschreibung.'}
+                  ? 'Set the ioBroker host/port and REST API port ("Test & Connect" probes then reloads), the Admin UI port (for object icons and admin links), a Swagger UI link, the realtime transport (Socket.IO default / Long Polling fallback), and the Socket host override.'
+                  : 'ioBroker-Host/-Port und REST-API-Port festlegen („Testen & Verbinden" prüft und lädt neu), den Admin-UI-Port (für Objekt-Icons und Admin-Links), einen Swagger-UI-Link, den Echtzeit-Transport (Socket.IO Standard / Long-Polling Fallback) und die Socket-Host-Überschreibung.'}
               </SubSection>
               <SubSection icon={<SlidersHorizontal size={12} />} label={isEn ? 'Display' : 'Anzeige'}>
                 {isEn

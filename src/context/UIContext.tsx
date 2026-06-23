@@ -30,9 +30,9 @@ export interface AppSettings {
   animateGroupExpand: boolean;
   hideAliasSubRows: boolean;
   panel2Open: boolean;
-  /** Realtime push transport — 'longpolling' uses the REST polling endpoint (default,
-   *  works everywhere); 'socketio' connects to a separate `socketio` adapter instance
-   *  (lower latency, requires that adapter to be installed/running — experimental). */
+  /** Realtime push transport — 'socketio' (default) connects to the `socketio` adapter
+   *  (lower latency, live object/state push); 'longpolling' falls back to REST polling
+   *  and is used automatically when socket.io is unreachable. */
   realtimeTransport: 'longpolling' | 'socketio';
   /** Override host:port for the socketio adapter (default guess: <restHost>:8084). */
   socketHost: string;
@@ -96,7 +96,7 @@ export function getDefaultAppSettings(): AppSettings {
     animateGroupExpand: false,
     hideAliasSubRows: false,
     panel2Open: false,
-    realtimeTransport: 'longpolling',
+    realtimeTransport: 'socketio',
     socketHost: '',
     objectsCacheReloads: '10',
     objectsCacheTTL: '24h',
@@ -179,7 +179,7 @@ export function loadAppSettings(): AppSettings {
       animateGroupExpand: parsed.animateGroupExpand === true,
       hideAliasSubRows: parsed.hideAliasSubRows === true,
       panel2Open: parsed.panel2Open === true,
-      realtimeTransport: parsed.realtimeTransport === 'socketio' ? 'socketio' : 'longpolling',
+      realtimeTransport: parsed.realtimeTransport === 'longpolling' ? 'longpolling' : 'socketio',
       socketHost: typeof parsed.socketHost === 'string' ? parsed.socketHost.trim() : '',
       objectsCacheReloads: (['off','5','10','20','50'] as const).includes(parsed.objectsCacheReloads as 'off'|'5'|'10'|'20'|'50') ? parsed.objectsCacheReloads as 'off'|'5'|'10'|'20'|'50' : '10',
       objectsCacheTTL: (['off','1h','6h','24h','7d'] as const).includes(parsed.objectsCacheTTL as 'off'|'1h'|'6h'|'24h'|'7d') ? parsed.objectsCacheTTL as 'off'|'1h'|'6h'|'24h'|'7d' : '24h',

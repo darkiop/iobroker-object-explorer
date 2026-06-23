@@ -406,15 +406,10 @@ function AppContent() {
   }, [visibleIds, pageIds, appSettings.pageSize, appSettings.loadOnlyVisibleStateValues]);
 
   // Realtime push transport — scoped to visible page IDs only, no global * subscription.
-  // Selectable in Settings: 'longpolling' (default, REST-only, works everywhere) or
-  // 'socketio' (experimental — requires a separate `socketio` adapter instance).
-  // Each hook no-ops (returns {supported:null, connected:false}) when not selected,
-  // either via empty-array (long polling) or its own `enabled` flag (socket.io).
-  //
-  // Auto-fallback: if socket.io is selected but its adapter is unreachable
-  // (`supported === false`, e.g. wrong host/port or adapter not installed),
-  // long polling kicks in automatically as a live fallback — no dead UI.
-  // Recovers automatically once socket.io reconnects (`supported` flips back to true).
+  // Default: 'socketio' (requires the socketio adapter). Falls back automatically to
+  // long polling when socket.io is unreachable (`supported === false`). Long polling
+  // can also be selected explicitly in Settings as the only transport (REST-only, always works).
+  // Recovers to socket.io automatically once the adapter reconnects.
   const useSocketTransport = appSettings.realtimeTransport === 'socketio';
   const sioStatus = useSocketIO(pageIds, useSocketTransport, appSettings.socketHost);
   const sioFailed = useSocketTransport && sioStatus.supported === false;
