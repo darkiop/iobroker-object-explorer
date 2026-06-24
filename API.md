@@ -193,3 +193,129 @@ DELETE /api/v1/state/{id}/subscribe
 - **Basic Auth:** `Authorization: Basic base64(user:pass)`
 - **Bearer Token:** `Authorization: Bearer <token>`
 - Token-Ablauf verlängern: `GET /command/updateTokenExpiration?accessToken=<token>`
+
+---
+
+## Socket.io Realtime-Transport
+
+**Adapter:** `ioBroker.socketio` (separater Adapter, Port `8084` default)  
+**Client:** `socket.io-client@2` — der Adapter läuft als v2.x-Server; v3/v4-Clients sind inkompatibel.  
+**Protokoll:** WebSocket (Fallback: HTTP Polling)
+
+> **Kein Auth-Support** — weder Credentials noch Token werden vom socketio-Adapter akzeptiert.
+
+### URL-Auflösung (`getSocketUrl`)
+
+| Modus | URL |
+|-------|-----|
+| **Docker** (`window.__CONFIG__.ioBrokerHost` gesetzt) | `https?://window.location.host` — nginx proxied `/socket.io/` → `ioBrokerHost:8084` |
+| **Dev / Direktverbindung** (`socketHost` in AppSettings) | `http://<socketHost>` |
+| **Dev-Fallback** | REST-Host + Port `8084` (z.B. `http://10.4.0.33:8084`) |
+
+In Docker ist Port 8084 nicht direkt erreichbar — der Browser spricht ausschließlich nginx über den App-Port, nginx proxied intern weiter.
+
+---
+
+### Ereignis-Protokoll (ioBroker socket.io v2)
+
+#### Client → Server (Subscriptions)
+
+Jede Subscription emittiert mit Callback für Fehlerbehandlung:
+
+```js
+socket.emit(event, pattern, (err) => { /* err === null bei Erfolg */ })
+```
+
+| Event | Richtung | Parameter | Beschreibung |
+|-------|----------|-----------|--------------|
+| `subscribe` | C → S | `pattern: string` | State-Changes für Namespace-Pattern abonnieren (z.B. `hm-rpc.0.*`) |
+| `unsubscribe` | C → S | `pattern: string` | State-Subscription aufheben |
+| `subscribeObjects` | C → S | `pattern: string` | Objekt-Änderungen für Pattern abonnieren |
+| `unsubscribeObjects` | C → S | `pattern: string` | Objekt-Subscription aufheben |
+
+#### Server → Client (Push-Events)
+
+| Event | Parameter | Beschreibung |
+|-------|-----------|--------------|
+| `stateChange` | `(id: string, state: IoBrokerState \| null)` | State-Wert geändert; `state === null` wenn State gelöscht |
+| `objectChange` | `(id: string, obj: IoBrokerObject \| null)` | Objekt-Metadaten geändert; `obj === null` wenn gelöscht |
+
+#### Socket-Lifecycle-Events
+
+| Event | Bedeutung | Aktion |
+|-------|-----------|--------|
+| `connect` | Verbindung hergestellt | `supported = true`, `connected = true`; alle sichtbaren Pattern re-subscriben |
+| `disconnect` | Verbindung getrennt | `connected = false`; socket.io reconnect-Timer läuft |
+| `connect_error` | Verbindungsaufbau fehlgeschlagen | `supported = false` (nach erstem Fehler); App aktiviert Long-Polling-Fallback |
+
+---
+
+### Pattern-Subscriptions (Diff-basiert)
+
+Subscriptions sind auf `adapter.instance`-Namespaces der aktuell sichtbaren IDs begrenzt — identisch zur Long-Polling-Logik (`derivePatterns()`):
+
+```
+Sichtbare IDs                       Subscriptions
+────────────────────────────────────────────────────
+hm-rpc.0.MEQ1234567.1.STATE    →   subscribe('hm-rpc.0.*')
+hm-rpc.0.MEQ1234567.1.LOWBAT  →   (bereits abgedeckt)
+alias.0.heating.temp            →   subscribe('alias.0.*')
+```
+
+**Diff-Resubscribe:** Beim Seitennavigation werden nur die Delta-Pattern (neu hinzugekommen / weggefallen) ge-(un)subscribed — keine vollständige Teardown+Rebuild-Sequenz. Bereits laufende Subscriptions bleiben aktiv.
+
+**Reconnect:** Server vergisst Subscriptions bei Reconnect. `connect`-Handler führt vollständige Re-Subscription aller aktuell sichtbaren Pattern durch.
+
+**Fehlerbehandlung:** Fehlgeschlagene `subscribe`/`subscribeObjects`-Emits werden nach 5 s einmalig wiederholt. Fehler beim `unsubscribe` werden nur geloggt (`console.warn`).
+
+---
+
+### Cache-Update bei Push-Events
+
+Eingehende Events werden direkt in React Query Caches gepacht — kein Polling-Roundtrip:
+
+| Event | Betroffene Query-Keys |
+|-------|----------------------|
+| `stateChange` | `states.values*` (alle Batch-Queries, die die ID enthalten) + `states.detail(id)` |
+| `objectChange` | `objects.all`, `objects.bootstrap`, `objects.detail(id)`; bei `obj === null` wird Detail-Query entfernt |
+
+---
+
+### Verbindungsfluss
+
+```
+Browser                                    Socket.io Adapter :8084
+   │                                                │
+   │── io(url, { transports: ['websocket','polling'] }) ──►│
+   │◄── connect ────────────────────────────────────│
+   │                                                │
+   │── subscribe('hm-rpc.0.*', cb) ────────────────►│  cb(null)
+   │── subscribeObjects('hm-rpc.0.*', cb) ──────────►│  cb(null)
+   │── subscribe('alias.0.*', cb) ─────────────────►│  cb(null)
+   │── subscribeObjects('alias.0.*', cb) ───────────►│  cb(null)
+   │                                                │
+   │◄── stateChange('hm-rpc.0.X.STATE', {...}) ─────│  Push bei Wertänderung
+   │◄── objectChange('alias.0.y', {...}) ────────────│  Push bei Metadaten-Änderung
+   │                                                │
+   │  [Seitennavigation: neue Pattern-Menge]        │
+   │── unsubscribe('alias.0.*', cb) ────────────────►│  Nur Diff
+   │── unsubscribeObjects('alias.0.*', cb) ──────────►│
+   │── subscribe('0_userdata.0.*', cb) ─────────────►│
+   │── subscribeObjects('0_userdata.0.*', cb) ───────►│
+   │                                                │
+   │  [Verbindungsabbruch]                          │
+   │◄── disconnect ──────────────────────────────────│
+   │── [reconnect nach 5 s] ────────────────────────►│
+   │◄── connect ────────────────────────────────────│
+   │── [vollständige Re-Subscription] ──────────────►│
+```
+
+---
+
+### Fallback-Verhalten
+
+| Bedingung | Verhalten |
+|-----------|-----------|
+| `connect_error` (Adapter nicht erreichbar) | `supported = false`; App aktiviert Long-Polling parallel als Live-Fallback |
+| Wiederverbindung nach Ausfall | `supported = true`, `connected = true`; Re-Subscription aller Pattern |
+| Manuell auf Long Polling umgeschaltet | Socket.io-Hook disabled (`enabled = false`); kein Socket-Aufbau |
