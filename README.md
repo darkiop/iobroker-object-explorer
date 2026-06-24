@@ -796,55 +796,81 @@ All writes go directly to the REST API. React Query optimistic updates (`onMutat
 |------|----------|
 | `src/types/iobroker.ts` | TypeScript interfaces (IoBrokerState, IoBrokerObject, …) |
 | `src/api/iobroker.ts` | REST API client with global object cache, alias reverse map, enum helpers |
-| `src/hooks/useStates.ts` | Re-export barrel for React Query hooks |
+| `src/hooks/useStates.ts` | Re-export barrel (useObjectMutations + useEnumMutations) |
 | `src/hooks/useObjectQueries.ts` | React Query hooks (objects, states, history, room/function enums, CRUD) |
+| `src/hooks/useObjectMutations.ts` | Mutation hooks for object CRUD (create, update, delete, rename, move) |
+| `src/hooks/useEnumMutations.ts` | Mutation hooks for enum membership (room/function add/remove) |
+| `src/hooks/useSocketIO.ts` | Socket.io realtime transport (state + object change subscriptions, diff-based resubscribe) |
 | `src/hooks/useLongPolling.ts` | Targeted long-poll subscribe/unsubscribe loop; `derivePatterns()` helper |
+| `src/hooks/useStateListModals.ts` | State and handlers for all modals opened from StateList/StateTree |
+| `src/hooks/useStateListView.ts` | Sorting, filtering, grouping, pagination logic extracted from StateList |
+| `src/hooks/useTreeState.ts` | Tree expand/collapse state and logic for StateTree |
 | `src/hooks/useColumnResize.ts` | Drag-to-resize column logic with `localStorage` persistence |
 | `src/hooks/useBatchEdit.ts` | Batch edit state and mutation logic for checked rows |
 | `src/hooks/useApiConnectivity.ts` | Online/offline detection and periodic connectivity probe |
+| `src/hooks/useEscapeKey.ts` | Shared ESC key handler for modals |
+| `src/hooks/queryKeys.ts` | Centralized React Query key factory |
 | `src/context/ThemeContext.tsx` | Light/dark mode context with localStorage persistence |
 | `src/context/ToastContext.tsx` | Toast notification context |
-| `src/components/Layout.tsx` | App shell: header, collapsible sidebar, drag-resize |
-| `src/components/SearchBar.tsx` | Pattern search input with wildcard support |
-| `src/components/StateTree.tsx` | Hierarchical object tree with context menu |
-| `src/components/StateList.tsx` | Main table: columns, sorting, filters, context menu, pagination, batch edit bar, threshold highlighting |
-| `src/components/ObjectEditModal.tsx` | Edit modal (Details / JSON / Alias / Custom Settings tabs); opened on row click and via context menu |
-| `src/components/HistoryChart.tsx` | Recharts chart with time range, aggregation, multi-series, zoom/pan, periodic comparison, stats, export PNG, delete functions |
-| `src/components/HistoryModal.tsx` | Full-size history modal with extra series management (up to 4 additional datapoints) |
-| `src/components/NewDatapointModal.tsx` | Form for creating new datapoints |
-| `src/components/CreateAliasModal.tsx` | Dialog for creating a single alias datapoint |
-| `src/components/AutoCreateAliasModal.tsx` | Batch-create aliases for all child states of a device/channel |
-| `src/components/AliasReplaceModal.tsx` | Find & Replace in alias target IDs across all `alias.0.*` objects |
-| `src/components/CopyDatapointModal.tsx` | Dialog for copying datapoints; includes alias target replacement for `alias.0.*` sources |
-| `src/components/RenameDatapointModal.tsx` | Dialog for renaming a datapoint ID |
-| `src/components/MoveDatapointModal.tsx` | Dialog for moving a datapoint to a new path |
-| `src/components/ImportDatapointsModal.tsx` | Dialog for importing datapoints from JSON |
-| `src/components/ValueEditModal.tsx` | Standalone modal for editing a datapoint value |
-| `src/components/KeyboardShortcutsModal.tsx` | Keyboard shortcuts overview modal |
-| `src/components/LanguageDropdown.tsx` | EN/DE language selector |
-| `src/components/ToastContainer.tsx` | Toast notification renderer |
-| `src/components/ContextMenu.tsx` | Portal-based right-click menu |
-| `src/components/ConfirmDialog.tsx` | Generic confirmation dialog |
-| `src/components/MultiDeleteDialog.tsx` | Bulk delete dialog with progress |
-| `src/components/EnumManagerModal.tsx` | Room and function enum manager |
-| `src/components/OptimizeModal.tsx` | Metadata quality scanner with inline batch fix controls |
-| `src/components/TreeStatsModal.tsx` | Namespace statistics table with subtree delete and script index |
-| `src/components/HelpModal.tsx` | In-app help / feature overview |
-| `src/components/BatchComboControl.tsx` | Combo dropdown used in batch edit bar and OptimizeModal |
-| `src/components/ColPicker.tsx` | Column visibility picker dropdown |
-| `src/components/SortHeader.tsx` | Sortable column header with resize handle |
-| `src/components/StateRow.tsx` | Individual virtualized table row |
-| `src/components/StyledCheckbox.tsx` | Styled checkbox used in table rows and batch bar |
-| `src/components/TsRangeFilterControl.tsx` | Timestamp range filter input for the Last Update column |
-| `src/components/TypeIcon.tsx` | Object type icon component |
-| `src/components/HostConnectedButton.tsx` | Connection status badge in header with host input |
-| `src/components/stateListColumns.ts` | Column definitions, keys, labels, default widths |
-| `src/components/stateListConstants.ts` | Virtual row height, overscan, fixed column widths |
-| `src/components/stateListUtils.ts` | Pure utility functions (name extraction, threshold check, …) |
 | `src/context/FilterContext.tsx` | Search pattern, filters, pagination, saved filters, filter history |
 | `src/context/SelectionContext.tsx` | Selected ID, open modal tracking |
 | `src/context/UIContext.tsx` | AppSettings, expert mode, script index state; persists to `localStorage` |
+| `src/context/PanelContext.tsx` | Per-panel context for dual-pane mode (colFilters, pattern, treeFilter, fulltextEnabled) |
+| `src/components/Layout.tsx` | App shell: header, collapsible sidebar, drag-resize |
+| `src/components/SearchBar.tsx` | Pattern search input with wildcard support |
+| `src/components/StateTree.tsx` | Hierarchical object tree with context menu |
+| `src/components/HostConnectedButton.tsx` | Connection status badge in header with host input |
+| `src/components/LanguageDropdown.tsx` | EN/DE language selector |
+| `src/components/TypeIcon.tsx` | Object type icon component |
+| `src/components/statelist/StateList.tsx` | Main table: columns, sorting, filters, context menu, pagination, batch edit bar, threshold highlighting |
+| `src/components/statelist/StateListToolbar.tsx` | Toolbar extracted from StateList (New, Export, Import, Enums, Statistics, Optimize, Script Index) |
+| `src/components/statelist/StateRow.tsx` | Individual virtualized table row |
+| `src/components/statelist/BatchComboControl.tsx` | Combo dropdown used in batch edit bar and OptimizeModal |
+| `src/components/statelist/StateListColumns.ts` | Column definitions, keys, labels, default widths |
+| `src/components/statelist/StateListConstants.ts` | Virtual row height, overscan, fixed column widths |
+| `src/components/statelist/StateListUtils.ts` | Pure utility functions (name extraction, threshold check, …) |
+| `src/components/history/HistoryChart.tsx` | Recharts chart with time range, aggregation, multi-series, zoom/pan, periodic comparison, stats, export PNG, delete functions |
+| `src/components/history/HistoryChartUtils.ts` | Chart helper utilities (aggregation, data processing) |
+| `src/components/modals/ObjectEditModal.tsx` | Edit modal shell (tabs: Details, JSON, Alias, Custom Settings, Scripts); opened on row click and via context menu |
+| `src/components/modals/HistoryModal.tsx` | Full-size history modal with extra series management (up to 4 additional datapoints) |
+| `src/components/modals/NewDatapointModal.tsx` | Form for creating new datapoints |
+| `src/components/modals/CreateAliasModal.tsx` | Dialog for creating a single alias datapoint |
+| `src/components/modals/AutoCreateAliasModal.tsx` | Batch-create aliases for all child states of a device/channel |
+| `src/components/modals/AliasReplaceModal.tsx` | Find & Replace in alias target IDs across all `alias.0.*` objects |
+| `src/components/modals/CopyDatapointModal.tsx` | Dialog for copying datapoints; includes alias target replacement for `alias.0.*` sources |
+| `src/components/modals/RenameDatapointModal.tsx` | Dialog for renaming a datapoint ID |
+| `src/components/modals/MoveDatapointModal.tsx` | Dialog for moving a datapoint to a new path |
+| `src/components/modals/ImportDatapointsModal.tsx` | Dialog for importing datapoints from JSON |
+| `src/components/modals/ValueEditModal.tsx` | Standalone modal for editing a datapoint value |
+| `src/components/modals/ConfirmDialog.tsx` | Generic confirmation dialog |
+| `src/components/modals/MultiDeleteDialog.tsx` | Bulk delete dialog with progress |
+| `src/components/modals/EnumManagerModal.tsx` | Room and function enum manager |
+| `src/components/modals/OptimizeModal.tsx` | Metadata quality scanner with inline batch fix controls |
+| `src/components/modals/TreeStatsModal.tsx` | Namespace statistics table with subtree delete and script index |
+| `src/components/modals/HelpModal.tsx` | In-app help / feature overview |
+| `src/components/modals/SettingsModal.tsx` | All settings tabs (Connection, Display, Columns, Filters) |
+| `src/components/modals/StateListModals.tsx` | Modal container rendered within StateList context |
+| `src/components/tabs/DetailsTab.tsx` | Details tab of ObjectEditModal (editable fields + live value + mini history chart) |
+| `src/components/tabs/AliasTab.tsx` | Alias tab; supports separate read/write IDs and JS conversion formulas with inline tester |
+| `src/components/tabs/JsonTab.tsx` | Raw JSON editor tab |
+| `src/components/tabs/CustomTab.tsx` | `common.custom` adapter settings tab |
+| `src/components/tabs/ScriptsTab.tsx` | Shows javascript.0 scripts that reference the current datapoint ID |
+| `src/components/ui/ContextMenu.tsx` | Portal-based right-click menu |
+| `src/components/ui/ColPicker.tsx` | Column visibility picker dropdown |
+| `src/components/ui/SortHeader.tsx` | Sortable column header with resize handle |
+| `src/components/ui/StyledCheckbox.tsx` | Styled checkbox used in table rows and batch bar |
+| `src/components/ui/TsRangeFilterControl.tsx` | Timestamp range filter input for the Last Update column |
+| `src/components/ui/ToastContainer.tsx` | Toast notification renderer |
+| `src/components/ui/IdSuggestInput.tsx` | ID input with autocomplete suggestions from known object IDs |
+| `src/components/cells/EditableNameCell.tsx` | Inline-editable Name cell |
+| `src/components/cells/EditableRoleCell.tsx` | Role cell with autocomplete portal dropdown |
+| `src/components/cells/EditableRoomCell.tsx` | Room cell with portal dropdown |
+| `src/components/cells/EditableFunctionCell.tsx` | Function cell with portal dropdown |
+| `src/components/cells/EditableValueCell.tsx` | Value cell with inline editor |
+| `src/components/cells/EditableUnitCell.tsx` | Unit cell (searchable dropdown) |
+| `src/components/cells/EditableTypeCell.tsx` | Type cell |
+| `src/components/cells/CopyIdButton.tsx` | Copy-to-clipboard button for ID cells |
 | `vite.config.ts` | Dev server + API proxy; reads `VITE_IOBROKER_TARGET` from `.env.local` |
-| `nginx.conf` | Nginx config for Docker (SPA fallback, API proxy) |
+| `nginx.conf` | Nginx config for Docker (SPA fallback, REST API proxy, Socket.io proxy on `/socket.io/`) |
 | `Dockerfile` | Multi-stage build (Node 22 → Nginx Alpine) |
 | `docker/entrypoint.sh` | Generates `/config.js` from `IOBROKER_HOST` / `IOBROKER_PORT` on container start; exits if `IOBROKER_HOST` is missing |

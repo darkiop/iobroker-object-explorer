@@ -35,7 +35,7 @@ SearchBar (pattern input)
 ### Layer Structure
 - **`src/types/iobroker.ts`** — TypeScript interfaces: IoBrokerState, IoBrokerObject, IoBrokerObjectCommon, HistoryEntry, TreeNode
 - **`src/api/iobroker.ts`** — REST API client. Objects cached globally. History via POST `/api/v1/command/sendTo` (sql.0). Alias reverse map, room/function enum helpers.
-- **`src/hooks/useStates.ts`** — Re-export barrel for React Query hooks
+- **`src/hooks/useStates.ts`** — Re-export barrel for mutation hooks only (`useObjectMutations`, `useEnumMutations`); query hooks live in `useObjectQueries.ts`
 - **`src/hooks/useObjectQueries.ts`** — React Query hooks (objects, states, history, room/function enums, CRUD)
 - **`src/hooks/useObjectMutations.ts`** — Mutation hooks for object CRUD (create, update, delete, rename, move)
 - **`src/hooks/useEnumMutations.ts`** — Mutation hooks for enum membership (room/function add/remove)
@@ -63,6 +63,8 @@ SearchBar (pattern input)
 
 ### API Proxy
 Vite proxies `/api` to the ioBroker REST API (configured in `vite.config.ts`). Dev target read from `VITE_IOBROKER_TARGET` in `.env.local` (copy from `.env.local.example`). Browser can also connect directly without proxy — configured in Settings → Connection.
+
+In Docker, `nginx.conf` also proxies `/socket.io/` → `http://${IOBROKER_HOST}:${SOCKETIO_PORT}/socket.io/` (WebSocket upgrade included) so the Socket.io adapter is reachable through the single nginx port without CORS issues. `SOCKETIO_PORT` defaults to 8084 and can be overridden via environment variable.
 
 ### Runtime Config (Docker)
 At runtime `window.__CONFIG__.ioBrokerHost` overrides the proxy label in the header. A Docker entrypoint generates `/config.js` from env vars (`IOBROKER_HOST`). The file is loaded via `<script src="/config.js">` in `index.html`. TypeScript declaration in `src/vite-env.d.ts`.

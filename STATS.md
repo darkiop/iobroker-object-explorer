@@ -4,13 +4,13 @@
 
 | Metric | Value |
 |---|---|
-| Source files (`.ts` / `.tsx`) | 69 |
-| Lines of code — TypeScript/TSX | ~15 400 |
-| Lines of code — all sources (incl. CSS/HTML/JSON) | ~21 300 |
-| Components (`src/components/`) | 37 |
+| Source files (`.ts` / `.tsx`) | 89 (excl. test) / 94 total |
+| Lines of code — TypeScript/TSX | ~21 500 |
+| Lines of code — all sources (incl. CSS/HTML/JSON) | ~28 000 |
+| Components (`src/components/`) | 49 `.tsx` / 53 total |
 | Context providers (`src/context/`) | 6 |
-| React Query hooks (`useStates.ts`) | 35 exports |
-| API functions (`src/api/iobroker.ts`) | 43 exports |
+| React Query hooks (`useObjectQueries.ts`) | 19 exports |
+| API functions (`src/api/iobroker.ts`) | 57 exports |
 | TypeScript interfaces / types | 6 (in `src/types/iobroker.ts`) |
 
 > Line counts exclude `node_modules/`, `dist/`, and `.git/`.
@@ -19,23 +19,23 @@
 
 | File | Lines |
 |---|---|
-| `StateList.tsx` | 1 677 |
-| `ObjectEditModal.tsx` | 1 295 |
-| `HistoryChart.tsx` | 984 |
-| `StateTree.tsx` | 771 |
-| `App.tsx` | 657 |
-| `api/iobroker.ts` | 601 |
-| `hooks/useStates.ts` | 596 |
-| `SettingsModal.tsx` | 585 |
-| `ImportDatapointsModal.tsx` | 498 |
-| `context/FilterContext.tsx` | 399 |
+| `statelist/StateList.tsx` | 1 532 |
+| `modals/SettingsModal.tsx` | 1 214 |
+| `App.tsx` | 1 078 |
+| `api/iobroker.ts` | 1 074 |
+| `history/HistoryChart.tsx` | 962 |
+| `StateTree.tsx` | 681 |
+| `modals/HelpModal.tsx` | 641 |
+| `modals/OptimizeModal.tsx` | 540 |
+| `context/FilterContext.tsx` | 516 |
+| `modals/ObjectEditModal.tsx` | 501 (Tabs extrahiert nach `tabs/`) |
 
 ## Git History
 
 | Metric | Value |
 |---|---|
-| Total commits | 427 |
-| Project period | 20 Feb 2026 – 30 May 2026 (~14.5 weeks) |
+| Total commits | 550 |
+| Project period | 20 Feb 2026 – 24 Jun 2026 (~18 weeks) |
 | Contributors | 1 (darkiop) |
 | `feat` commits | 174 |
 | `fix` commits | 110 |
@@ -46,9 +46,9 @@
 
 ## Dependencies
 
-**Runtime (9):** `react`, `react-dom`, `@tanstack/react-query`, `@tanstack/react-virtual`, `recharts`, `lucide-react`, `dompurify`, `expr-eval`, `react-error-boundary`
+**Runtime (10):** `react`, `react-dom`, `@tanstack/react-query`, `@tanstack/react-virtual`, `recharts`, `lucide-react`, `dompurify`, `expr-eval`, `react-error-boundary`, `socket.io-client`
 
-**Dev (14):** `vite`, `typescript`, `tailwindcss`, `eslint` + plugins, `postcss`, `autoprefixer`, `vitest`, `@testing-library/react`, `@testing-library/user-event`, `jsdom`
+**Dev (22):** `vite`, `vite-plugin-pwa`, `typescript`, `typescript-eslint`, `tailwindcss`, `eslint`, `eslint-plugin-react-hooks`, `eslint-plugin-react-refresh`, `@eslint/js`, `globals`, `postcss`, `autoprefixer`, `vitest`, `@vitest/ui`, `@testing-library/react`, `@testing-library/user-event`, `jsdom`, `@types/react`, `@types/react-dom`, `@types/dompurify`, `@vitejs/plugin-react`
 
 ## API Coverage
 

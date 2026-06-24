@@ -24,7 +24,7 @@
 | F-08 | **Fixed** | Security | ~~HIGH~~ | Dependency | `package.json` | `npm audit fix` + recharts 3.8.1 (commit `7f396f8`): flatted, rollup, minimatch, picomatch behoben. Verbleibend: 2 moderate in esbuild/vite (nur Build-Tool). | Alle 4 HIGH-Vulnerabilities eliminiert. | — | — | — |
 | F-09 | **Fixed** | Security | ~~HIGH~~ | Misconfiguration | `nginx.conf` | `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` ergänzt (commit `c3a43a6`). | Clickjacking-Schutz aktiv. | — | — | — |
 | F-10 | **Fixed** | Architektur | ~~HIGH~~ | Dependencies | `package.json` | `@tanstack/react-query` nach `dependencies` verschoben. Production-Docker-Build (`npm ci --omit=dev`) schlug ohne diesen Fix fehl. | Produktions-Build stabil. | — | — | — |
-| F-11 | **Partial** | Architektur | HIGH | React-Architektur | `src/components/StateList.tsx` | StateList.tsx von 3187 auf 1695 Zeilen reduziert. 16 neue Dateien extrahiert: `cells/` (8 Editable*-Komponenten), `StateRow.tsx`, `BatchComboControl.tsx`, `TsRangeFilterControl.tsx`, `ColPicker.tsx`, `StyledCheckbox.tsx`, `SortHeader.tsx`, `TypeIcon.tsx`, `stateListConstants.ts`, `stateListUtils.ts`. Dennoch: 1695 Zeilen, 81 Hook-Aufrufe. Toolbar, Pagination, BatchBar noch im Monolith. | IDE-Performance und Wartbarkeit verbessert. Testbarkeit und Refactoring-Risiko bleiben hoch. | `StateListToolbar`, `StateListPagination`, `StateListBatchBar` als separate Komponenten extrahieren. Modal-State in `SelectionContext` verschieben. | XL | Maintainability |
+| F-11 | **Partial** | Architektur | HIGH | React-Architektur | `src/components/statelist/StateList.tsx` | StateList.tsx von 3187 auf 1532 Zeilen reduziert. 16+ neue Dateien extrahiert: `cells/` (8 Editable*-Komponenten), `StateRow.tsx`, `BatchComboControl.tsx`, `StateListToolbar.tsx`, `TsRangeFilterControl.tsx`, `ColPicker.tsx`, `StyledCheckbox.tsx`, `SortHeader.tsx`, `TypeIcon.tsx`, `stateListConstants.ts`, `stateListUtils.ts`. Dennoch: 1532 Zeilen. Pagination, BatchBar noch im Monolith. | IDE-Performance und Wartbarkeit verbessert. Testbarkeit und Refactoring-Risiko bleiben hoch. | `StateListPagination`, `StateListBatchBar` als separate Komponenten extrahieren. Modal-State in `SelectionContext` verschieben. | L | Maintainability |
 | F-12 | **Fixed** | Architektur | ~~HIGH~~ | React-Architektur | `src/App.tsx` | `react-error-boundary` installiert. `AppErrorFallback` mit Reload-Button auf App-Ebene; `fallback=null`-Boundary um alle Modals isoliert Modal-Crashes. | App-Crash durch Fehler-Recovery ersetzt. | — | — | — |
 | F-13 | **Fixed** | Performance | ~~HIGH~~ | API / Hauptthread | `src/api/iobroker.ts` | O(n×m)-Script-Suche in 200-ID-Batches aufgeteilt; `setTimeout(r,0)` yieldet zwischen Batches (commit `db716e5`). | Tab-Freeze verhindert. | — | — | — |
 | F-14 | **Fixed** | Codequalität | ~~MEDIUM~~ | Code Duplication | `src/utils/format.ts` | `formatTimestamp`/`formatValue` → `src/utils/format.ts` extrahiert. `hasSmartName`-Kopie in StateList entfernt, Import aus `api/iobroker.ts`. ObjectEditModal nutzt jetzt `dateFormat`-Prop für Zeitstempel. | Duplikation vollständig beseitigt. | — | — | — |
@@ -70,7 +70,7 @@
 | F-54 | **Fixed** | Architektur | ~~MEDIUM~~ | FilterContext Re-renders | `src/context/FilterContext.tsx:362-379` | `value`-Objekt in `FilterContextProvider` inline erzeugt (kein `useMemo`). 382-Zeilen-Context mit 16 useCallback/useMemo-Calls, aber finales `value`-Objekt ohne Memoization. Alle Konsumenten re-renderten bei jeder State-Änderung. `useMemo` ergänzt. | Re-Renders in `SearchBar` u.a. bei irrelevanten Änderungen (z.B. `danglingAliasFilter`) eliminiert. | — | — | Performance |
 | F-55 | **Open** | Codequalität | LOW | Dead Function | `src/context/FilterContext.tsx:355-361` | `handleCreateDatapointAtPath` ist `useCallback` das `setNewDatapointInitialId(prefix)` + `setSelectedId(null)` aufruft — aber `newDatapointInitialId` gehört zu `SelectionContext`, nicht `FilterContext`. Setter kommt aus unklarer Quelle. Likely Noop. | Dead Code verwirrt Leser. | Aufrufer prüfen; falls keine: komplett entfernen. Falls Aufrufer existieren: zu `SelectionContext` migrieren. | S | Maintainability |
 | F-56 | **Fixed** | Codequalität | ~~LOW~~ | Deprecated Mutation Pattern | `src/hooks/useStates.ts:128,132,136` | `useMutation` nutzte `onSuccess` in Mutation-Options. TanStack Query v5 hat per-mutation-option Callbacks deprecated (werden in v6 entfernt). Zu `onSettled` migriert. | Kompatibilität mit TanStack Query v6 sichergestellt. | — | — | DX |
-| F-57 | **Open** | Performance | LOW | Manual Virtualization | `src/components/StateList.tsx:954-967` | Custom Scroll-Virtualisierung via `Math.floor(scrollTop / VIRTUAL_ROW_HEIGHT)`. Fixed Row-Height angenommen. | Multi-Line-Content oder dynamische Höhen brechen Scroll-Position-Kalkulation. Edge Cases an Seitengrenzen verursachen Jitter. | `@tanstack/react-virtual` (TanStack bereits in Deps). Automatisch gemessene Row-Heights. | M | Maintainability |
+| F-57 | **Fixed** | Performance | ~~LOW~~ | Manual Virtualization | `src/components/statelist/StateList.tsx:2,692` | `useVirtualizer` aus `@tanstack/react-virtual` migriert. Custom `Math.floor(scrollTop / VIRTUAL_ROW_HEIGHT)` vollständig entfernt. | — | — | — | — |
 | F-58 | **Open** | Architektur | LOW | `staleTime: Infinity` | `src/hooks/useStates.ts:52,60` | `useAllObjects` / `useFilteredObjects` nutzen `staleTime: Infinity`. Objekte nur via explizite Mutations invalidiert. | Externe Änderungen an ioBroker-Objekten (Admin-UI, Skripte, anderer Nutzer) werden nie sichtbar ohne Page-Reload. | Annahme dokumentieren ODER langen `refetchInterval` (z.B. `5 * 60 * 1000`) als Background-Sync ergänzen. | S | Maintainability |
 
 ---
@@ -88,13 +88,13 @@ Das Projekt ist eine **funktionsreiche, intern gut strukturierte** React-Applika
 - F-03/F-11: App.tsx + StateList.tsx erheblich modularisiert
 - F-35: N+1-Requests auf Bulk-Endpoint reduziert
 
-**Offene Findings (16):**
+**Offene Findings (15):**
 
 | ID | Status | Priorität | Titel |
 |----|--------|-----------|-------|
 | F-01 | Partial | MEDIUM | Tests: Mutations + RTL-Komponenten fehlen |
 | F-07 | Partial | HIGH | ImportDatapointsModal: DOMPurify-Architektur fragil |
-| F-11 | Partial | HIGH | StateList: 1695 Zeilen, weitere Extraktion nötig |
+| F-11 | Partial | HIGH | StateList: 1532 Zeilen, weitere Extraktion nötig |
 | F-38 | Open | MEDIUM | Duplizierte Modal-Verdrahtung App.tsx + StateList |
 | F-39 | Open | MEDIUM | Error Boundary mit `fallback=null` verschluckt Fehler |
 | F-42 | Open | MEDIUM | `any` in HistoryChart Recharts-Callbacks |
@@ -106,7 +106,6 @@ Das Projekt ist eine **funktionsreiche, intern gut strukturierte** React-Applika
 | F-51 | Open | HIGH | Keine ARIA-Rollen auf Datentabelle |
 | F-52 | Open | MEDIUM | Kein Skip-Navigation-Link |
 | F-55 | Open | LOW | Dead Function `handleCreateDatapointAtPath` in FilterContext |
-| F-57 | Open | LOW | Custom Virtualisierung statt `@tanstack/react-virtual` |
 | F-58 | Open | LOW | `staleTime: Infinity` undokumentiert |
 
 ---
@@ -202,7 +201,7 @@ HMR verwirft bei Modulneuausführung alle gecachten Query-Daten. Geringer Aufwan
 | ~~MEDIUM~~ | F-44 | ✅ Fixed | Recharts (~400 kb) immer geladen, kein Lazy Loading |
 | ~~MEDIUM~~ | F-37 | ✅ Fixed | SelectionContext Value ohne useMemo |
 | ~~MEDIUM~~ | F-54 | ✅ Fixed | FilterContext Value ohne useMemo |
-| LOW | F-57 | Open | Custom Virtualisierung statt battle-tested `@tanstack/react-virtual` |
+| ~~LOW~~ | F-57 | ✅ Fixed | `useVirtualizer` aus `@tanstack/react-virtual` migriert |
 | LOW | F-58 | Open | `staleTime: Infinity` — externe Änderungen nie sichtbar |
 
 ---
@@ -233,7 +232,7 @@ HMR verwirft bei Modulneuausführung alle gecachten Query-Daten. Geringer Aufwan
 
 ### Langfristig
 
-14. **F-57** — Custom Virtualisierung durch `@tanstack/react-virtual` ersetzen
+14. **F-55** — Dead Function `handleCreateDatapointAtPath` in FilterContext prüfen und bereinigen
 15. **F-58** — `staleTime: Infinity` dokumentieren oder Background-Sync ergänzen (5-min-Interval)
 16. Script-Suche (F-13) in Web Worker auslagern (Batch-Yielding ist kurzfristige Lösung)
 17. Architektur-Review: Read/Write-Context-Split für `SelectionContext` und `FilterContext`
