@@ -304,10 +304,10 @@ export default function Layout({ sidebar, children, apiConnected = true, realtim
           <button
             onClick={cycle}
             className="hidden sm:block p-1.5 rounded-lg transition-colors text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700"
-            title={theme === 'light' ? 'Dark Mode' : theme === 'dark' ? 'Catppuccin Mocha Mode' : theme === 'catppuccin-mocha' ? 'Abyss Mode' : theme === 'abyss' ? 'Catppuccin Frappé Mode' : 'Light Mode'}
-            aria-label={theme === 'light' ? 'Dark Mode' : theme === 'dark' ? 'Catppuccin Mocha Mode' : theme === 'catppuccin-mocha' ? 'Abyss Mode' : theme === 'abyss' ? 'Catppuccin Frappé Mode' : 'Light Mode'}
+            title={theme === 'light' ? 'Dark Mode' : theme === 'dark' ? 'Catppuccin Mocha Mode' : theme === 'catppuccin-mocha' ? 'Abyss Mode' : theme === 'abyss' ? 'Catppuccin Frappé Mode' : theme === 'catppuccin-frappe' ? 'Catppuccin Macchiato Mode' : 'Light Mode'}
+            aria-label={theme === 'light' ? 'Dark Mode' : theme === 'dark' ? 'Catppuccin Mocha Mode' : theme === 'catppuccin-mocha' ? 'Abyss Mode' : theme === 'abyss' ? 'Catppuccin Frappé Mode' : theme === 'catppuccin-frappe' ? 'Catppuccin Macchiato Mode' : 'Light Mode'}
           >
-            {theme === 'light' ? <Moon size={16} /> : theme === 'dark' ? <Gem size={16} /> : theme === 'catppuccin-mocha' ? <Eclipse size={16} /> : theme === 'abyss' ? <Flower2 size={16} /> : <Sun size={16} />}
+            {theme === 'light' ? <Moon size={16} /> : theme === 'dark' ? <Gem size={16} /> : theme === 'catppuccin-mocha' ? <Eclipse size={16} /> : theme === 'abyss' ? <Flower2 size={16} /> : theme === 'catppuccin-frappe' ? <Flower2 size={16} /> : <Sun size={16} />}
           </button>
           <button
             onClick={() => persistSettings({ ...appSettings, panel2Open: !appSettings.panel2Open })}
