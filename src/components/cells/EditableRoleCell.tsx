@@ -5,7 +5,7 @@ import { useExtendObject } from '../../hooks/useStates';
 import { useToast } from '../../context/ToastContext';
 import { getRoleColor } from '../../utils/roleColor';
 
-const EditableRoleCell = React.memo(function EditableRoleCell({ id, role, objType: _objType, suggestions, language = 'en' }: { id: string; role: string; objType?: string; suggestions: string[]; language?: 'en' | 'de' }) {
+const EditableRoleCell = React.memo(function EditableRoleCell({ id, role, objType: _objType, suggestions, language = 'en', cellStyle, cellClassName }: { id: string; role: string; objType?: string; suggestions: string[]; language?: 'en' | 'de'; cellStyle?: React.CSSProperties; cellClassName?: string }) {
   const isEn = language === 'en';
   const [editing, setEditing] = useState(false);
   const [filter, setFilter] = useState('');
@@ -45,7 +45,8 @@ const EditableRoleCell = React.memo(function EditableRoleCell({ id, role, objTyp
     <td
       ref={cellRef}
       data-col="role"
-      className="px-3 py-2 text-gray-500 dark:text-gray-400 text-xs font-mono overflow-hidden group/role"
+      style={cellStyle}
+      className={cellClassName ?? "px-3 py-2 text-gray-500 dark:text-gray-400 text-xs font-mono overflow-hidden group/role"}
       onClick={(e) => { e.stopPropagation(); openEdit(); }}
     >
       <div className="flex items-center gap-1.5">
@@ -55,7 +56,10 @@ const EditableRoleCell = React.memo(function EditableRoleCell({ id, role, objTyp
             <Pencil size={12} className="opacity-0 group-hover/role:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity" />
           </>
         ) : (
-          <span className="text-gray-300 dark:text-gray-600 italic font-sans">{isEn ? 'Select role…' : 'Rolle wählen…'}</span>
+          <>
+            <span className="text-gray-300 dark:text-gray-600 italic font-sans">{isEn ? 'Select role…' : 'Rolle wählen…'}</span>
+            <Pencil size={12} className="opacity-0 group-hover/role:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity" />
+          </>
         )}
       </div>
       {editing && cellRect && createPortal(

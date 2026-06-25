@@ -24,6 +24,7 @@ import TsRangeFilterControl, { parseTsFilter } from '../ui/TsRangeFilterControl'
 import SortHeader from '../ui/SortHeader';
 import StyledCheckbox from '../ui/StyledCheckbox';
 import StateRow from './StateRow';
+import EditableRoleCell from '../cells/EditableRoleCell';
 import { getObjectName } from './StateListUtils';
 import { DEL_COL_WIDTH, VIRTUAL_ROW_HEIGHT, VIRTUAL_OVERSCAN } from './StateListConstants';
 import { useColumnResize, LS_WIDTHS_KEY } from '../../hooks/useColumnResize';
@@ -1325,7 +1326,21 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                         }
                         if (k === 'role') {
                           const r = sepObj?.common?.role;
-                          return <td key="role" style={{ width: w, minWidth: w }} className="px-3 py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-100/50 dark:group-hover/sep:bg-gray-700/60 transition-colors text-xs font-mono align-middle">{r && <span className={`font-semibold ${getRoleColor(r)}`}>{r}</span>}</td>;
+                          if (sepObj && (sepObj.type === 'device' || sepObj.type === 'channel')) {
+                            return (
+                              <EditableRoleCell
+                                key="role"
+                                id={item.prefix}
+                                role={r || ''}
+                                objType={sepObj.type}
+                                suggestions={roles}
+                                language={language}
+                                cellStyle={{ width: w, minWidth: w }}
+                                cellClassName="px-3 py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-100/50 dark:group-hover/sep:bg-gray-700/60 transition-colors text-xs font-mono overflow-hidden align-middle group/role"
+                              />
+                            );
+                          }
+                          return <td key="role" style={{ width: w, minWidth: w }} className="px-3 py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-100/50 dark:group-hover/sep:bg-gray-700/60 transition-colors text-xs font-mono align-middle" />;
                         }
                         return null;
                       });
