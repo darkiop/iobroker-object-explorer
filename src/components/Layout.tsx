@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Sun, Moon, Gem, Eclipse, Flower2, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Maximize, Minimize, RefreshCw, ExternalLink, Info, WifiOff, FilterX, Columns2, ArrowLeft, ArrowRight, Server, ChevronDown, Check } from 'lucide-react';
+import { Sun, Moon, Eclipse, Flower2, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Maximize, Minimize, RefreshCw, ExternalLink, Info, WifiOff, FilterX, Columns2, ArrowLeft, ArrowRight, Server, ChevronDown, Check } from 'lucide-react';
 import { getConnections, getActiveConnectionId, switchToConnection } from '../api/iobroker';
 import type { SavedConnection } from '../api/iobroker';
 import { useTheme } from '../context/ThemeContext';
