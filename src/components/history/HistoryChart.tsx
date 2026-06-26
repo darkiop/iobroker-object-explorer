@@ -381,7 +381,28 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
   function renderChart() {
     const xProps = axes.xAxis(effectiveRangeMs);
     const yProps = axes.yAxis(unit);
-    const tooltipProps = axes.tooltip(unit, !!compareOffset);
+    const compareOffsetMs = compareOffset === '1w' ? 7 * 24 * 60 * 60 * 1000 : compareOffset === '1m' ? 30 * 24 * 60 * 60 * 1000 : undefined;
+    const tooltipProps = axes.tooltip(unit, !!compareOffset, compareOffsetMs);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const compareTooltipContent = compareOffset ? ({ active, payload }: any) => {
+      if (!active || !payload?.length) return null;
+      const point = payload[0]?.payload as { ts: number; val?: number; valComp?: number } | undefined;
+      if (!point) return null;
+      const fmt = (v: number | undefined) => v !== undefined ? (unit ? `${v} ${unit}` : String(v)) : '—';
+      const todayTime = formatTooltipTime(point.ts, dateFormat);
+      const compareTime = compareOffsetMs ? formatTooltipTime(point.ts - compareOffsetMs, dateFormat) : '';
+      return (
+        <div style={{ backgroundColor: dark ? '#1f2937' : '#ffffff', border: `1px solid ${dark ? '#374151' : '#e5e7eb'}`, borderRadius: 6, padding: '8px 12px', fontSize: 12 }}>
+          <div style={{ color: '#3b82f6', marginBottom: 4 }}>
+            <span style={{ color: dark ? '#9ca3af' : '#6b7280' }}>{isEn ? 'Today' : 'Heute'} </span>{todayTime}: <strong>{fmt(point.val)}</strong>
+          </div>
+          <div style={{ color: '#f97316' }}>
+            <span style={{ color: dark ? '#9ca3af' : '#6b7280' }}>{isEn ? 'Compare' : 'Vergleich'} </span>{compareTime}: <strong>{fmt(point.valComp)}</strong>
+          </div>
+        </div>
+      );
+    } : undefined;
     const data = (compareOffset ? mergedChartData : chartData) as { ts: number; val: number }[];
     const xPropsWithZoom = {
       ...xProps,
@@ -490,7 +511,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
           <CartesianGrid strokeDasharray="3 3" stroke={axes.gridStroke} />
           <XAxis {...xPropsWithZoom} />
           <YAxis {...yProps} />
-          <Tooltip {...tooltipProps} />
+          <Tooltip {...(compareTooltipContent ? { content: compareTooltipContent } : tooltipProps)} />
           <defs>
             <linearGradient id="valGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
@@ -537,7 +558,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
         <CartesianGrid strokeDasharray="3 3" stroke={axes.gridStroke} />
         <XAxis {...xPropsWithZoom} />
         <YAxis {...yProps} />
-        <Tooltip {...tooltipProps} />
+        <Tooltip {...(compareTooltipContent ? { content: compareTooltipContent } : tooltipProps)} />
         <Line
           type="monotone"
           dataKey="val"
@@ -899,26 +920,28 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
       )}
 
       {stats && !isLoading && (
-        <div className="flex items-center gap-2 flex-wrap mb-2">
+        <div className="flex items-center gap-3 flex-wrap mb-2">
           {([
-            { label: 'Min',   value: stats.min,   cls: 'text-blue-600 dark:text-blue-400 bg-blue-500/10',     hkey: 'min'  as const },
-            { label: 'Max',   value: stats.max,   cls: 'text-red-600 dark:text-red-400 bg-red-500/10',        hkey: 'max'  as const },
-            { label: 'Avg',   value: stats.avg,   cls: 'text-violet-600 dark:text-violet-400 bg-violet-500/10', hkey: null },
-            { label: isEn ? 'Last' : 'Letzt', value: stats.last, cls: 'text-green-600 dark:text-green-400 bg-green-500/10', hkey: 'last' as const },
-          ] as { label: string; value: number; cls: string; hkey: 'min' | 'max' | 'last' | null }[]).map(({ label, value, cls, hkey }) => (
+            { label: 'Min',   value: stats.min,   labelCls: 'text-blue-500 dark:text-blue-400',     valCls: 'text-blue-700 dark:text-blue-300',     bg: 'bg-blue-500/10 border border-blue-500/20',     hkey: 'min'  as const },
+            { label: 'Max',   value: stats.max,   labelCls: 'text-red-500 dark:text-red-400',       valCls: 'text-red-700 dark:text-red-300',         bg: 'bg-red-500/10 border border-red-500/20',       hkey: 'max'  as const },
+            { label: 'Avg',   value: stats.avg,   labelCls: 'text-violet-500 dark:text-violet-400', valCls: 'text-violet-700 dark:text-violet-300',   bg: 'bg-violet-500/10 border border-violet-500/20', hkey: null },
+            { label: isEn ? 'Last' : 'Letzt', value: stats.last, labelCls: 'text-green-500 dark:text-green-400', valCls: 'text-green-700 dark:text-green-300', bg: 'bg-green-500/10 border border-green-500/20', hkey: 'last' as const },
+          ] as { label: string; value: number; labelCls: string; valCls: string; bg: string; hkey: 'min' | 'max' | 'last' | null }[]).map(({ label, value, labelCls, valCls, bg, hkey }) => (
             <span
               key={label}
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono ${cls} ${hkey && highlightPoints[hkey] ? 'cursor-crosshair' : ''}`}
+              className={`inline-flex flex-col items-center px-3 py-1 rounded-lg ${bg} ${hkey && highlightPoints[hkey] ? 'cursor-crosshair' : ''}`}
               title={hkey && highlightPoints[hkey] ? formatTooltipTime(highlightPoints[hkey]!.ts, dateFormat) : undefined}
               onMouseEnter={() => { if (hkey) setHighlightPoint(highlightPoints[hkey]); }}
               onMouseLeave={() => setHighlightPoint(null)}
             >
-              <span className="opacity-60 font-sans text-[10px] uppercase tracking-wide">{label}</span>
-              {Number.isInteger(value) ? value : value.toFixed(2)}
-              {unit && <span className="opacity-60">{unit}</span>}
+              <span className={`text-[10px] font-semibold uppercase tracking-widest ${labelCls}`}>{label}</span>
+              <span className={`text-sm font-bold font-mono leading-tight ${valCls}`}>
+                {Number.isInteger(value) ? value : value.toFixed(2)}
+                {unit && <span className="text-xs font-normal ml-0.5 opacity-75">{unit}</span>}
+              </span>
             </span>
           ))}
-          <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">{stats.count} {isEn ? 'points' : 'Messpunkte'}</span>
+          <span className="text-xs text-gray-400 dark:text-gray-500">{stats.count} {isEn ? 'points' : 'Messpunkte'}</span>
         </div>
       )}
 

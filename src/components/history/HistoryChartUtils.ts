@@ -94,7 +94,7 @@ export function makeAxes(dark: boolean, isEn: boolean, dateFormat: 'de' | 'us' |
       tickFormatter: (v: number) => unit ? `${v} ${unit}` : String(v),
       width: 70,
     }),
-    tooltip: (unit?: string, hasCompare?: boolean) => ({
+    tooltip: (unit?: string, hasCompare?: boolean, compareOffsetMs?: number) => ({
       contentStyle: {
         backgroundColor: dark ? '#1f2937' : '#ffffff',
         border: `1px solid ${dark ? '#374151' : '#e5e7eb'}`,
@@ -103,10 +103,22 @@ export function makeAxes(dark: boolean, isEn: boolean, dateFormat: 'de' | 'us' |
       labelStyle: { color: dark ? '#9ca3af' : '#6b7280' },
       itemStyle: { color: '#60a5fa' },
       labelFormatter: (ts: unknown) => formatTooltipTime(ts as number, dateFormat),
-      formatter: (value: unknown, name: string | number | undefined) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      formatter: (value: unknown, name: string | number | undefined, props?: any) => {
         const v = value as number | undefined;
-        const label = hasCompare && name === 'valComp' ? (isEn ? 'Compare' : 'Vergleich') : (isEn ? 'Value' : 'Wert');
-        return [unit && v !== undefined ? `${v} ${unit}` : v ?? '', label] as [string | number, string];
+        const payloadTs = typeof props?.payload?.ts === 'number' ? props.payload.ts as number : undefined;
+        if (hasCompare && name === 'valComp') {
+          const originalTs = payloadTs != null && compareOffsetMs ? payloadTs - compareOffsetMs : undefined;
+          const timeStr = originalTs != null ? formatTooltipTime(originalTs, dateFormat) : '';
+          const label = `${isEn ? 'Compare' : 'Vergleich'}${timeStr ? ` (${timeStr})` : ''}`;
+          return [unit && v !== undefined ? `${v} ${unit}` : v ?? '', label] as [string | number, string];
+        }
+        if (hasCompare && name === 'val') {
+          const timeStr = payloadTs != null ? formatTooltipTime(payloadTs, dateFormat) : '';
+          const label = `${isEn ? 'Today' : 'Heute'}${timeStr ? ` (${timeStr})` : ''}`;
+          return [unit && v !== undefined ? `${v} ${unit}` : v ?? '', label] as [string | number, string];
+        }
+        return [unit && v !== undefined ? `${v} ${unit}` : v ?? '', isEn ? 'Value' : 'Wert'] as [string | number, string];
       },
     }),
     gridStroke: dark ? '#374151' : '#e5e7eb',
