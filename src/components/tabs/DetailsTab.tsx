@@ -468,10 +468,10 @@ export default function DetailsTab({
             {onOpenHistory && (
               <button
                 onClick={() => { onClose(); onOpenHistory(); }}
-                className="flex items-center gap-0.5 text-[11px] text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-sm"
                 title={isEn ? 'Open in history modal' : 'Im History-Modal öffnen'}
               >
-                <Maximize2 size={11} />
+                <Maximize2 size={13} />
                 {isEn ? 'Fullscreen' : 'Vollbild'}
               </button>
             )}
