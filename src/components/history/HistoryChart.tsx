@@ -505,6 +505,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
             fill="url(#valGradient)"
             dot={dotProps}
             activeDot={activeDotProps}
+            connectNulls={!!compareOffset}
           />
           {compareOffset && (
             <Line
@@ -515,6 +516,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
               strokeDasharray="5 3"
               dot={false}
               activeDot={{ r: 4 }}
+              connectNulls
             />
           )}
           {refDot}
@@ -543,6 +545,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
           strokeWidth={1.5}
           dot={dotProps}
           activeDot={activeDotProps}
+          connectNulls={!!compareOffset}
         />
         {compareOffset && (
           <Line
@@ -553,6 +556,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
             strokeDasharray="5 3"
             dot={false}
             activeDot={{ r: 4 }}
+            connectNulls
           />
         )}
         {refDot}
