@@ -167,13 +167,17 @@ export default function ValueEditModal({ id, state, obj, onClose, language = 'en
   const jsonText = useMemo(() => getJsonText(state?.val), [state?.val]);
   const jsonTokens = useMemo(() => (jsonText ? tokenizeJson(jsonText) : []), [jsonText]);
   const htmlValue = isHtmlValue(state?.val) ? state.val : null;
-  const valueInputKind: 'number' | 'text' | 'boolean' | 'json' = useMemo(() => {
+  const statesMap = obj?.common?.states;
+  const hasStates = statesMap && Object.keys(statesMap).length > 0;
+
+  const valueInputKind: 'number' | 'text' | 'boolean' | 'json' | 'states' = useMemo(() => {
+    if (hasStates) return 'states';
     if (valType === 'boolean') return 'boolean';
     if (valType === 'number') return 'number';
     if (valType === 'string' || valType === 'mixed') return 'text';
     if (valType === 'object' || (typeof state?.val === 'object' && state?.val !== null)) return 'json';
     return 'text';
-  }, [valType, state?.val]);
+  }, [hasStates, valType, state?.val]);
 
   function handleSave() {
     const parsed = parseValue(draft, valType, state?.val);
@@ -270,7 +274,11 @@ export default function ValueEditModal({ id, state, obj, onClose, language = 'en
               )}
               {!htmlValue && !jsonText && (
                 <pre className="m-0 text-xs leading-5 whitespace-pre-wrap break-words font-mono text-gray-700 dark:text-gray-200">
-                  {valueToDraft(state?.val) || '—'}
+                  {(() => {
+                    const raw = valueToDraft(state?.val) || '—';
+                    const label = statesMap && state?.val !== null && state?.val !== undefined ? statesMap[String(state.val)] : undefined;
+                    return label ? `${label} (${raw})` : raw;
+                  })()}
                 </pre>
               )}
             </div>
@@ -279,7 +287,19 @@ export default function ValueEditModal({ id, state, obj, onClose, language = 'en
           <div className="flex flex-col gap-2">
             <div className="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500">{isEn ? 'New value' : 'Neuer Wert'}</div>
             <div className="flex flex-col flex-1 gap-2">
-              {valueInputKind === 'boolean' ? (
+              {valueInputKind === 'states' ? (
+                <select
+                  value={draft}
+                  onChange={(e) => { setDraft(e.target.value); setError(''); }}
+                  disabled={(isReadonly && !forceWrite) || setStateMutation.isPending}
+                  autoFocus
+                  className="w-full h-10 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-mono text-gray-800 dark:text-gray-100 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:opacity-60"
+                >
+                  {statesMap && Object.entries(statesMap).map(([key, label]) => (
+                    <option key={key} value={key}>{label} ({key})</option>
+                  ))}
+                </select>
+              ) : valueInputKind === 'boolean' ? (
                 <div className="flex gap-2 h-10">
                   {(['true', 'false'] as const).map((opt) => {
                     const isActive = draft.trim().toLowerCase() === opt;
@@ -308,9 +328,36 @@ export default function ValueEditModal({ id, state, obj, onClose, language = 'en
                   spellCheck={false}
                   className="w-full flex-1 min-h-40 max-h-72 resize-y rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-mono text-gray-800 dark:text-gray-100 p-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:opacity-60"
                 />
+              ) : valueInputKind === 'number' ? (
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => { const n = Number(draft); if (Number.isFinite(n)) { setDraft(String(n - 1)); setError(''); } }}
+                    disabled={(isReadonly && !forceWrite) || setStateMutation.isPending}
+                    className="h-10 w-10 shrink-0 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-60 text-lg font-mono"
+                  >−</button>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={draft}
+                    onChange={(e) => { setDraft(e.target.value); setError(''); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
+                    disabled={(isReadonly && !forceWrite) || setStateMutation.isPending}
+                    spellCheck={false}
+                    autoFocus
+                    onFocus={(e) => e.target.select()}
+                    className="w-full h-10 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-mono text-gray-800 dark:text-gray-100 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:opacity-60 text-center"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => { const n = Number(draft); if (Number.isFinite(n)) { setDraft(String(n + 1)); setError(''); } }}
+                    disabled={(isReadonly && !forceWrite) || setStateMutation.isPending}
+                    className="h-10 w-10 shrink-0 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-60 text-lg font-mono"
+                  >+</button>
+                </div>
               ) : (
                 <input
-                  type={valueInputKind === 'number' ? 'number' : 'text'}
+                  type="text"
                   value={draft}
                   onChange={(e) => { setDraft(e.target.value); setError(''); }}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
