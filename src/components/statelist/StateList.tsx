@@ -944,7 +944,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
           </button>
       </div>
       <div ref={containerRef} onKeyDown={handleContainerKeyDown} tabIndex={0} className="overflow-x-auto overflow-y-auto flex-1 outline-none bg-white dark:bg-gray-900" data-table-fontsize={tableFontSize}>
-        <table className="text-xs text-left table-fixed" style={{ width: totalWidth }}>
+        <table role="grid" aria-label={isEn ? 'ioBroker objects' : 'ioBroker-Objekte'} className="text-xs text-left table-fixed" style={{ width: totalWidth }}>
           <thead ref={theadRef} className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-white dark:bg-gray-800 sticky top-0 z-10">
             <tr>
               {show('checkbox') && (
@@ -1493,7 +1493,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
       onCloseHistory={() => { setHistoryModalId(null); setHistoryInitialExtra([]); }}
       onCloseValueEdit={() => setValueEditId(null)}
       onConfirmDeleteId={() => { deleteObject.mutate(deletingId!); setDeletingId(null); }}
-      onCancelDeleteId={() => setDeletingId(null)}
+      onCancelDeleteId={() => { setDeletingId(null); setDeletingGroupPrefix(null); }}
       onConfirmResetLs={() => {
         localStorage.removeItem(LS_WIDTHS_KEY);
         setVisibleCols(DEFAULT_COLS);

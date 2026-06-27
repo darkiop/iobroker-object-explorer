@@ -759,11 +759,14 @@ export async function deleteObject(id: string): Promise<void> {
 export async function deleteObjectsMany(ids: string[]): Promise<void> {
   const CHUNK = 8;
   for (let i = 0; i < ids.length; i += CHUNK) {
-    await Promise.all(
+    const results = await Promise.all(
       ids.slice(i, i + CHUNK).map(id =>
         fetch(`${getBaseUrl()}/object/${encodeURIComponent(id)}`, { method: 'DELETE' })
       )
     );
+    for (const res of results) {
+      if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
+    }
   }
 }
 

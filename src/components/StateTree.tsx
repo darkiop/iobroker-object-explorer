@@ -6,6 +6,7 @@ import ContextMenu from './ui/ContextMenu';
 import type { ContextMenuEntry } from './ui/ContextMenu';
 import ConfirmDialog from './modals/ConfirmDialog';
 import { useDeleteSubtree } from '../hooks/useStates';
+import { useToast } from '../context/ToastContext';
 import { copyText } from '../utils/clipboard';
 import { useTreeState } from '../hooks/useTreeState';
 import { useFilterContext } from '../context/FilterContext';
@@ -109,6 +110,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const deleteSubtree = useDeleteSubtree();
+  const showToast = useToast();
   const { deleteCount, deleteStateCount } = useMemo(() => {
     if (!confirmDelete) return { deleteCount: 0, deleteStateCount: 0 };
     if (node.isLeaf) return { deleteCount: 1, deleteStateCount: 1 };
@@ -263,7 +265,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
                 ? `${deleteStateCount} state${deleteStateCount !== 1 ? 's' : ''}, ${deleteCount - deleteStateCount} folder/device/channel will be permanently deleted:`
                 : `${deleteStateCount} State${deleteStateCount !== 1 ? 's' : ''}, ${deleteCount - deleteStateCount} Ordner/Gerät/Kanal werden unwiderruflich gelöscht:`)}
           message={node.fullPath}
-          onConfirm={() => { deleteSubtree.mutate({ id: node.fullPath, allObjects }); setConfirmDelete(false); }}
+          onConfirm={() => { deleteSubtree.mutate({ id: node.fullPath, allObjects }, { onError: (err) => showToast((isEn ? 'Delete failed: ' : 'Löschen fehlgeschlagen: ') + String(err)) }); setConfirmDelete(false); }}
           onCancel={() => setConfirmDelete(false)}
           language={language}
         />

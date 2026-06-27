@@ -245,11 +245,14 @@ export default function StateListModals({
           const p = id.split('.');
           return (p.length > 1 ? p.slice(0, -1).join('.') : '') === deletingGroupPrefix;
         });
+        const prefixObjType = allObjects[deletingGroupPrefix]?.type;
+        const prefixIsContainer = prefixObjType === 'channel' || prefixObjType === 'device' || prefixObjType === 'folder';
+        const idsToDelete = prefixIsContainer ? [...groupIds, deletingGroupPrefix] : groupIds;
         return (
           <ConfirmDialog
-            title={isEn ? `Delete group (${groupIds.length})` : `Gruppe löschen (${groupIds.length})`}
+            title={isEn ? `Delete group (${idsToDelete.length})` : `Gruppe löschen (${idsToDelete.length})`}
             message={deletingGroupPrefix || 'root'}
-            onConfirm={() => { onDeleteAll(groupIds); onCancelDeleteId(); }}
+            onConfirm={() => { onDeleteAll(idsToDelete); onCancelDeleteId(); }}
             onCancel={onCancelDeleteId}
             language={language}
           />
