@@ -274,14 +274,16 @@ export default function DetailsTab({
               )}
             </div>
           </div>
-          <DetailRow
-            label="Acknowledged"
-            value={<span className={state.ack ? 'text-green-500 dark:text-green-400' : 'text-yellow-500 dark:text-yellow-400'}>{state.ack ? (isEn ? 'Yes' : 'Ja') : (isEn ? 'No' : 'Nein')}</span>}
-          />
-          <DetailRow label={isEn ? 'Quality' : 'Qualität'} value={state.q} />
-          <DetailRow label={isEn ? 'Timestamp' : 'Zeitstempel'} value={formatTimestamp(state.ts, dateFormat)} />
-          <DetailRow label={isEn ? 'Last change' : 'Letzte Änderung'} value={formatTimestamp(state.lc, dateFormat)} />
-          <DetailRow label={isEn ? 'From' : 'Von'} value={state.from || '—'} />
+          <div className="grid grid-cols-2 gap-x-4">
+            <DetailRow
+              label="Acknowledged"
+              value={<span className={state.ack ? 'text-green-500 dark:text-green-400' : 'text-yellow-500 dark:text-yellow-400'}>{state.ack ? (isEn ? 'Yes' : 'Ja') : (isEn ? 'No' : 'Nein')}</span>}
+            />
+            <DetailRow label={isEn ? 'Quality' : 'Qualität'} value={state.q} />
+            <DetailRow label={isEn ? 'Timestamp' : 'Zeitstempel'} value={formatTimestamp(state.ts, dateFormat)} />
+            <DetailRow label={isEn ? 'Last change' : 'Letzte Änderung'} value={formatTimestamp(state.lc, dateFormat)} />
+            <DetailRow label={isEn ? 'From' : 'Von'} value={state.from || '—'} />
+          </div>
           {state.c && <DetailRow label={isEn ? 'Comment' : 'Kommentar'} value={state.c} />}
         </div>
       )}
@@ -464,8 +466,13 @@ export default function DetailsTab({
       {hasHistory(obj) && (
         <>
           <SectionHeader label="History" />
-          <div className="flex items-center gap-2 mb-2">
-            {onOpenHistory && (
+          <HistoryChart
+            stateId={id}
+            unit={obj.common?.unit}
+            settingsCollapsible
+            language={language}
+            dateFormat={dateFormat}
+            statsAction={onOpenHistory ? (
               <button
                 onClick={() => { onClose(); onOpenHistory(); }}
                 className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-sm"
@@ -474,9 +481,8 @@ export default function DetailsTab({
                 <Maximize2 size={13} />
                 {isEn ? 'Fullscreen' : 'Vollbild'}
               </button>
-            )}
-          </div>
-          <HistoryChart stateId={id} unit={obj.common?.unit} settingsCollapsible language={language} dateFormat={dateFormat} />
+            ) : undefined}
+          />
         </>
       )}
 

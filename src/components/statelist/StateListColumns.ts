@@ -48,6 +48,8 @@ export function getColumnLabel(key: SortKey, language: 'en' | 'de' = 'de'): stri
 
 export const DEFAULT_COLS: SortKey[] = ['checkbox', 'id', 'name', 'write', 'history', 'custom', 'smart', 'alias', 'scripts', 'room', 'function', 'type', 'role', 'value', 'unit', 'ack', 'ts'];
 
+export const COMPACT_COLS: SortKey[] = ['checkbox', 'id', 'name', 'room', 'value', 'ts'];
+
 /** Columns whose width is user-configurable (excludes fixed icon columns) */
 export const CONFIGURABLE_WIDTH_COLS: SortKey[] = ['id', 'name', 'room', 'function', 'type', 'role', 'value', 'unit', 'ack', 'ts', 'relevanz'];
 

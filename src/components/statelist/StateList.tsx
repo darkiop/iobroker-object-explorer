@@ -62,7 +62,7 @@ interface StateListProps {
 export type { SortKey, DateFormatSetting } from './StateListColumns';
 export { ALL_COLUMNS, getColumnLabel, DEFAULT_COLS } from './StateListColumns';
 import type { SortKey } from './StateListColumns';
-import { DEFAULT_COLS, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MIN_WIDTHS, BUILTIN_MAX_WIDTHS } from './StateListColumns';
+import { DEFAULT_COLS, COMPACT_COLS, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MIN_WIDTHS, BUILTIN_MAX_WIDTHS } from './StateListColumns';
 
 
 
@@ -196,12 +196,31 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
     updateFnMutateRef.current = updateFn.mutate;
   }, [updateFn.mutate]);
 
+  const [isCompactView, setIsCompactView] = useState(false);
+  const preCompactColsRef = useRef<SortKey[] | null>(null);
+
   function handleColChange(cols: SortKey[]) {
+    if (isCompactView) setIsCompactView(false);
     if (onVisibleColsChange) {
       onVisibleColsChange(cols);
       setVisibleCols(cols);
     } else {
       persistSettings({ ...appSettings, visibleCols: cols });
+    }
+  }
+
+  function handleToggleCompact() {
+    if (isCompactView) {
+      const restore = preCompactColsRef.current ?? DEFAULT_COLS;
+      preCompactColsRef.current = null;
+      setIsCompactView(false);
+      if (onVisibleColsChange) { onVisibleColsChange(restore); setVisibleCols(restore); }
+      else persistSettings({ ...appSettings, visibleCols: restore });
+    } else {
+      preCompactColsRef.current = visibleCols;
+      setIsCompactView(true);
+      if (onVisibleColsChange) { onVisibleColsChange(COMPACT_COLS); setVisibleCols(COMPACT_COLS); }
+      else persistSettings({ ...appSettings, visibleCols: COMPACT_COLS });
     }
   }
 
@@ -835,6 +854,8 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
         onResetLs={() => setConfirmResetLs(true)}
         onPageSizeChange={onPageSizeChange}
         onColChange={handleColChange}
+        isCompactView={isCompactView}
+        onToggleCompact={handleToggleCompact}
       />
       <div className={`flex items-center gap-2 px-3 py-1.5 shrink-0 border-b border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20 flex-wrap transition-all ${checkedIds.size > 0 ? 'visible' : 'invisible h-0 py-0 overflow-hidden border-0'}`}>
           <span className="text-xs text-blue-600 dark:text-blue-400 font-medium shrink-0 whitespace-nowrap">

@@ -33,6 +33,7 @@ interface HistoryChartProps {
   settingsCollapsible?: boolean;
   language?: 'en' | 'de';
   dateFormat?: 'de' | 'us' | 'iso';
+  statsAction?: React.ReactNode;
 }
 
 function ConfirmDialog({ message, onConfirm, onCancel, isPending, language = 'en' }: {
@@ -68,7 +69,7 @@ function ConfirmDialog({ message, onConfirm, onCancel, isPending, language = 'en
   );
 }
 
-export default function HistoryChart({ stateId, unit, fillHeight = false, extraSeries, settingsCollapsible = false, language = 'en', dateFormat = 'de' }: HistoryChartProps) {
+export default function HistoryChart({ stateId, unit, fillHeight = false, extraSeries, settingsCollapsible = false, language = 'en', dateFormat = 'de', statsAction }: HistoryChartProps) {
   const isEn = language === 'en';
   const { dark } = useTheme();
   const axes = makeAxes(dark, isEn, dateFormat);
@@ -702,6 +703,47 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
 
   return (
     <div className={`relative ${fillHeight ? 'h-full flex flex-col' : 'mt-4'}`}>
+      {hasMultiSeries && (
+        <div className="flex items-center gap-3 flex-wrap mb-2">
+          {[
+            { color: SERIES_COLORS[0], label: stateId.split('.').slice(-2).join('.'), unit },
+            ...es.map((s, i) => ({ color: SERIES_COLORS[i + 1] ?? '#6b7280', label: s.label, unit: s.unit })),
+          ].map(({ color, label, unit: u }) => (
+            <span key={label} className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
+              <span className="inline-block w-5 border-t-2 rounded" style={{ borderColor: color }} />
+              <span>{label}{u ? ` (${u})` : ''}</span>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {stats && !isLoading && (
+        <div className="flex items-center gap-3 flex-wrap mb-2">
+          {([
+            { label: 'Min',   value: stats.min,   labelCls: 'text-blue-500 dark:text-blue-400',     valCls: 'text-blue-700 dark:text-blue-300',     bg: 'bg-blue-500/10 border border-blue-500/20',     hkey: 'min'  as const },
+            { label: 'Max',   value: stats.max,   labelCls: 'text-red-500 dark:text-red-400',       valCls: 'text-red-700 dark:text-red-300',         bg: 'bg-red-500/10 border border-red-500/20',       hkey: 'max'  as const },
+            { label: 'Avg',   value: stats.avg,   labelCls: 'text-violet-500 dark:text-violet-400', valCls: 'text-violet-700 dark:text-violet-300',   bg: 'bg-violet-500/10 border border-violet-500/20', hkey: null },
+            { label: isEn ? 'Last' : 'Letzt', value: stats.last, labelCls: 'text-green-500 dark:text-green-400', valCls: 'text-green-700 dark:text-green-300', bg: 'bg-green-500/10 border border-green-500/20', hkey: 'last' as const },
+          ] as { label: string; value: number; labelCls: string; valCls: string; bg: string; hkey: 'min' | 'max' | 'last' | null }[]).map(({ label, value, labelCls, valCls, bg, hkey }) => (
+            <span
+              key={label}
+              className={`inline-flex flex-col items-center px-3 py-1 rounded-lg ${bg} ${hkey && highlightPoints[hkey] ? 'cursor-crosshair' : ''}`}
+              title={hkey && highlightPoints[hkey] ? formatTooltipTime(highlightPoints[hkey]!.ts, dateFormat) : undefined}
+              onMouseEnter={() => { if (hkey) setHighlightPoint(highlightPoints[hkey]); }}
+              onMouseLeave={() => setHighlightPoint(null)}
+            >
+              <span className={`text-[10px] font-semibold uppercase tracking-widest ${labelCls}`}>{label}</span>
+              <span className={`text-sm font-bold font-mono leading-tight ${valCls}`}>
+                {Number.isInteger(value) ? value : value.toFixed(2)}
+                {unit && <span className="text-xs font-normal ml-0.5 opacity-75">{unit}</span>}
+              </span>
+            </span>
+          ))}
+          <span className="text-xs text-gray-400 dark:text-gray-500">{stats.count} {isEn ? 'points' : 'Messpunkte'}</span>
+          {statsAction && <span className="ml-auto">{statsAction}</span>}
+        </div>
+      )}
+
       <div className={`flex flex-col gap-2 mb-3 ${fillHeight ? 'shrink-0' : ''}`}>
         {settingsCollapsible && (
           <button
@@ -813,7 +855,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
             </select>
             {/* Comparison buttons */}
             <div className="flex items-center gap-1">
-{COMPARE_OFFSETS.map((c) => (
+              {COMPARE_OFFSETS.map((c) => (
                 <button
                   key={c.value}
                   onClick={() => setCompareOffset(compareOffset === c.value ? null : c.value)}
@@ -904,46 +946,6 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
           </div>
         )}
       </div>
-
-      {hasMultiSeries && (
-        <div className="flex items-center gap-3 flex-wrap mb-2">
-          {[
-            { color: SERIES_COLORS[0], label: stateId.split('.').slice(-2).join('.'), unit },
-            ...es.map((s, i) => ({ color: SERIES_COLORS[i + 1] ?? '#6b7280', label: s.label, unit: s.unit })),
-          ].map(({ color, label, unit: u }) => (
-            <span key={label} className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
-              <span className="inline-block w-5 border-t-2 rounded" style={{ borderColor: color }} />
-              <span>{label}{u ? ` (${u})` : ''}</span>
-            </span>
-          ))}
-        </div>
-      )}
-
-      {stats && !isLoading && (
-        <div className="flex items-center gap-3 flex-wrap mb-2">
-          {([
-            { label: 'Min',   value: stats.min,   labelCls: 'text-blue-500 dark:text-blue-400',     valCls: 'text-blue-700 dark:text-blue-300',     bg: 'bg-blue-500/10 border border-blue-500/20',     hkey: 'min'  as const },
-            { label: 'Max',   value: stats.max,   labelCls: 'text-red-500 dark:text-red-400',       valCls: 'text-red-700 dark:text-red-300',         bg: 'bg-red-500/10 border border-red-500/20',       hkey: 'max'  as const },
-            { label: 'Avg',   value: stats.avg,   labelCls: 'text-violet-500 dark:text-violet-400', valCls: 'text-violet-700 dark:text-violet-300',   bg: 'bg-violet-500/10 border border-violet-500/20', hkey: null },
-            { label: isEn ? 'Last' : 'Letzt', value: stats.last, labelCls: 'text-green-500 dark:text-green-400', valCls: 'text-green-700 dark:text-green-300', bg: 'bg-green-500/10 border border-green-500/20', hkey: 'last' as const },
-          ] as { label: string; value: number; labelCls: string; valCls: string; bg: string; hkey: 'min' | 'max' | 'last' | null }[]).map(({ label, value, labelCls, valCls, bg, hkey }) => (
-            <span
-              key={label}
-              className={`inline-flex flex-col items-center px-3 py-1 rounded-lg ${bg} ${hkey && highlightPoints[hkey] ? 'cursor-crosshair' : ''}`}
-              title={hkey && highlightPoints[hkey] ? formatTooltipTime(highlightPoints[hkey]!.ts, dateFormat) : undefined}
-              onMouseEnter={() => { if (hkey) setHighlightPoint(highlightPoints[hkey]); }}
-              onMouseLeave={() => setHighlightPoint(null)}
-            >
-              <span className={`text-[10px] font-semibold uppercase tracking-widest ${labelCls}`}>{label}</span>
-              <span className={`text-sm font-bold font-mono leading-tight ${valCls}`}>
-                {Number.isInteger(value) ? value : value.toFixed(2)}
-                {unit && <span className="text-xs font-normal ml-0.5 opacity-75">{unit}</span>}
-              </span>
-            </span>
-          ))}
-          <span className="text-xs text-gray-400 dark:text-gray-500">{stats.count} {isEn ? 'points' : 'Messpunkte'}</span>
-        </div>
-      )}
 
       {isLoading ? (
         <div className={`flex items-center justify-center text-gray-400 dark:text-gray-500 text-sm ${fillHeight ? 'flex-1' : 'h-48'}`}>
