@@ -9,13 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ioBroker Object Explorer</title>
     <script src="/config.js"></script>
-    <script>
-      // Apply saved theme before React mounts to prevent flash
-      const saved = localStorage.getItem('theme');
-      if (saved === 'dark' || (!saved)) {
-        document.documentElement.classList.add('dark');
-      }
-    </script>
+    <script src="/theme-init.js"></script>
   </head>
   <body>
     <div id="root"></div>
