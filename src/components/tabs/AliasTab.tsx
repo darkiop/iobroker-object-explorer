@@ -1,21 +1,10 @@
 import { useState } from 'react';
-import { Parser as ExprParser } from 'expr-eval';
 import { Link2, Check } from 'lucide-react';
 import type { IoBrokerObject } from '../../types/iobroker';
 import IdSuggestInput from '../ui/IdSuggestInput';
+import { evalFormula } from '../../utils/aliasFormula';
 
 const inputCls = 'px-2.5 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:focus:ring-blue-500';
-
-function evalFormula(formula: string, val: unknown): { value?: string; error?: string } {
-  try {
-    const parser = new ExprParser();
-    const expr = parser.parse(formula.trim());
-    const output = expr.evaluate({ val });
-    return { value: String(output) };
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : String(e) };
-  }
-}
 
 // ── AliasTab ───────────────────────────────────────────────────────────────
 
