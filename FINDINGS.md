@@ -88,22 +88,22 @@ Das Projekt ist eine **funktionsreiche, intern gut strukturierte** React-Applika
 - F-03/F-11: App.tsx + StateList.tsx erheblich modularisiert
 - F-35: N+1-Requests auf Bulk-Endpoint reduziert
 - F-39: `ModalErrorFallback` ersetzt `fallback=null`
+- F-42: Lokale `ChartMouseState`/`CompareTooltipProps` ersetzen alle `any` in HistoryChart
+- F-43: `QueryClient` via `useRef` in `App()` — HMR-Cache bleibt erhalten
 - F-45: 136 Tests — RTL ObjectEditModal + SelectionContext, useSetState Optimistic-Update, aliasFormula
 - F-47: GitHub Actions CI/CD Workflow erstellt
 - F-51: `role="grid"`, `aria-sort`, `aria-label` auf Datentabelle
+- F-52: Skip-Link + `id="main-content"` auf `<main>` — WCAG 2.4.1 erfüllt
 
-**Offene Findings (9):**
+**Offene Findings (5):**
 
 | ID | Status | Priorität | Titel |
 |----|--------|-----------|-------|
+| F-11 | Partial | HIGH | StateList: 1504 Zeilen, Tabellenkörper (~800 Z.) noch inline |
 | F-01 | Partial | MEDIUM | Tests: Fetch-Mock für destruktive Mutations fehlen |
-| F-11 | Partial | HIGH | StateList: 1504 Zeilen, BatchBar extrahiert, Tabellenkörper (~800 Z.) noch inline |
 | F-38 | Open | MEDIUM | Duplizierte Modal-Verdrahtung App.tsx + StateList |
-| F-42 | Fixed | ~~MEDIUM~~ | Lokale `ChartMouseState`/`CompareTooltipProps` Typen ersetzt `any` |
-| F-43 | Fixed | ~~MEDIUM~~ | QueryClient via useRef in App() — HMR-Cache bleibt erhalten |
 | F-46 | Open | MEDIUM | Keine E2E-Tests |
 | F-48 | Open | MEDIUM | Docker läuft als root |
-| F-52 | Fixed | ~~MEDIUM~~ | Skip-Link + `id="main-content"` auf `<main>` |
 | F-55 | Open | LOW | Dead Function `handleCreateDatapointAtPath` in FilterContext |
 | F-58 | Open | LOW | `staleTime: Infinity` undokumentiert |
 
@@ -239,4 +239,48 @@ Zwei parallele Modal-Systeme (App.tsx + StateList.tsx) bedeuten: Bugs in einem P
 
 ---
 
-*Initialer Report basiert auf Commit `fac708b`. Aktualisiert 2026-05-29 (Audit 1) und 2026-05-30 (Audit 2). Zusammengeführt 2026-05-31. Aktualisiert 2026-06-27: F-07, F-39, F-45, F-47, F-51 Fixed.*
+## Feature Backlog (offen)
+
+Offene Einträge aus `TODO.md` (zusammengeführt 2026-06-28). Abgeschlossene Einträge und Duplikate zu Audit-Findings (FE-023=F-46, FE-096=F-12/F-39, FE-097=F-07) entfernt.
+
+| ID | Kategorie | Priorität | Aufwand | Beschreibung |
+|----|-----------|-----------|---------|--------------|
+| FE-024 | Performance | medium | M | HistoryChart: Downsampling für >1000 Datenpunkte — Recharts ruckelt bei großen Datasets |
+| FE-025 | Code Quality | low | S | Enum-Name-Parsing in shared `parseEnumName()` utility extrahieren |
+| FE-026 | UX | low | M | Skeleton-Screens / Loading-States in StateList während Datenpunkt-Values geladen werden |
+| FE-033 | Feature | low | L | Undo/Redo für Edits (Name, Role, Unit, Room, Function), v.a. nach Batch-Operationen |
+| FE-036 | Chart | high | M | Sparkline Mini-Chart in Value-Spalte: Trend der letzten 24h für History-fähige Datenpunkte |
+| FE-039 | Chart | medium | M | Boolean-States als Gantt/Time-Bar-Chart: On-Perioden als farbige Balken statt Linien |
+| FE-041 | Feature | medium | M | History-Adapter wählbar: aktuell hardcodiert auf sql.0; influxdb.0 und history.0 ergänzen |
+| FE-047 | Feature | low | L | History-Daten-Import: CSV hochladen und als History-Einträge in sql.0 importieren |
+| FE-064 | Security | low | S | HTTP statt HTTPS für Custom-Host: Custom-Host-URLs immer als `http://` gebaut, kein HTTPS |
+| FE-065 | UX | low | S | CORS-Fehler nicht erkennbar: kein spezifisches Handling für CORS-Preflight-Fehler |
+| FE-070 | Security | medium | L | Auth für den Explorer selbst: Login-Screen oder HTTP Basic Auth vor App-Zugriff |
+| FE-071 | Security | medium | M | Auth für REST-API: Authentifizierung für ioBroker-REST-API-Requests (API-Key / Token) |
+| FE-083 | Code Quality | medium | S | `fetch()` ohne Timeout: hängender REST-Adapter blockiert Requests ewig — `AbortController` + konfigurierbares Timeout (30s) |
+| FE-084 | Bug | medium | S | Batch-Delete via `Promise.all()`: ein Fehler bricht alle weiteren ab — auf `Promise.allSettled()` + per-Item-Fehlerreport umstellen |
+| FE-085 | Chart | medium | S | HistoryChart CSV-Export neben PNG-Export — lädt Rohdaten als CSV für externe Analyse |
+| FE-086 | Code Quality | low | S | Duplizierte `formatTimestamp()`/`getObjectName()` in StateList, ObjectEditModal, HistoryModal — in `src/utils/formatting.ts` extrahieren |
+| FE-087 | A11y | medium | S | ContextMenu ohne ARIA: kein `role="menu"` auf Container, kein `role="menuitem"` auf Items |
+| FE-088 | A11y | medium | S | Icon-only-Buttons ohne `aria-label` (Theme-Toggle, Sidebar-Collapse, Column-Picker etc.) |
+| FE-089 | Feature | low | S | `defaultHistoryRange` in AppSettings: History-Chart öffnet mit Nutzer-bevorzugtem Zeitbereich statt immer 24h |
+| FE-090 | Feature | low | S | `defaultHistoryAggregation` in AppSettings: bevorzugte Aggregations-Methode bleibt über Sessions erhalten |
+| FE-092 | A11y | low | S | Threshold-Highlighting nur farbbasiert (gelb/rot): Icon (⚠/✕) ergänzen für Farbenblinde |
+| FE-093 | Feature | medium | S | Batch-Edit-Bar: Read/Write-Checkboxen ergänzen für `common.read`/`common.write` |
+| FE-094 | Feature | medium | M | Custom-Settings-Tab nur für sql.0 — history.0 / influxdb.0 ergänzen oder generischen Key/Value-Editor für unbekannte Adapter |
+| FE-095 | Bug | low | S | CopyDatapointModal kopiert `common.smartName` nicht aus dem Quell-Objekt |
+| FE-098 | Code Quality | low | S | `navigator.platform` deprecated in KeyboardShortcutsModal — auf `navigator.userAgentData.platform` oder UA-String umstellen |
+| FE-099 | UX | low | S | Editierbare Tabellenzellen ohne Hover-Hintergrund — subtile Hintergrundtönung bei Hover ergänzen |
+| FE-100 | UX | low | S | Pagination ohne "Gehe zu Seite"-Input — Zahleninput zwischen Vor/Zurück-Buttons ergänzen |
+| FE-101 | UX | medium | S | Kein "Alle Filter löschen"-Button — Pattern, Room, Function, Quick-Filter, Column-Filter einzeln zu löschen ist aufwändig |
+| FE-102 | UX | low | S | Aktive Filter-Anzahl nicht sichtbar — Badge "3 aktiv" in Filter/Suchbereich ergänzen |
+| FE-105 | UX | medium | S | Seitengröße nur in Settings änderbar — "pro Seite"-Dropdown direkt neben Pagination ergänzen |
+| FE-106 | UX | low | S | SearchBar Autocomplete zeigt "Keine Vorschläge" nicht an — Hinweiszeile bei leerem Ergebnis ergänzen |
+| FE-108 | UX | medium | S | ObjectEditModal zeigt kein Ungespeichert-Indikator beim Tab-Wechsel — Punkt/Asterisk auf Tab-Label bei uncommitted Edits |
+| FE-109 | UX | low | S | Kontextmenü ohne Tastaturkürzel-Hints neben Labels |
+| FE-114 | Feature | medium | S | Role-Feld in ObjectEditModal nur für States editierbar — für folder/device/channel ergänzen |
+| FE-126 | Bug | medium | S | Korrektheit von Objects/States-Counts prüfen: StateTree-Badge, Gesamt-Anzeige und TreeStatsModal konsistent? |
+
+---
+
+*Initialer Report basiert auf Commit `fac708b`. Aktualisiert 2026-05-29 (Audit 1) und 2026-05-30 (Audit 2). Zusammengeführt 2026-05-31. Aktualisiert 2026-06-27: F-07, F-39, F-45, F-47, F-51 Fixed. Aktualisiert 2026-06-28: F-42, F-43, F-52 Fixed; TODO.md in FINDINGS.md zusammengeführt.*
