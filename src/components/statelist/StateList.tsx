@@ -20,6 +20,7 @@ import { useFilterContext } from '../../context/FilterContext';
 import { useSelectionContext } from '../../context/SelectionContext';
 import { useAppSettingsContext } from '../../context/UIContext';
 import BatchComboControl, { EMPTY_SENTINEL } from './BatchComboControl';
+import StateListBatchBar from './StateListBatchBar';
 import TsRangeFilterControl, { parseTsFilter } from '../ui/TsRangeFilterControl';
 import SortHeader from '../ui/SortHeader';
 import StyledCheckbox from '../ui/StyledCheckbox';
@@ -694,12 +695,6 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
 
   const existingIds = useMemo(() => new Set(Object.keys(objects)), [objects]);
 
-  const noRoomLabel = isEn ? '— No room —' : '— Kein Raum —';
-  const noFunctionLabel = isEn ? '— No function —' : '— Keine Funktion —';
-  const roomById = useMemo(() => new Map(roomEnums.map((r) => [r.id, r.name])), [roomEnums]);
-  const roomNameOptions = useMemo(() => [noRoomLabel, ...roomEnums.map((r) => r.name)], [roomEnums, noRoomLabel]);
-  const fnById = useMemo(() => new Map(fnEnums.map((f) => [f.id, f.name])), [fnEnums]);
-  const fnNameOptions = useMemo(() => [noFunctionLabel, ...fnEnums.map((f) => f.name)], [fnEnums, noFunctionLabel]);
   const roomFilterOptions = useMemo(() => [...new Set(roomEnums.map((r) => r.name))], [roomEnums]);
   const fnFilterOptions = useMemo(() => [...new Set(fnEnums.map((f) => f.name))], [fnEnums]);
   const roleFilterOptions = useMemo(() => [...new Set(roles)], [roles]);
@@ -857,92 +852,33 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
         isCompactView={isCompactView}
         onToggleCompact={handleToggleCompact}
       />
-      <div className={`flex items-center gap-2 px-3 py-1.5 shrink-0 border-b border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20 flex-wrap transition-all ${checkedIds.size > 0 ? 'visible' : 'invisible h-0 py-0 overflow-hidden border-0'}`}>
-          <span className="text-xs text-blue-600 dark:text-blue-400 font-medium shrink-0 whitespace-nowrap">
-            {checkedIds.size} {isEn ? 'selected:' : 'ausgewählt:'}
-          </span>
-          <BatchComboControl
-            value={batchRole}
-            onChange={setBatchRole}
-            placeholder={isEn ? 'Role…' : 'Rolle…'}
-            options={roles}
-            className="w-32"
-            language={language}
-          />
-          <BatchComboControl
-            value={batchUnit}
-            onChange={setBatchUnit}
-            placeholder={isEn ? 'Unit…' : 'Einheit…'}
-            options={units}
-            className="w-32"
-            language={language}
-          />
-          <BatchComboControl
-            value={batchRoomEnumId === '' ? '' : (batchRoomEnumId === '__none__' ? noRoomLabel : (roomById.get(batchRoomEnumId) ?? ''))}
-            onChange={(name) => {
-              if (name.trim() === '') { setBatchRoomEnumId(''); return; }
-              if (name === noRoomLabel) { setBatchRoomEnumId('__none__'); return; }
-              const hit = roomEnums.find((r) => r.name === name);
-              setBatchRoomEnumId(hit ? hit.id : '');
-            }}
-            placeholder={isEn ? 'Room…' : 'Raum…'}
-            options={roomNameOptions}
-            className="w-32"
-            language={language}
-          />
-          <BatchComboControl
-            value={batchFnEnumId === '' ? '' : (batchFnEnumId === '__none__' ? noFunctionLabel : (fnById.get(batchFnEnumId) ?? ''))}
-            onChange={(name) => {
-              if (name.trim() === '') { setBatchFnEnumId(''); return; }
-              if (name === noFunctionLabel) { setBatchFnEnumId('__none__'); return; }
-              const hit = fnEnums.find((f) => f.name === name);
-              setBatchFnEnumId(hit ? hit.id : '');
-            }}
-            placeholder={isEn ? 'Function…' : 'Funktion…'}
-            options={fnNameOptions}
-            className="w-32"
-            language={language}
-          />
-          <div className="flex items-center gap-1">
-            <input
-              type="text"
-              value={batchDesc}
-              onChange={(e) => { setBatchDesc(e.target.value); if (batchDescClear) setBatchDescClear(false); }}
-              disabled={batchDescClear}
-              placeholder={batchDescClear ? (isEn ? '— clear —' : '— löschen —') : (isEn ? 'Description…' : 'Beschreibung…')}
-              className={`h-7 w-36 px-2 text-xs rounded border bg-gray-50/70 dark:bg-gray-800/70 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-400 ${batchDescClear ? 'border-red-400 dark:border-red-600 opacity-60' : 'border-gray-300 dark:border-gray-600'}`}
-            />
-            <button
-              type="button"
-              onClick={() => { setBatchDescClear((v) => !v); setBatchDesc(''); }}
-              title={isEn ? 'Clear description on all selected' : 'Beschreibung bei allen Ausgewählten löschen'}
-              className={`h-7 px-1.5 text-xs rounded border transition-colors ${batchDescClear ? 'border-red-400 bg-red-500/10 text-red-500 dark:border-red-600 dark:text-red-400' : 'border-gray-300 dark:border-gray-600 text-gray-400 hover:text-red-500 hover:border-red-400'}`}
-            >
-              <X size={11} />
-            </button>
-          </div>
-          <input
-            type="number"
-            value={batchMin}
-            onChange={(e) => setBatchMin(e.target.value)}
-            placeholder="Min"
-            className="h-7 w-20 px-2 text-xs rounded border border-gray-300 dark:border-gray-600 bg-gray-50/70 dark:bg-gray-800/70 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-          />
-          <input
-            type="number"
-            value={batchMax}
-            onChange={(e) => setBatchMax(e.target.value)}
-            placeholder="Max"
-            className="h-7 w-20 px-2 text-xs rounded border border-gray-300 dark:border-gray-600 bg-gray-50/70 dark:bg-gray-800/70 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-          />
-          <button
-            onClick={handleBatchApply}
-            disabled={!batchCanApply}
-            className="h-7 px-2.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            {isEn ? 'Apply' : 'Anwenden'}
-          </button>
-      </div>
+      <StateListBatchBar
+        isEn={isEn}
+        language={language}
+        checkedIds={checkedIds}
+        roles={roles}
+        units={units}
+        roomEnums={roomEnums}
+        fnEnums={fnEnums}
+        batchRole={batchRole}
+        setBatchRole={setBatchRole}
+        batchUnit={batchUnit}
+        setBatchUnit={setBatchUnit}
+        batchRoomEnumId={batchRoomEnumId}
+        setBatchRoomEnumId={setBatchRoomEnumId}
+        batchFnEnumId={batchFnEnumId}
+        setBatchFnEnumId={setBatchFnEnumId}
+        batchDesc={batchDesc}
+        setBatchDesc={setBatchDesc}
+        batchDescClear={batchDescClear}
+        setBatchDescClear={setBatchDescClear}
+        batchMin={batchMin}
+        setBatchMin={setBatchMin}
+        batchMax={batchMax}
+        setBatchMax={setBatchMax}
+        batchCanApply={batchCanApply}
+        onApply={handleBatchApply}
+      />
       <div ref={containerRef} onKeyDown={handleContainerKeyDown} tabIndex={0} className="overflow-x-auto overflow-y-auto flex-1 outline-none bg-white dark:bg-gray-900" data-table-fontsize={tableFontSize}>
         <table role="grid" aria-label={isEn ? 'ioBroker objects' : 'ioBroker-Objekte'} className="text-xs text-left table-fixed" style={{ width: totalWidth }}>
           <thead ref={theadRef} className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-white dark:bg-gray-800 sticky top-0 z-10">

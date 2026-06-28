@@ -24,7 +24,7 @@
 | F-08 | **Fixed** | Security | ~~HIGH~~ | Dependency | `package.json` | `npm audit fix` + recharts 3.8.1 (commit `7f396f8`): flatted, rollup, minimatch, picomatch behoben. Verbleibend: 2 moderate in esbuild/vite (nur Build-Tool). | Alle 4 HIGH-Vulnerabilities eliminiert. | — | — | — |
 | F-09 | **Fixed** | Security | ~~HIGH~~ | Misconfiguration | `nginx.conf` | `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` ergänzt (commit `c3a43a6`). | Clickjacking-Schutz aktiv. | — | — | — |
 | F-10 | **Fixed** | Architektur | ~~HIGH~~ | Dependencies | `package.json` | `@tanstack/react-query` nach `dependencies` verschoben. Production-Docker-Build (`npm ci --omit=dev`) schlug ohne diesen Fix fehl. | Produktions-Build stabil. | — | — | — |
-| F-11 | **Partial** | Architektur | HIGH | React-Architektur | `src/components/statelist/StateList.tsx` | StateList.tsx von 3187 auf 1532 Zeilen reduziert. 16+ neue Dateien extrahiert: `cells/` (8 Editable*-Komponenten), `StateRow.tsx`, `BatchComboControl.tsx`, `StateListToolbar.tsx`, `TsRangeFilterControl.tsx`, `ColPicker.tsx`, `StyledCheckbox.tsx`, `SortHeader.tsx`, `TypeIcon.tsx`, `stateListConstants.ts`, `stateListUtils.ts`. Dennoch: 1532 Zeilen. Pagination, BatchBar noch im Monolith. | IDE-Performance und Wartbarkeit verbessert. Testbarkeit und Refactoring-Risiko bleiben hoch. | `StateListPagination`, `StateListBatchBar` als separate Komponenten extrahieren. Modal-State in `SelectionContext` verschieben. | L | Maintainability |
+| F-11 | **Partial** | Architektur | HIGH | React-Architektur | `src/components/statelist/StateList.tsx` | StateList.tsx von 3187 auf 1504 Zeilen reduziert. `StateListBatchBar` extrahiert: 86 Zeilen JSX + 6 berechnete Variablen (`noRoomLabel`, `noFunctionLabel`, `roomById`, `fnById`, `roomNameOptions`, `fnNameOptions`) in `StateListBatchBar.tsx` verschoben. Noch offen: virtualisierter Tabellenkörper (~800 Zeilen, eng mit Virtual-Scroll gekoppelt). | IDE-Performance verbessert. Tabellenkörper-Extraktion erfordert Komponenten-Tests als Sicherheitsnetz (F-45 ✅). | Weiteres Refactoring des Tabellenkörpers nun risikofrei möglich. | L | Maintainability |
 | F-12 | **Fixed** | Architektur | ~~HIGH~~ | React-Architektur | `src/App.tsx` | `react-error-boundary` installiert. `AppErrorFallback` mit Reload-Button auf App-Ebene; `fallback=null`-Boundary um alle Modals isoliert Modal-Crashes. | App-Crash durch Fehler-Recovery ersetzt. | — | — | — |
 | F-13 | **Fixed** | Performance | ~~HIGH~~ | API / Hauptthread | `src/api/iobroker.ts` | O(n×m)-Script-Suche in 200-ID-Batches aufgeteilt; `setTimeout(r,0)` yieldet zwischen Batches (commit `db716e5`). | Tab-Freeze verhindert. | — | — | — |
 | F-14 | **Fixed** | Codequalität | ~~MEDIUM~~ | Code Duplication | `src/utils/format.ts` | `formatTimestamp`/`formatValue` → `src/utils/format.ts` extrahiert. `hasSmartName`-Kopie in StateList entfernt, Import aus `api/iobroker.ts`. ObjectEditModal nutzt jetzt `dateFormat`-Prop für Zeitstempel. | Duplikation vollständig beseitigt. | — | — | — |
@@ -97,7 +97,7 @@ Das Projekt ist eine **funktionsreiche, intern gut strukturierte** React-Applika
 | ID | Status | Priorität | Titel |
 |----|--------|-----------|-------|
 | F-01 | Partial | MEDIUM | Tests: Fetch-Mock für destruktive Mutations fehlen |
-| F-11 | Partial | HIGH | StateList: 1532 Zeilen, weitere Extraktion nötig |
+| F-11 | Partial | HIGH | StateList: 1504 Zeilen, BatchBar extrahiert, Tabellenkörper (~800 Z.) noch inline |
 | F-38 | Open | MEDIUM | Duplizierte Modal-Verdrahtung App.tsx + StateList |
 | F-42 | Open | MEDIUM | `any` in HistoryChart Recharts-Callbacks |
 | F-43 | Open | MEDIUM | QueryClient auf Modul-Level (HMR-Problem) |
@@ -161,7 +161,7 @@ Hoch-Impact, geringer Aufwand (S/M):
 
 ### StateList God Component (F-11 — Partial)
 
-StateList.tsx wurde von 3187 auf 1695 Zeilen reduziert — 16 Dateien extrahiert. Noch zu extrahieren: `StateListToolbar`, `StateListPagination`, `StateListBatchBar`. F-45 ist geschlossen — 136 Tests grün. Weiteres Refactoring (StateListPagination, StateListBatchBar) nun ohne Regressionsrisiko möglich.
+StateList.tsx: 3187 → 1504 Zeilen. `StateListBatchBar` extrahiert (–64 Z.). Noch offen: virtualisierter Tabellenkörper (~800 Z.). Tests (F-45 ✅) sichern weiteres Refactoring ab.
 
 ### Duplizierte Modal-Verdrahtung (F-38 — Open)
 
