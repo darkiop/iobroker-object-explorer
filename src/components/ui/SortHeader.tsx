@@ -21,6 +21,7 @@ function SortHeader({ label, sortKey, activeKey, dir, onSort, width, onResizeSta
     <th
       data-col={sortKey}
       style={{ width, minWidth: 40 }}
+      aria-sort={active ? (dir === 'asc' ? 'ascending' : 'descending') : 'none'}
       className={`group/hdr relative px-3 py-2 cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200 overflow-hidden ${className || ''}`}
       onClick={() => onSort(sortKey)}
     >
