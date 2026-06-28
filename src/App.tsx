@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
 import ToastContainer from './components/ui/ToastContainer';
+import PwaManager from './components/PwaManager';
 import Layout from './components/Layout';
 import SearchBar, { type SearchBarHandle } from './components/SearchBar';
 import StateTree from './components/StateTree';
@@ -1092,6 +1093,7 @@ export default function App() {
                 <SelectionContextProvider>
                   <AppContent />
                   <ToastContainer />
+                  <PwaManager />
                 </SelectionContextProvider>
               </FilterContextProvider>
             </UIContextProvider>

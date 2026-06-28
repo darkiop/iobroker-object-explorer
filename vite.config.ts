@@ -47,6 +47,15 @@ export default defineConfig(({ mode }) => {
                 cacheableResponse: { statuses: [0, 200] },
               },
             },
+            {
+              urlPattern: /\/v1\/states/,
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: 'iobroker-states-v1',
+                networkTimeoutSeconds: 3,
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
           ],
         },
         devOptions: { enabled: false },

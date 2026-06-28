@@ -1,15 +1,21 @@
 import { createContext, useContext, useState, useCallback, useRef } from 'react';
 
-export type ToastType = 'success' | 'error';
+export type ToastType = 'success' | 'error' | 'info';
+
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
 
 interface Toast {
   id: number;
   message: string;
   type: ToastType;
+  action?: ToastAction;
 }
 
 interface ToastContextValue {
-  showToast: (message: string, type?: ToastType) => void;
+  showToast: (message: string, type?: ToastType, action?: ToastAction) => void;
   toasts: Toast[];
   dismiss: (id: number) => void;
 }
@@ -28,12 +34,18 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const showToast = useCallback((message: string, type: ToastType = 'error') => {
-    const id = nextId++;
-    setToasts((prev) => [...prev, { id, message, type }]);
-    const timer = setTimeout(() => dismiss(id), 4000);
-    timers.current.set(id, timer);
-  }, [dismiss]);
+  const showToast = useCallback(
+    (message: string, type: ToastType = 'error', action?: ToastAction) => {
+      const id = nextId++;
+      setToasts((prev) => [...prev, { id, message, type, action }]);
+      // Toasts with action buttons are persistent — user must dismiss manually
+      if (!action) {
+        const timer = setTimeout(() => dismiss(id), 4000);
+        timers.current.set(id, timer);
+      }
+    },
+    [dismiss]
+  );
 
   return (
     <ToastContext.Provider value={{ showToast, toasts, dismiss }}>
@@ -42,7 +54,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function useToast(): (message: string, type?: ToastType) => void {
+export function useToast(): (message: string, type?: ToastType, action?: ToastAction) => void {
   const ctx = useContext(ToastContext);
   if (!ctx) throw new Error('useToast must be used inside ToastProvider');
   return ctx.showToast;

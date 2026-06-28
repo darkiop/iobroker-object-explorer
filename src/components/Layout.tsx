@@ -1,12 +1,13 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Sun, Moon, Eclipse, Flower2, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Maximize, Minimize, RefreshCw, ExternalLink, Info, WifiOff, FilterX, Columns2, ArrowLeft, ArrowRight, Server, ChevronDown, Check } from 'lucide-react';
+import { Sun, Moon, Eclipse, Flower2, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Maximize, Minimize, RefreshCw, ExternalLink, Info, WifiOff, FilterX, Columns2, ArrowLeft, ArrowRight, Server, ChevronDown, Check, Download } from 'lucide-react';
 import { getConnections, getActiveConnectionId, switchToConnection } from '../api/iobroker';
 import type { SavedConnection } from '../api/iobroker';
 import { useTheme } from '../context/ThemeContext';
 import HostConnectedButton from './HostConnectedButton';
 import { useUIContext } from '../context/UIContext';
 import { useFilterContext } from '../context/FilterContext';
+import { useInstallPrompt } from '../hooks/useInstallPrompt';
 import { formatTooltipTime } from './history/HistoryChartUtils';
 
 const LS_HOST_KEY = 'ioBrokerHost';
@@ -38,6 +39,7 @@ export default function Layout({ sidebar, children, apiConnected = true, realtim
     persistSettings,
   } = useUIContext();
   const { handleSidebarToggle, hasAnyFilter, resetAllFilters, canGoBack, goBack, canGoForward, goForward } = useFilterContext();
+  const { canInstall, install } = useInstallPrompt();
   const language = appSettings.language;
   const adminPort = appSettings.adminPort;
   const onSidebarToggle = handleSidebarToggle;
@@ -324,6 +326,16 @@ export default function Layout({ sidebar, children, apiConnected = true, realtim
             <Columns2 size={16} />
           </button>
           {headerExtra}
+          {canInstall && (
+            <button
+              onClick={install}
+              className="hidden sm:block p-1.5 rounded-lg text-blue-600 hover:text-blue-700 hover:bg-blue-100 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/30 transition-colors"
+              title={language === 'en' ? 'Install app' : 'App installieren'}
+              aria-label={language === 'en' ? 'Install app' : 'App installieren'}
+            >
+              <Download size={16} />
+            </button>
+          )}
           <button
             onClick={onOpenSettings}
             className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"

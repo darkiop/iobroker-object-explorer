@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom';
-import { X, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, CheckCircle, AlertCircle, Info } from 'lucide-react';
 import { useToasts } from '../../context/ToastContext';
 
 export default function ToastContainer() {
@@ -14,14 +14,30 @@ export default function ToastContainer() {
           className={`pointer-events-auto flex items-start gap-2.5 px-4 py-3 rounded-lg shadow-lg border text-sm max-w-sm animate-in slide-in-from-bottom-2 duration-200 ${
             t.type === 'success'
               ? 'bg-white dark:bg-gray-800 border-emerald-200 dark:border-emerald-700 text-gray-800 dark:text-gray-100'
+              : t.type === 'info'
+              ? 'bg-white dark:bg-gray-800 border-blue-200 dark:border-blue-700 text-gray-800 dark:text-gray-100'
               : 'bg-white dark:bg-gray-800 border-red-200 dark:border-red-700 text-gray-800 dark:text-gray-100'
           }`}
         >
-          {t.type === 'success'
-            ? <CheckCircle size={16} className="text-emerald-500 dark:text-emerald-400 shrink-0 mt-0.5" />
-            : <AlertCircle size={16} className="text-red-500 dark:text-red-400 shrink-0 mt-0.5" />
-          }
+          {t.type === 'success' ? (
+            <CheckCircle size={16} className="text-emerald-500 dark:text-emerald-400 shrink-0 mt-0.5" />
+          ) : t.type === 'info' ? (
+            <Info size={16} className="text-blue-500 dark:text-blue-400 shrink-0 mt-0.5" />
+          ) : (
+            <AlertCircle size={16} className="text-red-500 dark:text-red-400 shrink-0 mt-0.5" />
+          )}
           <span className="flex-1 leading-snug">{t.message}</span>
+          {t.action && (
+            <button
+              onClick={() => {
+                t.action!.onClick();
+                dismiss(t.id);
+              }}
+              className="shrink-0 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 font-medium transition-colors text-xs"
+            >
+              {t.action.label}
+            </button>
+          )}
           <button
             onClick={() => dismiss(t.id)}
             className="shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
