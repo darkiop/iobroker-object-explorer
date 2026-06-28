@@ -15,6 +15,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Test framework: **Vitest** + `@testing-library/react` + jsdom.
 Test files live next to the code they test (`*.test.ts` / `*.test.tsx`).
 
+## API Reference
+
+Full ioBroker REST API + Socket.io protocol documentation → **[API.md](API.md)**
+Covers: used endpoints, unused endpoints with potential (FE-041, FE-047, etc.), subscription mechanism, auth, socket.io event protocol, connection flow, fallback behavior.
+
 ## Architecture
 
 React + TypeScript dashboard for browsing ioBroker smart home objects and states via REST API. Dark/light theme, EN/DE language toggle.
@@ -52,14 +57,10 @@ SearchBar (pattern input)
 - **`src/utils/`** — Pure utility functions (format, i18n, clipboard, coloredId, filterObjectIds, roleColor, typeColor, validation)
 
 ### Realtime Transport (Long-Polling / Socket.io)
-- **`src/hooks/useLongPolling.ts`** — fallback transport (`AppSettings.realtimeTransport: 'longpolling'`). Polls REST API `/states/subscribe`/`unsubscribe` for namespace patterns derived from visible IDs (`derivePatterns()`). Always available, works with the standard REST adapter. Activates automatically when socket.io is unreachable.
-- **`src/hooks/useSocketIO.ts`** — default transport (`'socketio'`). Connects to a separate `socketio` adapter instance. Connects to a separate `socketio` adapter instance (default port `8084`, `socket.io-client@2` — the adapter runs a v2.x server, v3/v4 clients are incompatible). Subscribes per-pattern to both `subscribe`/`unsubscribe` (→ `stateChange`) and `subscribeObjects`/`unsubscribeObjects` (→ `objectChange`), live-patching the React Query caches (`states.values*`, `states.detail`, `objects.all`, `objects.bootstrap`, `objects.detail`) — no waiting for polling/refresh.
-  - **Diff-based resubscribe**: socket connection persists across page/filter changes; only the pattern *delta* (added/removed) is (un)subscribed — no full teardown+rebuild, no gap in the live stream for patterns that stay visible.
-  - **Ack handling**: every `(un)subscribe(Objects)` emits with a callback; failed subscribes get one retry after 5s, errors are logged via `console.warn` (no silent data loss).
-  - **Auto-fallback**: if the socket.io adapter is unreachable (`supported === false`), `App.tsx` automatically activates long polling in parallel as a live fallback and reflects the *effective* active transport in the status badge (not just the setting); recovers automatically once socket.io reconnects.
-  - Both hooks share the `{ supported: boolean | null, connected: boolean }` status shape so they're interchangeable — selection logic lives in `App.tsx` (`useSocketTransport`, `sioFailed`, `lpEnabled`, `lpStatus`).
-- Status for both REST API connectivity and the active realtime transport is shown in `HostConnectedButton` (Wifi/WifiOff for REST, Zap/Radio badge for Socket.io/Long-Polling with connected/unreachable/connecting indicator + amber fallback marker).
-- ⚠️ **No auth support** for either REST API or the socketio adapter — see README warning; only use on trusted networks.
+- **`src/hooks/useLongPolling.ts`** — fallback transport. Polls REST `/states/subscribe` per namespace pattern (`derivePatterns()`). Activates automatically when socket.io unreachable.
+- **`src/hooks/useSocketIO.ts`** — default transport. `socket.io-client@2` (adapter runs v2.x server — v3/v4 incompatible), port `8084`. Diff-based resubscribe on filter change. Auto-fallback to long polling on `connect_error`. Live-patches React Query caches on push events — no polling roundtrip. Both hooks share `{ supported: boolean | null, connected: boolean }` shape; selection logic in `App.tsx`.
+- Status shown in `HostConnectedButton`. ⚠️ **No auth support** — trusted networks only.
+- → Protocol details, event names, connection flow, cache update keys: **[API.md](API.md)**
 
 ### API Proxy
 Vite proxies `/api` to the ioBroker REST API (configured in `vite.config.ts`). Dev target read from `VITE_IOBROKER_TARGET` in `.env.local` (copy from `.env.local.example`). Browser can also connect directly without proxy — configured in Settings → Connection.
@@ -95,43 +96,7 @@ At runtime `window.__CONFIG__.ioBrokerHost` overrides the proxy label in the hea
 - **Function enums** (`enum.functions.*`): same structure as rooms, displayed in the Funktion column.
 
 ### AppSettings
-Defined in `src/context/UIContext.tsx`, persisted to `localStorage` as `iobroker-app-settings`:
-```typescript
-interface AppSettings {
-  language: 'en' | 'de';
-  dateFormat: DateFormatSetting;       // 'de' | 'us' | 'iso'
-  visibleCols: SortKey[];
-  extraQuickFilters: string[];
-  toolbarLabels: boolean;              // default true
-  pageSize: number;                    // default 200
-  tableFontSize: UiFontSize;           // 'small'|'normal'|'large'|'xl', default 'normal'
-  treeFontSize: UiFontSize;
-  treeCountMode: 'off'|'states'|'objects'|'both';  // default 'objects'
-  showDesc: boolean;                   // show common.desc below name, default true
-  groupByPath: boolean;                // group rows by namespace, default true
-  treeViewMode: 'adapter' | 'path';   // default 'adapter'
-  adminPort: number;                   // default 8081
-  customDefaultWidths: Partial<Record<SortKey, number>>;
-  customMinWidths: Partial<Record<SortKey, number>>;
-  customMaxWidths: Partial<Record<SortKey, number>>;
-  objectsRefreshInterval: 'off'|'30s'|'1m'|'5m'|'10m';
-  includeScripts: boolean;
-  shortenGroupPaths: boolean;          // default true
-  showObjectIcons: boolean;            // default false
-  showObjectTypeIcons: boolean;        // default true
-  animateGroupExpand: boolean;         // default false
-  hideAliasSubRows: boolean;           // default false
-  panel2Open: boolean;                 // dual-pane mode, default false
-  realtimeTransport: 'longpolling' | 'socketio';  // default 'socketio'
-  socketHost: string;                  // override host:port for socketio adapter
-  objectsCacheReloads: 'off'|'5'|'10'|'20'|'50'; // default '10'
-  objectsCacheTTL: 'off'|'1h'|'6h'|'24h'|'7d';  // default '24h'
-  loadOnlyVisibleStateValues: boolean; // default false
-  showUnitInValue: boolean;            // default false
-  includeIdPrefixes: string[];         // default []
-  dragDropEnabled: boolean;            // default false
-}
-```
+Defined in `src/context/UIContext.tsx` (`interface AppSettings`), persisted to `localStorage` as `iobroker-app-settings`. Settings modal uses a `settingsDraft` copy — changes apply on "Save"; `expertMode`, `toolbarLabels`, `groupByPath` save immediately.
 
 ### StateTree Props (App.tsx → StateTree)
 - `stateIds={allStateIds}` — all IDs where `type === 'state'` from `allObjects` (NOT from search-filtered objects)

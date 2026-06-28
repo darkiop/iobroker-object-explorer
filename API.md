@@ -1,115 +1,115 @@
-# ioBroker REST-API – Übersicht
+# ioBroker REST API – Overview
 
-**Basis-URL:** `http://<host>:8093/api/v1`
-**Swagger-UI:** `http://<host>:8093/api-doc/`
-**Authentifizierung:** HTTP Basic Auth oder Bearer Token
-
----
-
-## Aktuell verwendete Endpoints
-
-| Methode | Pfad | Beschreibung |
-|---------|------|--------------|
-| `GET` | `/objects?type=...` | Alle Objekte laden (type: state, device, channel, folder, enum) |
-| `GET` | `/object/{id}` | Einzelnes Objekt laden |
-| `PUT` | `/object/{id}` | Objekt anlegen oder vollständig ersetzen |
-| `DELETE` | `/object/{id}` | Objekt löschen |
-| `GET` | `/state/{id}` | State-Wert + Metadaten lesen |
-| `PATCH` | `/state/{id}` | State-Wert schreiben (`{"val": ...}`) |
-| `POST` | `/command/sendTo` | sql.0-Adapter ansprechen (getHistory, delete, deleteRange, deleteAll) |
+**Base URL:** `http://<host>:8093/api/v1`
+**Swagger UI:** `http://<host>:8093/api-doc/`
+**Authentication:** HTTP Basic Auth or Bearer Token
 
 ---
 
-## Nicht verwendete Endpoints (mit Nutzungspotenzial)
+## Currently Used Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/objects?type=...` | Load all objects (type: state, device, channel, folder, enum) |
+| `GET` | `/object/{id}` | Load single object |
+| `PUT` | `/object/{id}` | Create or fully replace object |
+| `DELETE` | `/object/{id}` | Delete object |
+| `GET` | `/state/{id}` | Read state value + metadata |
+| `PATCH` | `/state/{id}` | Write state value (`{"val": ...}`) |
+| `POST` | `/command/sendTo` | Talk to sql.0 adapter (getHistory, delete, deleteRange, deleteAll) |
+
+---
+
+## Unused Endpoints (with potential)
 
 ### States
 
-| Methode | Pfad | Beschreibung | Potenzial |
-|---------|------|--------------|-----------|
-| `GET` | `/states?filter=<pattern>` | Liste von States per Muster (z.B. `hm-rpc.*`) | Alternativ zu `/objects` für schnelles Filtern |
-| `GET` | `/state/{id}/plain` | Nur den rohen Wert zurückgeben (kein JSON-Overhead) | Leichtgewichtige Polling-Alternative |
-| `GET` | `/state/{id}/toggle` | Boolean-State direkt toggeln | Schnell-Toggle-Button in der Tabelle |
-| `POST` | `/state/{id}/subscribe` | Webhook-Subscription auf State-Änderungen | Push statt Polling (30s → Echtzeit) |
-| `DELETE` | `/state/{id}/subscribe` | Subscription aufheben | — |
-| `GET` | `/states/subscribe` | Aktive Subscriptions auflisten | Debugging |
-| `POST` | `/states/subscribe` | Bulk-Subscription auf State-Pattern | — |
+| Method | Path | Description | Potential |
+|--------|------|-------------|-----------|
+| `GET` | `/states?filter=<pattern>` | List states by pattern (e.g. `hm-rpc.*`) | Alternative to `/objects` for fast filtering |
+| `GET` | `/state/{id}/plain` | Return raw value only (no JSON overhead) | Lightweight polling alternative |
+| `GET` | `/state/{id}/toggle` | Toggle boolean state directly | Quick-toggle button in table |
+| `POST` | `/state/{id}/subscribe` | Webhook subscription on state changes | Push instead of polling (30s → realtime) |
+| `DELETE` | `/state/{id}/subscribe` | Remove subscription | — |
+| `GET` | `/states/subscribe` | List active subscriptions | Debugging |
+| `POST` | `/states/subscribe` | Bulk subscription on state pattern | — |
 
-### Objekte
+### Objects
 
-| Methode | Pfad | Beschreibung | Potenzial |
-|---------|------|--------------|-----------|
-| `POST` | `/object/{id}` | Objekt erstellen (statt PUT) | Sicherere Create-Variante |
-| `POST` | `/object/{id}/subscribe` | Webhook auf Objekt-Änderungen | Live-Updates bei Metadaten-Änderungen |
-| `DELETE` | `/object/{id}/subscribe` | Subscription aufheben | — |
-| `POST` | `/objects/subscribe` | Bulk-Subscription auf Objekt-Pattern | — |
+| Method | Path | Description | Potential |
+|--------|------|-------------|-----------|
+| `POST` | `/object/{id}` | Create object (instead of PUT) | Safer create variant |
+| `POST` | `/object/{id}/subscribe` | Webhook on object changes | Live updates on metadata changes |
+| `DELETE` | `/object/{id}/subscribe` | Remove subscription | — |
+| `POST` | `/objects/subscribe` | Bulk subscription on object pattern | — |
 
-### Enums (Räume / Funktionen)
+### Enums (Rooms / Functions)
 
-| Methode | Pfad | Beschreibung | Potenzial |
-|---------|------|--------------|-----------|
-| `GET` | `/enum` | Alle Enum-Kategorien (rooms, functions, favorites, …) | Basis für Enum-Übersicht |
-| `GET` | `/enum/{enumId}` | Einzelnen Enum lesen (z.B. `rooms`, `functions`) | Direkter als `/objects?type=enum` |
+| Method | Path | Description | Potential |
+|--------|------|-------------|-----------|
+| `GET` | `/enum` | All enum categories (rooms, functions, favorites, …) | Base for enum overview |
+| `GET` | `/enum/{enumId}` | Read single enum (e.g. `rooms`, `functions`) | More direct than `/objects?type=enum` |
 
 ### History
 
-| Methode | Pfad | Beschreibung | Potenzial |
-|---------|------|--------------|-----------|
-| `GET` | `/getHistory/{id}?start=&end=&count=&aggregate=` | History per GET (alternativ zu sendTo) | Einfacher als POST/sendTo |
-| `POST` | `/getHistory` | History per POST-Body | Flexibler, mehrere States? |
-| `POST` | `/addHistory` | Einzelnen History-Eintrag hinzufügen | Import von Messdaten (FE-047) |
-| `GET` | `/addHistory/{id}?val=&ts=&ack=` | History-Eintrag per GET hinzufügen | — |
+| Method | Path | Description | Potential |
+|--------|------|-------------|-----------|
+| `GET` | `/getHistory/{id}?start=&end=&count=&aggregate=` | History via GET (alternative to sendTo) | Simpler than POST/sendTo |
+| `POST` | `/getHistory` | History via POST body | More flexible, multiple states? |
+| `POST` | `/addHistory` | Add single history entry | Import measurement data (FE-047) |
+| `GET` | `/addHistory/{id}?val=&ts=&ack=` | Add history entry via GET | — |
 
-### Dateisystem (vis, backups, etc.)
+### Filesystem (vis, backups, etc.)
 
-| Methode | Pfad | Beschreibung | Potenzial |
-|---------|------|--------------|-----------|
-| `GET` | `/file/{objectId}/{fileName}` | Datei lesen (z.B. vis-Views, Icons) | VIS-Integration, Icon-Preview |
-| `POST` | `/file/{objectId}/{fileName}` | Datei schreiben | — |
-| `DELETE` | `/file/{objectId}/{fileName}` | Datei löschen | — |
-| `GET` | `/dir/{objectId}/{dirName}` | Verzeichnis auflisten | — |
+| Method | Path | Description | Potential |
+|--------|------|-------------|-----------|
+| `GET` | `/file/{objectId}/{fileName}` | Read file (e.g. vis views, icons) | VIS integration, icon preview |
+| `POST` | `/file/{objectId}/{fileName}` | Write file | — |
+| `DELETE` | `/file/{objectId}/{fileName}` | Delete file | — |
+| `GET` | `/dir/{objectId}/{dirName}` | List directory | — |
 
-### sendTo (direkte Adapter-Kommunikation)
+### sendTo (Direct Adapter Communication)
 
-| Methode | Pfad | Beschreibung | Potenzial |
-|---------|------|--------------|-----------|
-| `GET` | `/sendto/{instance}?message=&data=` | Nachricht an Adapter-Instanz | Flexibler Adapter-Aufruf (history.0, influxdb.0, …) |
-| `POST` | `/sendto/{instance}` | Nachricht per POST-Body | Für FE-041 (andere History-Adapter) |
+| Method | Path | Description | Potential |
+|--------|------|-------------|-----------|
+| `GET` | `/sendto/{instance}?message=&data=` | Message to adapter instance | Flexible adapter call (history.0, influxdb.0, …) |
+| `POST` | `/sendto/{instance}` | Message via POST body | For FE-041 (other history adapters) |
 
-### System-Commands (`/command/...`)
+### System Commands (`/command/...`)
 
-Alle Commands werden per `GET /command/<name>?param=value` aufgerufen.
+All commands called via `GET /command/<name>?param=value`.
 
-| Command | Beschreibung | Potenzial |
-|---------|--------------|-----------|
-| `getAdapterInstances?adapterName=sql` | Installierte Instanzen eines Adapters | FE-041: verfügbare History-Adapter erkennen |
-| `getCompactInstances` | Alle Instanzen mit Kurzinfo | Adapter-Status-Übersicht |
-| `getForeignStates?pattern=*` | States per Muster abrufen | Alternativ zu `/states` |
-| `getForeignObjects?pattern=*&type=state` | Objekte per Muster | Alternativ zu `/objects` |
-| `getObjectView?design=system&search=state` | Objekte nach Typ (CouchDB-View-Stil) | Effizientere Queries |
-| `getHistory` | History wie sendTo, aber per Command-API | — |
-| `log?text=...&level=info` | Log-Eintrag in ioBroker schreiben | Debugging aus dem Explorer |
-| `readLogs` | Log-Dateinamen und -größen abrufen | Log-Viewer |
-| `encrypt?plainText=...` | String mit System-Secret verschlüsseln | Passwort-Felder in native |
-| `decrypt?encryptedText=...` | String entschlüsseln | — |
-| `httpGet?url=...` | URL vom ioBroker-Server abrufen | Proxy für externe APIs |
-| `extendObject?id=...&obj=...` | Objekt partial updaten (GET-Variante) | Alternativ zu PUT |
-| `delObjects?id=pattern` | Mehrere Objekte per Muster löschen | Bulk-Delete (FE-006) |
-| `delState?id=...` | State + Objekt löschen | — |
-| `setBinaryState?id=...&base64=...` | Binären State setzen | — |
-| `getBinaryState?id=...` | Binären State lesen | — |
-| `checkFeatureSupported?feature=...` | Feature-Flag prüfen | Kompatibilitäts-Check |
-| `getVersion` | Adapter-Name und Version | Info-Anzeige |
-| `getCurrentInstance` | Aktuelle Adapter-Instanz | — |
-| `getUserPermissions` | Berechtigungen des aktuellen Benutzers | Auth-Anzeige |
-| `addUser / delUser / changePassword` | Benutzerverwaltung | — |
-| `addGroup / delGroup` | Gruppenverwaltung | — |
-| `readDir / readFile / writeFile64 / mkdir / rename / deleteFile` | Dateisystem-Operationen | — |
+| Command | Description | Potential |
+|---------|-------------|-----------|
+| `getAdapterInstances?adapterName=sql` | Installed instances of an adapter | FE-041: detect available history adapters |
+| `getCompactInstances` | All instances with brief info | Adapter status overview |
+| `getForeignStates?pattern=*` | States by pattern | Alternative to `/states` |
+| `getForeignObjects?pattern=*&type=state` | Objects by pattern | Alternative to `/objects` |
+| `getObjectView?design=system&search=state` | Objects by type (CouchDB view style) | More efficient queries |
+| `getHistory` | History like sendTo, but via command API | — |
+| `log?text=...&level=info` | Write log entry to ioBroker | Debugging from explorer |
+| `readLogs` | Get log file names and sizes | Log viewer |
+| `encrypt?plainText=...` | Encrypt string with system secret | Password fields in native |
+| `decrypt?encryptedText=...` | Decrypt string | — |
+| `httpGet?url=...` | Fetch URL from ioBroker server | Proxy for external APIs |
+| `extendObject?id=...&obj=...` | Partial object update (GET variant) | Alternative to PUT |
+| `delObjects?id=pattern` | Delete multiple objects by pattern | Bulk delete (FE-006) |
+| `delState?id=...` | Delete state + object | — |
+| `setBinaryState?id=...&base64=...` | Set binary state | — |
+| `getBinaryState?id=...` | Read binary state | — |
+| `checkFeatureSupported?feature=...` | Check feature flag | Compatibility check |
+| `getVersion` | Adapter name and version | Info display |
+| `getCurrentInstance` | Current adapter instance | — |
+| `getUserPermissions` | Current user permissions | Auth display |
+| `addUser / delUser / changePassword` | User management | — |
+| `addGroup / delGroup` | Group management | — |
+| `readDir / readFile / writeFile64 / mkdir / rename / deleteFile` | Filesystem operations | — |
 
 ---
 
-## Besonders interessante ungenutzte Endpoints
+## Especially Interesting Unused Endpoints
 
-### 1. `/sendto/{instance}` (POST) – Andere History-Adapter
+### 1. `/sendto/{instance}` (POST) – Other History Adapters
 ```json
 POST /api/v1/sendto/influxdb.0
 {
@@ -120,21 +120,21 @@ POST /api/v1/sendto/influxdb.0
   }
 }
 ```
-→ Ermöglicht **FE-041** (influxdb.0, history.0 neben sql.0).
+→ Enables **FE-041** (influxdb.0, history.0 alongside sql.0).
 
 ### 2. `GET /state/{id}/toggle`
 ```
 GET /api/v1/state/alias.0.licht.wohnzimmer/toggle
 ```
-→ Boolean-Datenpunkte direkt toggeln — kein separates Lesen nötig.
+→ Toggle boolean datapoints directly — no separate read needed.
 
-### 3. `GET /getHistory/{id}` – Vereinfachter History-Zugriff
+### 3. `GET /getHistory/{id}` – Simplified History Access
 ```
 GET /api/v1/getHistory/hm-rpc.0.SENSOR.TEMP?start=1700000000000&end=1700086400000&aggregate=average&count=100
 ```
-→ Einfacher als `POST /command/sendTo` mit verschachteltem Body.
+→ Simpler than `POST /command/sendTo` with nested body.
 
-### 4. `POST /addHistory` – History-Import
+### 4. `POST /addHistory` – History Import
 ```json
 POST /api/v1/addHistory
 {
@@ -142,12 +142,12 @@ POST /api/v1/addHistory
   "state": { "val": 21.5, "ts": 1700000000000, "ack": true }
 }
 ```
-→ Direkte Basis für **FE-047** (CSV-Import).
+→ Direct foundation for **FE-047** (CSV import).
 
 ### 5. `GET /command/getAdapterInstances?adapterName=sql`
-→ Prüfen welche History-Adapter (sql.0, influxdb.0, history.0) installiert sind, um den Adapter-Selector für **FE-041** zu befüllen.
+→ Check which history adapters (sql.0, influxdb.0, history.0) are installed to populate the adapter selector for **FE-041**.
 
-### 6. `POST /state/{id}/subscribe` – Webhooks statt Polling
+### 6. `POST /state/{id}/subscribe` – Webhooks Instead of Polling
 ```json
 POST /api/v1/state/alias.0.licht.wohnzimmer/subscribe
 {
@@ -156,132 +156,132 @@ POST /api/v1/state/alias.0.licht.wohnzimmer/subscribe
   "onchange": true
 }
 ```
-→ Push-Updates statt 30s-Polling — signifikante Performance-Verbesserung möglich.
+→ Push updates instead of 30s polling — significant performance improvement possible.
 
 ### 7. `GET /command/delObjects?id=pattern.*`
-→ Pattern-basiertes Bulk-Delete — nützlich für **FE-006** (Mehrfach-Löschen).
+→ Pattern-based bulk delete — useful for **FE-006** (multi-delete).
 
 ---
 
-## Subscription-Mechanismus
+## Subscription Mechanism
 
-Die API bietet Webhook-basierte Subscriptions für States und Objekte:
+The API offers webhook-based subscriptions for states and objects:
 
 ```
 POST /api/v1/state/{id}/subscribe
-POST /api/v1/states/subscribe        (Pattern-basiert)
+POST /api/v1/states/subscribe        (pattern-based)
 POST /api/v1/object/{id}/subscribe
-POST /api/v1/objects/subscribe       (Pattern-basiert)
+POST /api/v1/objects/subscribe       (pattern-based)
 ```
 
-Aktive Subscriptions auflisten:
+List active subscriptions:
 ```
 GET /api/v1/states/subscribe?method=POST&url=http://...
 ```
 
-Subscription löschen:
+Remove subscription:
 ```
 DELETE /api/v1/state/{id}/subscribe
 ```
 
-→ Damit wäre **Echtzeit-Updates** (FE-Verbesserung) ohne Polling möglich.
+→ Enables **realtime updates** without polling.
 
 ---
 
-## Authentifizierung
+## Authentication
 
 - **Basic Auth:** `Authorization: Basic base64(user:pass)`
 - **Bearer Token:** `Authorization: Bearer <token>`
-- Token-Ablauf verlängern: `GET /command/updateTokenExpiration?accessToken=<token>`
+- Extend token expiry: `GET /command/updateTokenExpiration?accessToken=<token>`
 
 ---
 
-## Socket.io Realtime-Transport
+## Socket.io Realtime Transport
 
-**Adapter:** `ioBroker.socketio` (separater Adapter, Port `8084` default)  
-**Client:** `socket.io-client@2` — der Adapter läuft als v2.x-Server; v3/v4-Clients sind inkompatibel.  
-**Protokoll:** WebSocket (Fallback: HTTP Polling)
+**Adapter:** `ioBroker.socketio` (separate adapter, default port `8084`)
+**Client:** `socket.io-client@2` — adapter runs as v2.x server; v3/v4 clients are incompatible.
+**Protocol:** WebSocket (fallback: HTTP Polling)
 
-> **Kein Auth-Support** — weder Credentials noch Token werden vom socketio-Adapter akzeptiert.
+> **No auth support** — neither credentials nor tokens are accepted by the socketio adapter.
 
-### URL-Auflösung (`getSocketUrl`)
+### URL Resolution (`getSocketUrl`)
 
-| Modus | URL |
-|-------|-----|
-| **Docker** (`window.__CONFIG__.ioBrokerHost` gesetzt) | `https?://window.location.host` — nginx proxied `/socket.io/` → `ioBrokerHost:8084` |
-| **Dev / Direktverbindung** (`socketHost` in AppSettings) | `http://<socketHost>` |
-| **Dev-Fallback** | REST-Host + Port `8084` (z.B. `http://10.4.0.33:8084`) |
+| Mode | URL |
+|------|-----|
+| **Docker** (`window.__CONFIG__.ioBrokerHost` set) | `https?://window.location.host` — nginx proxies `/socket.io/` → `ioBrokerHost:8084` |
+| **Dev / Direct connection** (`socketHost` in AppSettings) | `http://<socketHost>` |
+| **Dev fallback** | REST host + port `8084` (e.g. `http://10.4.0.33:8084`) |
 
-In Docker ist Port 8084 nicht direkt erreichbar — der Browser spricht ausschließlich nginx über den App-Port, nginx proxied intern weiter.
+In Docker, port 8084 is not directly reachable — the browser talks exclusively to nginx via the app port, which proxies internally.
 
 ---
 
-### Ereignis-Protokoll (ioBroker socket.io v2)
+### Event Protocol (ioBroker socket.io v2)
 
 #### Client → Server (Subscriptions)
 
-Jede Subscription emittiert mit Callback für Fehlerbehandlung:
+Each subscription emits with callback for error handling:
 
 ```js
-socket.emit(event, pattern, (err) => { /* err === null bei Erfolg */ })
+socket.emit(event, pattern, (err) => { /* err === null on success */ })
 ```
 
-| Event | Richtung | Parameter | Beschreibung |
-|-------|----------|-----------|--------------|
-| `subscribe` | C → S | `pattern: string` | State-Changes für Namespace-Pattern abonnieren (z.B. `hm-rpc.0.*`) |
-| `unsubscribe` | C → S | `pattern: string` | State-Subscription aufheben |
-| `subscribeObjects` | C → S | `pattern: string` | Objekt-Änderungen für Pattern abonnieren |
-| `unsubscribeObjects` | C → S | `pattern: string` | Objekt-Subscription aufheben |
+| Event | Direction | Parameters | Description |
+|-------|-----------|------------|-------------|
+| `subscribe` | C → S | `pattern: string` | Subscribe to state changes for namespace pattern (e.g. `hm-rpc.0.*`) |
+| `unsubscribe` | C → S | `pattern: string` | Remove state subscription |
+| `subscribeObjects` | C → S | `pattern: string` | Subscribe to object changes for pattern |
+| `unsubscribeObjects` | C → S | `pattern: string` | Remove object subscription |
 
-#### Server → Client (Push-Events)
+#### Server → Client (Push Events)
 
-| Event | Parameter | Beschreibung |
-|-------|-----------|--------------|
-| `stateChange` | `(id: string, state: IoBrokerState \| null)` | State-Wert geändert; `state === null` wenn State gelöscht |
-| `objectChange` | `(id: string, obj: IoBrokerObject \| null)` | Objekt-Metadaten geändert; `obj === null` wenn gelöscht |
+| Event | Parameters | Description |
+|-------|------------|-------------|
+| `stateChange` | `(id: string, state: IoBrokerState \| null)` | State value changed; `state === null` when state deleted |
+| `objectChange` | `(id: string, obj: IoBrokerObject \| null)` | Object metadata changed; `obj === null` when deleted |
 
-#### Socket-Lifecycle-Events
+#### Socket Lifecycle Events
 
-| Event | Bedeutung | Aktion |
-|-------|-----------|--------|
-| `connect` | Verbindung hergestellt | `supported = true`, `connected = true`; alle sichtbaren Pattern re-subscriben |
-| `disconnect` | Verbindung getrennt | `connected = false`; socket.io reconnect-Timer läuft |
-| `connect_error` | Verbindungsaufbau fehlgeschlagen | `supported = false` (nach erstem Fehler); App aktiviert Long-Polling-Fallback |
+| Event | Meaning | Action |
+|-------|---------|--------|
+| `connect` | Connection established | `supported = true`, `connected = true`; re-subscribe all visible patterns |
+| `disconnect` | Connection lost | `connected = false`; socket.io reconnect timer runs |
+| `connect_error` | Connection failed | `supported = false` (after first error); app activates long-polling fallback |
 
 ---
 
-### Pattern-Subscriptions (Diff-basiert)
+### Pattern Subscriptions (Diff-based)
 
-Subscriptions sind auf `adapter.instance`-Namespaces der aktuell sichtbaren IDs begrenzt — identisch zur Long-Polling-Logik (`derivePatterns()`):
+Subscriptions are limited to `adapter.instance` namespaces of currently visible IDs — identical to long-polling logic (`derivePatterns()`):
 
 ```
-Sichtbare IDs                       Subscriptions
+Visible IDs                         Subscriptions
 ────────────────────────────────────────────────────
 hm-rpc.0.MEQ1234567.1.STATE    →   subscribe('hm-rpc.0.*')
-hm-rpc.0.MEQ1234567.1.LOWBAT  →   (bereits abgedeckt)
+hm-rpc.0.MEQ1234567.1.LOWBAT  →   (already covered)
 alias.0.heating.temp            →   subscribe('alias.0.*')
 ```
 
-**Diff-Resubscribe:** Beim Seitennavigation werden nur die Delta-Pattern (neu hinzugekommen / weggefallen) ge-(un)subscribed — keine vollständige Teardown+Rebuild-Sequenz. Bereits laufende Subscriptions bleiben aktiv.
+**Diff resubscribe:** On page navigation only delta patterns (added/removed) are (un)subscribed — no full teardown+rebuild. Already running subscriptions remain active.
 
-**Reconnect:** Server vergisst Subscriptions bei Reconnect. `connect`-Handler führt vollständige Re-Subscription aller aktuell sichtbaren Pattern durch.
+**Reconnect:** Server forgets subscriptions on reconnect. `connect` handler performs full re-subscription of all currently visible patterns.
 
-**Fehlerbehandlung:** Fehlgeschlagene `subscribe`/`subscribeObjects`-Emits werden nach 5 s einmalig wiederholt. Fehler beim `unsubscribe` werden nur geloggt (`console.warn`).
-
----
-
-### Cache-Update bei Push-Events
-
-Eingehende Events werden direkt in React Query Caches gepacht — kein Polling-Roundtrip:
-
-| Event | Betroffene Query-Keys |
-|-------|----------------------|
-| `stateChange` | `states.values*` (alle Batch-Queries, die die ID enthalten) + `states.detail(id)` |
-| `objectChange` | `objects.all`, `objects.bootstrap`, `objects.detail(id)`; bei `obj === null` wird Detail-Query entfernt |
+**Error handling:** Failed `subscribe`/`subscribeObjects` emits are retried once after 5s. `unsubscribe` errors are only logged (`console.warn`).
 
 ---
 
-### Verbindungsfluss
+### Cache Updates on Push Events
+
+Incoming events are patched directly into React Query caches — no polling roundtrip:
+
+| Event | Affected Query Keys |
+|-------|---------------------|
+| `stateChange` | `states.values*` (all batch queries containing the ID) + `states.detail(id)` |
+| `objectChange` | `objects.all`, `objects.bootstrap`, `objects.detail(id)`; on `obj === null` detail query is removed |
+
+---
+
+### Connection Flow
 
 ```
 Browser                                    Socket.io Adapter :8084
@@ -294,28 +294,28 @@ Browser                                    Socket.io Adapter :8084
    │── subscribe('alias.0.*', cb) ─────────────────►│  cb(null)
    │── subscribeObjects('alias.0.*', cb) ───────────►│  cb(null)
    │                                                │
-   │◄── stateChange('hm-rpc.0.X.STATE', {...}) ─────│  Push bei Wertänderung
-   │◄── objectChange('alias.0.y', {...}) ────────────│  Push bei Metadaten-Änderung
+   │◄── stateChange('hm-rpc.0.X.STATE', {...}) ─────│  Push on value change
+   │◄── objectChange('alias.0.y', {...}) ────────────│  Push on metadata change
    │                                                │
-   │  [Seitennavigation: neue Pattern-Menge]        │
-   │── unsubscribe('alias.0.*', cb) ────────────────►│  Nur Diff
+   │  [Page navigation: new pattern set]            │
+   │── unsubscribe('alias.0.*', cb) ────────────────►│  Diff only
    │── unsubscribeObjects('alias.0.*', cb) ──────────►│
    │── subscribe('0_userdata.0.*', cb) ─────────────►│
    │── subscribeObjects('0_userdata.0.*', cb) ───────►│
    │                                                │
-   │  [Verbindungsabbruch]                          │
+   │  [Connection lost]                             │
    │◄── disconnect ──────────────────────────────────│
-   │── [reconnect nach 5 s] ────────────────────────►│
+   │── [reconnect after 5s] ────────────────────────►│
    │◄── connect ────────────────────────────────────│
-   │── [vollständige Re-Subscription] ──────────────►│
+   │── [full re-subscription] ──────────────────────►│
 ```
 
 ---
 
-### Fallback-Verhalten
+### Fallback Behavior
 
-| Bedingung | Verhalten |
-|-----------|-----------|
-| `connect_error` (Adapter nicht erreichbar) | `supported = false`; App aktiviert Long-Polling parallel als Live-Fallback |
-| Wiederverbindung nach Ausfall | `supported = true`, `connected = true`; Re-Subscription aller Pattern |
-| Manuell auf Long Polling umgeschaltet | Socket.io-Hook disabled (`enabled = false`); kein Socket-Aufbau |
+| Condition | Behavior |
+|-----------|----------|
+| `connect_error` (adapter unreachable) | `supported = false`; app activates long-polling in parallel as live fallback |
+| Reconnect after outage | `supported = true`, `connected = true`; re-subscription of all patterns |
+| Manually switched to long polling | Socket.io hook disabled (`enabled = false`); no socket connection |

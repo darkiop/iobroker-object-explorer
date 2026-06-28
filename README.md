@@ -2,9 +2,7 @@
 
 ![alt text](demo.gif)
 
-A React dashboard for browsing, managing, and monitoring ioBroker datapoints via the REST API. Light/dark theme, EN/DE UI language.
-
-**Stack:** React 18 · TypeScript · TanStack React Query · Recharts · Tailwind CSS · Vite
+A React dashboard for browsing, managing, and monitoring ioBroker datapoints.
 
 ---
 
@@ -13,12 +11,9 @@ A React dashboard for browsing, managing, and monitoring ioBroker datapoints via
 ```bash
 npm install
 npm run dev        # Dev server on port 5173
-npm run build      # TypeScript check + production build
-npm run lint       # ESLint
-npx tsc --noEmit   # Type check only
 ```
 
-**Prerequisites:** ioBroker with an active [REST API adapter](https://github.com/ioBroker/ioBroker.rest-api) (port `8093`) with CORS enabled. For history data, only the **`sql.0` adapter** is supported (History and InfluxDB adapters are not detected).
+**Prerequisites:** ioBroker with an active [REST API adapter](https://github.com/ioBroker/ioBroker.rest-api) (port `8093`) with CORS enabled. For history data, only the **`sql.0` adapter** is currently supported.
 
 > **⚠️ No auth support:** Neither the REST API nor the optional Socket.io realtime transport currently support authentication (login/token). Only use this dashboard against ioBroker instances reachable solely from a trusted network — do not expose the REST API or Socket.io adapter to the internet.
 
