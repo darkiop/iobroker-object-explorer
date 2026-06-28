@@ -40,6 +40,8 @@ export interface StateRowProps {
   onContextMenu: (x: number, y: number, id: string) => void;
   onHistoryClick: (id: string) => void;
   onScriptsClick?: (id: string) => void;
+  onCustomClick?: (id: string) => void;
+  onAliasClick?: (id: string) => void;
   scriptSources?: string;
   onNavigateTo?: (ids: string[]) => void;
   onDeleteClick: (id: string) => void;
@@ -79,7 +81,7 @@ const StateRow = React.memo(function StateRow({
   id, state, obj, roomName, fnName,
   isSelected, isChecked, aliasIds, ownTargetExists,
   visibleCols, colWidths, roles, units, roomEnums, fnEnums,
-  onSelect, onCheck, onContextMenu, onHistoryClick, onScriptsClick, onNavigateTo, onDeleteClick, onEditJson,
+  onSelect, onCheck, onContextMenu, onHistoryClick, onScriptsClick, onCustomClick, onAliasClick, onNavigateTo, onDeleteClick, onEditJson,
   onSelectRoom, onSelectFunction, onOpenValueModal,
   roomEditForced, fnEditForced, onRoomEditEnd, onFnEditEnd,
   dateFormat, language, expertMode, isFocused, showDesc = true, showObjectTypeIcons = true, hideAliasSubRows = false, showUnitInValue = false, scriptSources, depth = 0, displayId, animateEnter, animateExit, dragEnabled = false, onDropAlias,
@@ -322,7 +324,13 @@ const StateRow = React.memo(function StateRow({
         <td style={{ width: colWidths['custom'], minWidth: colWidths['custom'] }} className="py-2 align-middle">
           <div className="flex items-center justify-center">
             {obj && hasCustomEnabled(obj) && (
-              <Wrench size={13} className="text-purple-500 dark:text-purple-400" />
+              <button
+                className="p-0.5 rounded hover:bg-purple-500/15 dark:hover:bg-purple-500/20 transition-colors"
+                onClick={(e) => { e.stopPropagation(); onCustomClick?.(id); }}
+                title={isEn ? 'Custom settings' : 'Benutzerdefinierte Einstellungen'}
+              >
+                <Wrench size={13} className="text-purple-500 dark:text-purple-400" />
+              </button>
             )}
           </div>
         </td>
@@ -352,20 +360,23 @@ const StateRow = React.memo(function StateRow({
         <td style={{ width: colWidths['alias'], minWidth: colWidths['alias'] }} className="py-2 align-middle">
           <div className="flex items-center justify-center">
             {danglingAlias && (
-              <span title={aliasTooltip} className="relative p-0.5 rounded text-red-500 dark:text-red-400">
+              <button
+                onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onAliasClick?.(id); }}
+                title={aliasTooltip}
+                className="relative p-0.5 rounded text-red-500 dark:text-red-400 hover:bg-red-500/15 dark:hover:bg-red-500/20 transition-colors"
+              >
                 <Link2 size={15} />
-              </span>
+              </button>
             )}
             {hasAlias && !danglingAlias && (
               <button
                 onClick={(e) => {
                   e.currentTarget.blur();
                   e.stopPropagation();
-                  onNavigateTo?.(aliasTargets);
+                  onAliasClick?.(id);
                 }}
-                disabled={allTargetsAreAlias}
                 title={aliasTooltip}
-                className="relative p-0.5 rounded text-amber-500 dark:text-amber-400 hover:bg-amber-500/15 dark:hover:bg-amber-500/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                className="relative p-0.5 rounded text-amber-500 dark:text-amber-400 hover:bg-amber-500/15 dark:hover:bg-amber-500/20 transition-colors"
               >
                 <Link2 size={15} />
                 {aliasIds && aliasIds.length > 1 && (

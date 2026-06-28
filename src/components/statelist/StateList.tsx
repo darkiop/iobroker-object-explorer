@@ -79,6 +79,8 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const onOpenEnumManager = React.useCallback(() => setEnumManagerOpen(true), [setEnumManagerOpen]);
   const onOpenAliasReplace = React.useCallback((initialStr?: string) => setAliasReplaceInitialStr(initialStr ?? null), [setAliasReplaceInitialStr]);
   const onScriptsClick = React.useCallback((id: string) => { onSelect(id); setEditInitialTab('scripts'); }, [onSelect, setEditInitialTab]);
+  const onCustomClick = React.useCallback((id: string) => { onSelect(id); setEditInitialTab('custom'); }, [onSelect, setEditInitialTab]);
+  const onAliasClick = React.useCallback((id: string) => { onSelect(id); setEditInitialTab('alias'); }, [onSelect, setEditInitialTab]);
   const onPageSizeChange = React.useCallback((size: number) => persistSettings({ ...appSettings, pageSize: size }), [persistSettings, appSettings]);
 
   const effectiveDefaults: Record<SortKey, number> = { ...BUILTIN_DEFAULT_WIDTHS, ...(customDefaultWidths ?? {}) };
@@ -1342,6 +1344,8 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                   onContextMenu={handleRowContextMenu}
                   onHistoryClick={handleRowHistoryClick}
                   onScriptsClick={onScriptsClick}
+                  onCustomClick={onCustomClick}
+                  onAliasClick={onAliasClick}
                   scriptSources={scriptSources}
                   onNavigateTo={onNavigateTo}
                   onDeleteClick={handleRowDeleteClick}
