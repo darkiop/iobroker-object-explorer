@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 
 /** Subset of the recharts chart-event state object used in pan/click handlers. */
 type ChartMouseState = {
-  activeTooltipIndex?: number | null;
+  activeTooltipIndex?: number | string | null;
   activePayload?: ReadonlyArray<{ payload?: unknown }>;
 };
 
@@ -273,7 +273,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
     }
     // Fallback: via activeTooltipIndex
     const idx = state.activeTooltipIndex;
-    if (idx != null && chartData[idx]) {
+    if (typeof idx === 'number' && chartData[idx]) {
       const point = chartData[idx];
       setConfirmAction({ type: 'entry', ts: point.ts, val: point.val });
     }

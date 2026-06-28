@@ -125,8 +125,6 @@ const StateRow = React.memo(function StateRow({
   const isAliasObject = id.startsWith('alias.0.');
   const danglingAlias = isAliasObject && !ownTarget;
   const hasAlias = (aliasIds && aliasIds.length > 0) || !!ownTarget || danglingAlias;
-  const aliasTargets = aliasIds?.length ? aliasIds : ownTarget ? [ownTarget] : [];
-  const _allTargetsAreAlias = aliasTargets.length > 0 && aliasTargets.every(t => t.startsWith('alias.'));
   const aliasTooltip = aliasIds?.length
     ? `Alias: ${aliasIds.join(', ')}`
     : ownTarget
