@@ -1,4 +1,13 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+
+/** Subset of the recharts chart-event state object used in pan/click handlers. */
+type ChartMouseState = {
+  activeTooltipIndex?: number;
+  activePayload?: ReadonlyArray<{ payload?: unknown }>;
+};
+
+type CompareTooltipPoint = { ts: number; val?: number; valComp?: number };
+type CompareTooltipProps = { active?: boolean; payload?: ReadonlyArray<{ payload?: CompareTooltipPoint }> };
 import { useTheme } from '../../context/ThemeContext';
 import {
   ComposedChart,
@@ -235,16 +244,14 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
     setViewWindow(next);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function handlePanStart(state: any) {
+  function handlePanStart(state: ChartMouseState) {
     if (deleteMode || !viewWindow) return;
     const idx = state?.activeTooltipIndex;
     if (typeof idx !== 'number') return;
     setPanDrag({ anchorIdx: idx, start: viewWindow.start, end: viewWindow.end });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function handlePanMove(state: any) {
+  function handlePanMove(state: ChartMouseState) {
     if (!panDrag || deleteMode) return;
     const idx = state?.activeTooltipIndex;
     if (typeof idx !== 'number') return;
@@ -256,11 +263,10 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
     if (panDrag) setPanDrag(null);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleChartClick = useCallback((state: any) => {
+  const handleChartClick = useCallback((state: ChartMouseState) => {
     if (!deleteMode || !state) return;
     // Recharts v3: activePayload oder activeTooltipIndex nutzen
-    const payload = state.activePayload?.[0]?.payload;
+    const payload = state.activePayload?.[0]?.payload as { ts?: number; val?: number } | undefined;
     if (payload?.ts !== undefined && payload?.val !== undefined) {
       setConfirmAction({ type: 'entry', ts: payload.ts, val: payload.val });
       return;
@@ -385,8 +391,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
     const compareOffsetMs = compareOffset === '1w' ? 7 * 24 * 60 * 60 * 1000 : compareOffset === '1m' ? 30 * 24 * 60 * 60 * 1000 : undefined;
     const tooltipProps = axes.tooltip(unit, !!compareOffset, compareOffsetMs);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const compareTooltipContent = compareOffset ? ({ active, payload }: any) => {
+    const compareTooltipContent = compareOffset ? ({ active, payload }: CompareTooltipProps) => {
       if (!active || !payload?.length) return null;
       const point = payload[0]?.payload as { ts: number; val?: number; valComp?: number } | undefined;
       if (!point) return null;

@@ -55,7 +55,7 @@
 | F-39 | **Fixed** | Architektur | ~~MEDIUM~~ | Error Boundary Silences | `src/App.tsx` | `ModalErrorFallback`-Komponente ergänzt: rendert via `createPortal` ein Modal mit Fehlermeldung + Schließen-Button. `fallback={null}` ersetzt durch `FallbackComponent={ModalErrorFallback}`. | Modal-Crashes zeigen jetzt Fehlermeldung statt leerer UI. | — | — | Stability |
 | F-40 | **Fixed** | Architektur | ~~MEDIUM~~ | Page Persistence | `src/context/FilterContext.tsx:156,194-201` | `page` im `LS_FILTER_STATE`-Snapshot persistiert. Nach Reload auf Seite 7, Suchwechsel → leere Tabelle ohne offensichtlichen Grund. `page` aus persistiertem State ausgeschlossen; Reset auf 0 bei Pattern-/Filter-Änderung. | Out-of-Bounds-Page nach Reload/Suchwechsel behoben. | — | — | Stability |
 | F-41 | **Fixed** | Codequalität | ~~MEDIUM~~ | Substring Match Bug | `src/api/iobroker.ts:515` | `sources.includes(id)` — `id = "sql.0"` matchte in `"sql.0.data.temperature"`, `"sql.0.info.connection"` etc. False Positives in der Script-Usage-Spalte. Word-Boundary-Regex ersetzt: `new RegExp('\\b' + escapeRegex(id) + '\\b').test(sources)`. | Korrektes Script-ID-Matching ohne False Positives. | — | — | Maintainability |
-| F-42 | **Open** | Codequalität | MEDIUM | `any` in HistoryChart | `src/components/HistoryChart.tsx:332,340,353` | Drei Recharts-Callback-Parameter als `any` typisiert: `handlePanStart(state: any)`, `handlePanMove(state: any)`, `handleChartClick(state: any)`. | Fehler in Payload-Zugriff nicht zur Compile-Zeit erkannt. | `CategoricalChartState` aus `recharts/types/chart/generateCategoricalChart` verwenden. | S | DX |
+| F-42 | **Fixed** | Codequalität | ~~MEDIUM~~ | `any` in HistoryChart | `src/components/history/HistoryChart.tsx` | Lokale Typen `ChartMouseState` und `CompareTooltipProps` eingeführt (recharts exportiert kein passendes öffentliches Interface für `activePayload`). Alle 4 `any`-Annotationen + `eslint-disable`-Kommentare entfernt. `payload`-Zugriff via `as { ts?: number; val?: number }`. | Fehler im Payload-Zugriff zur Compile-Zeit erkennbar. | — | — | DX |
 | F-43 | **Open** | Architektur | MEDIUM | QueryClient Module-Level | `src/App.tsx:30-32` | `const queryClient = new QueryClient(...)` auf Modul-Top-Level. Bei HMR hot-reload erstellt das Modul neue Instanz und verwirft gecachten Query-Daten. | Unnötige API-Refetches während Entwicklung. | `QueryClient`-Erzeugung in `App`-Funktion verschieben, per `useRef`/`useMemo` memoized. | S | DX |
 | F-44 | **Fixed** | Performance | ~~MEDIUM~~ | Recharts Bundle | `package.json` | Recharts (~400 kb minifiziert) immer geladen, kein Code-Splitting. `HistoryModal` per `React.lazy(() => import('./components/HistoryModal'))` lazy-geladen. | Initial-Bundle und TTI verbessert; Recharts lädt nur bei Öffnen von HistoryModal. | — | — | Performance |
 | F-45 | **Fixed** | Testing | ~~HIGH~~ | No Component Tests | `src/` | RTL-Tests vollständig ergänzt: `ObjectEditModal.test.tsx` (13 Tests — Tab-Navigation, Alias-Sichtbarkeit, Close-Verhalten, Expert-Mode, initialTab); `SelectionContext.test.tsx` (11 Tests — Initialzustand, alle State-Transitions, Isolation, Provider-Guard); `useObjectMutations.test.tsx` (3 Tests — Optimistic-Update + Rollback); `aliasFormula.test.ts` (8 Tests). Gesamt: 136 Tests, alle grün. | Komponenten, Hooks und Contexts vollständig durch Tests abgesichert. Refactoring von F-11/F-38 nun ohne Regressionsrisiko möglich. | — | — | Stability |
@@ -99,7 +99,7 @@ Das Projekt ist eine **funktionsreiche, intern gut strukturierte** React-Applika
 | F-01 | Partial | MEDIUM | Tests: Fetch-Mock für destruktive Mutations fehlen |
 | F-11 | Partial | HIGH | StateList: 1504 Zeilen, BatchBar extrahiert, Tabellenkörper (~800 Z.) noch inline |
 | F-38 | Open | MEDIUM | Duplizierte Modal-Verdrahtung App.tsx + StateList |
-| F-42 | Open | MEDIUM | `any` in HistoryChart Recharts-Callbacks |
+| F-42 | Fixed | ~~MEDIUM~~ | Lokale `ChartMouseState`/`CompareTooltipProps` Typen ersetzt `any` |
 | F-43 | Open | MEDIUM | QueryClient auf Modul-Level (HMR-Problem) |
 | F-46 | Open | MEDIUM | Keine E2E-Tests |
 | F-48 | Open | MEDIUM | Docker läuft als root |
@@ -145,7 +145,7 @@ Hoch-Impact, geringer Aufwand (S/M):
 | F-39 | ✅ Fixed | `ModalErrorFallback` via `createPortal` — Fehlermeldung + Schließen-Button | — | Nutzer sieht Fehler |
 | F-40 | ✅ Fixed | `page` aus persistiertem FilterContext-State | — | Out-of-Bounds-Page behoben |
 | F-41 | ✅ Fixed | Word-Boundary-Regex für Script-ID-Matching | — | False Positives eliminiert |
-| F-42 | Open | `CategoricalChartState` statt `any` in HistoryChart | S | TypeScript-Sicherheit |
+| F-42 | ✅ Fixed | Lokale `ChartMouseState`/`CompareTooltipProps` ersetzen alle `any` | — | TypeScript-Sicherheit |
 | F-43 | Open | `QueryClient` in `useRef` innerhalb App-Funktion | S | HMR-Cache-Loss behoben |
 | F-47 | ✅ Fixed | GitHub Actions CI: lint + tsc + test auf Push/PR | — | Automatische Qualitätssicherung |
 | F-51 | ✅ Fixed | `role="grid"`, `aria-sort`, `aria-label` auf Datentabelle | — | WCAG 2.1 AA erfüllt |
