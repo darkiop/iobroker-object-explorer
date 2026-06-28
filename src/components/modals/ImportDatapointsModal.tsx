@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import DOMPurify from 'dompurify';
+import type { ReactNode } from 'react';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { createPortal } from 'react-dom';
 import { X, Upload, AlertTriangle, FileJson, FilePlus, CheckCircle2, RefreshCw, XCircle } from 'lucide-react';
@@ -14,18 +14,18 @@ interface Props {
   existingIds?: Set<string>;
 }
 
-function escHtml(str: string): string {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-function highlightJson(code: string, dark: boolean): string {
+function highlightJsonToNodes(code: string, dark: boolean): ReactNode[] {
   const c = dark
     ? { key: '#79b8ff', str: '#9ecbff', num: '#f8e45c', kw: '#b392f0', punct: '#8b949e' }
     : { key: '#0550ae', str: '#0a3069', num: '#953800', kw: '#8250df', punct: '#57606a' };
 
-  let result = '';
+  const nodes: ReactNode[] = [];
   let i = 0;
+  let k = 0;
   const n = code.length;
+  let plain = '';
+
+  const flush = () => { if (plain) { nodes.push(plain); plain = ''; } };
 
   while (i < n) {
     const ch = code[i];
@@ -37,11 +37,12 @@ function highlightJson(code: string, dark: boolean): string {
         if (code[j] === '"') { j++; break; }
         j++;
       }
-      const str = escHtml(code.slice(i, j));
-      let k = j;
-      while (k < n && (code[k] === ' ' || code[k] === '\t')) k++;
-      const isKey = code[k] === ':';
-      result += `<span style="color:${isKey ? c.key : c.str}">${str}</span>`;
+      const str = code.slice(i, j);
+      let m = j;
+      while (m < n && (code[m] === ' ' || code[m] === '\t')) m++;
+      const isKey = code[m] === ':';
+      flush();
+      nodes.push(<span key={k++} style={{ color: isKey ? c.key : c.str }}>{str}</span>);
       i = j;
       continue;
     }
@@ -56,26 +57,30 @@ function highlightJson(code: string, dark: boolean): string {
         if (j < n && (code[j] === '+' || code[j] === '-')) j++;
         while (j < n && code[j] >= '0' && code[j] <= '9') j++;
       }
-      result += `<span style="color:${c.num}">${escHtml(code.slice(i, j))}</span>`;
+      flush();
+      nodes.push(<span key={k++} style={{ color: c.num }}>{code.slice(i, j)}</span>);
       i = j;
       continue;
     }
 
-    if (ch === 't' && code.startsWith('true', i)) { result += `<span style="color:${c.kw}">true</span>`; i += 4; continue; }
-    if (ch === 'f' && code.startsWith('false', i)) { result += `<span style="color:${c.kw}">false</span>`; i += 5; continue; }
-    if (ch === 'n' && code.startsWith('null', i)) { result += `<span style="color:${c.kw}">null</span>`; i += 4; continue; }
+    if (ch === 't' && code.startsWith('true', i)) { flush(); nodes.push(<span key={k++} style={{ color: c.kw }}>true</span>); i += 4; continue; }
+    if (ch === 'f' && code.startsWith('false', i)) { flush(); nodes.push(<span key={k++} style={{ color: c.kw }}>false</span>); i += 5; continue; }
+    if (ch === 'n' && code.startsWith('null', i)) { flush(); nodes.push(<span key={k++} style={{ color: c.kw }}>null</span>); i += 4; continue; }
 
     if ('{}[],:'.includes(ch)) {
-      result += `<span style="color:${c.punct}">${escHtml(ch)}</span>`;
+      flush();
+      nodes.push(<span key={k++} style={{ color: c.punct }}>{ch}</span>);
       i++;
       continue;
     }
 
-    result += escHtml(ch);
+    plain += ch;
     i++;
   }
 
-  return result;
+  flush();
+  nodes.push('\n');
+  return nodes;
 }
 
 function JsonEditor({ value, onChange, dark }: { value: string; onChange: (v: string) => void; dark: boolean }) {
@@ -88,8 +93,6 @@ function JsonEditor({ value, onChange, dark }: { value: string; onChange: (v: st
       preRef.current.scrollLeft = textareaRef.current.scrollLeft;
     }
   }, []);
-
-  const highlighted = DOMPurify.sanitize(highlightJson(value, dark) + '\n', { FORCE_BODY: true });
 
   const sharedStyle: React.CSSProperties = {
     fontFamily: '"Fira Code", "Cascadia Code", "JetBrains Mono", Consolas, "Courier New", monospace',
@@ -120,8 +123,7 @@ function JsonEditor({ value, onChange, dark }: { value: string; onChange: (v: st
           color: dark ? '#e6edf3' : '#24292f',
           background: 'transparent',
         }}
-        dangerouslySetInnerHTML={{ __html: highlighted }}
-      />
+        >{highlightJsonToNodes(value, dark)}</pre>
       <textarea
         ref={textareaRef}
         value={value}
