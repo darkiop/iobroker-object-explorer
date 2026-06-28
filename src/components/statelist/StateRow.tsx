@@ -42,6 +42,7 @@ export interface StateRowProps {
   onScriptsClick?: (id: string) => void;
   onCustomClick?: (id: string) => void;
   onAliasClick?: (id: string) => void;
+  onSmartNameClick?: (id: string) => void;
   scriptSources?: string;
   onNavigateTo?: (ids: string[]) => void;
   onDeleteClick: (id: string) => void;
@@ -81,7 +82,7 @@ const StateRow = React.memo(function StateRow({
   id, state, obj, roomName, fnName,
   isSelected, isChecked, aliasIds, ownTargetExists,
   visibleCols, colWidths, roles, units, roomEnums, fnEnums,
-  onSelect, onCheck, onContextMenu, onHistoryClick, onScriptsClick, onCustomClick, onAliasClick, onNavigateTo, onDeleteClick, onEditJson,
+  onSelect, onCheck, onContextMenu, onHistoryClick, onScriptsClick, onCustomClick, onAliasClick, onSmartNameClick, onNavigateTo, onDeleteClick, onEditJson,
   onSelectRoom, onSelectFunction, onOpenValueModal,
   roomEditForced, fnEditForced, onRoomEditEnd, onFnEditEnd,
   dateFormat, language, expertMode, isFocused, showDesc = true, showObjectTypeIcons = true, hideAliasSubRows = false, showUnitInValue = false, scriptSources, depth = 0, displayId, animateEnter, animateExit, dragEnabled = false, onDropAlias,
@@ -349,9 +350,13 @@ const StateRow = React.memo(function StateRow({
         >
           <div className="flex items-center justify-center">
             {obj && hasSmartName(obj) && (
-              <span className="p-0.5 rounded hover:bg-violet-500/15 dark:hover:bg-violet-500/20 transition-colors">
+              <button
+                className="p-0.5 rounded hover:bg-violet-500/15 dark:hover:bg-violet-500/20 transition-colors"
+                onClick={(e) => { e.stopPropagation(); onSmartNameClick?.(id); }}
+                title={isEn ? 'SmartName' : 'SmartName'}
+              >
                 <Mic2 size={15} className="text-violet-500 dark:text-violet-400" />
-              </span>
+              </button>
             )}
           </div>
         </td>

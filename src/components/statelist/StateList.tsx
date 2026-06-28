@@ -81,6 +81,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const onScriptsClick = React.useCallback((id: string) => { onSelect(id); setEditInitialTab('scripts'); }, [onSelect, setEditInitialTab]);
   const onCustomClick = React.useCallback((id: string) => { onSelect(id); setEditInitialTab('custom'); }, [onSelect, setEditInitialTab]);
   const onAliasClick = React.useCallback((id: string) => { onSelect(id); setEditInitialTab('alias'); }, [onSelect, setEditInitialTab]);
+  const onSmartNameClick = React.useCallback((id: string) => { onSelect(id); setEditInitialTab('smartname'); }, [onSelect, setEditInitialTab]);
   const onPageSizeChange = React.useCallback((size: number) => persistSettings({ ...appSettings, pageSize: size }), [persistSettings, appSettings]);
 
   const effectiveDefaults: Record<SortKey, number> = { ...BUILTIN_DEFAULT_WIDTHS, ...(customDefaultWidths ?? {}) };
@@ -1346,6 +1347,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                   onScriptsClick={onScriptsClick}
                   onCustomClick={onCustomClick}
                   onAliasClick={onAliasClick}
+                  onSmartNameClick={onSmartNameClick}
                   scriptSources={scriptSources}
                   onNavigateTo={onNavigateTo}
                   onDeleteClick={handleRowDeleteClick}

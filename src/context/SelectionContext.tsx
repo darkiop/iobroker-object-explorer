@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useMemo, type ReactNode } from 'react';
 
-type EditTab = 'details' | 'json' | 'alias' | 'custom' | 'scripts';
+type EditTab = 'details' | 'json' | 'alias' | 'custom' | 'scripts' | 'smartname';
 
 interface SelectionContextValue {
   selectedId: string | null;

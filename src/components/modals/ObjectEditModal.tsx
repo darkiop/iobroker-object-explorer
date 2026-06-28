@@ -15,6 +15,7 @@ import JsonTab from '../tabs/JsonTab';
 import AliasTab from '../tabs/AliasTab';
 import CustomTab from '../tabs/CustomTab';
 import ScriptsTab from '../tabs/ScriptsTab';
+import SmartNameTab, { initSmartNameDraft, smartNameDraftToValue, type SmartNameDraft } from '../tabs/SmartNameTab';
 
 interface Props {
   id: string;
@@ -23,10 +24,10 @@ interface Props {
   onOpenHistory?: () => void;
   language?: 'en' | 'de';
   dateFormat?: 'de' | 'us' | 'iso';
-  initialTab?: 'details' | 'json' | 'alias' | 'custom' | 'scripts';
+  initialTab?: 'details' | 'json' | 'alias' | 'custom' | 'scripts' | 'smartname';
 }
 
-type Tab = 'details' | 'json' | 'alias' | 'custom' | 'scripts';
+type Tab = 'details' | 'json' | 'alias' | 'custom' | 'scripts' | 'smartname';
 
 export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, language = 'en', dateFormat = 'de', initialTab }: Props) {
   const isEn = language === 'en';
@@ -73,6 +74,9 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
   const [aliasWriteId, setAliasWriteId] = useState(() => typeof obj.common.alias?.id === 'object' ? (obj.common.alias.id.write ?? '') : '');
   const [aliasRead, setAliasRead] = useState(obj.common.alias?.read ?? '');
   const [aliasWrite, setAliasWrite] = useState(obj.common.alias?.write ?? '');
+  // SmartName tab state
+  const [smartNameDraft, setSmartNameDraft] = useState<SmartNameDraft>(() => initSmartNameDraft(obj.common?.smartName));
+
   const [roomEnumId, setRoomEnumId] = useState<string | null>(() => {
     const hit = Object.keys(obj.enums ?? {}).find((enumId) => enumId.startsWith('enum.rooms.'));
     return hit ?? null;
@@ -131,8 +135,13 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
     if (tab === 'custom') {
       return JSON.stringify(customDraft) !== JSON.stringify(obj.common.custom ?? {});
     }
+    if (tab === 'smartname') {
+      const orig = obj.common?.smartName;
+      const next = smartNameDraftToValue(smartNameDraft);
+      return JSON.stringify(orig) !== JSON.stringify(next);
+    }
     return false;
-  }, [tab, draft, obj, aliasSeparateIds, aliasId, aliasReadId, aliasWriteId, aliasRead, aliasWrite, customDraft]);
+  }, [tab, draft, obj, aliasSeparateIds, aliasId, aliasReadId, aliasWriteId, aliasRead, aliasWrite, customDraft, smartNameDraft]);
   const isDirtyRef = useRef(isDirty);
   const onCloseRef = useRef(onClose);
   // useLayoutEffect: runs synchronously after commit, before paint — guaranteed up-to-date
@@ -220,10 +229,25 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
     });
   }
 
+  function handleSaveSmartName() {
+    const val = smartNameDraftToValue(smartNameDraft);
+    const newCommon: IoBrokerObjectCommon = { ...obj.common };
+    if (val === undefined) {
+      delete (newCommon as Record<string, unknown>)['smartName'];
+    } else {
+      (newCommon as Record<string, unknown>)['smartName'] = val;
+    }
+    putObject.mutate({ id, obj: { ...obj, common: newCommon } }, {
+      onSuccess: onClose,
+      onError: (err) => showToast((isEn ? 'Save failed: ' : 'Speichern fehlgeschlagen: ') + String(err)),
+    });
+  }
+
   function handleSave() {
     if (tab === 'json') { handleSaveJson(); return; }
     if (tab === 'alias') { handleSaveAlias(); return; }
     if (tab === 'custom') { handleSaveCustom(); return; }
+    if (tab === 'smartname') { handleSaveSmartName(); return; }
     onClose();
   }
 
@@ -337,7 +361,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
 
           {/* Tabs */}
           <div className="flex border-b border-gray-200 dark:border-gray-700 shrink-0 px-5">
-            {(['details', 'json', ...(id.startsWith('alias.') ? ['alias'] : []), 'custom', 'scripts'] as Tab[]).map((t) => (
+            {(['details', 'json', ...(id.startsWith('alias.') ? ['alias'] : []), 'custom', 'smartname', 'scripts'] as Tab[]).map((t) => (
               <button
                 key={t}
                 onClick={() => { setTab(t); setJsonError(null); }}
@@ -347,7 +371,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                     : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                 }`}
               >
-                {t === 'details' ? 'Details' : t === 'json' ? 'JSON' : t === 'alias' ? 'Alias' : t === 'custom' ? 'Custom' : (isEn ? 'Scripts' : 'Skripte')}
+                {t === 'details' ? 'Details' : t === 'json' ? 'JSON' : t === 'alias' ? 'Alias' : t === 'custom' ? 'Custom' : t === 'smartname' ? 'SmartName' : (isEn ? 'Scripts' : 'Skripte')}
               </button>
             ))}
           </div>
@@ -421,6 +445,14 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                 customLoading={customLoading}
                 customDraftLoaded={customDraftLoaded}
                 customInstances={customInstances}
+              />
+            )}
+
+            {tab === 'smartname' && (
+              <SmartNameTab
+                draft={smartNameDraft}
+                setDraft={setSmartNameDraft}
+                language={language}
               />
             )}
 
