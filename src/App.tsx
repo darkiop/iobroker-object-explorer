@@ -93,9 +93,6 @@ function savePanel2State(s: Panel2FilterState): void {
   try { localStorage.setItem(LS_PANEL2_STATE, JSON.stringify(s)); } catch { /* ignore */ }
 }
 
-const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: 1, staleTime: 10_000 } },
-});
 
 const EMPTY_OBJECTS: Record<string, IoBrokerObject> = {};
 const EMPTY_STATES: Record<string, IoBrokerState> = {};
@@ -1079,9 +1076,15 @@ function AppErrorFallback({ error, resetErrorBoundary }: { error: unknown; reset
 }
 
 export default function App() {
+  const queryClientRef = useRef<QueryClient | null>(null);
+  if (!queryClientRef.current) {
+    queryClientRef.current = new QueryClient({
+      defaultOptions: { queries: { retry: 1, staleTime: 10_000 } },
+    });
+  }
   return (
     <ErrorBoundary FallbackComponent={AppErrorFallback} onReset={() => window.location.reload()}>
-      <QueryClientProvider client={queryClient}>
+      <QueryClientProvider client={queryClientRef.current}>
         <ThemeProvider>
           <ToastProvider>
             <UIContextProvider>
