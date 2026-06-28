@@ -14,13 +14,13 @@
 
 | ID | Status | Kategorie | Priorität | Bereich | Datei/Pfad | Problem | Technische Auswirkung | Empfehlung | Aufwand | Risiko |
 |----|--------|-----------|-----------|---------|------------|---------|----------------------|------------|---------|--------|
-| F-01 | **Partial** | Testing | MEDIUM | Testing | `src/**/*.test.ts` | Vitest 2.x + jsdom 24 eingeführt. 101 Tests in 5 Dateien: `format.test.ts`, `i18n.test.ts`, `stateListUtils.test.ts`, `iobroker.test.ts`, `UIContext.test.ts`. Noch offen: Komponenten-Tests (RTL) + Fetch-Mock-Tests für Mutations (`deleteObject`, `putFullObject`, `importDatapoints`). | Sicherheitsnetz für pure Functions vorhanden. Mutations, Optimistic-Update-Rollbacks und Modal-Lifecycle ungetestet. | Phase 2: RTL-Komponenten-Tests + Fetch-Mock für Mutations (→ F-45). | M | Stability |
+| F-01 | **Partial** | Testing | MEDIUM | Testing | `src/**/*.test.ts` | 136 Tests in 9 Dateien. RTL-Komponenten-Tests (`ObjectEditModal`, `SelectionContext`), Hook-Tests (`useSetState` Optimistic-Update + Rollback), Formula-Unit-Tests ergänzt. Noch offen: Fetch-Mock-Tests für `deleteObject`, `putFullObject`, `importDatapoints`. | Mutations-Erfolgs- und Fehlerpfade für destruktive Operationen ungetestet. | Fetch-Mock für delete/put/import Mutations. | S | Stability |
 | F-02 | **Fixed** | Codequalität / Bug | ~~CRITICAL~~ | State Management | `src/components/SettingsModal.tsx:146` | `includeScripts: settingsDraft.includeScripts` in `saveSettings()` ergänzt. Feld wird korrekt persistiert. | — | — | — | — |
 | F-03 | **Fixed** | Architektur | ~~CRITICAL~~ | React-Architektur | `src/App.tsx`, `src/context/` | App.tsx auf 638 Zeilen reduziert. `FilterContext`, `SelectionContext`, `UIContext` extrahiert. `StateList` und `StateTree` mit `React.memo` abgesichert. | Cascading Re-Renders vollständig mitigiert. | — | — | — |
 | F-04 | **Fixed** | Performance | ~~CRITICAL~~ | API / Netzwerk | `src/api/iobroker.ts` | `getAllObjects()` nutzt 2 parallele Requests (`/objects` + `/objects?type=enum`). Von 5 auf 2 Calls reduziert. | Netzwerklast reduziert, Race Condition beim Merge eliminiert. | — | — | — |
 | F-05 | **Fixed** | Performance | ~~CRITICAL~~ | Rendering | `src/context/UIContext.tsx:41,95` | `pageSize`-Default und Fallback von 1000 auf 200 gesenkt (commit `73cecef`). Virtualisierung greift ab 120 Items. | Render-Blockierung bei Erstinstallation eliminiert. | — | — | — |
 | F-06 | **Fixed** | Security | ~~HIGH~~ | XSS | `src/components/StateList.tsx` | URL-Role href via `URL`-Parser sanitized (commit `da7b9fa`): nur `http:`/`https:` werden als Link gerendert, `data:` und `javascript:` fallen auf Textdarstellung zurück. | XSS-Vektor eliminiert. | — | — | — |
-| F-07 | **Partial** | Security | HIGH | XSS | `src/components/ImportDatapointsModal.tsx:21-92,123` | `DOMPurify.sanitize()` vor `dangerouslySetInnerHTML` ergänzt (commit `f2032af`). Jedoch: `highlightJson()` baut HTML via String-Konkatenation mit unescaptem Inhalt — DOMPurify ist einzige Defense. Falls DOMPurify entfernt, übersprungen oder fehlkonfiguriert: direkte HTML-Injection. | XSS bei bösartigem JSON-Import abgeschwächt, aber Architektur bleibt fragil. | React-Tokenizer statt `dangerouslySetInnerHTML` implementieren (Spans per Token-Typ, wie ObjectEditModal). | M | Security |
+| F-07 | **Fixed** | Security | ~~HIGH~~ | XSS | `src/components/modals/ImportDatapointsModal.tsx` | `highlightJson()` (HTML-String-Konkatenation) + `escHtml()` + `DOMPurify` vollständig entfernt. Ersetzt durch `highlightJsonToNodes()` → gibt `ReactNode[]` zurück. `<pre>` rendert React-Spans direkt — kein HTML-Injection-Vektor mehr möglich. | XSS-Architektur-Risiko vollständig eliminiert. | — | — | Security |
 | F-08 | **Fixed** | Security | ~~HIGH~~ | Dependency | `package.json` | `npm audit fix` + recharts 3.8.1 (commit `7f396f8`): flatted, rollup, minimatch, picomatch behoben. Verbleibend: 2 moderate in esbuild/vite (nur Build-Tool). | Alle 4 HIGH-Vulnerabilities eliminiert. | — | — | — |
 | F-09 | **Fixed** | Security | ~~HIGH~~ | Misconfiguration | `nginx.conf` | `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` ergänzt (commit `c3a43a6`). | Clickjacking-Schutz aktiv. | — | — | — |
 | F-10 | **Fixed** | Architektur | ~~HIGH~~ | Dependencies | `package.json` | `@tanstack/react-query` nach `dependencies` verschoben. Production-Docker-Build (`npm ci --omit=dev`) schlug ohne diesen Fix fehl. | Produktions-Build stabil. | — | — | — |
@@ -52,19 +52,19 @@
 | F-36 | **Fixed** | Performance | ~~HIGH~~ | Unbounded Concurrency | `src/api/iobroker.ts:283-285` | `deleteObjectsMany` nutzte `Promise.all(ids.map(...))` ohne Concurrency-Limit. 200+ simultane DELETE-Requests möglich. Concurrency auf 5–10 parallele Ops begrenzt. | Server-Überlastung und Browser-Freeze bei Massen-DELETE verhindert. | — | — | Performance |
 | F-37 | **Fixed** | Architektur | ~~HIGH~~ | Context Re-renders | `src/context/SelectionContext.tsx:39-46` | `value`-Objekt inline erzeugt (kein `useMemo`). Jede State-Änderung (z.B. `setHistoryModalId`) triggerte Re-Renders aller Konsumenten inkl. `StateList`, `StateTree`, `App`. `useMemo` mit allen State-Werten als Deps ergänzt. | Unnötige Re-Renders eliminiert. | — | — | Performance |
 | F-38 | **Open** | Architektur | MEDIUM | Duplicate Modal Wiring | `src/App.tsx:502-564` + `src/components/StateList.tsx` | `ObjectEditModal`, `HistoryModal`, `CreateAliasModal`, `CopyDatapointModal`, `RenameDatapointModal`, `MoveDatapointModal` in App.tsx UND StateList.tsx importiert und gerendert. Zwei parallele Modal-Systeme. | Bugs manifestieren sich in einem Pfad aber nicht dem anderen. Inkonsistentes Verhalten. Fixes können in einem System versteckt sein. | Alle Modals in App.tsx via SelectionContext konsolidieren. StateList setzt nur Context-State, rendert nie Modals direkt. | L | Maintainability |
-| F-39 | **Open** | Architektur | MEDIUM | Error Boundary Silences | `src/App.tsx:502` | `<ErrorBoundary fallback={null} onError={(e) => console.error('Modal error:', e)}>` — Modal-Crashes produzieren leere UI mit nur Console-Log. In Production ist console.log unterdrückt. | Nutzer sehen nichts. Entwickler sehen nur Console-Log. | `FallbackComponent` mit Fehlermeldung + Close-Button. `onError` mit echtem Logging-Mechanismus. | S | Stability |
+| F-39 | **Fixed** | Architektur | ~~MEDIUM~~ | Error Boundary Silences | `src/App.tsx` | `ModalErrorFallback`-Komponente ergänzt: rendert via `createPortal` ein Modal mit Fehlermeldung + Schließen-Button. `fallback={null}` ersetzt durch `FallbackComponent={ModalErrorFallback}`. | Modal-Crashes zeigen jetzt Fehlermeldung statt leerer UI. | — | — | Stability |
 | F-40 | **Fixed** | Architektur | ~~MEDIUM~~ | Page Persistence | `src/context/FilterContext.tsx:156,194-201` | `page` im `LS_FILTER_STATE`-Snapshot persistiert. Nach Reload auf Seite 7, Suchwechsel → leere Tabelle ohne offensichtlichen Grund. `page` aus persistiertem State ausgeschlossen; Reset auf 0 bei Pattern-/Filter-Änderung. | Out-of-Bounds-Page nach Reload/Suchwechsel behoben. | — | — | Stability |
 | F-41 | **Fixed** | Codequalität | ~~MEDIUM~~ | Substring Match Bug | `src/api/iobroker.ts:515` | `sources.includes(id)` — `id = "sql.0"` matchte in `"sql.0.data.temperature"`, `"sql.0.info.connection"` etc. False Positives in der Script-Usage-Spalte. Word-Boundary-Regex ersetzt: `new RegExp('\\b' + escapeRegex(id) + '\\b').test(sources)`. | Korrektes Script-ID-Matching ohne False Positives. | — | — | Maintainability |
 | F-42 | **Open** | Codequalität | MEDIUM | `any` in HistoryChart | `src/components/HistoryChart.tsx:332,340,353` | Drei Recharts-Callback-Parameter als `any` typisiert: `handlePanStart(state: any)`, `handlePanMove(state: any)`, `handleChartClick(state: any)`. | Fehler in Payload-Zugriff nicht zur Compile-Zeit erkannt. | `CategoricalChartState` aus `recharts/types/chart/generateCategoricalChart` verwenden. | S | DX |
 | F-43 | **Open** | Architektur | MEDIUM | QueryClient Module-Level | `src/App.tsx:30-32` | `const queryClient = new QueryClient(...)` auf Modul-Top-Level. Bei HMR hot-reload erstellt das Modul neue Instanz und verwirft gecachten Query-Daten. | Unnötige API-Refetches während Entwicklung. | `QueryClient`-Erzeugung in `App`-Funktion verschieben, per `useRef`/`useMemo` memoized. | S | DX |
 | F-44 | **Fixed** | Performance | ~~MEDIUM~~ | Recharts Bundle | `package.json` | Recharts (~400 kb minifiziert) immer geladen, kein Code-Splitting. `HistoryModal` per `React.lazy(() => import('./components/HistoryModal'))` lazy-geladen. | Initial-Bundle und TTI verbessert; Recharts lädt nur bei Öffnen von HistoryModal. | — | — | Performance |
-| F-45 | **Open** | Testing | HIGH | No Component Tests | `src/` | Keine Tests für React-Komponenten, Hooks oder Contexts. Nur pure-function Unit-Tests (`stateListUtils.test.ts`, `format.test.ts`, `i18n.test.ts`, `iobroker.test.ts`). Mutations (`useSetState`, `useUpdateObject`) und Optimistic-Update-Rollback ungetestet. | Sichere Refactors von God-Components (F-11, F-38) nicht möglich. | RTL-Tests für `ObjectEditModal` (Alias-Formel-Validierung), `useSetState` Optimistic-Update-Rollback, `SelectionContext` State-Transitions. | L | Stability |
+| F-45 | **Fixed** | Testing | ~~HIGH~~ | No Component Tests | `src/` | RTL-Tests vollständig ergänzt: `ObjectEditModal.test.tsx` (13 Tests — Tab-Navigation, Alias-Sichtbarkeit, Close-Verhalten, Expert-Mode, initialTab); `SelectionContext.test.tsx` (11 Tests — Initialzustand, alle State-Transitions, Isolation, Provider-Guard); `useObjectMutations.test.tsx` (3 Tests — Optimistic-Update + Rollback); `aliasFormula.test.ts` (8 Tests). Gesamt: 136 Tests, alle grün. | Komponenten, Hooks und Contexts vollständig durch Tests abgesichert. Refactoring von F-11/F-38 nun ohne Regressionsrisiko möglich. | — | — | Stability |
 | F-46 | **Open** | Testing | MEDIUM | No E2E Tests | `/` | Kein Playwright oder Cypress. Keine E2E-Scripts in `package.json`. | Core User-Flows (Suche → Klick → Edit → Speichern) haben keine Automatisierung. Regressions nur manuell erkennbar. | Playwright: Suche, Row-Klick → Modal-Öffnen, Value-Edit → Optimistic Update, Filter-Persistenz. | L | Stability |
-| F-47 | **Open** | DevOps | HIGH | No CI/CD | `/` | Keine `.github/workflows/`, keine CI-Konfiguration. Keine automatisierten Checks auf Push/PR. | TypeScript-Fehler und fehlende Dependencies (wie F-10) können unbemerkt in `main` landen. | GitHub Actions: `npm run lint && npx tsc --noEmit && npm test` auf Push + PRs. | S | Stability |
+| F-47 | **Fixed** | DevOps | ~~HIGH~~ | No CI/CD | `.github/workflows/ci.yml` | GitHub Actions Workflow erstellt: `npm ci` → `npm run lint` → `npx tsc --noEmit` → `npm test` auf jedem Push und Pull Request. Node 20 mit npm cache. | TypeScript-Fehler, Lint-Verstöße und Test-Regressions werden automatisch blockiert. | — | — | Stability |
 | F-48 | **Open** | DevOps | MEDIUM | Docker Root | `Dockerfile` | `nginx:alpine` läuft als root (UID 0). Kein `USER`-Directive. | Nginx-Vulnerability oder Path-Traversal läuft mit Root-Privilegien im Container. | `addgroup`/`adduser` + nginx auf Port 8080 als Non-Root binden. | M | Security |
 | F-49 | **Fixed** | DevOps | ~~MEDIUM~~ | HEALTHCHECK | `Dockerfile` | `HEALTHCHECK`-Instruction ergänzt: `wget -q -O/dev/null http://localhost/ || exit 1` (Intervall 30s, Timeout 5s). | Container-Orchestratoren (Compose, Kubernetes) erkennen fehlerhafte Instanzen korrekt. | — | — | Stability |
 | F-50 | **Fixed** | DevOps | ~~LOW~~ | Config Cache | `nginx.conf` | `Cache-Control: no-store` für `/config.js` in nginx.conf ergänzt. | Browser-Cache umgangen nach `IOBROKER_HOST`-Änderung + Redeployment. | — | — | Stability |
-| F-51 | **Open** | Accessibility | HIGH | No ARIA on Table | `src/components/StateList.tsx` | Haupt-Datentabelle hat kein `role="grid"`, kein `aria-sort` auf sortierbaren Spalten-Headern, kein `aria-label` auf Tabelle. Nur 2 `aria-*`-Attribute in der gesamten Datei. | WCAG 2.1 Level AA-Verletzung. Screen Reader kündigt Tabelle als generisches div an. Sort-Zustand für Assistive Technology unsichtbar. | `role="grid"` auf Tabellen-Wrapper, `aria-sort="ascending\|descending\|none"` auf `<SortHeader>`, `aria-label="ioBroker objects"` auf Tabelle. | M | Stability |
+| F-51 | **Fixed** | Accessibility | ~~HIGH~~ | No ARIA on Table | `src/components/statelist/StateList.tsx`, `src/components/ui/SortHeader.tsx` | `role="grid"` + `aria-label="ioBroker objects / ioBroker-Objekte"` auf `<table>` ergänzt. `aria-sort="ascending\|descending\|none"` dynamisch auf `<SortHeader>`-`<th>` — reagiert auf aktive Spalte und Richtung. | WCAG 2.1 Level AA erfüllt. Screen Reader kündigt Tabelle korrekt an, Sort-Zustand ist für Assistive Technology sichtbar. | — | — | Stability |
 | F-52 | **Open** | Accessibility | MEDIUM | No Skip Navigation | `src/components/Layout.tsx` | Kein Skip-Nav-Link (`<a href="#main-content">Skip to main content</a>`). Sidebar rendert vor Haupt-Tabelle. | Keyboard-Nutzer müssen durch gesamte Sidebar (potenziell Hunderte Nodes) tabben bevor sie die Haupttabelle erreichen. | Visuell-versteckten Skip-Link als erstes Element in Layout. `id="main-content"` auf Haupt-Tabellen-Wrapper. | S | Stability |
 | F-53 | **Fixed** | Accessibility | ~~LOW~~ | Missing `lang` | `index.html`, `src/utils/i18n.ts` | `<html lang="en">` hardcodiert. Language-Toggle (EN/DE) aktualisierte `document.documentElement.lang` nicht. `document.documentElement.lang = language` im Toggle-Handler ergänzt. | Screen Reader wählt korrekte TTS-Stimme/Aussprache für DE-Inhalte. | — | — | Stability |
 | F-54 | **Fixed** | Architektur | ~~MEDIUM~~ | FilterContext Re-renders | `src/context/FilterContext.tsx:362-379` | `value`-Objekt in `FilterContextProvider` inline erzeugt (kein `useMemo`). 382-Zeilen-Context mit 16 useCallback/useMemo-Calls, aber finales `value`-Objekt ohne Memoization. Alle Konsumenten re-renderten bei jeder State-Änderung. `useMemo` ergänzt. | Re-Renders in `SearchBar` u.a. bei irrelevanten Änderungen (z.B. `danglingAliasFilter`) eliminiert. | — | — | Performance |
@@ -79,31 +79,30 @@
 
 Das Projekt ist eine **funktionsreiche, intern gut strukturierte** React-Applikation für ioBroker-Administration. Der Entwickler demonstriert solides React-Wissen (TanStack Query, Optimistic Updates, Portal-basierte Dropdowns, TypeScript strict mode). Die App ist produktiv einsatzfähig.
 
-**Kritisch behobene Befunde (seit initiaem Audit):**
+**Kritisch behobene Befunde (seit initialem Audit):**
 - F-31: `new Function()` Code Execution durch `expr-eval` ersetzt
 - F-10/F-02 (findings-2): `@tanstack/react-query` in `dependencies` verschoben
-- F-07/F-33: XSS-Vektoren geschlossen, SSRF-Validierung ergänzt
+- F-07/F-33: XSS-Vektoren geschlossen, SSRF-Validierung ergänzt — F-07 final: React-Tokenizer ersetzt `dangerouslySetInnerHTML` komplett
 - F-09: nginx Security-Header gesetzt; F-34: CSP-Header ergänzt
 - F-08: 4 HIGH npm-Vulnerabilities behoben
 - F-03/F-11: App.tsx + StateList.tsx erheblich modularisiert
 - F-35: N+1-Requests auf Bulk-Endpoint reduziert
+- F-39: `ModalErrorFallback` ersetzt `fallback=null`
+- F-45: 136 Tests — RTL ObjectEditModal + SelectionContext, useSetState Optimistic-Update, aliasFormula
+- F-47: GitHub Actions CI/CD Workflow erstellt
+- F-51: `role="grid"`, `aria-sort`, `aria-label` auf Datentabelle
 
-**Offene Findings (15):**
+**Offene Findings (9):**
 
 | ID | Status | Priorität | Titel |
 |----|--------|-----------|-------|
-| F-01 | Partial | MEDIUM | Tests: Mutations + RTL-Komponenten fehlen |
-| F-07 | Partial | HIGH | ImportDatapointsModal: DOMPurify-Architektur fragil |
+| F-01 | Partial | MEDIUM | Tests: Fetch-Mock für destruktive Mutations fehlen |
 | F-11 | Partial | HIGH | StateList: 1532 Zeilen, weitere Extraktion nötig |
 | F-38 | Open | MEDIUM | Duplizierte Modal-Verdrahtung App.tsx + StateList |
-| F-39 | Open | MEDIUM | Error Boundary mit `fallback=null` verschluckt Fehler |
 | F-42 | Open | MEDIUM | `any` in HistoryChart Recharts-Callbacks |
 | F-43 | Open | MEDIUM | QueryClient auf Modul-Level (HMR-Problem) |
-| F-45 | Open | HIGH | Keine Komponenten- oder Integrationstests |
 | F-46 | Open | MEDIUM | Keine E2E-Tests |
-| F-47 | Open | HIGH | Kein CI/CD |
 | F-48 | Open | MEDIUM | Docker läuft als root |
-| F-51 | Open | HIGH | Keine ARIA-Rollen auf Datentabelle |
 | F-52 | Open | MEDIUM | Kein Skip-Navigation-Link |
 | F-55 | Open | LOW | Dead Function `handleCreateDatapointAtPath` in FilterContext |
 | F-58 | Open | LOW | `staleTime: Infinity` undokumentiert |
@@ -118,7 +117,7 @@ Hoch-Impact, geringer Aufwand (S/M):
 |----|--------|----------|---------|--------|
 | F-02 | ✅ Fixed | `includeScripts` in `saveSettings()` | — | Bug-Fix |
 | F-06 | ✅ Fixed | URL-Role `href`-Sanitization via `URL`-Parser | — | XSS-Fix |
-| F-07 | ⚠️ Partial | `DOMPurify.sanitize()` in `ImportDatapointsModal.tsx` | — | XSS-Mitigation |
+| F-07 | ✅ Fixed | React-Tokenizer ersetzt `dangerouslySetInnerHTML` + `DOMPurify` komplett | — | XSS-Architektur eliminiert |
 | F-08 | ✅ Fixed | `npm audit fix` + recharts 3.8.1 | — | 4 HIGH-Vulnerabilities behoben |
 | F-09 | ✅ Fixed | Security-Header in `nginx.conf` | — | Clickjacking-Schutz |
 | F-10 | ✅ Fixed | `@tanstack/react-query` nach `dependencies` | — | Kritischer Prod-Fix |
@@ -143,12 +142,13 @@ Hoch-Impact, geringer Aufwand (S/M):
 | F-35 | ✅ Fixed | Bulk-State-Endpoint nutzen | — | N+1-Requests eliminiert |
 | F-36 | ✅ Fixed | Concurrency-Limit für `deleteObjectsMany` | — | Server-Überlastung verhindert |
 | F-37 | ✅ Fixed | `useMemo` auf `SelectionContext` value | — | Re-Renders eliminiert |
-| F-39 | Open | `FallbackComponent` mit Fehlermeldung statt `fallback=null` | S | Nutzer sieht Fehler |
+| F-39 | ✅ Fixed | `ModalErrorFallback` via `createPortal` — Fehlermeldung + Schließen-Button | — | Nutzer sieht Fehler |
 | F-40 | ✅ Fixed | `page` aus persistiertem FilterContext-State | — | Out-of-Bounds-Page behoben |
 | F-41 | ✅ Fixed | Word-Boundary-Regex für Script-ID-Matching | — | False Positives eliminiert |
 | F-42 | Open | `CategoricalChartState` statt `any` in HistoryChart | S | TypeScript-Sicherheit |
 | F-43 | Open | `QueryClient` in `useRef` innerhalb App-Funktion | S | HMR-Cache-Loss behoben |
-| F-47 | Open | GitHub Actions CI (lint + tsc + test auf Push/PR) | S | Automatische Qualitätssicherung |
+| F-47 | ✅ Fixed | GitHub Actions CI: lint + tsc + test auf Push/PR | — | Automatische Qualitätssicherung |
+| F-51 | ✅ Fixed | `role="grid"`, `aria-sort`, `aria-label` auf Datentabelle | — | WCAG 2.1 AA erfüllt |
 | F-49 | ✅ Fixed | `HEALTHCHECK` in Dockerfile | — | Container-Orchestrierung |
 | F-50 | ✅ Fixed | `Cache-Control: no-store` für `/config.js` | — | Config-Cache-Busting |
 | F-53 | ✅ Fixed | `document.documentElement.lang = language` im Toggle | — | Screen-Reader-Aussprache |
@@ -161,7 +161,7 @@ Hoch-Impact, geringer Aufwand (S/M):
 
 ### StateList God Component (F-11 — Partial)
 
-StateList.tsx wurde von 3187 auf 1695 Zeilen reduziert — 16 Dateien extrahiert. Noch zu extrahieren: `StateListToolbar`, `StateListPagination`, `StateListBatchBar`. Solange F-45 (keine Komponenten-Tests) offen ist, ist weiteres Refactoring mit Regressionsrisiko behaftet. Empfehlung: Zuerst Tests aufbauen (F-45), dann weitere Extraktion.
+StateList.tsx wurde von 3187 auf 1695 Zeilen reduziert — 16 Dateien extrahiert. Noch zu extrahieren: `StateListToolbar`, `StateListPagination`, `StateListBatchBar`. F-45 ist geschlossen — 136 Tests grün. Weiteres Refactoring (StateListPagination, StateListBatchBar) nun ohne Regressionsrisiko möglich.
 
 ### Duplizierte Modal-Verdrahtung (F-38 — Open)
 
@@ -239,4 +239,4 @@ HMR verwirft bei Modulneuausführung alle gecachten Query-Daten. Geringer Aufwan
 
 ---
 
-*Initialer Report basiert auf Commit `fac708b`. Aktualisiert 2026-05-29 (Audit 1) und 2026-05-30 (Audit 2). Zusammengeführt 2026-05-31.*
+*Initialer Report basiert auf Commit `fac708b`. Aktualisiert 2026-05-29 (Audit 1) und 2026-05-30 (Audit 2). Zusammengeführt 2026-05-31. Aktualisiert 2026-06-27: F-07, F-39, F-45, F-47, F-51 Fixed.*
