@@ -214,16 +214,36 @@ All data columns (except + and Delete) can be toggled via the **column picker dr
 
 #### Toolbar
 
-- **+ New** (left): opens the new datapoint form; ID pre-filled from the current search pattern
-- **Export** (dropdown): exports currently filtered datapoints as **JSON file**, **CSV file**, or **copies JSON to clipboard**
-- **Import**: opens ImportDatapointsModal to import datapoints from a JSON file
-- **Enums**: opens the Enum Manager modal to manage rooms and functions
-- **Statistics**: opens the TreeStatsModal — namespace-level statistics table (total objects, states, structure nodes, history-enabled, smart, aliases, scripts) with subtree delete and namespace navigation
-- **Script Index**: rebuilds and shows the script-usage index — which datapoint IDs are referenced by `javascript.0` scripts; cached in `localStorage` for 1 h
-- **Optimize**: opens OptimizeModal — scans datapoints for missing metadata (room, function, role, name, description, unit, min/max, type) and allows bulk-fixing them inline with batch controls
-- **Alias Replace button** (Link icon): appears when at least one checked row has an ID starting with `alias.`; opens the Find & Replace in Alias Targets modal pre-filled with the target of the first selected alias
-- **Count display**: centered — shows total number of filtered datapoints
-- **Stretch 100%**, **Clear filters**, **Reset settings**, **Column picker**: right-aligned
+Left side (action buttons):
+
+| Button | Icon | Description |
+|--------|------|-------------|
+| **New** | `Plus` ➕ | Opens dropdown: **New datapoint** (`Plus`) or **New alias** (`Link2`); ID pre-filled from current search pattern |
+| **Export** | `Download` ⬇️ | Dropdown: export filtered datapoints as **JSON file**, **CSV file**, or **JSON to clipboard** |
+| **Import** | `Upload` ⬆️ | Opens ImportDatapointsModal to import datapoints from a JSON file |
+| **Enums** | `Tag` 🏷️ | Opens the Enum Manager modal to manage rooms and functions |
+| **Statistics** | `BarChart2` 📊 | Opens TreeStatsModal — namespace-level statistics table (total objects, states, structure nodes, history-enabled, smart, aliases, scripts) with subtree delete and namespace navigation |
+| **Script Index** | `RotateCcw` 🔄 | Rebuilds and shows the script-usage index — which datapoint IDs are referenced by `javascript.0` scripts; cached in `localStorage` for 1 h |
+| **Optimize** | `Wand2` 🪄 | Opens OptimizeModal — scans datapoints for missing metadata (room, function, role, name, description, unit, min/max, type) and allows bulk-fixing them inline with batch controls |
+| **Alias Replace** | `Link2` 🔗 | Appears when at least one checked row starts with `alias.`; opens Find & Replace in Alias Targets modal pre-filled with the first selected alias target |
+| **Auto Alias** | `Link2` 🔗 | Auto-creates aliases for all child states of the current device/channel path (requires tree filter or non-glob ID filter) |
+| **History** | `History` 🕓 | Opens HistoryModal for 1–2 checked datapoints with history (disabled otherwise) |
+| **Delete N** | `Trash2` 🗑️ | Appears when rows are checked; deletes all selected datapoints after confirmation |
+
+Center: filtered datapoint count.
+
+Right side (view controls):
+
+| Button | Icon | Description |
+|--------|------|-------------|
+| **Show description** | `AlignLeft` | Toggle `common.desc` below name in the Name column |
+| **Hide alias sub-rows** | `EyeOff` | Toggle alias source/target sub-rows |
+| **Group / Flat view** | `FolderOpen` / `List` | Toggle grouped-by-path vs. flat paginated view |
+| **Shorten paths** | `Indent` | Toggle abbreviated group headers (only visible in grouped mode) |
+| **Stretch 100%** | `Maximize2` | Expand all columns to fill container width |
+| **Reset settings** | `RotateCcw` | Reset all column widths and settings from `localStorage` |
+| **Compact view** | `LayoutList` | Toggle compact row density |
+| **Column picker** | dropdown | Show/hide individual table columns |
 
 #### Batch Editing
 
