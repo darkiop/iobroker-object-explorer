@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 
 /** Subset of the recharts chart-event state object used in pan/click handlers. */
 type ChartMouseState = {
-  activeTooltipIndex?: number;
+  activeTooltipIndex?: number | null;
   activePayload?: ReadonlyArray<{ payload?: unknown }>;
 };
 

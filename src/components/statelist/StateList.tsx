@@ -13,7 +13,6 @@ import { copyText, copyToClipboard } from '../../utils/clipboard';
 import { formatValue, formatTimestamp } from '../../utils/format';
 import { ColoredId } from '../../utils/coloredId';
 import { getTypeColor } from '../../utils/typeColor';
-import { getRoleColor } from '../../utils/roleColor';
 import { useToast } from '../../context/ToastContext';
 import { usePanelContext } from '../../context/PanelContext';
 import { useFilterContext } from '../../context/FilterContext';

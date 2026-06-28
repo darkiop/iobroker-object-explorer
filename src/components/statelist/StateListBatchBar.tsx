@@ -7,7 +7,7 @@ interface EnumEntry { id: string; name: string }
 
 interface StateListBatchBarProps {
   isEn: boolean;
-  language: string;
+  language: 'en' | 'de';
   checkedIds: Set<string>;
   roles: string[];
   units: string[];

@@ -14,8 +14,8 @@ vi.mock('../api/iobroker', async (importOriginal) => {
 const { setState } = await import('../api/iobroker')
 const mockSetState = setState as ReturnType<typeof vi.fn>
 
-const INITIAL_STATE: IoBrokerState = { val: 42, ts: 1000, ack: true }
 const STATE_ID = 'test.0.x'
+const INITIAL_STATE: IoBrokerState = { val: 42, ts: 1000, ack: true, q: 0, from: '', user: '', lc: 1000, id: STATE_ID }
 
 function makeWrapper(qc: QueryClient) {
   return function Wrapper({ children }: { children: React.ReactNode }) {

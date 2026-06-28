@@ -233,9 +233,9 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
     const val = smartNameDraftToValue(smartNameDraft);
     const newCommon: IoBrokerObjectCommon = { ...obj.common };
     if (val === undefined) {
-      delete (newCommon as Record<string, unknown>)['smartName'];
+      delete (newCommon as unknown as Record<string, unknown>)['smartName'];
     } else {
-      (newCommon as Record<string, unknown>)['smartName'] = val;
+      (newCommon as unknown as Record<string, unknown>)['smartName'] = val;
     }
     putObject.mutate({ id, obj: { ...obj, common: newCommon } }, {
       onSuccess: onClose,
