@@ -218,17 +218,17 @@ Left side (action buttons):
 
 | Button | Icon | Description |
 |--------|------|-------------|
-| **New** | <img src="https://unpkg.com/lucide-static@latest/icons/plus.svg" width="16"> | Opens dropdown: **New datapoint** (<img src="https://unpkg.com/lucide-static@latest/icons/plus.svg" width="14">) or **New alias** (<img src="https://unpkg.com/lucide-static@latest/icons/link-2.svg" width="14">); ID pre-filled from current search pattern |
-| **Export** | <img src="https://unpkg.com/lucide-static@latest/icons/download.svg" width="16"> | Dropdown: export filtered datapoints as **JSON file**, **CSV file**, or **JSON to clipboard** |
-| **Import** | <img src="https://unpkg.com/lucide-static@latest/icons/upload.svg" width="16"> | Opens ImportDatapointsModal to import datapoints from a JSON file |
-| **Enums** | <img src="https://unpkg.com/lucide-static@latest/icons/tag.svg" width="16"> | Opens the Enum Manager modal to manage rooms and functions |
-| **Statistics** | <img src="https://unpkg.com/lucide-static@latest/icons/bar-chart-2.svg" width="16"> | Opens TreeStatsModal — namespace-level statistics table (total objects, states, structure nodes, history-enabled, smart, aliases, scripts) with subtree delete and namespace navigation |
-| **Script Index** | <img src="https://unpkg.com/lucide-static@latest/icons/rotate-ccw.svg" width="16"> | Rebuilds and shows the script-usage index — which datapoint IDs are referenced by `javascript.0` scripts; cached in `localStorage` for 1 h |
-| **Optimize** | <img src="https://unpkg.com/lucide-static@latest/icons/wand-2.svg" width="16"> | Opens OptimizeModal — scans datapoints for missing metadata (room, function, role, name, description, unit, min/max, type) and allows bulk-fixing them inline with batch controls |
-| **Alias Replace** | <img src="https://unpkg.com/lucide-static@latest/icons/link-2.svg" width="16"> | Appears when at least one checked row starts with `alias.`; opens Find & Replace in Alias Targets modal pre-filled with the first selected alias target |
-| **Auto Alias** | <img src="https://unpkg.com/lucide-static@latest/icons/link-2.svg" width="16"> | Auto-creates aliases for all child states of the current device/channel path (requires tree filter or non-glob ID filter) |
-| **History** | <img src="https://unpkg.com/lucide-static@latest/icons/history.svg" width="16"> | Opens HistoryModal for 1–2 checked datapoints with history (disabled otherwise) |
-| **Delete N** | <img src="https://unpkg.com/lucide-static@latest/icons/trash-2.svg" width="16"> | Appears when rows are checked; deletes all selected datapoints after confirmation |
+| **New** | <img src="https://api.iconify.design/lucide:plus.svg?color=%236b7280" width="16"> | Opens dropdown: **New datapoint** (<img src="https://api.iconify.design/lucide:plus.svg?color=%236b7280" width="14">) or **New alias** (<img src="https://api.iconify.design/lucide:link-2.svg?color=%236b7280" width="14">); ID pre-filled from current search pattern |
+| **Export** | <img src="https://api.iconify.design/lucide:download.svg?color=%236b7280" width="16"> | Dropdown: export filtered datapoints as **JSON file**, **CSV file**, or **JSON to clipboard** |
+| **Import** | <img src="https://api.iconify.design/lucide:upload.svg?color=%236b7280" width="16"> | Opens ImportDatapointsModal to import datapoints from a JSON file |
+| **Enums** | <img src="https://api.iconify.design/lucide:tag.svg?color=%236b7280" width="16"> | Opens the Enum Manager modal to manage rooms and functions |
+| **Statistics** | <img src="https://api.iconify.design/lucide:bar-chart-2.svg?color=%236b7280" width="16"> | Opens TreeStatsModal — namespace-level statistics table (total objects, states, structure nodes, history-enabled, smart, aliases, scripts) with subtree delete and namespace navigation |
+| **Script Index** | <img src="https://api.iconify.design/lucide:rotate-ccw.svg?color=%236b7280" width="16"> | Rebuilds and shows the script-usage index — which datapoint IDs are referenced by `javascript.0` scripts; cached in `localStorage` for 1 h |
+| **Optimize** | <img src="https://api.iconify.design/lucide:wand-2.svg?color=%236b7280" width="16"> | Opens OptimizeModal — scans datapoints for missing metadata (room, function, role, name, description, unit, min/max, type) and allows bulk-fixing them inline with batch controls |
+| **Alias Replace** | <img src="https://api.iconify.design/lucide:link-2.svg?color=%236b7280" width="16"> | Appears when at least one checked row starts with `alias.`; opens Find & Replace in Alias Targets modal pre-filled with the first selected alias target |
+| **Auto Alias** | <img src="https://api.iconify.design/lucide:link-2.svg?color=%236b7280" width="16"> | Auto-creates aliases for all child states of the current device/channel path (requires tree filter or non-glob ID filter) |
+| **History** | <img src="https://api.iconify.design/lucide:history.svg?color=%236b7280" width="16"> | Opens HistoryModal for 1–2 checked datapoints with history (disabled otherwise) |
+| **Delete N** | <img src="https://api.iconify.design/lucide:trash-2.svg?color=%236b7280" width="16"> | Appears when rows are checked; deletes all selected datapoints after confirmation |
 
 Center: filtered datapoint count.
 
@@ -236,13 +236,13 @@ Right side (view controls):
 
 | Button | Icon | Description |
 |--------|------|-------------|
-| **Show description** | <img src="https://unpkg.com/lucide-static@latest/icons/align-left.svg" width="16"> | Toggle `common.desc` below name in the Name column |
-| **Hide alias sub-rows** | <img src="https://unpkg.com/lucide-static@latest/icons/eye-off.svg" width="16"> | Toggle alias source/target sub-rows |
-| **Group / Flat view** | <img src="https://unpkg.com/lucide-static@latest/icons/folder-open.svg" width="16"> / <img src="https://unpkg.com/lucide-static@latest/icons/list.svg" width="16"> | Toggle grouped-by-path vs. flat paginated view |
-| **Shorten paths** | <img src="https://unpkg.com/lucide-static@latest/icons/indent.svg" width="16"> | Toggle abbreviated group headers (only visible in grouped mode) |
-| **Stretch 100%** | <img src="https://unpkg.com/lucide-static@latest/icons/maximize-2.svg" width="16"> | Expand all columns to fill container width |
-| **Reset settings** | <img src="https://unpkg.com/lucide-static@latest/icons/rotate-ccw.svg" width="16"> | Reset all column widths and settings from `localStorage` |
-| **Compact view** | <img src="https://unpkg.com/lucide-static@latest/icons/layout-list.svg" width="16"> | Toggle compact row density |
+| **Show description** | <img src="https://api.iconify.design/lucide:align-left.svg?color=%236b7280" width="16"> | Toggle `common.desc` below name in the Name column |
+| **Hide alias sub-rows** | <img src="https://api.iconify.design/lucide:eye-off.svg?color=%236b7280" width="16"> | Toggle alias source/target sub-rows |
+| **Group / Flat view** | <img src="https://api.iconify.design/lucide:folder-open.svg?color=%236b7280" width="16"> / <img src="https://api.iconify.design/lucide:list.svg?color=%236b7280" width="16"> | Toggle grouped-by-path vs. flat paginated view |
+| **Shorten paths** | <img src="https://api.iconify.design/lucide:indent.svg?color=%236b7280" width="16"> | Toggle abbreviated group headers (only visible in grouped mode) |
+| **Stretch 100%** | <img src="https://api.iconify.design/lucide:maximize-2.svg?color=%236b7280" width="16"> | Expand all columns to fill container width |
+| **Reset settings** | <img src="https://api.iconify.design/lucide:rotate-ccw.svg?color=%236b7280" width="16"> | Reset all column widths and settings from `localStorage` |
+| **Compact view** | <img src="https://api.iconify.design/lucide:layout-list.svg?color=%236b7280" width="16"> | Toggle compact row density |
 | **Column picker** | dropdown | Show/hide individual table columns |
 
 #### Batch Editing
