@@ -177,6 +177,12 @@ export default function Layout({ sidebar, children, apiConnected = true, realtim
 
   return (
     <>
+    <a
+      href="#main-content"
+      className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[9999] focus:px-4 focus:py-2 focus:rounded focus:bg-blue-600 focus:text-white focus:text-sm focus:font-medium focus:shadow-lg"
+    >
+      {language === 'en' ? 'Skip to main content' : 'Zum Hauptinhalt springen'}
+    </a>
     <div className="h-screen flex flex-col bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100">
       {/* Header */}
       <header className="relative flex items-center justify-between px-4 py-3 bg-gray-100 border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700 shrink-0">
@@ -379,7 +385,7 @@ export default function Layout({ sidebar, children, apiConnected = true, realtim
         )}
 
         {/* Main Content */}
-        <main className="flex-1 overflow-hidden flex flex-col bg-white dark:bg-gray-900">
+        <main id="main-content" className="flex-1 overflow-hidden flex flex-col bg-white dark:bg-gray-900">
           <div className="flex-1 overflow-hidden p-0 flex flex-col">{children}</div>
         </main>
       </div>
