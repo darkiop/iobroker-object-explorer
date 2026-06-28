@@ -819,7 +819,7 @@ function AppContent() {
           </div>
         )}
 
-        <ErrorBoundary fallback={null} onError={(e) => console.error('Modal error:', e)}>
+        <ErrorBoundary FallbackComponent={ModalErrorFallback} onError={(e) => console.error('Modal error:', e)}>
         {selectedId && allObjects[selectedId] && (
           <ObjectEditModal
             id={selectedId}
@@ -1039,6 +1039,28 @@ function AppContent() {
       document.body
     )}
     </>
+  );
+}
+
+function ModalErrorFallback({ error, resetErrorBoundary }: { error: unknown; resetErrorBoundary: () => void }) {
+  const message = error instanceof Error ? error.message : String(error);
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-red-300 dark:border-red-700 p-6 max-w-md w-full flex flex-col gap-4">
+        <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+          <AlertTriangle size={18} />
+          <h2 className="text-sm font-semibold">Modal-Fehler</h2>
+        </div>
+        <p className="text-xs text-gray-500 dark:text-gray-400 font-mono break-all">{message}</p>
+        <button
+          onClick={resetErrorBoundary}
+          className="self-end px-4 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700"
+        >
+          Schließen
+        </button>
+      </div>
+    </div>,
+    document.body
   );
 }
 
