@@ -270,12 +270,12 @@ export default function SettingsModal({ namespaceSuggestions = [] }: { namespace
                   <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Theme' : 'Farbschema'}</span>
                   <div className="flex gap-2">
                     {([
+                      { value: 'catppuccin-mocha',     labelEn: 'Catppuccin Mocha',     labelDe: 'Catppuccin Mocha',     preview: 'bg-[#1e1e2e] border-[#45475a] text-[#cdd6f4]' },
+                      { value: 'catppuccin-macchiato', labelEn: 'Catppuccin Macchiato', labelDe: 'Catppuccin Macchiato', preview: 'bg-[#24273a] border-[#494d64] text-[#cad3f5]' },
+                      { value: 'catppuccin-frappe',    labelEn: 'Catppuccin Frappé',    labelDe: 'Catppuccin Frappé',    preview: 'bg-[#303446] border-[#51576d] text-[#c6d0f5]' },
                       { value: 'light',                labelEn: 'Light',                labelDe: 'Hell',                 preview: 'bg-white border-gray-300 text-gray-800' },
                       { value: 'dark',                 labelEn: 'Dark',                 labelDe: 'Dunkel',               preview: 'bg-gray-800 border-gray-600 text-gray-100' },
                       { value: 'abyss',                labelEn: 'Abyss',                labelDe: 'Abyss',                preview: 'bg-black border-[#2a2a2a] text-[#f0f0f0]' },
-                      { value: 'catppuccin-frappe',    labelEn: 'Catppuccin Frappé',    labelDe: 'Catppuccin Frappé',    preview: 'bg-[#303446] border-[#51576d] text-[#c6d0f5]' },
-                      { value: 'catppuccin-macchiato', labelEn: 'Catppuccin Macchiato', labelDe: 'Catppuccin Macchiato', preview: 'bg-[#24273a] border-[#494d64] text-[#cad3f5]' },
-                      { value: 'catppuccin-mocha',     labelEn: 'Catppuccin Mocha',     labelDe: 'Catppuccin Mocha',     preview: 'bg-[#1e1e2e] border-[#45475a] text-[#cdd6f4]' },
                     ] as { value: Theme; labelEn: string; labelDe: string; preview: string }[]).map(({ value, labelEn, labelDe, preview }) => (
                       <button
                         key={value}
