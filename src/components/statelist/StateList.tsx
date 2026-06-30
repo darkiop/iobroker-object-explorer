@@ -626,28 +626,34 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
 
   function handleExport(format: 'json' | 'csv') {
     const allIds = exportIds ?? ids;
-    const rows = allIds.map((id) => {
-      const obj = objects[id];
-      return {
-        id,
-        name: obj?.common?.name ? (typeof obj.common.name === 'string' ? obj.common.name : (obj.common.name.de || obj.common.name.en || '')) : '',
-        type: obj?.common?.type || obj?.type || '',
-        role: obj?.common?.role || '',
-        unit: obj?.common?.unit || '',
-        room: roomMap[id] || '',
-        function: functionMap[id] || '',
-        read: obj?.common?.read !== false ? 'true' : 'false',
-        write: obj?.common?.write === true ? 'true' : 'false',
-      };
-    });
     let content: string;
     let mime: string;
     let ext: string;
     if (format === 'json') {
-      content = JSON.stringify(rows, null, 2);
+      const result: Record<string, object> = {};
+      for (const id of allIds) {
+        const obj = objects[id] ?? { _id: id };
+        const { enums: _enums, ...rest } = obj as unknown as Record<string, unknown>;
+        result[id] = rest;
+      }
+      content = JSON.stringify(result, null, 2);
       mime = 'application/json';
       ext = 'json';
     } else {
+      const rows = allIds.map((id) => {
+        const obj = objects[id];
+        return {
+          id,
+          name: obj?.common?.name ? (typeof obj.common.name === 'string' ? obj.common.name : (obj.common.name.de || obj.common.name.en || '')) : '',
+          type: obj?.common?.type || obj?.type || '',
+          role: obj?.common?.role || '',
+          unit: obj?.common?.unit || '',
+          room: roomMap[id] || '',
+          function: functionMap[id] || '',
+          read: obj?.common?.read !== false ? 'true' : 'false',
+          write: obj?.common?.write === true ? 'true' : 'false',
+        };
+      });
       const headers = ['id', 'name', 'type', 'role', 'unit', 'room', 'function', 'read', 'write'];
       const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
       content = [headers.join(';'), ...rows.map((r) => headers.map((h) => escape(String(r[h as keyof typeof r]))).join(';'))].join('\r\n');
@@ -665,21 +671,13 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
 
   function handleCopyJson() {
     const allIds = checkedIds.size > 0 ? [...checkedIds] : (exportIds ?? ids);
-    const rows = allIds.map((id) => {
-      const obj = objects[id];
-      return {
-        id,
-        name: obj?.common?.name ? (typeof obj.common.name === 'string' ? obj.common.name : (obj.common.name.de || obj.common.name.en || '')) : '',
-        type: obj?.common?.type || obj?.type || '',
-        role: obj?.common?.role || '',
-        unit: obj?.common?.unit || '',
-        room: roomMap[id] || '',
-        function: functionMap[id] || '',
-        read: obj?.common?.read !== false ? 'true' : 'false',
-        write: obj?.common?.write === true ? 'true' : 'false',
-      };
-    });
-    copyText(JSON.stringify(rows, null, 2));
+    const result: Record<string, object> = {};
+    for (const id of allIds) {
+      const obj = objects[id] ?? { _id: id };
+      const { enums: _enums, ...rest } = obj as unknown as Record<string, unknown>;
+      result[id] = rest;
+    }
+    copyText(JSON.stringify(result, null, 2));
   }
 
   function exportDatapointsToJson(idsToExport: string[]) {
