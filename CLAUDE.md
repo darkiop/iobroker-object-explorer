@@ -89,6 +89,7 @@ At runtime `window.__CONFIG__.ioBrokerHost` overrides the proxy label in the hea
 - **`includeIdPrefixes`**: when non-empty, only fetches objects whose IDs start with one of the configured prefixes — reduces payload for large ioBroker installs
 - **`showUnitInValue`**: when on, appends `common.unit` to the value in the Value column (useful when Unit column is hidden)
 - **`dragDropEnabled`**: drag a row onto an `alias.0.*` target in the other pane to open CreateAliasModal pre-filled; off by default (avoids click latency from `draggable` attribute); only active in dual-pane view
+- **Virtual folder nodes**: separator rows in StateList whose `item.prefix` has no entry in `allObjects` and depth > 2 segments are styled italic + 40%/50% opacity with a tooltip. `VirtualFoldersModal` enumerates all such paths by walking every object ID's intermediate segments. Depth ≤ 2 (e.g. `alias`, `alias.0`) are excluded from both the styling and the modal.
 
 ### ioBroker Concepts Used
 - **Alias objects** (`alias.0.*`): `common.alias.id` points to source; `common.alias.read/write` are optional JS conversion formulas. Reverse map (`Map<targetId, aliasId[]>`) built from all objects for the alias column in the table.
@@ -129,6 +130,7 @@ This ensures the tree always shows the full namespace, independent of the search
 | `NewDatapointModal` | `modals/NewDatapointModal.tsx` | Creates a new datapoint |
 | `ImportDatapointsModal` | `modals/ImportDatapointsModal.tsx` | Import datapoints from JSON file |
 | `OptimizeModal` | `modals/OptimizeModal.tsx` | Metadata quality scanner with inline batch fix controls |
+| `VirtualFoldersModal` | `modals/VirtualFoldersModal.tsx` | Lists intermediate folder paths that have no real ioBroker object; filter input (default `alias.0.`), row filter button sets table ID filter |
 | `TreeStatsModal` | `modals/TreeStatsModal.tsx` | Namespace statistics table with subtree delete and script index |
 | `EnumManagerModal` | `modals/EnumManagerModal.tsx` | Room and function enum manager |
 | `ValueEditModal` | `modals/ValueEditModal.tsx` | Standalone value edit modal |

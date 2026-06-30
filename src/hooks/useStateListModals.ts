@@ -28,6 +28,7 @@ export function useStateListModals() {
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; id: string } | null>(null);
   const [sepCtxMenu, setSepCtxMenu] = useState<{ x: number; y: number; prefix: string } | null>(null);
   const [checkedSepPrefix, setCheckedSepPrefix] = useState<string | null>(null);
+  const [virtualFoldersOpen, setVirtualFoldersOpen] = useState(false);
 
   useEffect(() => {
     if (!exportMenuOpen) return;
@@ -78,5 +79,6 @@ export function useStateListModals() {
     ctxMenu, setCtxMenu,
     sepCtxMenu, setSepCtxMenu,
     checkedSepPrefix, setCheckedSepPrefix,
+    virtualFoldersOpen, setVirtualFoldersOpen,
   };
 }

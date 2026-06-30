@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { createPortal } from 'react-dom';
-import { X, CircleHelp, Search, Keyboard, MousePointerClick, CheckSquare, ArrowLeftRight, History, Mic2, Code2, Wand2, ChevronDown, BarChart2, Columns2, TrendingUp, PanelLeft, FolderTree, Table2, SlidersHorizontal, FilePenLine, Settings, LineChart, Wifi, Filter, Lock, Bookmark, Wrench, Move } from 'lucide-react';
+import { X, CircleHelp, Search, Keyboard, MousePointerClick, CheckSquare, ArrowLeftRight, History, Mic2, Code2, Wand2, ChevronDown, BarChart2, Columns2, TrendingUp, PanelLeft, FolderTree, Table2, SlidersHorizontal, FilePenLine, Settings, LineChart, Wifi, Filter, Lock, Bookmark, Wrench, Move, FolderX } from 'lucide-react';
 
 interface Props {
   onClose: () => void;
@@ -60,6 +60,7 @@ const SECTION_KEYWORDS: Record<string, string> = {
   dualpane: 'dual-pane dual pane zwei-panel-ansicht zwei panel ansicht side by side nebeneinander freecommander active aktives tab independent unabhängig cross-panel open in other panel column reset filters hidden column tooltip',
   settings: 'settings einstellungen connection verbindung rest api host port admin swagger socket transport realtime display anzeige theme language date format datum font schrift rows page cache ttl columns spalten filters draft save speichern',
   optimize: 'optimize optimieren metadata metadaten missing fehlend quality room function role name description unit min max type batch fix scan',
+  virtualfolders: 'virtual folder virtueller ordner ghost synthetic path pfad intermediate zwischenpfad no object kein objekt alias missing fehlend filter',
   history: 'history chart verlauf diagramm sql time range zeitraum preset aggregation average min max line area bar multi series vergleich compare period periode week month zoom pan stats badge export png delete löschen',
   connection: 'connection live updates verbindung echtzeit realtime long polling socket.io transport host badge refresh fallback 30 seconds sekunden no auth authentifizierung login token warning warnung trusted network',
   keys: 'keyboard shortcuts tastenkürzel keys tasten ctrl cmd strg esc tab enter arrow pfeil up down left right sidebar search settings help row page panel column filter',
@@ -350,8 +351,8 @@ export default function HelpModal({ onClose, language = 'en' }: Props) {
           >
             <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
               {isEn
-                ? 'The table toolbar offers: + New (create datapoint, ID pre-filled from the search pattern), Export (filtered datapoints as JSON file, CSV file, or JSON to clipboard), Import (load datapoints from a JSON file), Enums (manage room/function enums), Statistics (namespace-level overview with subtree delete), Script Index (rebuild which datapoints are referenced by javascript.0 scripts), and Optimize (see its own section). When a checked row is an alias, an Alias-Replace button appears for find & replace in alias targets.'
-                : 'Die Tabellen-Werkzeugleiste bietet: + Neu (Datenpunkt anlegen, ID aus dem Suchmuster vorbelegt), Export (gefilterte Datenpunkte als JSON-Datei, CSV-Datei oder JSON in die Zwischenablage), Import (Datenpunkte aus JSON-Datei laden), Enums (Raum-/Funktions-Enums verwalten), Statistik (Namensraum-Übersicht mit Teilbaum-Löschung), Skript-Index (neu aufbauen, welche Datenpunkte von javascript.0-Skripten referenziert werden) und Optimieren (siehe eigener Abschnitt). Ist eine markierte Zeile ein Alias, erscheint ein Alias-Ersetzen-Button für Suchen & Ersetzen in Alias-Zielen.'}
+                ? 'The table toolbar offers: + New (create datapoint, ID pre-filled from the search pattern), Export (filtered datapoints as JSON file, CSV file, or JSON to clipboard), Import (load datapoints from a JSON file), Enums (manage room/function enums), Statistics (namespace-level overview with subtree delete), Script Index (rebuild which datapoints are referenced by javascript.0 scripts), Optimize (see its own section), and Virtual Folders (find folder paths that have no real ioBroker object). When a checked row is an alias, an Alias-Replace button appears for find & replace in alias targets.'
+                : 'Die Tabellen-Werkzeugleiste bietet: + Neu (Datenpunkt anlegen, ID aus dem Suchmuster vorbelegt), Export (gefilterte Datenpunkte als JSON-Datei, CSV-Datei oder JSON in die Zwischenablage), Import (Datenpunkte aus JSON-Datei laden), Enums (Raum-/Funktions-Enums verwalten), Statistik (Namensraum-Übersicht mit Teilbaum-Löschung), Skript-Index (neu aufbauen, welche Datenpunkte von javascript.0-Skripten referenziert werden), Optimieren (siehe eigener Abschnitt) und Virtuelle Ordner (Ordnerpfade ohne echtes ioBroker-Objekt finden). Ist eine markierte Zeile ein Alias, erscheint ein Alias-Ersetzen-Button für Suchen & Ersetzen in Alias-Zielen.'}
             </p>
           </AccordionItem>
 
@@ -501,6 +502,23 @@ export default function HelpModal({ onClose, language = 'en' }: Props) {
               {isEn
                 ? 'The Optimize toolbar button analyzes datapoints under a chosen path (or your current table selection) for missing metadata: room, function, role, name, description, unit, min/max, type, and SmartName. Results are sorted by number of issues. Check rows to batch-fix room, function, role, or unit for all selected at once.'
                 : 'Der Optimize-Button in der Toolbar analysiert Datenpunkte unter einem gewählten Pfad (oder der aktuellen Tabellenauswahl) auf fehlende Metadaten: Raum, Funktion, Rolle, Name, Beschreibung, Einheit, Min/Max, Typ und SmartName. Ergebnisse werden nach Anzahl der Probleme sortiert. Zeilen anwählen, um Raum, Funktion, Rolle oder Einheit für alle Markierten auf einmal zu setzen.'}
+            </p>
+          </AccordionItem>
+
+          {/* Virtual Folders */}
+          <AccordionItem
+            id="virtualfolders"
+            open={openKey === 'virtualfolders'}
+            onToggle={() => toggle('virtualfolders')}
+            match={matches('virtualfolders')}
+            searching={searching}
+            icon={<FolderX size={13} />}
+            label={isEn ? 'Virtual Folders' : 'Virtuelle Ordner'}
+          >
+            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+              {isEn
+                ? 'The "Virtual Folders" toolbar button finds folder paths that appear in the table tree but have no real ioBroker object behind them. These synthetic nodes are created automatically whenever a child object\'s ID contains intermediate path segments (e.g. alias.0.beschattung.terrasse exists as a tree node because alias.0.beschattung.terrasse.schliessen exists, but the folder itself has no object). They are shown italic and dimmed in the table. Use the filter input (pre-filled with "alias.0.") to narrow results, then click the filter icon on any row to jump directly to that path in the table.'
+                : 'Der Button "Virtuelle Ordner" in der Toolbar findet Ordnerpfade, die im Tabellenbaum erscheinen, aber kein echtes ioBroker-Objekt besitzen. Diese synthetischen Knoten entstehen automatisch, wenn die ID eines Kind-Objekts Zwischenpfad-Segmente enthält (z.B. existiert alias.0.beschattung.terrasse als Baumknoten, weil alias.0.beschattung.terrasse.schliessen vorhanden ist – der Ordner selbst hat jedoch kein Objekt). In der Tabelle werden sie kursiv und gedimmt dargestellt. Mit dem Filterfeld (vorbelegt mit "alias.0.") lässt sich die Liste einschränken; ein Klick auf das Filter-Icon in einer Zeile setzt den ID-Filter der Tabelle direkt auf diesen Pfad.'}
             </p>
           </AccordionItem>
 

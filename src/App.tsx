@@ -472,6 +472,12 @@ function AppContent() {
     setP2TreeFilter(prefix);
     setP2Page(0);
   }, []);
+  const p2ResetAllFilters = useCallback(() => {
+    setP2Pattern('*');
+    setP2ColFilters({});
+    setP2TreeFilter(null);
+    setP2Page(0);
+  }, [setP2Pattern]);
 
   const panel2PanelCtx: PanelContextValue = {
     colFilters: p2ColFilters,
@@ -482,6 +488,7 @@ function AppContent() {
     sidebarToggleSeq,  // shared — sidebar width change affects both panels
     fulltextEnabled: p2FulltextEnabled,
     handleTreeScope: p2HandleTreeScope,
+    resetAllFilters: p2ResetAllFilters,
   };
 
   // ── Cross-context handlers ───────────────────────────────────────────────

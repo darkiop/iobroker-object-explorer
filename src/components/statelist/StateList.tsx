@@ -7,6 +7,7 @@ import { useStateListModals } from '../../hooks/useStateListModals';
 import { useStateListView } from '../../hooks/useStateListView';
 import StateListToolbar from './StateListToolbar';
 import StateListModals from '../modals/StateListModals';
+import VirtualFoldersModal from '../modals/VirtualFoldersModal';
 import { useAllObjects } from '../../hooks/useStates';
 import type { IoBrokerState, IoBrokerObject } from '../../types/iobroker';
 import { copyText, copyToClipboard } from '../../utils/clipboard';
@@ -67,7 +68,7 @@ import { DEFAULT_COLS, COMPACT_COLS, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MIN_WIDTHS,
 
 
 function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allObjectIds, exportIds, onNavigateTo, onOpenInOtherPanel, forceHideToolbarLabels, visibleColsOverride, onVisibleColsChange, groupByPathOverride, onToggleGroupByPathOverride, historyIds, smartIds, onVisibleIdsChange, dragEnabled = false, onDropAlias }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
-  const { colFilters, handleColFilterChange: onColFilterChange, pattern, treeFilter, handleClearTreeFilter: onClearTreeFilter, sidebarToggleSeq, fulltextEnabled, handleTreeScope } = usePanelContext();
+  const { colFilters, handleColFilterChange: onColFilterChange, pattern, treeFilter, handleClearTreeFilter: onClearTreeFilter, sidebarToggleSeq, fulltextEnabled, handleTreeScope, resetAllFilters } = usePanelContext();
   const { treeSearch } = useFilterContext();
   const { selectedId, setSelectedId: onSelect, setHistoryModalId: _setHistoryModalId, setEnumManagerOpen, setAliasReplaceInitialStr, setEditInitialTab, setAutoAliasDeviceId } = useSelectionContext();
   const { appSettings, expertMode, scriptUsedIds, scriptsFetching, scriptLastUpdated, setScriptUsedIds, setConfirmScriptRefresh, handleToggleGroupByPath: _handleToggleGroupByPath, persistSettings } = useAppSettingsContext();
@@ -129,6 +130,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
     importOpen, setImportOpen,
     optimizeOpen, setOptimizeOpen,
     optimizePath, setOptimizePath,
+    virtualFoldersOpen, setVirtualFoldersOpen,
     historyModalId, setHistoryModalId,
     historyInitialExtra, setHistoryInitialExtra,
     deletingId, setDeletingId,
@@ -154,6 +156,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const [dropHoverPrefix, setDropHoverPrefix] = useState<string | null>(null);
   const [colFiltersDraft, setColFiltersDraft] = useState<Partial<Record<SortKey, string>>>(colFilters);
   const colFilterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const forceExpandAllRef = useRef(false);
   const propagatingRef = useRef(false);
   const showToast = useToast();
   const deleteObject = useDeleteObject();
@@ -444,6 +447,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   allSepPrefixesRef.current = allSepPrefixes;
 
   useEffect(() => {
+    if (forceExpandAllRef.current) { forceExpandAllRef.current = false; setCollapsedPrefixes(new Set()); return; }
     if (!groupByPath || !isFilterActive) { setCollapsedPrefixes(null); return; }
     // Auto-expand depth 0+1, collapse depth >= 2 when a search filter is active.
     // Uses filteredIdsRef so background state refreshes don't re-trigger this.
@@ -838,6 +842,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
         onStats={() => setShowStats(true)}
         onScriptRefresh={() => setConfirmScriptRefresh(true)}
         onOptimize={() => { setOptimizePath(undefined); setOptimizeOpen(true); }}
+        onVirtualFolders={() => setVirtualFoldersOpen(true)}
         onAliasReplace={(str) => onOpenAliasReplace?.(str)}
         onAutoAlias={(target) => setAutoAliasDeviceId(target)}
         onHistoryOpen={(id, extra) => { setHistoryInitialExtra(extra); setHistoryModalId(id); }}
@@ -1181,10 +1186,10 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                           ? <Cpu size={14} className="text-sky-500/80 shrink-0" />
                           : objects[item.prefix]?.type === 'channel'
                             ? <Layers size={14} className="text-indigo-500/80 shrink-0" />
-                            : <FolderOpen size={14} className="text-yellow-500/80 shrink-0" />
+                            : <FolderOpen size={14} className={`shrink-0 ${objects[item.prefix] || item.prefix.split('.').length <= 2 ? 'text-yellow-500/80' : 'text-yellow-500/40'}`} />
                         }
                         {item.prefix
-                          ? <ColoredId id={shortenGroupPaths && item.parentPrefix ? item.prefix.slice(item.parentPrefix.length + 1) : item.prefix} className="text-sm font-mono font-bold" />
+                          ? <span title={!objects[item.prefix] && item.prefix.split('.').length > 2 ? (language === 'en' ? 'Virtual folder (no ioBroker object)' : 'Virtueller Ordner (kein ioBroker-Objekt)') : undefined}><ColoredId id={shortenGroupPaths && item.parentPrefix ? item.prefix.slice(item.parentPrefix.length + 1) : item.prefix} className={`text-sm font-mono font-bold ${!objects[item.prefix] && item.prefix.split('.').length > 2 ? 'opacity-50 italic' : ''}`} /></span>
                           : <span className="text-sm text-gray-400 dark:text-gray-500 font-mono font-bold italic">root</span>
                         }
                         {!_sepNameBeforeType && item.prefix && allObjects[item.prefix]?.common?.name && (() => {
@@ -1502,6 +1507,18 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
       onStatsRequestRefreshScripts={() => setConfirmScriptRefresh(true)}
       showToast={showToast}
     />
+    {virtualFoldersOpen && (
+      <VirtualFoldersModal
+        onClose={() => setVirtualFoldersOpen(false)}
+        language={language as 'en' | 'de'}
+        allObjects={allObjects}
+        onSetFilter={(id) => {
+          forceExpandAllRef.current = true;
+          resetAllFilters();
+          setDraftAndPropagate({ id });
+        }}
+      />
+    )}
 </>
   );
 }

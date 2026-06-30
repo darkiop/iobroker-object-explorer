@@ -504,6 +504,7 @@ export function FilterContextProvider({ children }: { children: ReactNode }) {
     sidebarToggleSeq,
     fulltextEnabled,
     handleTreeScope,
+    resetAllFilters,
   };
 
   return (

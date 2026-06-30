@@ -10,6 +10,7 @@ export interface PanelContextValue {
   sidebarToggleSeq: number;
   fulltextEnabled: boolean;
   handleTreeScope: (prefix: string) => void;
+  resetAllFilters: () => void;
 }
 
 const PanelContext = createContext<PanelContextValue | null>(null);

@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, History, Maximize2, Trash2, Plus, Link2, Download, Wand2, Upload, Tag, BarChart2, RotateCcw, EyeOff, Indent, FolderOpen, List, AlignLeft, LayoutList } from 'lucide-react';
+import { X, History, Maximize2, Trash2, Plus, Link2, Download, Wand2, Upload, Tag, BarChart2, RotateCcw, EyeOff, Indent, FolderOpen, List, AlignLeft, LayoutList, FolderX } from 'lucide-react';
 import { isGlobPattern } from '../../api/iobroker';
 import ColPicker from '../ui/ColPicker';
 import type { SortKey } from './StateListColumns';
@@ -42,6 +42,7 @@ interface StateListToolbarProps {
   onStats: () => void;
   onScriptRefresh: () => void;
   onOptimize: () => void;
+  onVirtualFolders: () => void;
   onAliasReplace: (initialStr: string) => void;
   onAutoAlias: (target: string) => void;
   onHistoryOpen: (primary: string, extra: ExtraSeries[]) => void;
@@ -69,7 +70,7 @@ export default function StateListToolbar({
   newMenuOpen, exportMenuOpen, newMenuRef, exportMenuRef,
   onNewMenuToggle, onNewDatapoint, onNewAlias,
   onExportMenuToggle, onExportCsv, onExportJson, onExportJsonClipboard,
-  onImport, onEnums, onStats, onScriptRefresh, onOptimize,
+  onImport, onEnums, onStats, onScriptRefresh, onOptimize, onVirtualFolders,
   onAliasReplace, onAutoAlias, onHistoryOpen,
   onDeleteSelected, onClearTreeFilter,
   onToggleShowDesc, onToggleHideAliasSubRows, onToggleGroupByPath, onToggleShortenGroupPaths,
@@ -199,6 +200,14 @@ export default function StateListToolbar({
         >
           <Wand2 size={15} />
           {showToolbarLabels && <span>{isEn ? 'Optimize' : 'Optimieren'}</span>}
+        </button>
+        <button
+          onClick={onVirtualFolders}
+          title={isEn ? 'Find virtual folders (no real ioBroker object)' : 'Virtuelle Ordner finden (kein echtes ioBroker-Objekt)'}
+          className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-yellow-600 hover:bg-yellow-500/10 dark:text-gray-400 dark:hover:text-yellow-400 dark:hover:bg-yellow-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
+        >
+          <FolderX size={15} />
+          {showToolbarLabels && <span>{isEn ? 'Virtual Folders' : 'Virt. Ordner'}</span>}
         </button>
         {hasAliasChecked && (
           <button
