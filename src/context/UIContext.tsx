@@ -101,7 +101,7 @@ export function getDefaultAppSettings(): AppSettings {
     objectsCacheReloads: '10',
     objectsCacheTTL: '24h',
     loadOnlyVisibleStateValues: false,
-    showUnitInValue: false,
+    showUnitInValue: true,
     includeIdPrefixes: [],
     dragDropEnabled: false,
   };
@@ -184,7 +184,7 @@ export function loadAppSettings(): AppSettings {
       objectsCacheReloads: (['off','5','10','20','50'] as const).includes(parsed.objectsCacheReloads as 'off'|'5'|'10'|'20'|'50') ? parsed.objectsCacheReloads as 'off'|'5'|'10'|'20'|'50' : '10',
       objectsCacheTTL: (['off','1h','6h','24h','7d'] as const).includes(parsed.objectsCacheTTL as 'off'|'1h'|'6h'|'24h'|'7d') ? parsed.objectsCacheTTL as 'off'|'1h'|'6h'|'24h'|'7d' : '24h',
       loadOnlyVisibleStateValues: parsed.loadOnlyVisibleStateValues === true,
-      showUnitInValue: parsed.showUnitInValue === true,
+      showUnitInValue: parsed.showUnitInValue !== false,
       includeIdPrefixes: Array.isArray(parsed.includeIdPrefixes)
         ? parsed.includeIdPrefixes.filter((x): x is string => typeof x === 'string' && x.length > 0)
         : [],
