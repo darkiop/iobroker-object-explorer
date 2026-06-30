@@ -80,6 +80,47 @@ The app is then reachable at `http://localhost:8080`.
 
 ## Features
 
+### UI Overview
+
+```
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ Header                                                                        │
+│  logo · back/forward · reset filters · connection · theme ·                   │
+│  dual-pane toggle · settings · help · fullscreen                              │
+├─────────────────────┬─────────────────────────────────────────────────────────┤
+│ StateTree           │ Toolbar                                                 │
+│ (Sidebar)           │   New · Export · Import · Enums ·                       │
+│                     │   Statistics · Optimize · Columns                       │
+│                     ├─────────────────────────────────────────────────────────┤
+│ folder              │ SearchBar                                               │
+│  └ device           │   pattern · quick/saved filters ·                       │
+│     └ channel       │   history/SmartName/alias badges                        │
+│        └ state      │                                                         │
+│                     ├─────────────────────────────────────────────────────────┤
+│                     │ StateList (virtualized table)                           │
+│                     │  StateRow | StateRow | StateRow | ...                   │
+│                     │  click/right-click row -> ObjectEditModal               │
+│                     ├─────────────────────────────────────────────────────────┤
+│                     │ BatchComboControl bar (rows checked)                    │
+│                     ├─────────────────────────────────────────────────────────┤
+│                     │ Pagination                                              │
+└─────────────────────┴─────────────────────────────────────────────────────────┘
+```
+
+Resizable drag handle sits between **StateTree** sidebar and main content. In **dual-pane mode** (`Columns2` icon) the right side renders a second independent `Toolbar + SearchBar + StateList` stack side by side.
+
+| Area | Component | Notes |
+|---|---|---|
+| Header | `Layout.tsx` | App-wide controls, always visible |
+| Sidebar | `StateTree.tsx` | Hierarchical object tree, collapsible/resizable |
+| Toolbar | `StateListToolbar.tsx` | Bulk actions + column controls |
+| Search bar | inside `StateList.tsx` | Pattern input, quick/saved filters |
+| Table | `StateList.tsx` + `StateRow.tsx` | Virtualized rows, sortable/resizable columns |
+| Batch bar | `BatchComboControl.tsx` | Appears when rows are checked |
+| Edit modal | `ObjectEditModal.tsx` | Opens on row click / right-click |
+
+---
+
 ### Layout & Navigation
 
 - **Collapsible sidebar**: header button toggles the sidebar open/closed (CSS transition); state persisted in `localStorage`
