@@ -35,8 +35,15 @@ export function getSocketUrl(hostOverride?: string): string {
   const override = hostOverride?.trim();
   if (override) {
     if (/^https?:\/\//.test(override)) return override;
-    const scheme = window.location.protocol === 'https:' ? 'https' : 'http';
-    return `${scheme}://${override}`;
+    // Page served over https but override is a bare host:port — that target
+    // almost never terminates TLS itself, so a direct https connection fails.
+    // Route through the same-origin SSL proxy instead (nginx forwards
+    // /socket.io/ to SOCKETIO_PORT); only an explicit https://wss:// override
+    // bypasses the proxy.
+    if (window.location.protocol === 'https:') {
+      return `${window.location.protocol}//${window.location.host}`;
+    }
+    return `http://${override}`;
   }
   // Docker mode: nginx proxies /socket.io/ → ioBroker:SOCKETIO_PORT.
   // Detected by window.__CONFIG__.ioBrokerHost being non-empty (set by entrypoint.sh).
