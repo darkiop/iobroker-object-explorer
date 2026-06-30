@@ -22,7 +22,7 @@ export default function VirtualFoldersModal({ onClose, language, allObjects, onS
   const [filter, setFilter] = useState('alias.0.');
   const [creating, setCreating] = useState<string | null>(null);
   const createDatapoint = useCreateDatapoint();
-  const { showToast } = useToast();
+  const showToast = useToast();
 
   const virtualFolders = useMemo(() => {
     const seen = new Set<string>();
