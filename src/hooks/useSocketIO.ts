@@ -33,18 +33,17 @@ export interface SocketIOStatus {
  */
 export function getSocketUrl(hostOverride?: string): string {
   const override = hostOverride?.trim();
-  if (override) {
-    if (/^https?:\/\//.test(override)) return override;
-    // Page served over https but override is a bare host:port — that target
-    // almost never terminates TLS itself, so a direct https connection fails.
-    // Route through the same-origin SSL proxy instead (nginx forwards
-    // /socket.io/ to SOCKETIO_PORT); only an explicit https://wss:// override
-    // bypasses the proxy.
-    if (window.location.protocol === 'https:') {
-      return `${window.location.protocol}//${window.location.host}`;
-    }
-    return `http://${override}`;
+  if (override && /^https?:\/\//.test(override)) return override;
+  // Page served over https: a bare host:port (override or heuristic) almost
+  // never terminates TLS itself, and the backend port is typically not
+  // reachable directly from outside (only the SSL-terminating reverse proxy
+  // is). Always route through the same origin — nginx forwards /socket.io/
+  // to SOCKETIO_PORT — unless the override explicitly gives a scheme (handled
+  // above).
+  if (window.location.protocol === 'https:') {
+    return `${window.location.protocol}//${window.location.host}`;
   }
+  if (override) return `http://${override}`;
   // Docker mode: nginx proxies /socket.io/ → ioBroker:SOCKETIO_PORT.
   // Detected by window.__CONFIG__.ioBrokerHost being non-empty (set by entrypoint.sh).
   // Use same origin so the request goes through the nginx proxy — port 8084
