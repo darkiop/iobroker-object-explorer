@@ -293,10 +293,20 @@ export default function Layout({ sidebar, children, apiConnected = true, realtim
             realtimeStatus={realtimeStatus}
             realtimeFallback={realtimeFallback}
             lastUpdated={lastUpdated}
-            onManualRefresh={onManualRefresh}
           />
           <div className="hidden sm:block w-px h-4 bg-gray-300 dark:bg-gray-600" />
           <span className="hidden sm:inline text-[10px] font-mono text-gray-400 dark:text-gray-600 select-none" title="App version">v{__APP_VERSION__}</span>
+          <div className="hidden sm:block w-px h-4 bg-gray-300 dark:bg-gray-600" />
+          {onManualRefresh && (
+            <button
+              onClick={onManualRefresh}
+              className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
+              title={language === 'en' ? 'Refresh' : 'Aktualisieren'}
+              aria-label={language === 'en' ? 'Refresh' : 'Aktualisieren'}
+            >
+              <RefreshCw size={16} />
+            </button>
+          )}
           {currentHost && (
             <a
               href={`http://${currentHost.split(':')[0]}:${adminPort}`}
