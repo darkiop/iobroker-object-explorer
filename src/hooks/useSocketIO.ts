@@ -34,7 +34,9 @@ export interface SocketIOStatus {
 export function getSocketUrl(hostOverride?: string): string {
   const override = hostOverride?.trim();
   if (override) {
-    return /^https?:\/\//.test(override) ? override : `http://${override}`;
+    if (/^https?:\/\//.test(override)) return override;
+    const scheme = window.location.protocol === 'https:' ? 'https' : 'http';
+    return `${scheme}://${override}`;
   }
   // Docker mode: nginx proxies /socket.io/ → ioBroker:SOCKETIO_PORT.
   // Detected by window.__CONFIG__.ioBrokerHost being non-empty (set by entrypoint.sh).

@@ -193,7 +193,9 @@ export default function SettingsModal({ namespaceSuggestions = [] }: { namespace
     setConnSioTesting(true);
     setConnSioTestResult(null);
     setConnSioTestError(null);
-    const url = getSocketUrl(editingConn.socketHost);
+    const url = window.__CONFIG__?.ioBrokerHost
+      ? getSocketUrl()
+      : getSocketUrl(editingConn.socketHost);
     const socket = io(url, { transports: ['websocket', 'polling'], reconnection: false, timeout: 5_000, forceNew: true });
     let settled = false;
     const finish = (ok: boolean, err?: string) => {
@@ -805,7 +807,10 @@ export default function SettingsModal({ namespaceSuggestions = [] }: { namespace
                                       setConnHostTestResult(null);
                                       setConnHostTestError(null);
                                       try {
-                                        const res = await fetch(`http://${val}/v1/objects?limit=1`);
+                                        const testUrl = window.location.protocol === 'https:'
+                                          ? '/api/v1/objects?limit=1'
+                                          : `http://${val}/v1/objects?limit=1`;
+                                        const res = await fetch(testUrl);
                                         if (!res.ok) throw new Error(`HTTP ${res.status}`);
                                         setConnHostTestResult('ok');
                                       } catch {
