@@ -625,7 +625,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const handleFnEditEnd = React.useCallback(() => setFnEditId(null), []);
 
   function handleExport(format: 'json' | 'csv') {
-    const allIds = exportIds ?? ids;
+    const allIds = checkedIds.size > 0 ? [...checkedIds] : (exportIds ?? ids);
     let content: string;
     let mime: string;
     let ext: string;
@@ -1166,13 +1166,28 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                       }
                     }}>
                     <td className="py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-100/50 dark:group-hover/sep:bg-gray-700/60 transition-colors text-center" style={{ width: DEL_COL_WIDTH, minWidth: DEL_COL_WIDTH }}>
-                      {item.prefix && (
-                        <StyledCheckbox
-                          checked={checkedSepPrefix === item.prefix}
-                          onChange={() => setCheckedSepPrefix(checkedSepPrefix === item.prefix ? null : item.prefix)}
-                          title={isEn ? 'Select as alias source' : 'Als Alias-Quelle auswählen'}
-                        />
-                      )}
+                      {item.prefix && (() => {
+                        const prefix = item.prefix;
+                        const subtreeIds = ids.filter((id) => id === prefix || id.startsWith(prefix + '.'));
+                        const allSubtreeChecked = subtreeIds.length > 0 && subtreeIds.every((id) => checkedIds.has(id));
+                        return (
+                          <StyledCheckbox
+                            checked={allSubtreeChecked}
+                            onChange={() => {
+                              setCheckedIds((prev) => {
+                                const next = new Set(prev);
+                                if (allSubtreeChecked) {
+                                  subtreeIds.forEach((id) => next.delete(id));
+                                } else {
+                                  subtreeIds.forEach((id) => next.add(id));
+                                }
+                                return next;
+                              });
+                            }}
+                            title={isEn ? 'Select all in subtree' : 'Alle in Unterstruktur auswählen'}
+                          />
+                        );
+                      })()}
                     </td>
                     <td colSpan={(_sepNameBeforeType ? (_sepMainSpanWithName || 1) : (_sepMainSpan || rowColSpan + 1)) - 1} className="py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-100/50 dark:group-hover/sep:bg-gray-700/60 transition-colors" style={{ paddingLeft: 12 + item.depth * 10, paddingRight: 12 }}>
                       <div className="flex items-center gap-2">

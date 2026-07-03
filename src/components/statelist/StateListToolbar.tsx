@@ -323,7 +323,7 @@ export default function StateListToolbar({
             onClick={onToggleShortenGroupPaths}
             title={shortenGroupPaths ? (isEn ? 'Show full paths' : 'Vollständige Pfade anzeigen') : (isEn ? 'Shorten paths' : 'Pfade kürzen')}
             className={`p-2 rounded-lg transition-colors ${
-              shortenGroupPaths
+              !shortenGroupPaths
                 ? 'text-blue-600 bg-blue-500/15 hover:bg-blue-500/25 dark:text-blue-400 dark:hover:bg-blue-500/20'
                 : 'text-gray-400 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-500 dark:hover:text-blue-400 dark:hover:bg-blue-500/10'
             }`}
