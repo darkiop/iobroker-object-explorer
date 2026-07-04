@@ -12,11 +12,13 @@ import StateTree from './components/StateTree';
 import StateList from './components/statelist/StateList';
 import ObjectEditModal from './components/modals/ObjectEditModal';
 const HistoryModal = lazy(() => import('./components/modals/HistoryModal'));
+// NOTE: also statically imported in StateListModals.tsx — not a real split chunk yet
 const NewDatapointModal = lazy(() => import('./components/modals/NewDatapointModal'));
 const HelpModal = lazy(() => import('./components/modals/HelpModal'));
 const EnumManagerModal = lazy(() => import('./components/modals/EnumManagerModal'));
 const AliasReplaceModal = lazy(() => import('./components/modals/AliasReplaceModal'));
 const AutoCreateAliasModal = lazy(() => import('./components/modals/AutoCreateAliasModal'));
+// NOTE: also statically imported in StateListModals.tsx — not a real split chunk yet
 const CreateAliasModal = lazy(() => import('./components/modals/CreateAliasModal'));
 const SettingsModal = lazy(() => import('./components/modals/SettingsModal'));
 import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunctionMap, useRoomEnums, useFunctionEnums, useAliasMap } from './hooks/useStates';
