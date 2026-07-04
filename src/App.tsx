@@ -11,6 +11,7 @@ import SearchBar, { type SearchBarHandle } from './components/SearchBar';
 import StateTree from './components/StateTree';
 import StateList from './components/statelist/StateList';
 import ObjectEditModal from './components/modals/ObjectEditModal';
+// NOTE: also statically imported in StateListModals.tsx — not a real split chunk yet
 const HistoryModal = lazy(() => import('./components/modals/HistoryModal'));
 // NOTE: also statically imported in StateListModals.tsx — not a real split chunk yet
 const NewDatapointModal = lazy(() => import('./components/modals/NewDatapointModal'));
