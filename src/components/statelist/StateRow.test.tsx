@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import StateRow from './StateRow';
@@ -25,7 +25,7 @@ const colWidths: Record<SortKey, number> = {
   unit: 60, ack: 40, ts: 120,
 } as Record<SortKey, number>;
 
-function renderRow() {
+function renderRow(overrides: { onSelect?: (id: string) => void; onDeleteClick?: (id: string) => void } = {}) {
   return render(
     <TooltipProvider delayDuration={0}>
       <table>
@@ -46,11 +46,11 @@ function renderRow() {
             units={[]}
             roomEnums={[]}
             fnEnums={[]}
-            onSelect={() => {}}
+            onSelect={overrides.onSelect ?? (() => {})}
             onCheck={() => {}}
             onContextMenu={() => {}}
             onHistoryClick={() => {}}
-            onDeleteClick={() => {}}
+            onDeleteClick={overrides.onDeleteClick ?? (() => {})}
             onEditJson={() => {}}
             onSelectRoom={() => {}}
             onSelectFunction={() => {}}
@@ -86,5 +86,17 @@ describe('StateRow', () => {
 
     await user.hover(screen.getByRole('row'));
     await waitFor(() => expect(screen.queryAllByText(/Name/).length).toBeGreaterThan(0));
+  });
+
+  it('clicking the Delete button (wrapped in Tooltip) fires onDeleteClick and stops propagation, without triggering row onSelect', async () => {
+    const user = userEvent.setup({ delay: null });
+    const onDeleteClick = vi.fn();
+    const onSelect = vi.fn();
+    renderRow({ onDeleteClick, onSelect });
+
+    await user.click(screen.getByRole('button', { name: 'Delete datapoint' }));
+
+    expect(onDeleteClick).toHaveBeenCalledWith('test.0.foo');
+    expect(onSelect).not.toHaveBeenCalled();
   });
 });

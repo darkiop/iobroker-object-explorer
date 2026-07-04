@@ -235,6 +235,7 @@ const StateRow = React.memo(function StateRow({
               <Tooltip content="Delete datapoint">
                 <button
                   onClick={(e) => { e.stopPropagation(); onDeleteClick(id); }}
+                  aria-label="Delete datapoint"
                   className="opacity-0 group-hover/id:opacity-100 text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white shrink-0 transition-opacity"
                 >
                   <Trash2 size={12} />
