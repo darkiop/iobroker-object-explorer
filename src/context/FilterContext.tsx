@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect, useMemo, u
 import type { SortKey } from '../components/statelist/StateListColumns';
 import { PanelContextProvider } from './PanelContext';
 import type { PanelContextValue } from './PanelContext';
+import { useAppSettingsContext } from './UIContext';
 
 const LS_FILTER_STATE = 'iobroker-filter-state';
 const LS_SAVED_FILTERS = 'iobroker-saved-filters';
@@ -170,8 +171,12 @@ export function useFilterContext(): FilterContextValue {
 
 export function FilterContextProvider({ children }: { children: ReactNode }) {
   const savedFilters = useRef<Partial<FilterState>>(loadFilterState());
+  const { appSettings } = useAppSettingsContext();
 
-  const [pattern, setPatternRaw] = useState(() => savedFilters.current.pattern ?? '*');
+  const [pattern, setPatternRaw] = useState(() => {
+    if (savedFilters.current.pattern !== undefined) return savedFilters.current.pattern;
+    return appSettings.defaultAliasFilterOnStartup ? 'alias.0.*' : '*';
+  });
   const [page, setPage] = useState(() => savedFilters.current.page ?? 0);
   const [historyOnly, setHistoryOnly] = useState(() => savedFilters.current.historyOnly ?? false);
   const [smartOnly, setSmartOnly] = useState(() => savedFilters.current.smartOnly ?? false);

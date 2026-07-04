@@ -151,6 +151,7 @@ export default function SettingsModal({ namespaceSuggestions = [] }: { namespace
       showUnitInValue: settingsDraft.showUnitInValue ?? false,
       includeIdPrefixes: settingsDraft.includeIdPrefixes ?? [],
       dragDropEnabled: settingsDraft.dragDropEnabled ?? false,
+      defaultAliasFilterOnStartup: settingsDraft.defaultAliasFilterOnStartup ?? true,
     };
     applySettings(next);
   }, [settingsDraft, applySettings]);
@@ -418,6 +419,15 @@ export default function SettingsModal({ namespaceSuggestions = [] }: { namespace
                       {isEn
                         ? 'Lets you drag a StateList row onto an alias.0.* tree node to create an alias. Only active in dual-pane view. Off by default — the native draggable attribute can add a slight delay to row clicks.'
                         : 'Erlaubt das Ziehen einer StateList-Zeile auf einen alias.0.*-Baumknoten, um einen Alias zu erstellen. Nur in der Zwei-Panel-Ansicht aktiv. Standardmäßig aus — das native draggable-Attribut kann Klicks leicht verzögern.'}
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <SettingsToggleRow isEn={isEn} labelEn="Default to alias.0.* filter on startup" labelDe="Standardmäßig alias.0.*-Filter beim Start"
+                      value={settingsDraft.defaultAliasFilterOnStartup ?? true} onToggle={() => setSettingsDraft((prev) => ({ ...prev, defaultAliasFilterOnStartup: !prev.defaultAliasFilterOnStartup }))} />
+                    <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
+                      {isEn
+                        ? 'When there is no saved search pattern yet, the app starts with the pattern set to alias.0.* instead of *. Turn off to start with * (all objects).'
+                        : 'Wenn noch kein gespeichertes Suchmuster vorliegt, startet die App mit dem Muster alias.0.* statt *. Aus, um mit * (alle Objekte) zu starten.'}
                     </p>
                   </div>
                   <div className="flex flex-col gap-1">

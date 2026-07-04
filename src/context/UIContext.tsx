@@ -83,6 +83,9 @@ export interface AppSettings {
    *  alias (only active in dual-pane view). Off by default — avoids click latency
    *  from the native draggable attribute. */
   dragDropEnabled: boolean;
+  /** When on, the search pattern defaults to `alias.0.*` on first load (no saved
+   *  filter state yet). On by default. Turn off to start with `*` instead. */
+  defaultAliasFilterOnStartup: boolean;
 }
 
 const PAGE_SIZE_OPTIONS = [200, 500, 1000, 3000];
@@ -125,6 +128,7 @@ export function getDefaultAppSettings(): AppSettings {
     showUnitInValue: true,
     includeIdPrefixes: [],
     dragDropEnabled: false,
+    defaultAliasFilterOnStartup: true,
   };
 }
 
@@ -213,6 +217,7 @@ export function loadAppSettings(): AppSettings {
         ? parsed.includeIdPrefixes.filter((x): x is string => typeof x === 'string' && x.length > 0)
         : [],
       dragDropEnabled: parsed.dragDropEnabled === true,
+      defaultAliasFilterOnStartup: parsed.defaultAliasFilterOnStartup !== false,
     };
   } catch { return fallback; }
 }

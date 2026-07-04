@@ -447,9 +447,11 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
 
   allSepPrefixesRef.current = allSepPrefixes;
 
+  const hasFilteredIds = filteredIds.length > 0;
   useEffect(() => {
     if (forceExpandAllRef.current) { forceExpandAllRef.current = false; setCollapsedPrefixes(new Set()); return; }
     if (!groupByPath || !isFilterActive) { setCollapsedPrefixes(null); return; }
+    if (!hasFilteredIds) return;
     // Auto-expand depth 0+1, collapse depth >= 2 when a search filter is active.
     // Uses filteredIdsRef so background state refreshes don't re-trigger this.
     const ids = filteredIdsRef.current;
@@ -470,7 +472,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
       if (depth >= 2) toCollapse.add(prefix);
     }
     setCollapsedPrefixes(toCollapse);
-  }, [groupByPath, isFilterActive]);
+  }, [groupByPath, isFilterActive, hasFilteredIds]);
 
   const displayItems = useMemo((): DisplayItem[] => {
     if (!groupByPath) return filteredIds.map((id) => ({ kind: 'row' as const, id, depth: 0 }));

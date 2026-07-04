@@ -1,9 +1,10 @@
 import React, { useRef } from 'react';
-import { ArrowUp, ArrowDown, AlertTriangle, Zap, Pencil } from 'lucide-react';
+import { ArrowUp, ArrowDown, AlertTriangle, Zap, Pencil, Lock } from 'lucide-react';
 import type { IoBrokerState, IoBrokerObject } from '../../types/iobroker';
 import { useSetState } from '../../hooks/useStates';
 import { formatValue } from '../../utils/format';
 import { getThresholdStatus } from '../statelist/StateListUtils';
+import TypeIcon from '../TypeIcon';
 
 const EditableValueCell = React.memo(function EditableValueCell({
   id,
@@ -13,6 +14,7 @@ const EditableValueCell = React.memo(function EditableValueCell({
   onOpen,
   language = 'en',
   unitSuffix,
+  showTypeIcon = true,
 }: {
   id: string;
   state: IoBrokerState | undefined;
@@ -21,6 +23,7 @@ const EditableValueCell = React.memo(function EditableValueCell({
   onOpen: (id: string) => void;
   language?: 'en' | 'de';
   unitSuffix?: string;
+  showTypeIcon?: boolean;
 }) {
   const isEn = language === 'en';
   const setStateVal = useSetState();
@@ -31,6 +34,7 @@ const EditableValueCell = React.memo(function EditableValueCell({
   const isNumber = typeof val === 'number';
   const role = obj?.common?.role ?? '';
   const isWritable = obj?.common?.write === true;
+  const isReadOnly = obj?.common?.write === false;
   const isSwitch = role === 'switch' || role.startsWith('switch.');
   const isButton = role === 'button' || role.startsWith('button.');
 
@@ -93,6 +97,16 @@ const EditableValueCell = React.memo(function EditableValueCell({
           >
             <Pencil size={12} />
           </button>
+          {showTypeIcon && <TypeIcon type={obj?.common?.type || ''} />}
+          {isReadOnly && (
+            <Lock size={11} className="text-red-500 dark:text-red-400 shrink-0" aria-label={isEn ? 'Read only' : 'Schreibgeschützt'} />
+          )}
+          {state && (
+            <span
+              className={`inline-block w-2 h-2 rounded-full shrink-0 ${state.ack ? 'bg-green-500' : 'bg-yellow-500'}`}
+              title={state.ack ? (isEn ? 'Acknowledged' : 'Bestätigt') : (isEn ? 'Not acknowledged' : 'Nicht bestätigt')}
+            />
+          )}
         </div>
       </td>
     );
@@ -105,6 +119,10 @@ const EditableValueCell = React.memo(function EditableValueCell({
       onClick={(e) => { e.stopPropagation(); onOpen(id); }}
     >
       <div className={`flex items-center justify-start gap-1 ${valueColor}`}>
+        {showTypeIcon && <TypeIcon type={obj?.common?.type || ''} />}
+        {isReadOnly && (
+          <Lock size={10} className="text-red-500 dark:text-red-400 shrink-0" aria-label={isEn ? 'Read only' : 'Schreibgeschützt'} />
+        )}
         {trendIcon}
         {thresholdStatus === 'exceeded' && <AlertTriangle size={10} aria-label={isEn ? 'Value exceeded limit' : 'Grenzwert überschritten'} />}
         {thresholdStatus === 'warn' && <AlertTriangle size={10} aria-label={isEn ? 'Value near limit' : 'Wert nahe am Grenzwert'} />}
@@ -130,6 +148,12 @@ const EditableValueCell = React.memo(function EditableValueCell({
         >
           <Pencil size={12} />
         </button>
+        {state && (
+          <span
+            className={`inline-block w-2 h-2 rounded-full shrink-0 ${state.ack ? 'bg-green-500' : 'bg-yellow-500'}`}
+            title={state.ack ? (isEn ? 'Acknowledged' : 'Bestätigt') : (isEn ? 'Not acknowledged' : 'Nicht bestätigt')}
+          />
+        )}
       </div>
     </td>
   );

@@ -11,7 +11,6 @@ import EditableValueCell from '../cells/EditableValueCell';
 import EditableRoomCell from '../cells/EditableRoomCell';
 import EditableFunctionCell from '../cells/EditableFunctionCell';
 import CopyIdButton from '../cells/CopyIdButton';
-import TypeIcon from '../TypeIcon';
 import StyledCheckbox from '../ui/StyledCheckbox';
 import { hasHistory, hasSmartName, hasCustomEnabled } from '../../api/iobroker';
 import { ColoredId } from '../../utils/coloredId';
@@ -251,9 +250,15 @@ const StateRow = React.memo(function StateRow({
               {showObjectTypeIcons && obj?.type === 'device'  && <Cpu       size={12} className="text-sky-500/80 shrink-0" />}
               {showObjectTypeIcons && obj?.type === 'channel' && <LayersIcon size={12} className="text-indigo-500/80 shrink-0" />}
               {showObjectTypeIcons && obj?.type === 'folder'  && <Folder    size={12} className="text-yellow-500/80 shrink-0" />}
-              {showObjectTypeIcons && <TypeIcon type={obj?.common?.type || ''} />}
               <ColoredId id={displayId ?? id} />
               <CopyIdButton id={id} />
+              <button
+                onClick={(e) => { e.stopPropagation(); onDeleteClick(id); }}
+                className="opacity-0 group-hover/id:opacity-100 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 shrink-0 transition-opacity"
+                title="Delete datapoint"
+              >
+                <Trash2 size={12} />
+              </button>
               <button
                 onClick={(e) => { e.stopPropagation(); onEditJson(id); }}
                 className="opacity-0 group-hover/id:opacity-100 text-gray-400 hover:text-violet-500 dark:text-gray-500 dark:hover:text-violet-400 shrink-0 transition-opacity"
@@ -436,7 +441,7 @@ const StateRow = React.memo(function StateRow({
       )}
       {show('type') && <EditableTypeCell id={id} typeValue={obj?.common?.type || ''} objType={obj?.type} language={language} />}
       {show('role') && <EditableRoleCell id={id} role={obj?.common?.role || ''} objType={obj?.type} suggestions={roles} language={language} />}
-      {show('value') && (obj?.type === 'folder' || obj?.type === 'device' || obj?.type === 'channel' ? <td data-col="value" /> : <EditableValueCell id={id} state={state} obj={obj} expertMode={expertMode} onOpen={onOpenValueModal} language={language} unitSuffix={showUnitInValue ? unit : undefined} />)}
+      {show('value') && (obj?.type === 'folder' || obj?.type === 'device' || obj?.type === 'channel' ? <td data-col="value" /> : <EditableValueCell id={id} state={state} obj={obj} expertMode={expertMode} onOpen={onOpenValueModal} language={language} unitSuffix={showUnitInValue ? unit : undefined} showTypeIcon={showObjectTypeIcons} />)}
       {show('unit') && (obj?.type === 'folder' || obj?.type === 'device' || obj?.type === 'channel' ? <td data-col="unit" /> : <EditableUnitCell id={id} unit={unit} suggestions={units} language={language} />)}
       {show('ack') && (
         <td data-col="ack" className="px-3 py-[var(--row-py)]">
@@ -453,13 +458,7 @@ const StateRow = React.memo(function StateRow({
           <span className="truncate block">{state ? formatTimestamp(state.ts, dateFormat) : ''}</span>
         </td>
       )}
-      <td style={{ width: DEL_COL_WIDTH, minWidth: DEL_COL_WIDTH }} className="py-1 pr-2 text-center" onClick={(e) => e.stopPropagation()}>
-        <button
-          onClick={() => onDeleteClick(id)}
-          title="Delete datapoint"
-          className={`p-1 rounded transition-colors hover:bg-red-500/10 ${isChecked ? 'text-red-500 dark:text-red-400' : 'text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400'}`}
-        ><Trash2 size={13} /></button>
-      </td>
+      <td style={{ width: DEL_COL_WIDTH, minWidth: DEL_COL_WIDTH }} />
     </tr>
     </>
   );
