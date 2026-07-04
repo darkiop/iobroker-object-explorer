@@ -356,7 +356,7 @@ const StateRow = React.memo(function StateRow({
               </div>
         </td>
       )}
-      {show('name') && <EditableNameCell id={id} name={name} desc={resolveI18n(obj?.common?.desc)} showDesc={showDesc} />}
+      {show('name') && <EditableNameCell id={id} name={name} desc={resolveI18n(obj?.common?.desc)} showDesc={showDesc} language={language} />}
       {show('write') && (
         <td style={{ width: colWidths['write'], minWidth: colWidths['write'] }} className="py-[var(--row-py)] align-middle">
           <Tooltip content={obj?.common?.write === false ? 'Read-only' : undefined}>

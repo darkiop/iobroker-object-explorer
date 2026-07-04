@@ -1296,7 +1296,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                         : undefined;
                       return <>
                         {sepObj
-                          ? <EditableNameCell key="name" id={item.prefix} name={label} showDesc={false} textClassName="text-xs text-gray-600 dark:text-gray-300" tdClassName="bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-200/70 dark:group-hover/sep:bg-gray-700/60 transition-colors" />
+                          ? <EditableNameCell key="name" id={item.prefix} name={label} showDesc={false} textClassName="text-xs text-gray-600 dark:text-gray-300" tdClassName="bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-200/70 dark:group-hover/sep:bg-gray-700/60 transition-colors" language={language} />
                           : <td key="name" style={{ width: nw, minWidth: nw }} className="px-3 py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-200/70 dark:group-hover/sep:bg-gray-700/60 transition-colors text-xs align-middle text-gray-600 dark:text-gray-300">
                               <Tooltip content={label || undefined}>
                                 <div className="flex items-center gap-1.5 truncate">

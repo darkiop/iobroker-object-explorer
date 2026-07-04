@@ -5,7 +5,8 @@ import { useToast } from '../../context/ToastContext';
 import { copyToClipboard } from '../../utils/clipboard';
 import { Tooltip } from '../ui/Tooltip';
 
-const EditableNameCell = React.memo(function EditableNameCell({ id, name, desc, showDesc = true, textClassName = '', tdClassName = '' }: { id: string; name: string; desc?: string; showDesc?: boolean; textClassName?: string; tdClassName?: string }) {
+const EditableNameCell = React.memo(function EditableNameCell({ id, name, desc, showDesc = true, textClassName = '', tdClassName = '', language = 'de' }: { id: string; name: string; desc?: string; showDesc?: boolean; textClassName?: string; tdClassName?: string; language?: 'en' | 'de' }) {
+  const isEn = language === 'en';
   const showToast = useToast();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(name);
@@ -21,7 +22,7 @@ const EditableNameCell = React.memo(function EditableNameCell({ id, name, desc, 
             <Tooltip content={name}><div className={`truncate ${textClassName}`}>{name}</div></Tooltip>
             {showDesc && desc && <Tooltip content={desc}><div className="truncate text-[10px] italic text-gray-400 dark:text-gray-500 leading-tight mt-1">{desc}</div></Tooltip>}
           </div>
-          <Tooltip content="Name bearbeiten">
+          <Tooltip content={isEn ? 'Edit name' : 'Name bearbeiten'}>
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -33,7 +34,7 @@ const EditableNameCell = React.memo(function EditableNameCell({ id, name, desc, 
               <Pencil size={12} />
             </button>
           </Tooltip>
-          <Tooltip content="Name kopieren">
+          <Tooltip content={isEn ? 'Copy name' : 'Name kopieren'}>
             <button
               onClick={(e) => {
                 e.stopPropagation();
