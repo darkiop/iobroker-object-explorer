@@ -25,6 +25,7 @@ import TsRangeFilterControl, { parseTsFilter } from '../ui/TsRangeFilterControl'
 import SortHeader from '../ui/SortHeader';
 import StyledCheckbox from '../ui/StyledCheckbox';
 import StateRow from './StateRow';
+import { Tooltip } from '../ui/Tooltip';
 import EditableRoleCell from '../cells/EditableRoleCell';
 import EditableNameCell from '../cells/EditableNameCell';
 import { getObjectName } from './StateListUtils';
@@ -897,25 +898,26 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                   {groupByPath && (() => {
                     const allCollapsed = collapsedPrefixes === null || (allSepPrefixes.size > 0 && [...allSepPrefixes].every((p) => collapsedPrefixes.has(p)));
                     return (
-                      <button
-                        onClick={() => setCollapsedPrefixes(allCollapsed ? new Set() : null)}
-                        title={allCollapsed ? (isEn ? 'Expand all groups' : 'Alle Gruppen aufklappen') : (isEn ? 'Collapse all groups' : 'Alle Gruppen einklappen')}
-                        className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-200 dark:text-gray-500 dark:hover:text-gray-300 dark:hover:bg-gray-700 transition-colors"
-                      >
-                        {allCollapsed ? <FolderOpen size={13} /> : <Folder size={13} />}
-                      </button>
+                      <Tooltip content={allCollapsed ? (isEn ? 'Expand all groups' : 'Alle Gruppen aufklappen') : (isEn ? 'Collapse all groups' : 'Alle Gruppen einklappen')}>
+                        <button
+                          onClick={() => setCollapsedPrefixes(allCollapsed ? new Set() : null)}
+                          className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-200 dark:text-gray-500 dark:hover:text-gray-300 dark:hover:bg-gray-700 transition-colors"
+                        >
+                          {allCollapsed ? <FolderOpen size={13} /> : <Folder size={13} />}
+                        </button>
+                      </Tooltip>
                     );
                   })()}
                 </th>
               )}
               {show('id')      && <SortHeader label="ID" sortKey="id" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('id')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
               {show('name')    && <SortHeader label="Name" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('name')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
-              {show('write')   && <th style={{ width: colWidths['write'],   minWidth: colWidths['write']   }} className="text-center align-middle group/hdr relative" title={isEn ? 'Read only' : 'Schreibschutz'}><Lock size={12} className="mx-auto text-gray-400 dark:text-gray-500" /><button className="absolute inset-y-0 right-0 opacity-0 group-hover/hdr:opacity-100 px-0.5 text-gray-400 hover:text-red-400 transition-opacity" onClick={() => handleHideCol('write')} tabIndex={-1}><Minus size={10} /></button></th>}
-              {show('history') && <th style={{ width: colWidths['history'], minWidth: colWidths['history'] }} className="text-center align-middle group/hdr relative" title="History"><History size={12} className="mx-auto text-gray-400 dark:text-gray-500" /><button className="absolute inset-y-0 right-0 opacity-0 group-hover/hdr:opacity-100 px-0.5 text-gray-400 hover:text-red-400 transition-opacity" onClick={() => handleHideCol('history')} tabIndex={-1}><Minus size={10} /></button></th>}
-              {show('custom')  && <th style={{ width: colWidths['custom'],  minWidth: colWidths['custom']  }} className="text-center align-middle group/hdr relative" title="Custom"><Wrench size={12} className="mx-auto text-gray-400 dark:text-gray-500" /><button className="absolute inset-y-0 right-0 opacity-0 group-hover/hdr:opacity-100 px-0.5 text-gray-400 hover:text-red-400 transition-opacity" onClick={() => handleHideCol('custom')} tabIndex={-1}><Minus size={10} /></button></th>}
-              {show('smart')   && <th style={{ width: colWidths['smart'],   minWidth: colWidths['smart']   }} className="text-center align-middle group/hdr relative" title="SmartName"><Mic2 size={12} className="mx-auto text-gray-400 dark:text-gray-500" /><button className="absolute inset-y-0 right-0 opacity-0 group-hover/hdr:opacity-100 px-0.5 text-gray-400 hover:text-red-400 transition-opacity" onClick={() => handleHideCol('smart')} tabIndex={-1}><Minus size={10} /></button></th>}
-              {show('alias')   && <th style={{ width: colWidths['alias'],           minWidth: colWidths['alias']           }} className="text-center align-middle group/hdr relative" title="Alias"><Link2 size={12} className="mx-auto text-gray-400 dark:text-gray-500" /><button className="absolute inset-y-0 right-0 opacity-0 group-hover/hdr:opacity-100 px-0.5 text-gray-400 hover:text-red-400 transition-opacity" onClick={() => handleHideCol('alias')} tabIndex={-1}><Minus size={10} /></button></th>}
-              {show('scripts') && <th style={{ width: colWidths['scripts'], minWidth: colWidths['scripts'] }} className="text-center align-middle group/hdr relative" title={isEn ? 'Scripts' : 'Skripte'}><FileCode2 size={12} className="mx-auto text-gray-400 dark:text-gray-500" /><button className="absolute inset-y-0 right-0 opacity-0 group-hover/hdr:opacity-100 px-0.5 text-gray-400 hover:text-red-400 transition-opacity" onClick={() => handleHideCol('scripts')} tabIndex={-1}><Minus size={10} /></button></th>}
+              {show('write')   && <th style={{ width: colWidths['write'],   minWidth: colWidths['write']   }} className="text-center align-middle group/hdr relative"><Tooltip content={isEn ? 'Read only' : 'Schreibschutz'}><Lock size={12} className="mx-auto text-gray-400 dark:text-gray-500" /></Tooltip><button className="absolute inset-y-0 right-0 opacity-0 group-hover/hdr:opacity-100 px-0.5 text-gray-400 hover:text-red-400 transition-opacity" onClick={() => handleHideCol('write')} tabIndex={-1}><Minus size={10} /></button></th>}
+              {show('history') && <th style={{ width: colWidths['history'], minWidth: colWidths['history'] }} className="text-center align-middle group/hdr relative"><Tooltip content="History"><History size={12} className="mx-auto text-gray-400 dark:text-gray-500" /></Tooltip><button className="absolute inset-y-0 right-0 opacity-0 group-hover/hdr:opacity-100 px-0.5 text-gray-400 hover:text-red-400 transition-opacity" onClick={() => handleHideCol('history')} tabIndex={-1}><Minus size={10} /></button></th>}
+              {show('custom')  && <th style={{ width: colWidths['custom'],  minWidth: colWidths['custom']  }} className="text-center align-middle group/hdr relative"><Tooltip content="Custom"><Wrench size={12} className="mx-auto text-gray-400 dark:text-gray-500" /></Tooltip><button className="absolute inset-y-0 right-0 opacity-0 group-hover/hdr:opacity-100 px-0.5 text-gray-400 hover:text-red-400 transition-opacity" onClick={() => handleHideCol('custom')} tabIndex={-1}><Minus size={10} /></button></th>}
+              {show('smart')   && <th style={{ width: colWidths['smart'],   minWidth: colWidths['smart']   }} className="text-center align-middle group/hdr relative"><Tooltip content="SmartName"><Mic2 size={12} className="mx-auto text-gray-400 dark:text-gray-500" /></Tooltip><button className="absolute inset-y-0 right-0 opacity-0 group-hover/hdr:opacity-100 px-0.5 text-gray-400 hover:text-red-400 transition-opacity" onClick={() => handleHideCol('smart')} tabIndex={-1}><Minus size={10} /></button></th>}
+              {show('alias')   && <th style={{ width: colWidths['alias'],           minWidth: colWidths['alias']           }} className="text-center align-middle group/hdr relative"><Tooltip content="Alias"><Link2 size={12} className="mx-auto text-gray-400 dark:text-gray-500" /></Tooltip><button className="absolute inset-y-0 right-0 opacity-0 group-hover/hdr:opacity-100 px-0.5 text-gray-400 hover:text-red-400 transition-opacity" onClick={() => handleHideCol('alias')} tabIndex={-1}><Minus size={10} /></button></th>}
+              {show('scripts') && <th style={{ width: colWidths['scripts'], minWidth: colWidths['scripts'] }} className="text-center align-middle group/hdr relative"><Tooltip content={isEn ? 'Scripts' : 'Skripte'}><FileCode2 size={12} className="mx-auto text-gray-400 dark:text-gray-500" /></Tooltip><button className="absolute inset-y-0 right-0 opacity-0 group-hover/hdr:opacity-100 px-0.5 text-gray-400 hover:text-red-400 transition-opacity" onClick={() => handleHideCol('scripts')} tabIndex={-1}><Minus size={10} /></button></th>}
               {show('room')     && <SortHeader label={isEn ? 'Room' : 'Raum'} sortKey="room" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('room')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
               {show('function') && <SortHeader label={isEn ? 'Function' : 'Funktion'} sortKey="function" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('function')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
               {show('type')    && <SortHeader label={isEn ? 'Type' : 'Typ'} sortKey="type" activeKey={sortKey} dir={sortDir} onSort={handleSort} width={w('type')} onResizeStart={handleResizeStart} onAutoFit={handleAutoFit} onHide={handleHideCol} />}
@@ -929,12 +931,15 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
             <tr className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
               {show('checkbox') && (
                 <th style={{ width: w('checkbox'), minWidth: w('checkbox') }} className="py-1 text-center align-middle" onClick={(e) => e.stopPropagation()}>
-                  <StyledCheckbox
-                    checked={allOnPageChecked}
-                    indeterminate={someChecked && !allOnPageChecked}
-                    onChange={toggleCheckAll}
-                    title={isEn ? 'Select all' : 'Alle auswählen'}
-                  />
+                  <Tooltip content={isEn ? 'Select all' : 'Alle auswählen'}>
+                    <span className="inline-flex">
+                      <StyledCheckbox
+                        checked={allOnPageChecked}
+                        indeterminate={someChecked && !allOnPageChecked}
+                        onChange={toggleCheckAll}
+                      />
+                    </span>
+                  </Tooltip>
                 </th>
               )}
               {(['id','name','write','history','custom','smart','alias','scripts','room','function','type','role','value','unit','ack','ts'] as SortKey[]).filter(show).map((key) => {
@@ -978,13 +983,14 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                     : (isEn ? 'Only with SmartName' : 'Nur mit SmartName');
                   return (
                     <th key={key} style={{ width: w(key) }} className="py-1 text-center align-middle" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={() => setDraftAndPropagate({ ...colFiltersDraft, [key]: isActive ? '' : '1' })}
-                        title={title}
-                        className={`p-0.5 rounded transition-colors ${isActive ? activeClass : 'text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400'}`}
-                      >
-                        {icon}
-                      </button>
+                      <Tooltip content={title}>
+                        <button
+                          onClick={() => setDraftAndPropagate({ ...colFiltersDraft, [key]: isActive ? '' : '1' })}
+                          className={`p-0.5 rounded transition-colors ${isActive ? activeClass : 'text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400'}`}
+                        >
+                          {icon}
+                        </button>
+                      </Tooltip>
                     </th>
                   );
                 }
@@ -1175,21 +1181,24 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                         const subtreeIds = ids.filter((id) => id === prefix || id.startsWith(prefix + '.'));
                         const allSubtreeChecked = subtreeIds.length > 0 && subtreeIds.every((id) => checkedIds.has(id));
                         return (
-                          <StyledCheckbox
-                            checked={allSubtreeChecked}
-                            onChange={() => {
-                              setCheckedIds((prev) => {
-                                const next = new Set(prev);
-                                if (allSubtreeChecked) {
-                                  subtreeIds.forEach((id) => next.delete(id));
-                                } else {
-                                  subtreeIds.forEach((id) => next.add(id));
-                                }
-                                return next;
-                              });
-                            }}
-                            title={isEn ? 'Select all in subtree' : 'Alle in Unterstruktur auswählen'}
-                          />
+                          <Tooltip content={isEn ? 'Select all in subtree' : 'Alle in Unterstruktur auswählen'}>
+                            <span className="inline-flex">
+                              <StyledCheckbox
+                                checked={allSubtreeChecked}
+                                onChange={() => {
+                                  setCheckedIds((prev) => {
+                                    const next = new Set(prev);
+                                    if (allSubtreeChecked) {
+                                      subtreeIds.forEach((id) => next.delete(id));
+                                    } else {
+                                      subtreeIds.forEach((id) => next.add(id));
+                                    }
+                                    return next;
+                                  });
+                                }}
+                              />
+                            </span>
+                          </Tooltip>
                         );
                       })()}
                     </td>
@@ -1206,13 +1215,13 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                             : <FolderOpen size={14} className={`shrink-0 ${objects[item.prefix] || item.prefix.split('.').length <= 2 ? 'text-yellow-500/80' : 'text-yellow-500/40'}`} />
                         }
                         {item.prefix
-                          ? <span title={!objects[item.prefix] && item.prefix.split('.').length > 2 ? (language === 'en' ? 'Virtual folder (no ioBroker object)' : 'Virtueller Ordner (kein ioBroker-Objekt)') : undefined}><ColoredId id={shortenGroupPaths && item.parentPrefix ? item.prefix.slice(item.parentPrefix.length + 1) : item.prefix} className={`text-sm font-mono font-bold ${!objects[item.prefix] && item.prefix.split('.').length > 2 ? 'opacity-50 italic' : ''}`} /></span>
+                          ? <Tooltip content={!objects[item.prefix] && item.prefix.split('.').length > 2 ? (language === 'en' ? 'Virtual folder (no ioBroker object)' : 'Virtueller Ordner (kein ioBroker-Objekt)') : undefined}><span><ColoredId id={shortenGroupPaths && item.parentPrefix ? item.prefix.slice(item.parentPrefix.length + 1) : item.prefix} className={`text-sm font-mono font-bold ${!objects[item.prefix] && item.prefix.split('.').length > 2 ? 'opacity-50 italic' : ''}`} /></span></Tooltip>
                           : <span className="text-sm text-gray-400 dark:text-gray-500 font-mono font-bold italic">root</span>
                         }
                         {!_sepNameBeforeType && item.prefix && allObjects[item.prefix]?.common?.name && (() => {
                           const n = allObjects[item.prefix].common.name;
                           const label = typeof n === 'string' ? n : (isEn ? (n.en || n.de || '') : (n.de || n.en || ''));
-                          return label ? <span title={label} className="text-xs text-gray-500 dark:text-gray-400 truncate">{label}</span> : null;
+                          return label ? <Tooltip content={label}><span className="text-xs text-gray-500 dark:text-gray-400 truncate">{label}</span></Tooltip> : null;
                         })()}
                         {sepCountMap.get(item.prefix) != null && (
                           <span className="text-xs text-gray-400 dark:text-gray-500 font-mono shrink-0">({sepCountMap.get(item.prefix)})</span>
@@ -1232,37 +1241,41 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                           </span>
                         )}
                         {item.prefix && objects[item.prefix] && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setEditObjId(item.prefix); }}
-                            className="ml-1 opacity-0 group-hover/sep:opacity-100 transition-opacity text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white"
-                            title={isEn ? 'Edit object' : 'Objekt bearbeiten'}
-                          >
-                            <Pencil size={12} />
-                          </button>
+                          <Tooltip content={isEn ? 'Edit object' : 'Objekt bearbeiten'}>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setEditObjId(item.prefix); }}
+                              className="ml-1 opacity-0 group-hover/sep:opacity-100 transition-opacity text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white"
+                            >
+                              <Pencil size={12} />
+                            </button>
+                          </Tooltip>
                         )}
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setNewDatapointPrefix(item.prefix || null); setNewDatapointOpen(true); }}
-                          className="opacity-0 group-hover/sep:opacity-100 transition-opacity text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white"
-                          title={isEn ? 'New datapoint in this group' : 'Neuer Datenpunkt in dieser Gruppe'}
-                        >
-                          <Plus size={13} />
-                        </button>
-                        {item.prefix && (
+                        <Tooltip content={isEn ? 'New datapoint in this group' : 'Neuer Datenpunkt in dieser Gruppe'}>
                           <button
-                            onClick={(e) => { e.stopPropagation(); copyToClipboard(item.prefix).then(() => showToast(item.prefix, 'success')).catch(() => showToast(isEn ? 'Copy failed' : 'Kopieren fehlgeschlagen')); }}
+                            onClick={(e) => { e.stopPropagation(); setNewDatapointPrefix(item.prefix || null); setNewDatapointOpen(true); }}
                             className="opacity-0 group-hover/sep:opacity-100 transition-opacity text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white"
-                            title={item.prefix}
                           >
-                            <Copy size={12} />
+                            <Plus size={13} />
                           </button>
+                        </Tooltip>
+                        {item.prefix && (
+                          <Tooltip content={item.prefix}>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); copyToClipboard(item.prefix).then(() => showToast(item.prefix, 'success')).catch(() => showToast(isEn ? 'Copy failed' : 'Kopieren fehlgeschlagen')); }}
+                              className="opacity-0 group-hover/sep:opacity-100 transition-opacity text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white"
+                            >
+                              <Copy size={12} />
+                            </button>
+                          </Tooltip>
                         )}
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setDeletingGroupPrefix(item.prefix); }}
-                          className={`${_sepDetailCols.length === 0 ? 'ml-auto' : ''} opacity-0 group-hover/sep:opacity-100 transition-opacity text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white`}
-                          title={isEn ? 'Delete all datapoints in this group' : 'Alle Datenpunkte dieser Gruppe löschen'}
-                        >
-                          <Trash2 size={13} />
-                        </button>
+                        <Tooltip content={isEn ? 'Delete all datapoints in this group' : 'Alle Datenpunkte dieser Gruppe löschen'}>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setDeletingGroupPrefix(item.prefix); }}
+                            className={`${_sepDetailCols.length === 0 ? 'ml-auto' : ''} opacity-0 group-hover/sep:opacity-100 transition-opacity text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white`}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </Tooltip>
                       </div>
                     </td>
                     {_sepNameBeforeType && (() => {
@@ -1284,11 +1297,13 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                       return <>
                         {sepObj
                           ? <EditableNameCell key="name" id={item.prefix} name={label} showDesc={false} textClassName="text-xs text-gray-600 dark:text-gray-300" tdClassName="bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-200/70 dark:group-hover/sep:bg-gray-700/60 transition-colors" />
-                          : <td key="name" title={label || undefined} style={{ width: nw, minWidth: nw }} className="px-3 py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-200/70 dark:group-hover/sep:bg-gray-700/60 transition-colors text-xs align-middle text-gray-600 dark:text-gray-300">
-                              <div className="flex items-center gap-1.5 truncate">
-                                {iconUrl && <img src={iconUrl} alt="" className="w-4 h-4 shrink-0 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
-                                <span className="truncate">{label}</span>
-                              </div>
+                          : <td key="name" style={{ width: nw, minWidth: nw }} className="px-3 py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-200/70 dark:group-hover/sep:bg-gray-700/60 transition-colors text-xs align-middle text-gray-600 dark:text-gray-300">
+                              <Tooltip content={label || undefined}>
+                                <div className="flex items-center gap-1.5 truncate">
+                                  {iconUrl && <img src={iconUrl} alt="" className="w-4 h-4 shrink-0 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
+                                  <span className="truncate">{label}</span>
+                                </div>
+                              </Tooltip>
                             </td>
                         }
                         {_sepFillerSpan > 0 && <td colSpan={_sepFillerSpan} className="bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-200/70 dark:group-hover/sep:bg-gray-700/60 transition-colors" />}
