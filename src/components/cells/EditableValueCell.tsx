@@ -107,7 +107,9 @@ const EditableValueCell = React.memo(function EditableValueCell({
             </Tooltip>
           )}
           {isReadOnly && (
-            <Lock size={11} className="text-red-500 dark:text-red-400 shrink-0" aria-label={isEn ? 'Read only' : 'Schreibgeschützt'} />
+            <Tooltip content={isEn ? 'Read only' : 'Schreibgeschützt'}>
+              <Lock size={11} className="text-red-500 dark:text-red-400 shrink-0" />
+            </Tooltip>
           )}
           {state && (
             <Tooltip content={state.ack ? (isEn ? 'Acknowledged' : 'Bestätigt') : (isEn ? 'Not acknowledged' : 'Nicht bestätigt')}>
@@ -134,7 +136,9 @@ const EditableValueCell = React.memo(function EditableValueCell({
           </Tooltip>
         )}
         {isReadOnly && (
-          <Lock size={10} className="text-red-500 dark:text-red-400 shrink-0" aria-label={isEn ? 'Read only' : 'Schreibgeschützt'} />
+          <Tooltip content={isEn ? 'Read only' : 'Schreibgeschützt'}>
+            <Lock size={10} className="text-red-500 dark:text-red-400 shrink-0" />
+          </Tooltip>
         )}
         {trendIcon}
         {thresholdStatus === 'exceeded' && <AlertTriangle size={10} aria-label={isEn ? 'Value exceeded limit' : 'Grenzwert überschritten'} />}
