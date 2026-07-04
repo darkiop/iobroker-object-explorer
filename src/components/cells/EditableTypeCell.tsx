@@ -47,7 +47,7 @@ const EditableTypeCell = React.memo(function EditableTypeCell({ id, typeValue, o
     <td
       ref={cellRef}
       data-col="type"
-      className="px-3 py-2 text-gray-500 dark:text-gray-400 text-xs font-mono overflow-hidden group/type"
+      className="px-3 py-[var(--row-py)] text-gray-500 dark:text-gray-400 text-xs font-mono overflow-hidden group/type"
       onClick={(e) => { e.stopPropagation(); openEdit(); }}
     >
       <div className="flex items-center gap-1.5">

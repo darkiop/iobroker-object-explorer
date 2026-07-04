@@ -14,7 +14,7 @@ const EditableNameCell = React.memo(function EditableNameCell({ id, name, desc, 
 
   if (!editing) {
     return (
-      <td data-col="name" className="px-3 py-2 overflow-hidden group/name align-middle">
+      <td data-col="name" className="px-3 py-[var(--row-py)] overflow-hidden group/name align-middle">
         <div className="flex items-center gap-1.5">
           <div className="min-w-0 flex-1 overflow-hidden">
             <div className="truncate" title={name}>{name}</div>

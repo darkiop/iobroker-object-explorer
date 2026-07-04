@@ -6,7 +6,7 @@ import { X, ChevronDown, Check, Loader2, AlertCircle, Trash2, ExternalLink, Plus
 import type { DateFormatSetting } from '../statelist/StateListColumns';
 import { ALL_COLUMNS, DEFAULT_COLS, getColumnLabel, CONFIGURABLE_WIDTH_COLS, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MIN_WIDTHS, BUILTIN_MAX_WIDTHS } from '../statelist/StateListColumns';
 import { useAppSettingsContext, useUIOverlayContext, DEFAULT_QUICK_PATTERNS, getDefaultAppSettings, normalizeQuickPattern } from '../../context/UIContext';
-import type { AppSettings, UiFontSize } from '../../context/UIContext';
+import type { AppSettings, UiFontSize, UiRowHeight } from '../../context/UIContext';
 import { useFilterContext } from '../../context/FilterContext';
 import { clearObjectsCache, getConnections, setConnections, getActiveConnectionId, switchToConnection } from '../../api/iobroker';
 import type { SavedConnection } from '../../api/iobroker';
@@ -126,6 +126,7 @@ export default function SettingsModal({ namespaceSuggestions = [] }: { namespace
       pageSize: validPageSize,
       tableFontSize: settingsDraft.tableFontSize,
       treeFontSize: settingsDraft.treeFontSize,
+      rowHeight: settingsDraft.rowHeight,
       treeCountMode: settingsDraft.treeCountMode,
       showDesc: settingsDraft.showDesc,
       customDefaultWidths: settingsDraft.customDefaultWidths,
@@ -326,6 +327,17 @@ export default function SettingsModal({ namespaceSuggestions = [] }: { namespace
                       <button key={s} type="button" onClick={() => setSettingsDraft((prev) => ({ ...prev, tableFontSize: s }))}
                         className={`flex-1 py-1 text-xs rounded border transition-colors ${settingsDraft.tableFontSize === s ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
                         {s === 'small' ? (isEn ? 'S' : 'K') : s === 'large' ? (isEn ? 'L' : 'G') : s === 'xl' ? 'XL' : 'M'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{isEn ? 'Row height' : 'Zeilenhöhe'}</span>
+                  <div className="flex gap-1.5">
+                    {(['compact', 'normal', 'comfortable', 'spacious'] as UiRowHeight[]).map((r) => (
+                      <button key={r} type="button" onClick={() => setSettingsDraft((prev) => ({ ...prev, rowHeight: r }))}
+                        className={`flex-1 py-1 text-xs rounded border transition-colors ${settingsDraft.rowHeight === r ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
+                        {r === 'compact' ? (isEn ? 'S' : 'K') : r === 'comfortable' ? (isEn ? 'L' : 'G') : r === 'spacious' ? 'XL' : 'M'}
                       </button>
                     ))}
                   </div>

@@ -18,6 +18,7 @@ import { ColoredId } from '../../utils/coloredId';
 import { formatTimestamp } from '../../utils/format';
 import { getObjectName, resolveI18n } from './StateListUtils';
 import { DEL_COL_WIDTH } from './StateListConstants';
+import { ROW_PADDING_Y, type UiRowHeight } from '../../context/UIContext';
 
 export interface StateRowProps {
   id: string;
@@ -68,6 +69,7 @@ export interface StateRowProps {
   animateExit?: boolean;
   dragEnabled?: boolean;
   onDropAlias?: (sourceId: string, targetPath: string) => void;
+  rowHeight?: UiRowHeight;
 }
 
 function aliasIdsEqual(a?: string[], b?: string[]): boolean {
@@ -85,7 +87,7 @@ const StateRow = React.memo(function StateRow({
   onSelect, onCheck, onContextMenu, onHistoryClick, onScriptsClick, onCustomClick, onAliasClick, onSmartNameClick, onNavigateTo, onDeleteClick, onEditJson,
   onSelectRoom, onSelectFunction, onOpenValueModal,
   roomEditForced, fnEditForced, onRoomEditEnd, onFnEditEnd,
-  dateFormat, language, expertMode, isFocused, showDesc = true, showObjectTypeIcons = true, hideAliasSubRows = false, showUnitInValue = false, scriptSources, depth = 0, displayId, animateEnter, animateExit, dragEnabled = false, onDropAlias,
+  dateFormat, language, expertMode, isFocused, showDesc = true, showObjectTypeIcons = true, hideAliasSubRows = false, showUnitInValue = false, scriptSources, depth = 0, displayId, animateEnter, animateExit, dragEnabled = false, onDropAlias, rowHeight = 'comfortable',
 }: StateRowProps) {
   const isEn = language === 'en';
   const trRef = useRef<HTMLTableRowElement>(null);
@@ -201,6 +203,7 @@ const StateRow = React.memo(function StateRow({
     )}
     <tr
       ref={trRef}
+      style={{ '--row-py': ROW_PADDING_Y[rowHeight] } as React.CSSProperties}
       draggable={dragEnabled || undefined}
       onDragStart={dragEnabled ? (e) => {
         e.dataTransfer.setData('application/iobroker-id', id);
@@ -232,7 +235,7 @@ const StateRow = React.memo(function StateRow({
       }`}
     >
       {show('checkbox') && (
-        <td style={{ width: w('checkbox'), minWidth: w('checkbox') }} className="py-2 align-middle" onClick={(e) => e.stopPropagation()}>
+        <td style={{ width: w('checkbox'), minWidth: w('checkbox') }} className="py-[var(--row-py)] align-middle" onClick={(e) => e.stopPropagation()}>
           <div className={`flex items-center justify-center transition-opacity ${isChecked ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
             <StyledCheckbox
               checked={isChecked}
@@ -242,7 +245,7 @@ const StateRow = React.memo(function StateRow({
         </td>
       )}
       {show('id') && (
-        <td data-col="id" className="py-2 font-mono text-xs text-gray-500 dark:text-gray-400 overflow-hidden group/id" style={{ paddingLeft: depth === 0 ? 12 : 12 + (depth - 1) * 10 + 32 }}>
+        <td data-col="id" className="py-[var(--row-py)] font-mono text-xs text-gray-500 dark:text-gray-400 overflow-hidden group/id" style={{ paddingLeft: depth === 0 ? 12 : 12 + (depth - 1) * 10 + 32 }}>
           <div className="flex flex-col gap-0.5 min-w-0">
             <div className="flex items-center gap-1.5 min-w-0">
               {showObjectTypeIcons && obj?.type === 'device'  && <Cpu       size={12} className="text-sky-500/80 shrink-0" />}
@@ -298,14 +301,14 @@ const StateRow = React.memo(function StateRow({
       )}
       {show('name') && <EditableNameCell id={id} name={name} desc={resolveI18n(obj?.common?.desc)} showDesc={showDesc} />}
       {show('write') && (
-        <td style={{ width: colWidths['write'], minWidth: colWidths['write'] }} className="py-2 align-middle" title={obj?.common?.write === false ? 'Read-only' : undefined}>
+        <td style={{ width: colWidths['write'], minWidth: colWidths['write'] }} className="py-[var(--row-py)] align-middle" title={obj?.common?.write === false ? 'Read-only' : undefined}>
           <div className="flex items-center justify-center">
             {obj?.common?.write === false && <Lock size={13} className="text-red-500 dark:text-red-400" />}
           </div>
         </td>
       )}
       {show('history') && (
-        <td style={{ width: colWidths['history'], minWidth: colWidths['history'] }} className="py-2 align-middle">
+        <td style={{ width: colWidths['history'], minWidth: colWidths['history'] }} className="py-[var(--row-py)] align-middle">
           <div className="flex items-center justify-center">
             {obj && hasHistory(obj) && (
               <button
@@ -320,7 +323,7 @@ const StateRow = React.memo(function StateRow({
         </td>
       )}
       {show('custom') && (
-        <td style={{ width: colWidths['custom'], minWidth: colWidths['custom'] }} className="py-2 align-middle">
+        <td style={{ width: colWidths['custom'], minWidth: colWidths['custom'] }} className="py-[var(--row-py)] align-middle">
           <div className="flex items-center justify-center">
             {obj && hasCustomEnabled(obj) && (
               <button
@@ -337,7 +340,7 @@ const StateRow = React.memo(function StateRow({
       {show('smart') && (
         <td
           style={{ width: colWidths['smart'], minWidth: colWidths['smart'] }}
-          className="py-2 align-middle"
+          className="py-[var(--row-py)] align-middle"
           title={obj && hasSmartName(obj) ? (
             typeof obj.common.smartName === 'string'
               ? obj.common.smartName
@@ -360,7 +363,7 @@ const StateRow = React.memo(function StateRow({
         </td>
       )}
       {show('alias') && (
-        <td style={{ width: colWidths['alias'], minWidth: colWidths['alias'] }} className="py-2 align-middle">
+        <td style={{ width: colWidths['alias'], minWidth: colWidths['alias'] }} className="py-[var(--row-py)] align-middle">
           <div className="flex items-center justify-center">
             {danglingAlias && (
               <button
@@ -393,7 +396,7 @@ const StateRow = React.memo(function StateRow({
         </td>
       )}
       {show('scripts') && (
-        <td style={{ width: colWidths['scripts'], minWidth: colWidths['scripts'] }} className="py-2 align-middle">
+        <td style={{ width: colWidths['scripts'], minWidth: colWidths['scripts'] }} className="py-[var(--row-py)] align-middle">
           <div className="flex items-center justify-center">
             {scriptSources?.includes(id) && (
               <button
@@ -436,7 +439,7 @@ const StateRow = React.memo(function StateRow({
       {show('value') && (obj?.type === 'folder' || obj?.type === 'device' || obj?.type === 'channel' ? <td data-col="value" /> : <EditableValueCell id={id} state={state} obj={obj} expertMode={expertMode} onOpen={onOpenValueModal} language={language} unitSuffix={showUnitInValue ? unit : undefined} />)}
       {show('unit') && (obj?.type === 'folder' || obj?.type === 'device' || obj?.type === 'channel' ? <td data-col="unit" /> : <EditableUnitCell id={id} unit={unit} suggestions={units} language={language} />)}
       {show('ack') && (
-        <td data-col="ack" className="px-3 py-2">
+        <td data-col="ack" className="px-3 py-[var(--row-py)]">
           {state ? (
             <span
               className={`inline-block w-2 h-2 rounded-full ${state.ack ? 'bg-green-500' : 'bg-yellow-500'}`}
@@ -446,7 +449,7 @@ const StateRow = React.memo(function StateRow({
         </td>
       )}
       {show('ts') && (
-        <td data-col="ts" className="px-3 py-2 text-gray-400 dark:text-gray-500 text-xs font-mono overflow-hidden">
+        <td data-col="ts" className="px-3 py-[var(--row-py)] text-gray-400 dark:text-gray-500 text-xs font-mono overflow-hidden">
           <span className="truncate block">{state ? formatTimestamp(state.ts, dateFormat) : ''}</span>
         </td>
       )}

@@ -46,7 +46,7 @@ const EditableRoleCell = React.memo(function EditableRoleCell({ id, role, objTyp
       ref={cellRef}
       data-col="role"
       style={cellStyle}
-      className={cellClassName ?? "px-3 py-2 text-gray-500 dark:text-gray-400 text-xs font-mono overflow-hidden group/role"}
+      className={cellClassName ?? "px-3 py-[var(--row-py)] text-gray-500 dark:text-gray-400 text-xs font-mono overflow-hidden group/role"}
       onClick={(e) => { e.stopPropagation(); openEdit(); }}
     >
       <div className="flex items-center gap-1.5">

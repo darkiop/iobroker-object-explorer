@@ -4,6 +4,23 @@ import type { SortKey, DateFormatSetting } from '../components/statelist/StateLi
 import { clearScriptUsedIdsCache, getScriptUsedIds } from '../api/iobroker';
 
 export type UiFontSize = 'small' | 'normal' | 'large' | 'xl';
+export type UiRowHeight = 'compact' | 'normal' | 'comfortable' | 'spacious';
+
+export const ROW_HEIGHT_PX: Record<UiRowHeight, number> = {
+  compact: 33,
+  normal: 37,
+  comfortable: 44,
+  spacious: 52,
+};
+
+/** Vertical cell padding (Tailwind `py-*` equivalent) per row-height density,
+ *  applied via the `--row-py` CSS var so all StateRow cells scale together. */
+export const ROW_PADDING_Y: Record<UiRowHeight, string> = {
+  compact: '0.375rem',
+  normal: '0.5rem',
+  comfortable: '0.75rem',
+  spacious: '1rem',
+};
 
 export interface AppSettings {
   language: 'en' | 'de';
@@ -14,6 +31,9 @@ export interface AppSettings {
   pageSize: number;
   tableFontSize: UiFontSize;
   treeFontSize: UiFontSize;
+  /** Row height density for the StateList table. Default 'comfortable' — taller than
+   *  the historic fixed 37px row, easier to read/click on dense screens. */
+  rowHeight: UiRowHeight;
   treeCountMode: 'off' | 'states' | 'objects' | 'both';
   showDesc: boolean;
   groupByPath: boolean;
@@ -80,6 +100,7 @@ export function getDefaultAppSettings(): AppSettings {
     pageSize: 200,
     tableFontSize: 'normal',
     treeFontSize: 'normal',
+    rowHeight: 'comfortable',
     treeCountMode: 'objects',
     showDesc: true,
     groupByPath: true,
@@ -154,6 +175,8 @@ export function loadAppSettings(): AppSettings {
     const validFontSizes = ['small', 'normal', 'large', 'xl'] as const;
     const tableFontSize = validFontSizes.includes(parsed.tableFontSize as UiFontSize) ? parsed.tableFontSize as UiFontSize : 'normal';
     const treeFontSize  = validFontSizes.includes(parsed.treeFontSize  as UiFontSize) ? parsed.treeFontSize  as UiFontSize : 'normal';
+    const validRowHeights = ['compact', 'normal', 'comfortable', 'spacious'] as const;
+    const rowHeight = validRowHeights.includes(parsed.rowHeight as UiRowHeight) ? parsed.rowHeight as UiRowHeight : 'comfortable';
     return {
       language: validLanguage,
       dateFormat: validDate,
@@ -163,6 +186,7 @@ export function loadAppSettings(): AppSettings {
       pageSize: parsedPageSize,
       tableFontSize,
       treeFontSize,
+      rowHeight,
       treeCountMode: (['off','states','objects','both'] as const).includes(parsed.treeCountMode as 'off'|'states'|'objects'|'both') ? parsed.treeCountMode as 'off'|'states'|'objects'|'both' : ((parsed as Record<string,unknown>).treeShowCount === false ? 'off' : 'objects'),
       showDesc: parsed.showDesc !== false,
       groupByPath: parsed.groupByPath !== false,

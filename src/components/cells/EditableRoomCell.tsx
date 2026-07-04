@@ -43,7 +43,7 @@ const EditableRoomCell = React.memo(function EditableRoomCell({ id, currentRoomE
     <td
       ref={cellRef}
       data-col="room"
-      className="px-3 py-2 text-gray-500 dark:text-gray-400 text-xs overflow-hidden group/room"
+      className="px-3 py-[var(--row-py)] text-gray-500 dark:text-gray-400 text-xs overflow-hidden group/room"
       onClick={(e) => { e.stopPropagation(); openEdit(); }}
     >
       <div className="flex items-center gap-1.5">

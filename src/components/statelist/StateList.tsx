@@ -27,7 +27,8 @@ import StyledCheckbox from '../ui/StyledCheckbox';
 import StateRow from './StateRow';
 import EditableRoleCell from '../cells/EditableRoleCell';
 import { getObjectName } from './StateListUtils';
-import { DEL_COL_WIDTH, VIRTUAL_ROW_HEIGHT, VIRTUAL_OVERSCAN } from './StateListConstants';
+import { DEL_COL_WIDTH, VIRTUAL_OVERSCAN } from './StateListConstants';
+import { ROW_HEIGHT_PX } from '../../context/UIContext';
 import { useColumnResize, LS_WIDTHS_KEY } from '../../hooks/useColumnResize';
 import { useBatchEdit } from '../../hooks/useBatchEdit';
 
@@ -711,7 +712,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const rowVirtualizer = useVirtualizer({
     count: activeDisplayItems.length,
     getScrollElement: () => containerRef.current,
-    estimateSize: () => VIRTUAL_ROW_HEIGHT,
+    estimateSize: () => ROW_HEIGHT_PX[appSettings.rowHeight],
     overscan: VIRTUAL_OVERSCAN,
     scrollPaddingStart: headerHeight,
   });
@@ -1342,6 +1343,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                 <StateRow
                   key={id}
                   id={id}
+                  rowHeight={appSettings.rowHeight}
                   displayId={displayId}
                   state={states[id]}
                   obj={objects[id]}

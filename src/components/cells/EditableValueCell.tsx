@@ -101,7 +101,7 @@ const EditableValueCell = React.memo(function EditableValueCell({
   return (
     <td
       data-col="value"
-      className="px-3 py-2 text-xs text-left font-mono overflow-hidden whitespace-nowrap group/value"
+      className="px-3 py-[var(--row-py)] text-xs text-left font-mono overflow-hidden whitespace-nowrap group/value"
       onClick={(e) => { e.stopPropagation(); onOpen(id); }}
     >
       <div className={`flex items-center justify-start gap-1 ${valueColor}`}>
