@@ -41,6 +41,7 @@ import { SelectionContextProvider, useSelectionContext } from './context/Selecti
 import { UIContextProvider, useUIContext, DEFAULT_QUICK_PATTERNS } from './context/UIContext';
 import { DEFAULT_COLS } from './components/statelist/StateListColumns';
 import type { SortKey } from './components/statelist/StateListColumns';
+import { TooltipProvider } from './components/ui/Tooltip';
 
 const PANEL2_DEFAULT_COLS: SortKey[] = DEFAULT_COLS.filter(
   (k) => !(['write', 'history', 'custom', 'smart', 'alias', 'scripts', 'name', 'ack', 'ts'] as SortKey[]).includes(k)
@@ -1113,17 +1114,19 @@ export default function App() {
     <ErrorBoundary FallbackComponent={AppErrorFallback} onReset={() => window.location.reload()}>
       <QueryClientProvider client={queryClientRef.current}>
         <ThemeProvider>
-          <ToastProvider>
-            <UIContextProvider>
-              <FilterContextProvider>
-                <SelectionContextProvider>
-                  <AppContent />
-                  <ToastContainer />
-                  <PwaManager />
-                </SelectionContextProvider>
-              </FilterContextProvider>
-            </UIContextProvider>
-          </ToastProvider>
+          <TooltipProvider delayDuration={300}>
+            <ToastProvider>
+              <UIContextProvider>
+                <FilterContextProvider>
+                  <SelectionContextProvider>
+                    <AppContent />
+                    <ToastContainer />
+                    <PwaManager />
+                  </SelectionContextProvider>
+                </FilterContextProvider>
+              </UIContextProvider>
+            </ToastProvider>
+          </TooltipProvider>
         </ThemeProvider>
       </QueryClientProvider>
     </ErrorBoundary>
