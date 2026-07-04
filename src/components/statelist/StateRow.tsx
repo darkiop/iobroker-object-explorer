@@ -1,6 +1,6 @@
-import React, { useState, useRef, useCallback, useTransition, useLayoutEffect, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState, useRef, useTransition, useLayoutEffect, useEffect } from 'react';
 import { Trash2, History, Mic2, Link2, Wrench, Lock, FileCode2, Cpu, Layers as LayersIcon, Folder } from 'lucide-react';
+import { Tooltip } from '../ui/Tooltip';
 import type { IoBrokerState, IoBrokerObject } from '../../types/iobroker';
 import type { SortKey, DateFormatSetting } from './StateListColumns';
 import EditableNameCell from '../cells/EditableNameCell';
@@ -135,19 +135,6 @@ const StateRow = React.memo(function StateRow({
         : undefined;
 
   const [, startTransition] = useTransition();
-  const tooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
-
-  const handleMouseEnter = useCallback((e: React.MouseEvent) => {
-    const x = e.clientX;
-    const y = e.clientY;
-    tooltipTimerRef.current = setTimeout(() => setTooltipPos({ x, y }), 600);
-  }, [state]);
-
-  const handleMouseLeave = useCallback(() => {
-    if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
-    setTooltipPos(null);
-  }, []);
 
   const hiddenColRows: [string, string][] = [];
   if (!show('name') && name) hiddenColRows.push([isEn ? 'Name' : 'Name', name]);
@@ -171,35 +158,30 @@ const StateRow = React.memo(function StateRow({
     ['From',         state.from || '–'],
   ] : [];
 
+  const rowTooltipContent = (hiddenColRows.length > 0 || tooltipStateRows.length > 0) ? (
+    <table className="border-separate" style={{ borderSpacing: '0 1px' }}>
+      <tbody>
+        {hiddenColRows.map(([label, value]) => (
+          <tr key={`h-${label}`}>
+            <td className="pr-3 text-blue-300 whitespace-nowrap">{label}</td>
+            <td className="text-gray-100 whitespace-nowrap">{value}</td>
+          </tr>
+        ))}
+        {hiddenColRows.length > 0 && tooltipStateRows.length > 0 && (
+          <tr><td colSpan={2} className="py-0.5"><div className="border-t border-gray-600" /></td></tr>
+        )}
+        {tooltipStateRows.map(([label, value]) => (
+          <tr key={label}>
+            <td className="pr-3 text-gray-400 whitespace-nowrap">{label}</td>
+            <td className="text-gray-100 whitespace-nowrap">{value}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  ) : undefined;
+
   return (
-    <>
-    {tooltipPos && (state || hiddenColRows.length > 0) && createPortal(
-      <div
-        className="fixed z-[9999] pointer-events-none px-2.5 py-1.5 rounded shadow-lg border text-xs font-mono bg-gray-900 border-gray-600 text-gray-100 dark:bg-gray-950 dark:border-gray-700"
-        style={{ left: tooltipPos.x + 14, top: tooltipPos.y + 10 }}
-      >
-        <table className="border-separate" style={{ borderSpacing: '0 1px' }}>
-          <tbody>
-            {hiddenColRows.map(([label, value]) => (
-              <tr key={`h-${label}`}>
-                <td className="pr-3 text-blue-300 whitespace-nowrap">{label}</td>
-                <td className="text-gray-100 whitespace-nowrap">{value}</td>
-              </tr>
-            ))}
-            {hiddenColRows.length > 0 && tooltipStateRows.length > 0 && (
-              <tr><td colSpan={2} className="py-0.5"><div className="border-t border-gray-600" /></td></tr>
-            )}
-            {tooltipStateRows.map(([label, value]) => (
-              <tr key={label}>
-                <td className="pr-3 text-gray-400 whitespace-nowrap">{label}</td>
-                <td className="text-gray-100 whitespace-nowrap">{value}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>,
-      document.body
-    )}
+    <Tooltip content={rowTooltipContent} side="right" align="start">
     <tr
       ref={trRef}
       style={{ '--row-py': ROW_PADDING_Y[rowHeight] } as React.CSSProperties}
@@ -221,8 +203,6 @@ const StateRow = React.memo(function StateRow({
       } : undefined}
       onClick={() => startTransition(() => onSelect(id))}
       onContextMenu={(e) => { e.preventDefault(); onContextMenu(e.clientX, e.clientY, id); }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
       className={`group border-b border-gray-200 dark:border-gray-800 ${dragEnabled ? 'cursor-grab' : 'cursor-pointer'} select-none ${dropHover ? 'outline outline-2 -outline-offset-2 outline-emerald-500 bg-emerald-500/15 ' : ''}${
         isSelected
           ? 'bg-blue-600/20 text-blue-700 dark:text-blue-200'
@@ -252,33 +232,36 @@ const StateRow = React.memo(function StateRow({
               {showObjectTypeIcons && obj?.type === 'folder'  && <Folder    size={12} className="text-yellow-500/80 shrink-0" />}
               <ColoredId id={displayId ?? id} />
               <CopyIdButton id={id} />
-              <button
-                onClick={(e) => { e.stopPropagation(); onDeleteClick(id); }}
-                className="opacity-0 group-hover/id:opacity-100 text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white shrink-0 transition-opacity"
-                title="Delete datapoint"
-              >
-                <Trash2 size={12} />
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); onEditJson(id); }}
-                className="opacity-0 group-hover/id:opacity-100 text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white shrink-0 transition-opacity"
-                title="JSON"
-              >
-                <Wrench size={12} />
-              </button>
+              <Tooltip content="Delete datapoint">
+                <button
+                  onClick={(e) => { e.stopPropagation(); onDeleteClick(id); }}
+                  className="opacity-0 group-hover/id:opacity-100 text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white shrink-0 transition-opacity"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </Tooltip>
+              <Tooltip content="JSON">
+                <button
+                  onClick={(e) => { e.stopPropagation(); onEditJson(id); }}
+                  className="opacity-0 group-hover/id:opacity-100 text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white shrink-0 transition-opacity"
+                >
+                  <Wrench size={12} />
+                </button>
+              </Tooltip>
             </div>
             {!!onNavigateTo && !hideAliasSubRows && (
               <div className={`text-[10px] leading-4 text-gray-400 dark:text-gray-500 truncate ${!(ownTarget || (aliasIds && aliasIds.length > 0)) ? 'invisible' : ''}`}>
                 {ownTarget && (
                   <>
                     <span className="mr-1">{isEn ? 'Source:' : 'Quelle:'}</span>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onNavigateTo([ownTarget]); }}
-                      className={`font-mono underline decoration-dotted ${ownTargetExists ? 'hover:text-blue-500 dark:hover:text-blue-400' : 'text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300'}`}
-                      title={ownTargetExists ? ownTarget : `${ownTarget} (${isEn ? 'target does not exist' : 'Ziel existiert nicht'})`}
-                    >
-                      {ownTarget}
-                    </button>
+                    <Tooltip content={ownTargetExists ? ownTarget : `${ownTarget} (${isEn ? 'target does not exist' : 'Ziel existiert nicht'})`}>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onNavigateTo([ownTarget]); }}
+                        className={`font-mono underline decoration-dotted ${ownTargetExists ? 'hover:text-blue-500 dark:hover:text-blue-400' : 'text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300'}`}
+                      >
+                        {ownTarget}
+                      </button>
+                    </Tooltip>
                   </>
                 )}
                 {ownTarget && aliasIds && aliasIds.length > 0 && <span className="mx-1">|</span>}
@@ -288,13 +271,14 @@ const StateRow = React.memo(function StateRow({
                     {aliasIds.map((aid, idx) => (
                       <React.Fragment key={aid}>
                         {idx > 0 && <span>, </span>}
-                        <button
-                          onClick={(e) => { e.stopPropagation(); onNavigateTo([aid]); }}
-                          className="font-mono underline decoration-dotted hover:text-blue-500 dark:hover:text-blue-400"
-                          title={aid}
-                        >
-                          {aid}
-                        </button>
+                        <Tooltip content={aid}>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onNavigateTo([aid]); }}
+                            className="font-mono underline decoration-dotted hover:text-blue-500 dark:hover:text-blue-400"
+                          >
+                            {aid}
+                          </button>
+                        </Tooltip>
                       </React.Fragment>
                     ))}
                   </>
@@ -304,86 +288,95 @@ const StateRow = React.memo(function StateRow({
           </div>
           <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1 shrink-0">
             {obj && hasHistory(obj) && (
-              <button
-                onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onHistoryClick(id); }}
-                title="History anzeigen"
-                className="p-0.5 rounded text-blue-500 dark:text-blue-400 hover:bg-blue-500/15 dark:hover:bg-blue-500/20 transition-colors"
-              >
-                <History size={13} />
-              </button>
+              <Tooltip content="History anzeigen">
+                <button
+                  onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onHistoryClick(id); }}
+                  className="p-0.5 rounded text-blue-500 dark:text-blue-400 hover:bg-blue-500/15 dark:hover:bg-blue-500/20 transition-colors"
+                >
+                  <History size={13} />
+                </button>
+              </Tooltip>
             )}
             {obj && hasSmartName(obj) && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onSmartNameClick?.(id); }}
-                    title="SmartName"
-                    className="p-0.5 rounded text-violet-500 dark:text-violet-400 hover:bg-violet-500/15 dark:hover:bg-violet-500/20 transition-colors"
-                  >
-                    <Mic2 size={13} />
-                  </button>
+                  <Tooltip content="SmartName">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onSmartNameClick?.(id); }}
+                      className="p-0.5 rounded text-violet-500 dark:text-violet-400 hover:bg-violet-500/15 dark:hover:bg-violet-500/20 transition-colors"
+                    >
+                      <Mic2 size={13} />
+                    </button>
+                  </Tooltip>
                 )}
                 {scriptSources?.includes(id) && (
-                  <button
-                    onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onScriptsClick?.(id); }}
-                    title={isEn ? 'Show script usages' : 'Skript-Verwendungen anzeigen'}
-                    className="p-0.5 rounded text-green-600 dark:text-green-500 hover:bg-green-500/15 dark:hover:bg-green-500/20 transition-colors"
-                  >
-                    <FileCode2 size={13} />
-                  </button>
+                  <Tooltip content={isEn ? 'Show script usages' : 'Skript-Verwendungen anzeigen'}>
+                    <button
+                      onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onScriptsClick?.(id); }}
+                      className="p-0.5 rounded text-green-600 dark:text-green-500 hover:bg-green-500/15 dark:hover:bg-green-500/20 transition-colors"
+                    >
+                      <FileCode2 size={13} />
+                    </button>
+                  </Tooltip>
                 )}
                 {obj && hasCustomEnabled(obj) && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onCustomClick?.(id); }}
-                    title={isEn ? 'Custom settings' : 'Benutzerdefinierte Einstellungen'}
-                    className="p-0.5 rounded text-purple-500 dark:text-purple-400 hover:bg-purple-500/15 dark:hover:bg-purple-500/20 transition-colors"
-                  >
-                    <Wrench size={13} />
-                  </button>
+                  <Tooltip content={isEn ? 'Custom settings' : 'Benutzerdefinierte Einstellungen'}>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onCustomClick?.(id); }}
+                      className="p-0.5 rounded text-purple-500 dark:text-purple-400 hover:bg-purple-500/15 dark:hover:bg-purple-500/20 transition-colors"
+                    >
+                      <Wrench size={13} />
+                    </button>
+                  </Tooltip>
                 )}
                 {danglingAlias && (
-                  <button
-                    onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onAliasClick?.(id); }}
-                    title={aliasTooltip}
-                    className="relative p-0.5 rounded text-red-500 dark:text-red-400 hover:bg-red-500/15 dark:hover:bg-red-500/20 transition-colors"
-                  >
-                    <Link2 size={13} />
-                  </button>
+                  <Tooltip content={aliasTooltip}>
+                    <button
+                      onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onAliasClick?.(id); }}
+                      className="relative p-0.5 rounded text-red-500 dark:text-red-400 hover:bg-red-500/15 dark:hover:bg-red-500/20 transition-colors"
+                    >
+                      <Link2 size={13} />
+                    </button>
+                  </Tooltip>
                 )}
                 {hasAlias && !danglingAlias && (
-                  <button
-                    onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onAliasClick?.(id); }}
-                    title={aliasTooltip}
-                    className="relative p-0.5 rounded text-amber-500 dark:text-amber-400 hover:bg-amber-500/15 dark:hover:bg-amber-500/20 transition-colors"
-                  >
-                    <Link2 size={13} />
-                    {aliasIds && aliasIds.length > 1 && (
-                      <span className="absolute -top-1.5 -right-2 text-[8px] font-bold leading-none bg-amber-500 text-white rounded-full min-w-[13px] h-[13px] flex items-center justify-center px-0.5">
-                        {aliasIds.length}
-                      </span>
-                    )}
-                  </button>
+                  <Tooltip content={aliasTooltip}>
+                    <button
+                      onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onAliasClick?.(id); }}
+                      className="relative p-0.5 rounded text-amber-500 dark:text-amber-400 hover:bg-amber-500/15 dark:hover:bg-amber-500/20 transition-colors"
+                    >
+                      <Link2 size={13} />
+                      {aliasIds && aliasIds.length > 1 && (
+                        <span className="absolute -top-1.5 -right-2 text-[8px] font-bold leading-none bg-amber-500 text-white rounded-full min-w-[13px] h-[13px] flex items-center justify-center px-0.5">
+                          {aliasIds.length}
+                        </span>
+                      )}
+                    </button>
+                  </Tooltip>
                 )}
               </div>
         </td>
       )}
       {show('name') && <EditableNameCell id={id} name={name} desc={resolveI18n(obj?.common?.desc)} showDesc={showDesc} />}
       {show('write') && (
-        <td style={{ width: colWidths['write'], minWidth: colWidths['write'] }} className="py-[var(--row-py)] align-middle" title={obj?.common?.write === false ? 'Read-only' : undefined}>
-          <div className="flex items-center justify-center">
-            {obj?.common?.write === false && <Lock size={13} className="text-red-500 dark:text-red-400" />}
-          </div>
+        <td style={{ width: colWidths['write'], minWidth: colWidths['write'] }} className="py-[var(--row-py)] align-middle">
+          <Tooltip content={obj?.common?.write === false ? 'Read-only' : undefined}>
+            <div className="flex items-center justify-center">
+              {obj?.common?.write === false && <Lock size={13} className="text-red-500 dark:text-red-400" />}
+            </div>
+          </Tooltip>
         </td>
       )}
       {show('history') && (
         <td style={{ width: colWidths['history'], minWidth: colWidths['history'] }} className="py-[var(--row-py)] align-middle">
           <div className="flex items-center justify-center">
             {obj && hasHistory(obj) && (
-              <button
-                onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onHistoryClick(id); }}
-                title="History anzeigen"
-                className="p-0.5 rounded text-blue-500 dark:text-blue-400 hover:bg-blue-500/15 dark:hover:bg-blue-500/20 transition-colors"
-              >
-                <History size={15} />
-              </button>
+              <Tooltip content="History anzeigen">
+                <button
+                  onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onHistoryClick(id); }}
+                  className="p-0.5 rounded text-blue-500 dark:text-blue-400 hover:bg-blue-500/15 dark:hover:bg-blue-500/20 transition-colors"
+                >
+                  <History size={15} />
+                </button>
+              </Tooltip>
             )}
           </div>
         </td>
@@ -392,13 +385,14 @@ const StateRow = React.memo(function StateRow({
         <td style={{ width: colWidths['custom'], minWidth: colWidths['custom'] }} className="py-[var(--row-py)] align-middle">
           <div className="flex items-center justify-center">
             {obj && hasCustomEnabled(obj) && (
-              <button
-                className="p-0.5 rounded hover:bg-purple-500/15 dark:hover:bg-purple-500/20 transition-colors"
-                onClick={(e) => { e.stopPropagation(); onCustomClick?.(id); }}
-                title={isEn ? 'Custom settings' : 'Benutzerdefinierte Einstellungen'}
-              >
-                <Wrench size={13} className="text-purple-500 dark:text-purple-400" />
-              </button>
+              <Tooltip content={isEn ? 'Custom settings' : 'Benutzerdefinierte Einstellungen'}>
+                <button
+                  className="p-0.5 rounded hover:bg-purple-500/15 dark:hover:bg-purple-500/20 transition-colors"
+                  onClick={(e) => { e.stopPropagation(); onCustomClick?.(id); }}
+                >
+                  <Wrench size={13} className="text-purple-500 dark:text-purple-400" />
+                </button>
+              </Tooltip>
             )}
           </div>
         </td>
@@ -407,56 +401,58 @@ const StateRow = React.memo(function StateRow({
         <td
           style={{ width: colWidths['smart'], minWidth: colWidths['smart'] }}
           className="py-[var(--row-py)] align-middle"
-          title={obj && hasSmartName(obj) ? (
+        >
+          <Tooltip content={obj && hasSmartName(obj) ? (
             typeof obj.common.smartName === 'string'
               ? obj.common.smartName
               : typeof obj.common.smartName === 'object' && obj.common.smartName
                 ? Object.values(obj.common.smartName).join(' / ')
                 : 'SmartName'
-          ) : undefined}
-        >
-          <div className="flex items-center justify-center">
-            {obj && hasSmartName(obj) && (
-              <button
-                className="p-0.5 rounded hover:bg-violet-500/15 dark:hover:bg-violet-500/20 transition-colors"
-                onClick={(e) => { e.stopPropagation(); onSmartNameClick?.(id); }}
-                title={isEn ? 'SmartName' : 'SmartName'}
-              >
-                <Mic2 size={15} className="text-violet-500 dark:text-violet-400" />
-              </button>
-            )}
-          </div>
+          ) : undefined}>
+            <div className="flex items-center justify-center">
+              {obj && hasSmartName(obj) && (
+                <button
+                  className="p-0.5 rounded hover:bg-violet-500/15 dark:hover:bg-violet-500/20 transition-colors"
+                  onClick={(e) => { e.stopPropagation(); onSmartNameClick?.(id); }}
+                >
+                  <Mic2 size={15} className="text-violet-500 dark:text-violet-400" />
+                </button>
+              )}
+            </div>
+          </Tooltip>
         </td>
       )}
       {show('alias') && (
         <td style={{ width: colWidths['alias'], minWidth: colWidths['alias'] }} className="py-[var(--row-py)] align-middle">
           <div className="flex items-center justify-center">
             {danglingAlias && (
-              <button
-                onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onAliasClick?.(id); }}
-                title={aliasTooltip}
-                className="relative p-0.5 rounded text-red-500 dark:text-red-400 hover:bg-red-500/15 dark:hover:bg-red-500/20 transition-colors"
-              >
-                <Link2 size={15} />
-              </button>
+              <Tooltip content={aliasTooltip}>
+                <button
+                  onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onAliasClick?.(id); }}
+                  className="relative p-0.5 rounded text-red-500 dark:text-red-400 hover:bg-red-500/15 dark:hover:bg-red-500/20 transition-colors"
+                >
+                  <Link2 size={15} />
+                </button>
+              </Tooltip>
             )}
             {hasAlias && !danglingAlias && (
-              <button
-                onClick={(e) => {
-                  e.currentTarget.blur();
-                  e.stopPropagation();
-                  onAliasClick?.(id);
-                }}
-                title={aliasTooltip}
-                className="relative p-0.5 rounded text-amber-500 dark:text-amber-400 hover:bg-amber-500/15 dark:hover:bg-amber-500/20 transition-colors"
-              >
-                <Link2 size={15} />
-                {aliasIds && aliasIds.length > 1 && (
-                  <span className="absolute -top-1.5 -right-2 text-[8px] font-bold leading-none bg-amber-500 text-white rounded-full min-w-[13px] h-[13px] flex items-center justify-center px-0.5">
-                    {aliasIds.length}
-                  </span>
-                )}
-              </button>
+              <Tooltip content={aliasTooltip}>
+                <button
+                  onClick={(e) => {
+                    e.currentTarget.blur();
+                    e.stopPropagation();
+                    onAliasClick?.(id);
+                  }}
+                  className="relative p-0.5 rounded text-amber-500 dark:text-amber-400 hover:bg-amber-500/15 dark:hover:bg-amber-500/20 transition-colors"
+                >
+                  <Link2 size={15} />
+                  {aliasIds && aliasIds.length > 1 && (
+                    <span className="absolute -top-1.5 -right-2 text-[8px] font-bold leading-none bg-amber-500 text-white rounded-full min-w-[13px] h-[13px] flex items-center justify-center px-0.5">
+                      {aliasIds.length}
+                    </span>
+                  )}
+                </button>
+              </Tooltip>
             )}
           </div>
         </td>
@@ -465,13 +461,14 @@ const StateRow = React.memo(function StateRow({
         <td style={{ width: colWidths['scripts'], minWidth: colWidths['scripts'] }} className="py-[var(--row-py)] align-middle">
           <div className="flex items-center justify-center">
             {scriptSources?.includes(id) && (
-              <button
-                onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onScriptsClick?.(id); }}
-                title={isEn ? 'Show script usages' : 'Skript-Verwendungen anzeigen'}
-                className="p-0.5 rounded text-green-600 dark:text-green-500 hover:bg-green-500/15 dark:hover:bg-green-500/20 transition-colors"
-              >
-                <FileCode2 size={15} />
-              </button>
+              <Tooltip content={isEn ? 'Show script usages' : 'Skript-Verwendungen anzeigen'}>
+                <button
+                  onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onScriptsClick?.(id); }}
+                  className="p-0.5 rounded text-green-600 dark:text-green-500 hover:bg-green-500/15 dark:hover:bg-green-500/20 transition-colors"
+                >
+                  <FileCode2 size={15} />
+                </button>
+              </Tooltip>
             )}
           </div>
         </td>
@@ -507,10 +504,11 @@ const StateRow = React.memo(function StateRow({
       {show('ack') && (
         <td data-col="ack" className="px-3 py-[var(--row-py)]">
           {state ? (
-            <span
-              className={`inline-block w-2 h-2 rounded-full ${state.ack ? 'bg-green-500' : 'bg-yellow-500'}`}
-              title={state.ack ? 'Acknowledged' : 'Not acknowledged'}
-            />
+            <Tooltip content={state.ack ? 'Acknowledged' : 'Not acknowledged'}>
+              <span
+                className={`inline-block w-2 h-2 rounded-full ${state.ack ? 'bg-green-500' : 'bg-yellow-500'}`}
+              />
+            </Tooltip>
           ) : null}
         </td>
       )}
@@ -521,7 +519,7 @@ const StateRow = React.memo(function StateRow({
       )}
       <td style={{ width: DEL_COL_WIDTH, minWidth: DEL_COL_WIDTH }} />
     </tr>
-    </>
+    </Tooltip>
   );
 }, (prev, next) => {
   const prevState = prev.state;
