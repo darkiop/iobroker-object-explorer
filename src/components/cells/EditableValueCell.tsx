@@ -5,6 +5,7 @@ import { useSetState } from '../../hooks/useStates';
 import { formatValue } from '../../utils/format';
 import { getThresholdStatus } from '../statelist/StateListUtils';
 import TypeIcon from '../TypeIcon';
+import { Tooltip } from '../ui/Tooltip';
 
 const EditableValueCell = React.memo(function EditableValueCell({
   id,
@@ -62,50 +63,54 @@ const EditableValueCell = React.memo(function EditableValueCell({
       <td data-col="value" className="px-3 py-1.5 text-left overflow-hidden whitespace-nowrap group/value" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-start gap-1.5">
           {isSwitch ? (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (!isWritable) return;
-                setStateVal.mutate({ id, val: !Boolean(state.val) });
-              }}
-              disabled={setStateVal.isPending || !isWritable}
-              title={isWritable ? (isEn ? 'Toggle value' : 'Wert umschalten') : (isEn ? 'Read only' : 'Schreibgeschützt')}
-              className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${
-                Boolean(state.val) ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'
-              } ${(setStateVal.isPending || !isWritable) ? 'opacity-60 cursor-default' : 'cursor-pointer'}`}
-            >
-              <span className={`inline-block h-3.5 w-3.5 mt-[3px] rounded-full bg-white shadow transition-transform ${Boolean(state.val) ? 'translate-x-5' : 'translate-x-0.5'}`} />
-            </button>
+            <Tooltip content={isWritable ? (isEn ? 'Toggle value' : 'Wert umschalten') : (isEn ? 'Read only' : 'Schreibgeschützt')}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!isWritable) return;
+                  setStateVal.mutate({ id, val: !Boolean(state.val) });
+                }}
+                disabled={setStateVal.isPending || !isWritable}
+                className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${
+                  Boolean(state.val) ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'
+                } ${(setStateVal.isPending || !isWritable) ? 'opacity-60 cursor-default' : 'cursor-pointer'}`}
+              >
+                <span className={`inline-block h-3.5 w-3.5 mt-[3px] rounded-full bg-white shadow transition-transform ${Boolean(state.val) ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              </button>
+            </Tooltip>
           ) : (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (!isWritable) return;
-                setStateVal.mutate({ id, val: true });
-              }}
-              disabled={setStateVal.isPending || !isWritable}
-              title={isEn ? 'Trigger' : 'Auslösen'}
-              className="px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded disabled:opacity-50 transition-colors"
-            >
-              <Zap size={12} />
-            </button>
+            <Tooltip content={isEn ? 'Trigger' : 'Auslösen'}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!isWritable) return;
+                  setStateVal.mutate({ id, val: true });
+                }}
+                disabled={setStateVal.isPending || !isWritable}
+                className="px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded disabled:opacity-50 transition-colors"
+              >
+                <Zap size={12} />
+              </button>
+            </Tooltip>
           )}
-          <button
-            onClick={(e) => { e.stopPropagation(); onOpen(id); }}
-            className="opacity-0 group-hover/value:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
-            title={isEn ? 'Edit value' : 'Wert bearbeiten'}
-          >
-            <Pencil size={12} />
-          </button>
+          <Tooltip content={isEn ? 'Edit value' : 'Wert bearbeiten'}>
+            <button
+              onClick={(e) => { e.stopPropagation(); onOpen(id); }}
+              className="opacity-0 group-hover/value:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
+            >
+              <Pencil size={12} />
+            </button>
+          </Tooltip>
           {showTypeIcon && <TypeIcon type={obj?.common?.type || ''} />}
           {isReadOnly && (
             <Lock size={11} className="text-red-500 dark:text-red-400 shrink-0" aria-label={isEn ? 'Read only' : 'Schreibgeschützt'} />
           )}
           {state && (
-            <span
-              className={`inline-block w-2 h-2 rounded-full shrink-0 ${state.ack ? 'bg-green-500' : 'bg-yellow-500'}`}
-              title={state.ack ? (isEn ? 'Acknowledged' : 'Bestätigt') : (isEn ? 'Not acknowledged' : 'Nicht bestätigt')}
-            />
+            <Tooltip content={state.ack ? (isEn ? 'Acknowledged' : 'Bestätigt') : (isEn ? 'Not acknowledged' : 'Nicht bestätigt')}>
+              <span
+                className={`inline-block w-2 h-2 rounded-full shrink-0 ${state.ack ? 'bg-green-500' : 'bg-yellow-500'}`}
+              />
+            </Tooltip>
           )}
         </div>
       </td>
@@ -131,7 +136,7 @@ const EditableValueCell = React.memo(function EditableValueCell({
           if (role === 'url' && typeof val === 'string') {
             let safeHref: string | null = null;
             try { const u = new URL(val); if (u.protocol === 'https:' || u.protocol === 'http:') safeHref = val; } catch { /* invalid URL */ }
-            if (safeHref) return <a href={safeHref} target="_blank" rel="noopener noreferrer" title={v} onClick={(e) => e.stopPropagation()} className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 underline truncate max-w-[120px] block">{v}</a>;
+            if (safeHref) return <Tooltip content={v}><a href={safeHref} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 underline truncate max-w-[120px] block">{v}</a></Tooltip>;
           }
           const statesMap = obj?.common?.states;
           const stateLabel = statesMap && val !== null && val !== undefined ? statesMap[String(val)] : undefined;
@@ -139,20 +144,22 @@ const EditableValueCell = React.memo(function EditableValueCell({
             ? `${stateLabel} (${v})`
             : unitSuffix ? `${v} ${unitSuffix}` : v;
           const truncated = display.length > 20 ? display.slice(0, 20) + '…' : display;
-          return <span title={display}>{truncated}</span>;
+          return <Tooltip content={display}><span>{truncated}</span></Tooltip>;
         })() : <span className="text-gray-300 dark:text-gray-600">…</span>}
-        <button
-          onClick={(e) => { e.stopPropagation(); onOpen(id); }}
-          className="opacity-0 group-hover/value:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
-          title={isEn ? 'Edit value' : 'Wert bearbeiten'}
-        >
-          <Pencil size={12} />
-        </button>
+        <Tooltip content={isEn ? 'Edit value' : 'Wert bearbeiten'}>
+          <button
+            onClick={(e) => { e.stopPropagation(); onOpen(id); }}
+            className="opacity-0 group-hover/value:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
+          >
+            <Pencil size={12} />
+          </button>
+        </Tooltip>
         {state && (
-          <span
-            className={`inline-block w-2 h-2 rounded-full shrink-0 ${state.ack ? 'bg-green-500' : 'bg-yellow-500'}`}
-            title={state.ack ? (isEn ? 'Acknowledged' : 'Bestätigt') : (isEn ? 'Not acknowledged' : 'Nicht bestätigt')}
-          />
+          <Tooltip content={state.ack ? (isEn ? 'Acknowledged' : 'Bestätigt') : (isEn ? 'Not acknowledged' : 'Nicht bestätigt')}>
+            <span
+              className={`inline-block w-2 h-2 rounded-full shrink-0 ${state.ack ? 'bg-green-500' : 'bg-yellow-500'}`}
+            />
+          </Tooltip>
         )}
       </div>
     </td>

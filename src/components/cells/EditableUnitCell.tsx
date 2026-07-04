@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Pencil } from 'lucide-react';
 import { useExtendObject } from '../../hooks/useStates';
 import { useToast } from '../../context/ToastContext';
+import { Tooltip } from '../ui/Tooltip';
 
 const EditableUnitCell = React.memo(function EditableUnitCell({ id, unit, suggestions, language = 'en' }: { id: string; unit: string; suggestions: string[]; language?: 'en' | 'de' }) {
   const isEn = language === 'en';
@@ -45,7 +46,7 @@ const EditableUnitCell = React.memo(function EditableUnitCell({ id, unit, sugges
       onClick={(e) => { e.stopPropagation(); openEdit(); }}
     >
       <div className="flex items-center gap-1.5">
-        {unit && <span className="truncate min-w-0" title={unit}>{unit}</span>}
+        {unit && <Tooltip content={unit}><span className="truncate min-w-0">{unit}</span></Tooltip>}
         <Pencil size={12} className="opacity-0 group-hover/unit:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity" />
       </div>
       {editing && cellRect && createPortal(

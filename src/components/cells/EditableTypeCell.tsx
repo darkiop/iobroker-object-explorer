@@ -5,6 +5,7 @@ import { useExtendObject } from '../../hooks/useStates';
 import { useToast } from '../../context/ToastContext';
 import { getTypeColor } from '../../utils/typeColor';
 import { TYPE_OPTIONS } from '../statelist/StateListConstants';
+import { Tooltip } from '../ui/Tooltip';
 
 const EditableTypeCell = React.memo(function EditableTypeCell({ id, typeValue, objType, language = 'en' }: { id: string; typeValue: string; objType?: string; language?: 'en' | 'de' }) {
   const isEn = language === 'en';
@@ -53,11 +54,11 @@ const EditableTypeCell = React.memo(function EditableTypeCell({ id, typeValue, o
       <div className="flex items-center gap-1.5">
         {typeValue ? (
           <>
-            <span className={`truncate font-semibold ${getTypeColor(typeValue)}`} title={typeValue}>{typeValue}</span>
+            <Tooltip content={typeValue}><span className={`truncate font-semibold ${getTypeColor(typeValue)}`}>{typeValue}</span></Tooltip>
             <Pencil size={12} className="opacity-0 group-hover/type:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity" />
           </>
         ) : objType && objType !== 'state' ? (
-          <span className={`truncate font-semibold ${getTypeColor(objType)}`} title={objType}>{objType}</span>
+          <Tooltip content={objType}><span className={`truncate font-semibold ${getTypeColor(objType)}`}>{objType}</span></Tooltip>
         ) : (
           <span className="text-gray-300 dark:text-gray-600 italic font-sans">{isEn ? 'Select type…' : 'Typ wählen…'}</span>
         )}

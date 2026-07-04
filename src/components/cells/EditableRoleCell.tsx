@@ -4,6 +4,7 @@ import { Pencil } from 'lucide-react';
 import { useExtendObject } from '../../hooks/useStates';
 import { useToast } from '../../context/ToastContext';
 import { getRoleColor } from '../../utils/roleColor';
+import { Tooltip } from '../ui/Tooltip';
 
 const EditableRoleCell = React.memo(function EditableRoleCell({ id, role, objType: _objType, suggestions, language = 'en', cellStyle, cellClassName }: { id: string; role: string; objType?: string; suggestions: string[]; language?: 'en' | 'de'; cellStyle?: React.CSSProperties; cellClassName?: string }) {
   const isEn = language === 'en';
@@ -52,7 +53,7 @@ const EditableRoleCell = React.memo(function EditableRoleCell({ id, role, objTyp
       <div className="flex items-center gap-1.5">
         {role ? (
           <>
-            <span className={`truncate font-semibold ${getRoleColor(role)}`} title={role}>{role}</span>
+            <Tooltip content={role}><span className={`truncate font-semibold ${getRoleColor(role)}`}>{role}</span></Tooltip>
             <Pencil size={12} className="opacity-0 group-hover/role:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity" />
           </>
         ) : (

@@ -3,6 +3,7 @@ import { Pencil, Check, X, Copy } from 'lucide-react';
 import { useExtendObject } from '../../hooks/useStates';
 import { useToast } from '../../context/ToastContext';
 import { copyToClipboard } from '../../utils/clipboard';
+import { Tooltip } from '../ui/Tooltip';
 
 const EditableNameCell = React.memo(function EditableNameCell({ id, name, desc, showDesc = true, textClassName = '', tdClassName = '' }: { id: string; name: string; desc?: string; showDesc?: boolean; textClassName?: string; tdClassName?: string }) {
   const showToast = useToast();
@@ -17,31 +18,33 @@ const EditableNameCell = React.memo(function EditableNameCell({ id, name, desc, 
       <td data-col="name" className={`px-3 py-[var(--row-py)] overflow-hidden group/name align-middle ${tdClassName}`}>
         <div className="flex items-center gap-1.5">
           <div className="min-w-0 flex-1 overflow-hidden">
-            <div className={`truncate ${textClassName}`} title={name}>{name}</div>
-            {showDesc && desc && <div className="truncate text-[10px] italic text-gray-400 dark:text-gray-500 leading-tight mt-1" title={desc}>{desc}</div>}
+            <Tooltip content={name}><div className={`truncate ${textClassName}`}>{name}</div></Tooltip>
+            {showDesc && desc && <Tooltip content={desc}><div className="truncate text-[10px] italic text-gray-400 dark:text-gray-500 leading-tight mt-1">{desc}</div></Tooltip>}
           </div>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setDraft(name);
-              setEditing(true);
-            }}
-            className="opacity-0 group-hover/name:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
-            title="Name bearbeiten"
-          >
-            <Pencil size={12} />
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              function done() { setCopied(true); setTimeout(() => setCopied(false), 1500); }
-              copyToClipboard(name).then(done).catch(done);
-            }}
-            className="opacity-0 group-hover/name:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
-            title="Name kopieren"
-          >
-            {copied ? <Check size={12} className="text-green-500 dark:text-green-400" /> : <Copy size={12} />}
-          </button>
+          <Tooltip content="Name bearbeiten">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setDraft(name);
+                setEditing(true);
+              }}
+              className="opacity-0 group-hover/name:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
+            >
+              <Pencil size={12} />
+            </button>
+          </Tooltip>
+          <Tooltip content="Name kopieren">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                function done() { setCopied(true); setTimeout(() => setCopied(false), 1500); }
+                copyToClipboard(name).then(done).catch(done);
+              }}
+              className="opacity-0 group-hover/name:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
+            >
+              {copied ? <Check size={12} className="text-green-500 dark:text-green-400" /> : <Copy size={12} />}
+            </button>
+          </Tooltip>
         </div>
       </td>
     );
