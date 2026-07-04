@@ -198,7 +198,12 @@ export default function Layout({ sidebar, children, apiConnected = true, realtim
             {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
           </button>
           <img src="/favicon.svg" alt="" className="w-6 h-6 shrink-0" />
-          <h1 className="hidden sm:block text-lg font-semibold text-gray-900 dark:text-white">ioBroker Object Explorer</h1>
+          <h1 className="hidden sm:flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
+            ioBroker Object Explorer
+            {import.meta.env.DEV && (
+              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-500 text-black" title="Development build">DEV</span>
+            )}
+          </h1>
           <div className="hidden sm:block w-px h-4 bg-gray-300 dark:bg-gray-600" />
           <button
             onClick={goBack}
