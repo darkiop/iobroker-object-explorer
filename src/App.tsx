@@ -11,14 +11,17 @@ import SearchBar, { type SearchBarHandle } from './components/SearchBar';
 import StateTree from './components/StateTree';
 import StateList from './components/statelist/StateList';
 import ObjectEditModal from './components/modals/ObjectEditModal';
+// NOTE: also statically imported in StateListModals.tsx — not a real split chunk yet
 const HistoryModal = lazy(() => import('./components/modals/HistoryModal'));
-import NewDatapointModal from './components/modals/NewDatapointModal';
-import HelpModal from './components/modals/HelpModal';
-import EnumManagerModal from './components/modals/EnumManagerModal';
-import AliasReplaceModal from './components/modals/AliasReplaceModal';
-import AutoCreateAliasModal from './components/modals/AutoCreateAliasModal';
-import CreateAliasModal from './components/modals/CreateAliasModal';
-import SettingsModal from './components/modals/SettingsModal';
+// NOTE: also statically imported in StateListModals.tsx — not a real split chunk yet
+const NewDatapointModal = lazy(() => import('./components/modals/NewDatapointModal'));
+const HelpModal = lazy(() => import('./components/modals/HelpModal'));
+const EnumManagerModal = lazy(() => import('./components/modals/EnumManagerModal'));
+const AliasReplaceModal = lazy(() => import('./components/modals/AliasReplaceModal'));
+const AutoCreateAliasModal = lazy(() => import('./components/modals/AutoCreateAliasModal'));
+// NOTE: also statically imported in StateListModals.tsx — not a real split chunk yet
+const CreateAliasModal = lazy(() => import('./components/modals/CreateAliasModal'));
+const SettingsModal = lazy(() => import('./components/modals/SettingsModal'));
 import { useAllObjects, useFilteredObjects, useStateValues, useRoomMap, useFunctionMap, useRoomEnums, useFunctionEnums, useAliasMap } from './hooks/useStates';
 import { matchesTreeSearchStandalone } from './hooks/useTreeState';
 import { useApiConnectivity } from './hooks/useApiConnectivity';
@@ -849,56 +852,72 @@ function AppContent() {
           </Suspense>
         )}
         {enumManagerOpen && (
-          <EnumManagerModal
-            allObjects={allObjects}
-            language={appSettings.language}
-            onClose={() => setEnumManagerOpen(false)}
-          />
+          <Suspense fallback={null}>
+            <EnumManagerModal
+              allObjects={allObjects}
+              language={appSettings.language}
+              onClose={() => setEnumManagerOpen(false)}
+            />
+          </Suspense>
         )}
         {aliasReplaceInitialStr !== null && (
-          <AliasReplaceModal
-            allObjects={allObjects}
-            language={appSettings.language}
-            initialOldStr={aliasReplaceInitialStr}
-            onClose={() => setAliasReplaceInitialStr(null)}
-          />
+          <Suspense fallback={null}>
+            <AliasReplaceModal
+              allObjects={allObjects}
+              language={appSettings.language}
+              initialOldStr={aliasReplaceInitialStr}
+              onClose={() => setAliasReplaceInitialStr(null)}
+            />
+          </Suspense>
         )}
         {autoAliasDeviceId && (
-          <AutoCreateAliasModal
-            deviceId={autoAliasDeviceId}
-            allObjects={allObjects}
-            existingIds={existingIds}
-            language={appSettings.language}
-            onClose={() => setAutoAliasDeviceId(null)}
-            onCreated={(ids) => { handleNavigateTo(ids.length === 1 ? ids : ['alias.0.*']); }}
-          />
+          <Suspense fallback={null}>
+            <AutoCreateAliasModal
+              deviceId={autoAliasDeviceId}
+              allObjects={allObjects}
+              existingIds={existingIds}
+              language={appSettings.language}
+              onClose={() => setAutoAliasDeviceId(null)}
+              onCreated={(ids) => { handleNavigateTo(ids.length === 1 ? ids : ['alias.0.*']); }}
+            />
+          </Suspense>
         )}
         {dropAliasSource && (
-          <CreateAliasModal
-            sourceId={dropAliasSource.sourceId}
-            sourceObj={allObjects[dropAliasSource.sourceId]}
-            initialAliasId={dropAliasSource.targetPath + '.' + dropAliasSource.sourceId.split('.').pop()}
-            existingIds={existingIds}
-            language={appSettings.language}
-            onClose={() => setDropAliasSource(null)}
-            onCreated={() => setDropAliasSource(null)}
-          />
+          <Suspense fallback={null}>
+            <CreateAliasModal
+              sourceId={dropAliasSource.sourceId}
+              sourceObj={allObjects[dropAliasSource.sourceId]}
+              initialAliasId={dropAliasSource.targetPath + '.' + dropAliasSource.sourceId.split('.').pop()}
+              existingIds={existingIds}
+              language={appSettings.language}
+              onClose={() => setDropAliasSource(null)}
+              onCreated={() => setDropAliasSource(null)}
+            />
+          </Suspense>
         )}
         {shortcutsOpen && (
-          <HelpModal
-            language={appSettings.language}
-            onClose={() => setShortcutsOpen(false)}
-          />
+          <Suspense fallback={null}>
+            <HelpModal
+              language={appSettings.language}
+              onClose={() => setShortcutsOpen(false)}
+            />
+          </Suspense>
         )}
         {newDatapointInitialId !== null && (
-          <NewDatapointModal
-            onClose={() => setNewDatapointInitialId(null)}
-            existingIds={existingIds}
-            initialId={newDatapointInitialId}
-            language={appSettings.language}
-          />
+          <Suspense fallback={null}>
+            <NewDatapointModal
+              onClose={() => setNewDatapointInitialId(null)}
+              existingIds={existingIds}
+              initialId={newDatapointInitialId}
+              language={appSettings.language}
+            />
+          </Suspense>
         )}
-        {settingsOpen && <SettingsModal namespaceSuggestions={namespaceSuggestions} />}
+        {settingsOpen && (
+          <Suspense fallback={null}>
+            <SettingsModal namespaceSuggestions={namespaceSuggestions} />
+          </Suspense>
+        )}
         </ErrorBoundary>
 
         <div ref={panelContainerRef} className="flex-1 min-h-0 flex flex-row overflow-hidden">

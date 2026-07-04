@@ -114,8 +114,24 @@ export function useCreateDatapoint() {
         await updateFunctionMembership(id, null, functionEnumId);
       }
     },
+    onSuccess: (_data, { id, common, objectType = 'state' }) => {
+      queryClient.setQueriesData(
+        { queryKey: queryKeys.objects.root },
+        (old: Record<string, IoBrokerObject> | undefined) => {
+          if (!old) return old;
+          return {
+            ...old,
+            [id]: {
+              _id: id,
+              type: objectType,
+              common: common as IoBrokerObjectCommon,
+              native: {},
+            } as IoBrokerObject,
+          };
+        }
+      );
+    },
     onSettled: (_data, _error, vars) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.objects.root });
       if (vars.roomEnumId) {
         queryClient.invalidateQueries({ queryKey: queryKeys.metadata.roomMap });
       }

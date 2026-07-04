@@ -495,7 +495,7 @@ export function FilterContextProvider({ children }: { children: ReactNode }) {
     navState, goBack, goForward,
   ]);
 
-  const panel1Value: PanelContextValue = {
+  const panel1Value: PanelContextValue = useMemo(() => ({
     colFilters,
     handleColFilterChange,
     pattern,
@@ -505,7 +505,10 @@ export function FilterContextProvider({ children }: { children: ReactNode }) {
     fulltextEnabled,
     handleTreeScope,
     resetAllFilters,
-  };
+  }), [
+    colFilters, handleColFilterChange, pattern, treeFilter, handleClearTreeFilter,
+    sidebarToggleSeq, fulltextEnabled, handleTreeScope, resetAllFilters,
+  ]);
 
   return (
     <FilterContext.Provider value={value}>

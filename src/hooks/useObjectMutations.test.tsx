@@ -2,17 +2,24 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useSetState } from './useObjectMutations'
+import { useSetState, useCreateDatapoint } from './useObjectMutations'
 import { queryKeys } from './queryKeys'
 import type { IoBrokerState } from '../types/iobroker'
 
 vi.mock('../api/iobroker', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api/iobroker')>()
-  return { ...actual, setState: vi.fn() }
+  return {
+    ...actual,
+    setState: vi.fn(),
+    createObject: vi.fn(),
+    updateRoomMembership: vi.fn(),
+    updateFunctionMembership: vi.fn(),
+  }
 })
 
-const { setState } = await import('../api/iobroker')
+const { setState, createObject } = await import('../api/iobroker')
 const mockSetState = setState as ReturnType<typeof vi.fn>
+const mockCreateObject = createObject as ReturnType<typeof vi.fn>
 
 const STATE_ID = 'test.0.x'
 const INITIAL_STATE: IoBrokerState = { val: 42, ts: 1000, ack: true, q: 0, from: '', user: '', lc: 1000, id: STATE_ID }
@@ -99,5 +106,40 @@ describe('useSetState — optimistic update', () => {
     // After success the data may still reflect the optimistic update (no refetch unless invalidated)
     const entry = allData.find(([, v]) => v?.[STATE_ID])?.[1]
     expect(entry?.[STATE_ID]?.ack).toBe(false)
+  })
+})
+
+describe('useCreateDatapoint', () => {
+  let qc: QueryClient
+
+  beforeEach(() => {
+    qc = makeQueryClient()
+    qc.setQueryData(queryKeys.objects.root, {
+      'alias.0.existing': { _id: 'alias.0.existing', type: 'state', common: {}, native: {} },
+    })
+    vi.clearAllMocks()
+    mockCreateObject.mockResolvedValue(undefined)
+  })
+
+  it('patches the objects cache in place instead of invalidating it', async () => {
+    const invalidateSpy = vi.spyOn(qc, 'invalidateQueries')
+
+    const { result } = renderHook(() => useCreateDatapoint(), { wrapper: makeWrapper(qc) })
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        id: 'alias.0.new',
+        common: { name: 'New' },
+        objectType: 'state',
+      })
+    })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    const cache = qc.getQueryData<Record<string, unknown>>(queryKeys.objects.root)
+    expect(cache?.['alias.0.new']).toBeDefined()
+    expect(invalidateSpy).not.toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: queryKeys.objects.root })
+    )
   })
 })
