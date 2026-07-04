@@ -4,7 +4,7 @@ import { useExtendObject } from '../../hooks/useStates';
 import { useToast } from '../../context/ToastContext';
 import { copyToClipboard } from '../../utils/clipboard';
 
-const EditableNameCell = React.memo(function EditableNameCell({ id, name, desc, showDesc = true }: { id: string; name: string; desc?: string; showDesc?: boolean }) {
+const EditableNameCell = React.memo(function EditableNameCell({ id, name, desc, showDesc = true, textClassName = '', tdClassName = '' }: { id: string; name: string; desc?: string; showDesc?: boolean; textClassName?: string; tdClassName?: string }) {
   const showToast = useToast();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(name);
@@ -14,10 +14,10 @@ const EditableNameCell = React.memo(function EditableNameCell({ id, name, desc, 
 
   if (!editing) {
     return (
-      <td data-col="name" className="px-3 py-[var(--row-py)] overflow-hidden group/name align-middle">
+      <td data-col="name" className={`px-3 py-[var(--row-py)] overflow-hidden group/name align-middle ${tdClassName}`}>
         <div className="flex items-center gap-1.5">
           <div className="min-w-0 flex-1 overflow-hidden">
-            <div className="truncate" title={name}>{name}</div>
+            <div className={`truncate ${textClassName}`} title={name}>{name}</div>
             {showDesc && desc && <div className="truncate text-[10px] italic text-gray-400 dark:text-gray-500 leading-tight mt-1" title={desc}>{desc}</div>}
           </div>
           <button

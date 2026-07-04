@@ -254,14 +254,14 @@ const StateRow = React.memo(function StateRow({
               <CopyIdButton id={id} />
               <button
                 onClick={(e) => { e.stopPropagation(); onDeleteClick(id); }}
-                className="opacity-0 group-hover/id:opacity-100 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 shrink-0 transition-opacity"
+                className="opacity-0 group-hover/id:opacity-100 text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white shrink-0 transition-opacity"
                 title="Delete datapoint"
               >
                 <Trash2 size={12} />
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); onEditJson(id); }}
-                className="opacity-0 group-hover/id:opacity-100 text-gray-400 hover:text-violet-500 dark:text-gray-500 dark:hover:text-violet-400 shrink-0 transition-opacity"
+                className="opacity-0 group-hover/id:opacity-100 text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white shrink-0 transition-opacity"
                 title="JSON"
               >
                 <Wrench size={12} />

@@ -26,6 +26,7 @@ import SortHeader from '../ui/SortHeader';
 import StyledCheckbox from '../ui/StyledCheckbox';
 import StateRow from './StateRow';
 import EditableRoleCell from '../cells/EditableRoleCell';
+import EditableNameCell from '../cells/EditableNameCell';
 import { getObjectName } from './StateListUtils';
 import { DEL_COL_WIDTH, VIRTUAL_OVERSCAN } from './StateListConstants';
 import { ROW_HEIGHT_PX } from '../../context/UIContext';
@@ -1233,7 +1234,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                         {item.prefix && objects[item.prefix] && (
                           <button
                             onClick={(e) => { e.stopPropagation(); setEditObjId(item.prefix); }}
-                            className="ml-1 opacity-0 group-hover/sep:opacity-100 transition-opacity text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400"
+                            className="ml-1 opacity-0 group-hover/sep:opacity-100 transition-opacity text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white"
                             title={isEn ? 'Edit object' : 'Objekt bearbeiten'}
                           >
                             <Pencil size={12} />
@@ -1241,7 +1242,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                         )}
                         <button
                           onClick={(e) => { e.stopPropagation(); setNewDatapointPrefix(item.prefix || null); setNewDatapointOpen(true); }}
-                          className="opacity-0 group-hover/sep:opacity-100 transition-opacity text-gray-400 hover:text-green-500 dark:text-gray-500 dark:hover:text-green-400"
+                          className="opacity-0 group-hover/sep:opacity-100 transition-opacity text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white"
                           title={isEn ? 'New datapoint in this group' : 'Neuer Datenpunkt in dieser Gruppe'}
                         >
                           <Plus size={13} />
@@ -1249,21 +1250,19 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                         {item.prefix && (
                           <button
                             onClick={(e) => { e.stopPropagation(); copyToClipboard(item.prefix).then(() => showToast(item.prefix, 'success')).catch(() => showToast(isEn ? 'Copy failed' : 'Kopieren fehlgeschlagen')); }}
-                            className="opacity-0 group-hover/sep:opacity-100 transition-opacity text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                            className="opacity-0 group-hover/sep:opacity-100 transition-opacity text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white"
                             title={item.prefix}
                           >
                             <Copy size={12} />
                           </button>
                         )}
-                        {_sepDetailCols.length === 0 && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setDeletingGroupPrefix(item.prefix); }}
-                            className="ml-auto opacity-0 group-hover/sep:opacity-100 transition-opacity text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400"
-                            title={isEn ? 'Delete all datapoints in this group' : 'Alle Datenpunkte dieser Gruppe löschen'}
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        )}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setDeletingGroupPrefix(item.prefix); }}
+                          className={`${_sepDetailCols.length === 0 ? 'ml-auto' : ''} opacity-0 group-hover/sep:opacity-100 transition-opacity text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white`}
+                          title={isEn ? 'Delete all datapoints in this group' : 'Alle Datenpunkte dieser Gruppe löschen'}
+                        >
+                          <Trash2 size={13} />
+                        </button>
                       </div>
                     </td>
                     {_sepNameBeforeType && (() => {
@@ -1283,12 +1282,15 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                           })()
                         : undefined;
                       return <>
-                        <td key="name" title={label || undefined} style={{ width: nw, minWidth: nw }} className="px-3 py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-200/70 dark:group-hover/sep:bg-gray-700/60 transition-colors text-xs align-middle text-gray-600 dark:text-gray-300">
-                          <div className="flex items-center gap-1.5 truncate">
-                            {iconUrl && <img src={iconUrl} alt="" className="w-4 h-4 shrink-0 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
-                            <span className="truncate">{label}</span>
-                          </div>
-                        </td>
+                        {sepObj
+                          ? <EditableNameCell key="name" id={item.prefix} name={label} showDesc={false} textClassName="text-xs text-gray-600 dark:text-gray-300" tdClassName="bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-200/70 dark:group-hover/sep:bg-gray-700/60 transition-colors" />
+                          : <td key="name" title={label || undefined} style={{ width: nw, minWidth: nw }} className="px-3 py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-200/70 dark:group-hover/sep:bg-gray-700/60 transition-colors text-xs align-middle text-gray-600 dark:text-gray-300">
+                              <div className="flex items-center gap-1.5 truncate">
+                                {iconUrl && <img src={iconUrl} alt="" className="w-4 h-4 shrink-0 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
+                                <span className="truncate">{label}</span>
+                              </div>
+                            </td>
+                        }
                         {_sepFillerSpan > 0 && <td colSpan={_sepFillerSpan} className="bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-200/70 dark:group-hover/sep:bg-gray-700/60 transition-colors" />}
                       </>;
                     })()}
@@ -1326,15 +1328,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                       });
                     })()}
                     {_sepDetailCols.length > 0 && (
-                      <td colSpan={_sepTrailingSpan} className="bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-200/70 dark:group-hover/sep:bg-gray-700/60 transition-colors pr-2 text-right align-middle">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setDeletingGroupPrefix(item.prefix); }}
-                          className="opacity-0 group-hover/sep:opacity-100 transition-opacity text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400"
-                          title={isEn ? 'Delete all datapoints in this group' : 'Alle Datenpunkte dieser Gruppe löschen'}
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </td>
+                      <td colSpan={_sepTrailingSpan} className="bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-200/70 dark:group-hover/sep:bg-gray-700/60 transition-colors" />
                     )}
                   </tr>
                 );
