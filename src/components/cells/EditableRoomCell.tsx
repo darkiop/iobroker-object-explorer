@@ -49,10 +49,12 @@ const EditableRoomCell = React.memo(function EditableRoomCell({ id, currentRoomE
     >
       <div className="flex items-center gap-1.5">
         {roomName && <Tooltip content={roomName}><span className="truncate min-w-0">{roomName}</span></Tooltip>}
-        <Pencil
-          size={12}
-          className="opacity-0 group-hover/room:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
-        />
+        <Tooltip content={isEn ? 'Edit room' : 'Raum bearbeiten'}>
+          <Pencil
+            size={12}
+            className="opacity-0 group-hover/room:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
+          />
+        </Tooltip>
       </div>
       {editing && cellRect && createPortal(
         <>

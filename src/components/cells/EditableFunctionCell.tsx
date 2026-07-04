@@ -49,10 +49,12 @@ const EditableFunctionCell = React.memo(function EditableFunctionCell({ id, curr
     >
       <div className="flex items-center gap-1.5">
         {fnName && <Tooltip content={fnName}><span className="truncate min-w-0">{fnName}</span></Tooltip>}
-        <Pencil
-          size={12}
-          className="opacity-0 group-hover/fn:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
-        />
+        <Tooltip content={isEn ? 'Edit function' : 'Funktion bearbeiten'}>
+          <Pencil
+            size={12}
+            className="opacity-0 group-hover/fn:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
+          />
+        </Tooltip>
       </div>
       {editing && cellRect && createPortal(
         <>

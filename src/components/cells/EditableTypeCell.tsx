@@ -55,7 +55,7 @@ const EditableTypeCell = React.memo(function EditableTypeCell({ id, typeValue, o
         {typeValue ? (
           <>
             <Tooltip content={typeValue}><span className={`truncate font-semibold ${getTypeColor(typeValue)}`}>{typeValue}</span></Tooltip>
-            <Pencil size={12} className="opacity-0 group-hover/type:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity" />
+            <Tooltip content={isEn ? 'Edit type' : 'Typ bearbeiten'}><Pencil size={12} className="opacity-0 group-hover/type:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity" /></Tooltip>
           </>
         ) : objType && objType !== 'state' ? (
           <Tooltip content={objType}><span className={`truncate font-semibold ${getTypeColor(objType)}`}>{objType}</span></Tooltip>

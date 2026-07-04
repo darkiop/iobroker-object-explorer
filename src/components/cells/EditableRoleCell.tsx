@@ -54,12 +54,12 @@ const EditableRoleCell = React.memo(function EditableRoleCell({ id, role, objTyp
         {role ? (
           <>
             <Tooltip content={role}><span className={`truncate font-semibold ${getRoleColor(role)}`}>{role}</span></Tooltip>
-            <Pencil size={12} className="opacity-0 group-hover/role:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity" />
+            <Tooltip content={isEn ? 'Edit role' : 'Rolle bearbeiten'}><Pencil size={12} className="opacity-0 group-hover/role:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity" /></Tooltip>
           </>
         ) : (
           <>
             <span className="text-gray-300 dark:text-gray-600 italic font-sans">{isEn ? 'Select role…' : 'Rolle wählen…'}</span>
-            <Pencil size={12} className="opacity-0 group-hover/role:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity" />
+            <Tooltip content={isEn ? 'Edit role' : 'Rolle bearbeiten'}><Pencil size={12} className="opacity-0 group-hover/role:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity" /></Tooltip>
           </>
         )}
       </div>

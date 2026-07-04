@@ -47,7 +47,7 @@ const EditableUnitCell = React.memo(function EditableUnitCell({ id, unit, sugges
     >
       <div className="flex items-center gap-1.5">
         {unit && <Tooltip content={unit}><span className="truncate min-w-0">{unit}</span></Tooltip>}
-        <Pencil size={12} className="opacity-0 group-hover/unit:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity" />
+        <Tooltip content={isEn ? 'Edit unit' : 'Einheit bearbeiten'}><Pencil size={12} className="opacity-0 group-hover/unit:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity" /></Tooltip>
       </div>
       {editing && cellRect && createPortal(
         <>
