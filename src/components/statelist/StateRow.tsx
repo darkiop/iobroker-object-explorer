@@ -244,8 +244,8 @@ const StateRow = React.memo(function StateRow({
         </td>
       )}
       {show('id') && (
-        <td data-col="id" className="py-[var(--row-py)] font-mono text-xs text-gray-500 dark:text-gray-400 overflow-hidden group/id" style={{ paddingLeft: depth === 0 ? 12 : 12 + (depth - 1) * 10 + 32 }}>
-          <div className="flex flex-col gap-0.5 min-w-0">
+        <td data-col="id" className="py-[var(--row-py)] font-mono text-sm text-gray-500 dark:text-gray-400 overflow-hidden group/id relative" style={{ paddingLeft: depth === 0 ? 12 : 12 + (depth - 1) * 10 + 32 }}>
+          <div className="flex flex-col gap-0.5 min-w-0 pr-24">
             <div className="flex items-center gap-1.5 min-w-0">
               {showObjectTypeIcons && obj?.type === 'device'  && <Cpu       size={12} className="text-sky-500/80 shrink-0" />}
               {showObjectTypeIcons && obj?.type === 'channel' && <LayersIcon size={12} className="text-indigo-500/80 shrink-0" />}
@@ -302,6 +302,67 @@ const StateRow = React.memo(function StateRow({
               </div>
             )}
           </div>
+          <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1 shrink-0">
+            {obj && hasHistory(obj) && (
+              <button
+                onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onHistoryClick(id); }}
+                title="History anzeigen"
+                className="p-0.5 rounded text-blue-500 dark:text-blue-400 hover:bg-blue-500/15 dark:hover:bg-blue-500/20 transition-colors"
+              >
+                <History size={13} />
+              </button>
+            )}
+            {obj && hasSmartName(obj) && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onSmartNameClick?.(id); }}
+                    title="SmartName"
+                    className="p-0.5 rounded text-violet-500 dark:text-violet-400 hover:bg-violet-500/15 dark:hover:bg-violet-500/20 transition-colors"
+                  >
+                    <Mic2 size={13} />
+                  </button>
+                )}
+                {scriptSources?.includes(id) && (
+                  <button
+                    onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onScriptsClick?.(id); }}
+                    title={isEn ? 'Show script usages' : 'Skript-Verwendungen anzeigen'}
+                    className="p-0.5 rounded text-green-600 dark:text-green-500 hover:bg-green-500/15 dark:hover:bg-green-500/20 transition-colors"
+                  >
+                    <FileCode2 size={13} />
+                  </button>
+                )}
+                {obj && hasCustomEnabled(obj) && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onCustomClick?.(id); }}
+                    title={isEn ? 'Custom settings' : 'Benutzerdefinierte Einstellungen'}
+                    className="p-0.5 rounded text-purple-500 dark:text-purple-400 hover:bg-purple-500/15 dark:hover:bg-purple-500/20 transition-colors"
+                  >
+                    <Wrench size={13} />
+                  </button>
+                )}
+                {danglingAlias && (
+                  <button
+                    onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onAliasClick?.(id); }}
+                    title={aliasTooltip}
+                    className="relative p-0.5 rounded text-red-500 dark:text-red-400 hover:bg-red-500/15 dark:hover:bg-red-500/20 transition-colors"
+                  >
+                    <Link2 size={13} />
+                  </button>
+                )}
+                {hasAlias && !danglingAlias && (
+                  <button
+                    onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onAliasClick?.(id); }}
+                    title={aliasTooltip}
+                    className="relative p-0.5 rounded text-amber-500 dark:text-amber-400 hover:bg-amber-500/15 dark:hover:bg-amber-500/20 transition-colors"
+                  >
+                    <Link2 size={13} />
+                    {aliasIds && aliasIds.length > 1 && (
+                      <span className="absolute -top-1.5 -right-2 text-[8px] font-bold leading-none bg-amber-500 text-white rounded-full min-w-[13px] h-[13px] flex items-center justify-center px-0.5">
+                        {aliasIds.length}
+                      </span>
+                    )}
+                  </button>
+                )}
+              </div>
         </td>
       )}
       {show('name') && <EditableNameCell id={id} name={name} desc={resolveI18n(obj?.common?.desc)} showDesc={showDesc} />}

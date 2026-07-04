@@ -9,7 +9,7 @@ const DEPTH_COLORS = [
 export function ColoredId({ id, className }: { id: string; className?: string }) {
   const parts = id.split('.');
   return (
-    <span className={`truncate ${className ?? ''}`} title={id}>
+    <span className={`truncate tracking-wide ${className ?? ''}`} title={id}>
       {parts.map((part, i) => (
         <span key={i}>
           {i > 0 && <span className="text-gray-400/60 dark:text-gray-600 select-none">.</span>}

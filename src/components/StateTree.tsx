@@ -340,7 +340,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
         ) : (
           <FileText size={14} className="text-green-400/80 shrink-0" />
         )}
-        <span className={`truncate ${node.isLeaf ? (isHistoryEnabled ? 'text-blue-500 dark:text-blue-400' : 'text-green-600 dark:text-green-400') : (isHighlightedNamespace ? 'font-semibold' : 'text-gray-600 font-medium dark:text-gray-400')}`}>
+        <span className={`truncate tracking-wide ${node.isLeaf ? (isHistoryEnabled ? 'text-blue-500 dark:text-blue-400' : 'text-green-600 dark:text-green-400') : (isHighlightedNamespace ? '' : 'text-gray-600 dark:text-gray-400')}`}>
           {node.name}
         </span>
         {treeCountMode !== 'off' && !node.isLeaf && (node.totalCount ?? 0) > 0 &&
