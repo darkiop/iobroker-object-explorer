@@ -81,6 +81,7 @@ html:not(.dark) * {
 .catppuccin-mocha .dark\:hover\:bg-gray-700\/80:hover  { background-color: rgb(49 50 68 / 0.8) !important; }
 .catppuccin-mocha .dark\:hover\:bg-gray-800\/40:hover  { background-color: rgb(36 39 58 / 0.4) !important; }
 .catppuccin-mocha .dark\:hover\:bg-gray-800\/50:hover  { background-color: rgb(36 39 58 / 0.5) !important; }
+.catppuccin-mocha .group\/sep:hover .dark\:group-hover\/sep\:bg-gray-700\/60 { background-color: rgb(49 50 68 / 0.6) !important; }
 
 /* --- Text (gray) --- */
 .catppuccin-mocha .dark\:text-gray-100 { color: #cdd6f4 !important; }
@@ -197,7 +198,8 @@ html:not(.dark) * {
 .abyss .dark\:hover\:bg-gray-800:hover  { background-color: #0a0a0a !important; }
 .abyss .dark\:hover\:bg-gray-600\/60:hover  { background-color: rgb(28 28 28 / 0.6) !important; }
 .abyss .dark\:hover\:bg-gray-700\/50:hover  { background-color: rgb(17 17 17 / 0.5) !important; }
-.abyss .dark\:hover\:bg-gray-700\/60:hover  { background-color: rgb(17 17 17 / 0.6) !important; }
+.abyss .dark\:hover\:bg-gray-700\/60:hover  { background-color: rgb(58 58 58 / 0.6) !important; }
+.abyss .group\/sep:hover .dark\:group-hover\/sep\:bg-gray-700\/60 { background-color: rgb(58 58 58 / 0.6) !important; }
 .abyss .dark\:hover\:bg-gray-700\/80:hover  { background-color: rgb(17 17 17 / 0.8) !important; }
 .abyss .dark\:hover\:bg-gray-800\/40:hover  { background-color: rgb(10 10 10 / 0.4) !important; }
 .abyss .dark\:hover\:bg-gray-800\/50:hover  { background-color: rgb(10 10 10 / 0.5) !important; }
@@ -277,6 +279,7 @@ html:not(.dark) * {
 .catppuccin-frappe .dark\:hover\:bg-gray-600\/60:hover  { background-color: rgb(81 87 109 / 0.6) !important; }
 .catppuccin-frappe .dark\:hover\:bg-gray-700\/50:hover  { background-color: rgb(65 69 89 / 0.5) !important; }
 .catppuccin-frappe .dark\:hover\:bg-gray-700\/60:hover  { background-color: rgb(65 69 89 / 0.6) !important; }
+.catppuccin-frappe .group\/sep:hover .dark\:group-hover\/sep\:bg-gray-700\/60 { background-color: rgb(65 69 89 / 0.6) !important; }
 .catppuccin-frappe .dark\:hover\:bg-gray-700\/80:hover  { background-color: rgb(65 69 89 / 0.8) !important; }
 .catppuccin-frappe .dark\:hover\:bg-gray-800\/40:hover  { background-color: rgb(41 44 60 / 0.4) !important; }
 .catppuccin-frappe .dark\:hover\:bg-gray-800\/50:hover  { background-color: rgb(41 44 60 / 0.5) !important; }
@@ -397,6 +400,7 @@ html:not(.dark) * {
 .catppuccin-macchiato .dark\:hover\:bg-gray-600\/60:hover  { background-color: rgb(73 77 100 / 0.6) !important; }
 .catppuccin-macchiato .dark\:hover\:bg-gray-700\/50:hover  { background-color: rgb(54 58 79 / 0.5) !important; }
 .catppuccin-macchiato .dark\:hover\:bg-gray-700\/60:hover  { background-color: rgb(54 58 79 / 0.6) !important; }
+.catppuccin-macchiato .group\/sep:hover .dark\:group-hover\/sep\:bg-gray-700\/60 { background-color: rgb(54 58 79 / 0.6) !important; }
 .catppuccin-macchiato .dark\:hover\:bg-gray-700\/80:hover  { background-color: rgb(54 58 79 / 0.8) !important; }
 .catppuccin-macchiato .dark\:hover\:bg-gray-800\/40:hover  { background-color: rgb(30 32 48 / 0.4) !important; }
 .catppuccin-macchiato .dark\:hover\:bg-gray-800\/50:hover  { background-color: rgb(30 32 48 / 0.5) !important; }

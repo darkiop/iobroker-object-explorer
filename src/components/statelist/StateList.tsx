@@ -1166,7 +1166,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                         }
                       }
                     }}>
-                    <td className="py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-100/50 dark:group-hover/sep:bg-gray-700/60 transition-colors text-center" style={{ width: DEL_COL_WIDTH, minWidth: DEL_COL_WIDTH }}>
+                    <td className="py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-200/70 dark:group-hover/sep:bg-gray-700/60 transition-colors text-center" style={{ width: DEL_COL_WIDTH, minWidth: DEL_COL_WIDTH }}>
                       {item.prefix && (() => {
                         const prefix = item.prefix;
                         const subtreeIds = ids.filter((id) => id === prefix || id.startsWith(prefix + '.'));
@@ -1190,7 +1190,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                         );
                       })()}
                     </td>
-                    <td colSpan={(_sepNameBeforeType ? (_sepMainSpanWithName || 1) : (_sepMainSpan || rowColSpan + 1)) - 1} className="py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-100/50 dark:group-hover/sep:bg-gray-700/60 transition-colors" style={{ paddingLeft: 12 + item.depth * 10, paddingRight: 12 }}>
+                    <td colSpan={(_sepNameBeforeType ? (_sepMainSpanWithName || 1) : (_sepMainSpan || rowColSpan + 1)) - 1} className="py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-200/70 dark:group-hover/sep:bg-gray-700/60 transition-colors" style={{ paddingLeft: 12 + item.depth * 10, paddingRight: 12 }}>
                       <div className="flex items-center gap-2">
                         {(collapsedPrefixes === null || collapsedPrefixes.has(item.prefix) || collapsingPrefixes.has(item.prefix))
                           ? <ChevronRight size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
@@ -1281,13 +1281,13 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                           })()
                         : undefined;
                       return <>
-                        <td key="name" title={label || undefined} style={{ width: nw, minWidth: nw }} className="px-3 py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-100/50 dark:group-hover/sep:bg-gray-700/60 transition-colors text-xs align-middle text-gray-600 dark:text-gray-300">
+                        <td key="name" title={label || undefined} style={{ width: nw, minWidth: nw }} className="px-3 py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-200/70 dark:group-hover/sep:bg-gray-700/60 transition-colors text-xs align-middle text-gray-600 dark:text-gray-300">
                           <div className="flex items-center gap-1.5 truncate">
                             {iconUrl && <img src={iconUrl} alt="" className="w-4 h-4 shrink-0 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
                             <span className="truncate">{label}</span>
                           </div>
                         </td>
-                        {_sepFillerSpan > 0 && <td colSpan={_sepFillerSpan} className="bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-100/50 dark:group-hover/sep:bg-gray-700/60 transition-colors" />}
+                        {_sepFillerSpan > 0 && <td colSpan={_sepFillerSpan} className="bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-200/70 dark:group-hover/sep:bg-gray-700/60 transition-colors" />}
                       </>;
                     })()}
                     {_sepDetailCols.length > 0 && (() => {
@@ -1300,7 +1300,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                         }
                         if (k === 'type') {
                           const t = item.prefix.split('.').length > 2 ? (sepObj?.type ?? 'folder') : sepObj?.type;
-                          return <td key="type" style={{ width: w, minWidth: w }} className="px-3 py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-100/50 dark:group-hover/sep:bg-gray-700/60 transition-colors text-xs font-mono align-middle">{t && <span className={`font-semibold ${getTypeColor(t)}`}>{t}</span>}</td>;
+                          return <td key="type" style={{ width: w, minWidth: w }} className="px-3 py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-200/70 dark:group-hover/sep:bg-gray-700/60 transition-colors text-xs font-mono align-middle">{t && <span className={`font-semibold ${getTypeColor(t)}`}>{t}</span>}</td>;
                         }
                         if (k === 'role') {
                           const r = sepObj?.common?.role;
@@ -1314,17 +1314,17 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                                 suggestions={roles}
                                 language={language}
                                 cellStyle={{ width: w, minWidth: w }}
-                                cellClassName="px-3 py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-100/50 dark:group-hover/sep:bg-gray-700/60 transition-colors text-xs font-mono overflow-hidden align-middle group/role"
+                                cellClassName="px-3 py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-200/70 dark:group-hover/sep:bg-gray-700/60 transition-colors text-xs font-mono overflow-hidden align-middle group/role"
                               />
                             );
                           }
-                          return <td key="role" style={{ width: w, minWidth: w }} className="px-3 py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-100/50 dark:group-hover/sep:bg-gray-700/60 transition-colors text-xs font-mono align-middle" />;
+                          return <td key="role" style={{ width: w, minWidth: w }} className="px-3 py-1.5 bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-200/70 dark:group-hover/sep:bg-gray-700/60 transition-colors text-xs font-mono align-middle" />;
                         }
                         return null;
                       });
                     })()}
                     {_sepDetailCols.length > 0 && (
-                      <td colSpan={_sepTrailingSpan} className="bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-100/50 dark:group-hover/sep:bg-gray-700/60 transition-colors pr-2 text-right align-middle">
+                      <td colSpan={_sepTrailingSpan} className="bg-white dark:bg-gray-800/60 border-y border-gray-200/80 dark:border-gray-700/60 group-hover/sep:bg-gray-200/70 dark:group-hover/sep:bg-gray-700/60 transition-colors pr-2 text-right align-middle">
                         <button
                           onClick={(e) => { e.stopPropagation(); setDeletingGroupPrefix(item.prefix); }}
                           className="opacity-0 group-hover/sep:opacity-100 transition-opacity text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400"

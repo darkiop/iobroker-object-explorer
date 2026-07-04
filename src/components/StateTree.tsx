@@ -320,7 +320,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
             ? 'bg-emerald-500/20 ring-1 ring-inset ring-emerald-500/50 text-emerald-700 dark:text-emerald-300'
             : selectedId === node.fullPath
               ? 'bg-blue-600/30 text-blue-600 dark:text-blue-300 hover:bg-blue-600/35'
-              : `hover:bg-gray-200/50 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-300 ${namespaceRowClass}`
+              : `hover:bg-gray-200/80 dark:hover:bg-gray-700/60 text-gray-700 dark:text-gray-300 ${namespaceRowClass}`
         }`}
         style={{ paddingLeft: `${depth * 14 + 4}px` }}
         onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY }); }}
