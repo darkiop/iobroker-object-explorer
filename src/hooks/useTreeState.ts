@@ -2,6 +2,49 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import type { IoBrokerObject, TreeNode } from '../types/iobroker';
 import type { AppSettings } from '../context/UIContext';
 
+function shouldShowNodeType(
+  node: TreeNode,
+  allObjects: Record<string, IoBrokerObject>,
+  showFolders: boolean,
+  showDevices: boolean,
+  showChannels: boolean
+): boolean {
+  if (node.isLeaf) return false;
+  const objectType = allObjects[node.fullPath]?.type;
+  if (objectType === 'device') return showDevices;
+  if (objectType === 'channel') return showChannels;
+  return showFolders;
+}
+
+function buildExpandableSet(
+  root: TreeNode,
+  allObjects: Record<string, IoBrokerObject>,
+  showFolders: boolean,
+  showDevices: boolean,
+  showChannels: boolean
+): Set<string> {
+  const expandable = new Set<string>();
+
+  function visit(node: TreeNode): boolean {
+    let anyExpandableChild = false;
+    for (const child of node.children.values()) {
+      if (child.isLeaf) continue;
+      const childVisible = shouldShowNodeType(child, allObjects, showFolders, showDevices, showChannels);
+      const childExpandable = visit(child);
+      if (childVisible || childExpandable) {
+        anyExpandableChild = true;
+      }
+    }
+    if (anyExpandableChild) {
+      expandable.add(node.fullPath);
+    }
+    return anyExpandableChild;
+  }
+
+  visit(root);
+  return expandable;
+}
+
 function buildTree(ids: string[], structureIds: string[] = []): TreeNode {
   const root: TreeNode = { name: 'root', fullPath: '', children: new Map(), isLeaf: false, count: 0, totalCount: 0 };
   for (const id of ids) {
@@ -180,6 +223,11 @@ export function useTreeState({
     [tree.children]
   );
 
+  const expandableSet = useMemo(
+    () => buildExpandableSet(tree, allObjects, showFolders, showDevices, showChannels),
+    [tree, allObjects, showFolders, showDevices, showChannels]
+  );
+
   return {
     expandSignal, setExpandSignal,
     showFolders, setShowFolders,
@@ -189,5 +237,6 @@ export function useTreeState({
     filteredIds,
     tree,
     sortedChildren,
+    expandableSet,
   };
 }
