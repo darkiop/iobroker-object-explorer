@@ -296,6 +296,9 @@ export default function Layout({ sidebar, children, apiConnected = true, realtim
           />
           <div className="hidden sm:block w-px h-4 bg-gray-300 dark:bg-gray-600" />
           <span className="hidden sm:inline text-[10px] font-mono text-gray-400 dark:text-gray-600 select-none" title="App version">v{__APP_VERSION__}</span>
+          {import.meta.env.DEV && __GIT_BRANCH__ && (
+            <span className="hidden sm:inline text-[10px] font-mono text-amber-500 dark:text-amber-400 select-none" title="Git branch">⎇ {__GIT_BRANCH__}</span>
+          )}
           <div className="hidden sm:block w-px h-4 bg-gray-300 dark:bg-gray-600" />
           {onManualRefresh && (
             <button

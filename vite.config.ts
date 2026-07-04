@@ -2,7 +2,16 @@ import { defineConfig, loadEnv } from 'vite'
 import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { execSync } from 'node:child_process'
 import pkg from './package.json'
+
+function getGitBranch(): string {
+  try {
+    return execSync('git rev-parse --abbrev-ref HEAD').toString().trim()
+  } catch {
+    return ''
+  }
+}
 
 function devConfigPlugin(ioBrokerTarget: string): Plugin {
   const host = ioBrokerTarget.replace(/^https?:\/\//, '')
@@ -34,6 +43,7 @@ export default defineConfig(({ mode }) => {
   return {
     define: {
       __APP_VERSION__: JSON.stringify(pkg.version),
+      __GIT_BRANCH__: JSON.stringify(getGitBranch()),
     },
     plugins: [
       react(),
