@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Tooltip, TooltipProvider } from './Tooltip';
 
@@ -18,6 +18,7 @@ describe('Tooltip', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    cleanup();
   });
 
   it('shows content after hover delay and hides on unhover', async () => {
