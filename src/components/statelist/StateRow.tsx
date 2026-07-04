@@ -227,9 +227,9 @@ const StateRow = React.memo(function StateRow({
         <td data-col="id" className="py-[var(--row-py)] font-mono text-sm text-gray-500 dark:text-gray-400 overflow-hidden group/id relative" style={{ paddingLeft: depth === 0 ? 12 : 12 + (depth - 1) * 10 + 32 }}>
           <div className="flex flex-col gap-0.5 min-w-0 pr-24">
             <div className="flex items-center gap-1.5 min-w-0">
-              {showObjectTypeIcons && obj?.type === 'device'  && <Cpu       size={12} className="text-sky-500/80 shrink-0" />}
-              {showObjectTypeIcons && obj?.type === 'channel' && <LayersIcon size={12} className="text-indigo-500/80 shrink-0" />}
-              {showObjectTypeIcons && obj?.type === 'folder'  && <Folder    size={12} className="text-yellow-500/80 shrink-0" />}
+              {showObjectTypeIcons && obj?.type === 'device'  && <Tooltip content={isEn ? 'Device' : 'Gerät'}><Cpu       size={12} className="text-sky-500/80 shrink-0" /></Tooltip>}
+              {showObjectTypeIcons && obj?.type === 'channel' && <Tooltip content={isEn ? 'Channel' : 'Kanal'}><LayersIcon size={12} className="text-indigo-500/80 shrink-0" /></Tooltip>}
+              {showObjectTypeIcons && obj?.type === 'folder'  && <Tooltip content={isEn ? 'Folder' : 'Ordner'}><Folder    size={12} className="text-yellow-500/80 shrink-0" /></Tooltip>}
               <ColoredId id={displayId ?? id} />
               <CopyIdButton id={id} />
               <Tooltip content="Delete datapoint">
@@ -359,7 +359,7 @@ const StateRow = React.memo(function StateRow({
       {show('name') && <EditableNameCell id={id} name={name} desc={resolveI18n(obj?.common?.desc)} showDesc={showDesc} language={language} />}
       {show('write') && (
         <td style={{ width: colWidths['write'], minWidth: colWidths['write'] }} className="py-[var(--row-py)] align-middle">
-          <Tooltip content={obj?.common?.write === false ? 'Read-only' : undefined}>
+          <Tooltip content={obj?.common?.write === false ? (isEn ? 'Read-only' : 'Schreibgeschützt') : undefined}>
             <div className="flex items-center justify-center">
               {obj?.common?.write === false && <Lock size={13} className="text-red-500 dark:text-red-400" />}
             </div>
