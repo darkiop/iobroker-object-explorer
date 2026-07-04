@@ -101,7 +101,11 @@ const EditableValueCell = React.memo(function EditableValueCell({
               <Pencil size={12} />
             </button>
           </Tooltip>
-          {showTypeIcon && <TypeIcon type={obj?.common?.type || ''} />}
+          {showTypeIcon && obj?.common?.type && (
+            <Tooltip content={obj.common.type}>
+              <span className="inline-flex shrink-0"><TypeIcon type={obj.common.type} /></span>
+            </Tooltip>
+          )}
           {isReadOnly && (
             <Lock size={11} className="text-red-500 dark:text-red-400 shrink-0" aria-label={isEn ? 'Read only' : 'Schreibgeschützt'} />
           )}
@@ -124,7 +128,11 @@ const EditableValueCell = React.memo(function EditableValueCell({
       onClick={(e) => { e.stopPropagation(); onOpen(id); }}
     >
       <div className={`flex items-center justify-start gap-1 ${valueColor}`}>
-        {showTypeIcon && <TypeIcon type={obj?.common?.type || ''} />}
+        {showTypeIcon && obj?.common?.type && (
+          <Tooltip content={obj.common.type}>
+            <span className="inline-flex shrink-0"><TypeIcon type={obj.common.type} /></span>
+          </Tooltip>
+        )}
         {isReadOnly && (
           <Lock size={10} className="text-red-500 dark:text-red-400 shrink-0" aria-label={isEn ? 'Read only' : 'Schreibgeschützt'} />
         )}
