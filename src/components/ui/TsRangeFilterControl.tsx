@@ -60,7 +60,7 @@ function TsRangeFilterControl({
     <>
       <div
         ref={anchorRef}
-        className="h-7 px-2 text-xs font-normal rounded border border-gray-300 dark:border-gray-600 bg-gray-50/70 dark:bg-gray-800/70 focus-within:outline-none focus-within:ring-1 focus-within:ring-blue-400 transition-colors flex items-center gap-1.5"
+        className="w-full h-7 px-2 text-xs font-normal rounded border border-gray-300 dark:border-gray-600 bg-gray-50/70 dark:bg-gray-800/70 focus-within:outline-none focus-within:ring-1 focus-within:ring-blue-400 transition-colors flex items-center gap-1.5"
       >
         <button
           type="button"
@@ -70,7 +70,6 @@ function TsRangeFilterControl({
         >
           {summary}
         </button>
-        <CalendarDays size={12} className="shrink-0 text-gray-400 dark:text-gray-500" />
         <button
           type="button"
           onClick={(e) => {
@@ -78,17 +77,25 @@ function TsRangeFilterControl({
             e.stopPropagation();
             onChange('');
           }}
-          className={`shrink-0 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 ${hasRange ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+          className={`shrink-0 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 ${hasRange ? 'opacity-100' : 'opacity-0 pointer-events-none w-0'}`}
           aria-label={isEn ? 'Clear date filter' : 'Datumsfilter leeren'}
         >
           <X size={12} />
+        </button>
+        <button
+          type="button"
+          onClick={open ? closeMenu : openMenu}
+          className="shrink-0 text-gray-400 dark:text-gray-500"
+          aria-label={isEn ? 'Open date filter' : 'Datumsfilter öffnen'}
+        >
+          <CalendarDays size={12} />
         </button>
       </div>
       {open && rect && createPortal(
         <>
           <div className="fixed inset-0 z-[9998]" onMouseDown={closeMenu} />
           <div
-            style={{ position: 'fixed', top: rect.bottom + 2, left: rect.left, zIndex: 9999, minWidth: Math.max(260, rect.width) }}
+            style={{ position: 'fixed', top: rect.bottom + 2, left: rect.left, zIndex: 9999, width: rect.width }}
             className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg p-2"
             onMouseDown={(e) => e.stopPropagation()}
           >
