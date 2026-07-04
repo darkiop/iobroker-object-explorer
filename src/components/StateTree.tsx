@@ -25,35 +25,6 @@ interface StateTreeProps {
 }
 
 
-function shouldShowNodeType(
-  node: TreeNode,
-  allObjects: Record<string, IoBrokerObject>,
-  showFolders: boolean,
-  showDevices: boolean,
-  showChannels: boolean
-): boolean {
-  if (node.isLeaf) return false;
-  const objectType = allObjects[node.fullPath]?.type;
-  if (objectType === 'device') return showDevices;
-  if (objectType === 'channel') return showChannels;
-  return showFolders;
-}
-
-function hasExpandableBranch(
-  node: TreeNode,
-  allObjects: Record<string, IoBrokerObject>,
-  showFolders: boolean,
-  showDevices: boolean,
-  showChannels: boolean
-): boolean {
-  for (const child of node.children.values()) {
-    if (child.isLeaf) continue;
-    if (shouldShowNodeType(child, allObjects, showFolders, showDevices, showChannels)) return true;
-    if (hasExpandableBranch(child, allObjects, showFolders, showDevices, showChannels)) return true;
-  }
-  return false;
-}
-
 const TreeNodeComponent = memo(function TreeNodeComponent({
   node,
   depth,
@@ -66,6 +37,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   smartIds,
   expandSignal,
   allObjects,
+  expandableSet,
   showFolders,
   showDevices,
   showChannels,
@@ -90,6 +62,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   smartIds: Set<string>;
   expandSignal: { depth: number; seq: number };
   allObjects: Record<string, IoBrokerObject>;
+  expandableSet: Set<string>;
   showFolders: boolean;
   showDevices: boolean;
   showChannels: boolean;
@@ -139,10 +112,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   const hasChildren = node.children.size > 0;
   const objectType = !node.isLeaf ? allObjects[node.fullPath]?.type : undefined;
   const isFolder = !node.isLeaf && (hasChildren || objectType === 'folder' || objectType === 'device' || objectType === 'channel' || objectType === 'instance');
-  const isExpandableFolder = useMemo(
-    () => isFolder && hasExpandableBranch(node, allObjects, showFolders, showDevices, showChannels),
-    [isFolder, node, allObjects, showFolders, showDevices, showChannels]
-  );
+  const isExpandableFolder = isFolder && expandableSet.has(node.fullPath);
   const isHistoryEnabled = node.isLeaf && historyIds.has(node.fullPath);
   const isSmartEnabled = node.isLeaf && smartIds.has(node.fullPath);
   const isActiveScope = (!!treeFilter && treeFilter === node.fullPath + '.') || (!!pattern && pattern === node.fullPath + '.*');
@@ -230,6 +200,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
             smartIds={smartIds}
             expandSignal={expandSignal}
             allObjects={allObjects}
+            expandableSet={expandableSet}
             showFolders={showFolders}
             showDevices={showDevices}
             showChannels={showChannels}
@@ -470,6 +441,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
             smartIds={smartIds}
             expandSignal={expandSignal}
             allObjects={allObjects}
+            expandableSet={expandableSet}
             showFolders={showFolders}
             showDevices={showDevices}
             showChannels={showChannels}
@@ -492,6 +464,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
     prev.node !== next.node ||
     prev.depth !== next.depth ||
     prev.allObjects !== next.allObjects ||
+    prev.expandableSet !== next.expandableSet ||
     prev.historyIds !== next.historyIds ||
     prev.smartIds !== next.smartIds ||
     prev.expandSignal !== next.expandSignal ||
@@ -550,6 +523,7 @@ function StateTree({ stateIds, allObjects, historyIds, smartIds, onCreateAtPath,
     filteredIds,
     tree,
     sortedChildren,
+    expandableSet,
   } = useTreeState({
     stateIds, allObjects, historyIds, smartIds,
     treeSearch, historyOnly, smartOnly, treeExpandSignal,
@@ -650,6 +624,7 @@ function StateTree({ stateIds, allObjects, historyIds, smartIds, onCreateAtPath,
               smartIds={smartIds}
               expandSignal={expandSignal}
               allObjects={allObjects}
+              expandableSet={expandableSet}
               showFolders={showFolders}
               showDevices={showDevices}
               showChannels={showChannels}
