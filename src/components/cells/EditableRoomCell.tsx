@@ -52,7 +52,7 @@ const EditableRoomCell = React.memo(function EditableRoomCell({ id, currentRoomE
         <Tooltip content={isEn ? 'Edit room' : 'Raum bearbeiten'}>
           <Pencil
             size={12}
-            className="opacity-0 group-hover/room:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
+            className="ml-auto opacity-0 group-hover/room:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
           />
         </Tooltip>
       </div>

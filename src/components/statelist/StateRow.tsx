@@ -1,5 +1,5 @@
 import React, { useState, useRef, useTransition, useLayoutEffect, useEffect } from 'react';
-import { Trash2, History, Mic2, Link2, Wrench, Lock, FileCode2, Cpu, Layers as LayersIcon, Folder } from 'lucide-react';
+import { Trash2, History, Mic2, Link2, Wrench, Lock, FileCode2, Cpu, Layers as LayersIcon, Folder, Pencil } from 'lucide-react';
 import { Tooltip } from '../ui/Tooltip';
 import type { IoBrokerState, IoBrokerObject } from '../../types/iobroker';
 import type { SortKey, DateFormatSetting } from './StateListColumns';
@@ -36,6 +36,7 @@ export interface StateRowProps {
   roomEnums: { id: string; name: string }[];
   fnEnums: { id: string; name: string }[];
   onSelect: (id: string) => void;
+  onEditClick?: (id: string) => void;
   onCheck: (id: string, checked: boolean, shiftKey?: boolean) => void;
   onContextMenu: (x: number, y: number, id: string) => void;
   onHistoryClick: (id: string) => void;
@@ -83,7 +84,7 @@ const StateRow = React.memo(function StateRow({
   id, state, obj, roomName, fnName,
   isSelected, isChecked, aliasIds, ownTargetExists,
   visibleCols, colWidths, roles, units, roomEnums, fnEnums,
-  onSelect, onCheck, onContextMenu, onHistoryClick, onScriptsClick, onCustomClick, onAliasClick, onSmartNameClick, onNavigateTo, onDeleteClick, onEditJson,
+  onSelect, onEditClick, onCheck, onContextMenu, onHistoryClick, onScriptsClick, onCustomClick, onAliasClick, onSmartNameClick, onNavigateTo, onDeleteClick, onEditJson,
   onSelectRoom, onSelectFunction, onOpenValueModal,
   roomEditForced, fnEditForced, onRoomEditEnd, onFnEditEnd,
   dateFormat, language, expertMode, isFocused, showDesc = true, showObjectTypeIcons = true, hideAliasSubRows = false, showUnitInValue = false, scriptSources, depth = 0, displayId, animateEnter, animateExit, dragEnabled = false, onDropAlias, rowHeight = 'comfortable',
@@ -236,17 +237,17 @@ const StateRow = React.memo(function StateRow({
                 <button
                   onClick={(e) => { e.stopPropagation(); onDeleteClick(id); }}
                   aria-label="Delete datapoint"
-                  className="opacity-0 group-hover/id:opacity-100 text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white shrink-0 transition-opacity"
+                  className="opacity-0 group-hover/id:opacity-100 text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white shrink-0"
                 >
                   <Trash2 size={12} />
                 </button>
               </Tooltip>
-              <Tooltip content="JSON">
+              <Tooltip content={isEn ? 'Edit object' : 'Objekt bearbeiten'}>
                 <button
-                  onClick={(e) => { e.stopPropagation(); onEditJson(id); }}
-                  className="opacity-0 group-hover/id:opacity-100 text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white shrink-0 transition-opacity"
+                  onClick={(e) => { e.stopPropagation(); onEditClick ? onEditClick(id) : onSelect(id); }}
+                  className="opacity-0 group-hover/id:opacity-100 text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white shrink-0"
                 >
-                  <Wrench size={12} />
+                  <Pencil size={12} />
                 </button>
               </Tooltip>
             </div>
@@ -288,72 +289,80 @@ const StateRow = React.memo(function StateRow({
             )}
           </div>
           <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1 shrink-0">
+            <Tooltip content="JSON">
+              <button
+                onClick={(e) => { e.stopPropagation(); onEditJson(id); }}
+                className="p-0.5 rounded text-teal-500 dark:text-teal-400 hover:bg-teal-500/15 dark:hover:bg-teal-500/20 transition-colors"
+              >
+                <Wrench size={13} />
+              </button>
+            </Tooltip>
+            {danglingAlias && (
+              <Tooltip content={aliasTooltip}>
+                <button
+                  onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onAliasClick?.(id); }}
+                  className="relative p-0.5 rounded text-red-500 dark:text-red-400 hover:bg-red-500/15 dark:hover:bg-red-500/20 transition-colors"
+                >
+                  <Link2 size={13} />
+                </button>
+              </Tooltip>
+            )}
+            {hasAlias && !danglingAlias && (
+              <Tooltip content={aliasTooltip}>
+                <button
+                  onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onAliasClick?.(id); }}
+                  className="relative p-0.5 rounded text-amber-500 dark:text-amber-400 hover:bg-amber-500/15 dark:hover:bg-amber-500/20 transition-colors"
+                >
+                  <Link2 size={13} />
+                  {aliasIds && aliasIds.length > 1 && (
+                    <span className="absolute -top-1.5 -right-2 text-[8px] font-bold leading-none bg-amber-500 text-white rounded-full min-w-[13px] h-[13px] flex items-center justify-center px-0.5">
+                      {aliasIds.length}
+                    </span>
+                  )}
+                </button>
+              </Tooltip>
+            )}
+            {obj && hasCustomEnabled(obj) && (
+              <Tooltip content={isEn ? 'Custom settings' : 'Benutzerdefinierte Einstellungen'}>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onCustomClick?.(id); }}
+                  className="p-0.5 rounded text-purple-500 dark:text-purple-400 hover:bg-purple-500/15 dark:hover:bg-purple-500/20 transition-colors"
+                >
+                  <Wrench size={13} />
+                </button>
+              </Tooltip>
+            )}
+            {obj && hasSmartName(obj) && (
+              <Tooltip content="SmartName">
+                <button
+                  onClick={(e) => { e.stopPropagation(); onSmartNameClick?.(id); }}
+                  className="p-0.5 rounded text-orange-500 dark:text-orange-400 hover:bg-orange-500/15 dark:hover:bg-orange-500/20 transition-colors"
+                >
+                  <Mic2 size={13} />
+                </button>
+              </Tooltip>
+            )}
+            {scriptSources?.includes(id) && (
+              <Tooltip content={isEn ? 'Show script usages' : 'Skript-Verwendungen anzeigen'}>
+                <button
+                  onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onScriptsClick?.(id); }}
+                  className="p-0.5 rounded text-green-600 dark:text-green-500 hover:bg-green-500/15 dark:hover:bg-green-500/20 transition-colors"
+                >
+                  <FileCode2 size={13} />
+                </button>
+              </Tooltip>
+            )}
             {obj && hasHistory(obj) && (
-              <Tooltip content="History anzeigen">
+              <Tooltip content={isEn ? 'Show history' : 'History anzeigen'}>
                 <button
                   onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onHistoryClick(id); }}
-                  className="p-0.5 rounded text-blue-500 dark:text-blue-400 hover:bg-blue-500/15 dark:hover:bg-blue-500/20 transition-colors"
+                  className="p-0.5 rounded text-purple-600 dark:text-purple-400 hover:bg-purple-500/15 dark:hover:bg-purple-500/20 transition-colors"
                 >
                   <History size={13} />
                 </button>
               </Tooltip>
             )}
-            {obj && hasSmartName(obj) && (
-                  <Tooltip content="SmartName">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onSmartNameClick?.(id); }}
-                      className="p-0.5 rounded text-violet-500 dark:text-violet-400 hover:bg-violet-500/15 dark:hover:bg-violet-500/20 transition-colors"
-                    >
-                      <Mic2 size={13} />
-                    </button>
-                  </Tooltip>
-                )}
-                {scriptSources?.includes(id) && (
-                  <Tooltip content={isEn ? 'Show script usages' : 'Skript-Verwendungen anzeigen'}>
-                    <button
-                      onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onScriptsClick?.(id); }}
-                      className="p-0.5 rounded text-green-600 dark:text-green-500 hover:bg-green-500/15 dark:hover:bg-green-500/20 transition-colors"
-                    >
-                      <FileCode2 size={13} />
-                    </button>
-                  </Tooltip>
-                )}
-                {obj && hasCustomEnabled(obj) && (
-                  <Tooltip content={isEn ? 'Custom settings' : 'Benutzerdefinierte Einstellungen'}>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onCustomClick?.(id); }}
-                      className="p-0.5 rounded text-purple-500 dark:text-purple-400 hover:bg-purple-500/15 dark:hover:bg-purple-500/20 transition-colors"
-                    >
-                      <Wrench size={13} />
-                    </button>
-                  </Tooltip>
-                )}
-                {danglingAlias && (
-                  <Tooltip content={aliasTooltip}>
-                    <button
-                      onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onAliasClick?.(id); }}
-                      className="relative p-0.5 rounded text-red-500 dark:text-red-400 hover:bg-red-500/15 dark:hover:bg-red-500/20 transition-colors"
-                    >
-                      <Link2 size={13} />
-                    </button>
-                  </Tooltip>
-                )}
-                {hasAlias && !danglingAlias && (
-                  <Tooltip content={aliasTooltip}>
-                    <button
-                      onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onAliasClick?.(id); }}
-                      className="relative p-0.5 rounded text-amber-500 dark:text-amber-400 hover:bg-amber-500/15 dark:hover:bg-amber-500/20 transition-colors"
-                    >
-                      <Link2 size={13} />
-                      {aliasIds && aliasIds.length > 1 && (
-                        <span className="absolute -top-1.5 -right-2 text-[8px] font-bold leading-none bg-amber-500 text-white rounded-full min-w-[13px] h-[13px] flex items-center justify-center px-0.5">
-                          {aliasIds.length}
-                        </span>
-                      )}
-                    </button>
-                  </Tooltip>
-                )}
-              </div>
+          </div>
         </td>
       )}
       {show('name') && <EditableNameCell id={id} name={name} desc={resolveI18n(obj?.common?.desc)} showDesc={showDesc} language={language} />}
@@ -370,10 +379,10 @@ const StateRow = React.memo(function StateRow({
         <td style={{ width: colWidths['history'], minWidth: colWidths['history'] }} className="py-[var(--row-py)] align-middle">
           <div className="flex items-center justify-center">
             {obj && hasHistory(obj) && (
-              <Tooltip content="History anzeigen">
+              <Tooltip content={isEn ? 'Show history' : 'History anzeigen'}>
                 <button
                   onClick={(e) => { e.currentTarget.blur(); e.stopPropagation(); onHistoryClick(id); }}
-                  className="p-0.5 rounded text-blue-500 dark:text-blue-400 hover:bg-blue-500/15 dark:hover:bg-blue-500/20 transition-colors"
+                  className="p-0.5 rounded text-purple-600 dark:text-purple-400 hover:bg-purple-500/15 dark:hover:bg-purple-500/20 transition-colors"
                 >
                   <History size={15} />
                 </button>
@@ -413,10 +422,10 @@ const StateRow = React.memo(function StateRow({
             <div className="flex items-center justify-center">
               {obj && hasSmartName(obj) && (
                 <button
-                  className="p-0.5 rounded hover:bg-violet-500/15 dark:hover:bg-violet-500/20 transition-colors"
+                  className="p-0.5 rounded hover:bg-orange-500/15 dark:hover:bg-orange-500/20 transition-colors"
                   onClick={(e) => { e.stopPropagation(); onSmartNameClick?.(id); }}
                 >
-                  <Mic2 size={15} className="text-violet-500 dark:text-violet-400" />
+                  <Mic2 size={15} className="text-orange-500 dark:text-orange-400" />
                 </button>
               )}
             </div>

@@ -52,7 +52,7 @@ const EditableFunctionCell = React.memo(function EditableFunctionCell({ id, curr
         <Tooltip content={isEn ? 'Edit function' : 'Funktion bearbeiten'}>
           <Pencil
             size={12}
-            className="opacity-0 group-hover/fn:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
+            className="ml-auto opacity-0 group-hover/fn:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
           />
         </Tooltip>
       </div>

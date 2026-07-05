@@ -81,6 +81,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
   const groupByPath = groupByPathOverride !== undefined ? groupByPathOverride : settingsGroupByPath;
   const onOpenEnumManager = React.useCallback(() => setEnumManagerOpen(true), [setEnumManagerOpen]);
   const onOpenAliasReplace = React.useCallback((initialStr?: string) => setAliasReplaceInitialStr(initialStr ?? null), [setAliasReplaceInitialStr]);
+  const onEditClick = React.useCallback((id: string) => { onSelect(id); setEditInitialTab('details'); }, [onSelect, setEditInitialTab]);
   const onScriptsClick = React.useCallback((id: string) => { onSelect(id); setEditInitialTab('scripts'); }, [onSelect, setEditInitialTab]);
   const onCustomClick = React.useCallback((id: string) => { onSelect(id); setEditInitialTab('custom'); }, [onSelect, setEditInitialTab]);
   const onAliasClick = React.useCallback((id: string) => { onSelect(id); setEditInitialTab('alias'); }, [onSelect, setEditInitialTab]);
@@ -104,7 +105,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
     allSepPrefixesRef,
     animatedSepEls,
   } = useStateListView(visibleColsOverride ?? settingsVisibleCols ?? DEFAULT_COLS);
-  const { data: scriptSources } = useAllScriptSources(visibleCols.includes('scripts'));
+  const { data: scriptSources } = useAllScriptSources();
   const { data: allObjectsData } = useAllObjects();
   const allObjects = allObjectsData ?? {} as Record<string, IoBrokerObject>;
   const allHistoryIds = useMemo(() => {
@@ -1371,6 +1372,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
                   roomEnums={roomEnums}
                   fnEnums={fnEnums}
                   onSelect={onSelect}
+                  onEditClick={onEditClick}
                   onCheck={handleCheckRow}
                   onContextMenu={handleRowContextMenu}
                   onHistoryClick={handleRowHistoryClick}

@@ -93,14 +93,6 @@ const EditableValueCell = React.memo(function EditableValueCell({
               </button>
             </Tooltip>
           )}
-          <Tooltip content={isEn ? 'Edit value' : 'Wert bearbeiten'}>
-            <button
-              onClick={(e) => { e.stopPropagation(); onOpen(id); }}
-              className="opacity-0 group-hover/value:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
-            >
-              <Pencil size={12} />
-            </button>
-          </Tooltip>
           {showTypeIcon && obj?.common?.type && (
             <Tooltip content={obj.common.type}>
               <span className="inline-flex shrink-0"><TypeIcon type={obj.common.type} /></span>
@@ -118,6 +110,14 @@ const EditableValueCell = React.memo(function EditableValueCell({
               />
             </Tooltip>
           )}
+          <Tooltip content={isEn ? 'Edit value' : 'Wert bearbeiten'}>
+            <button
+              onClick={(e) => { e.stopPropagation(); onOpen(id); }}
+              className="ml-auto opacity-0 group-hover/value:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
+            >
+              <Pencil size={12} />
+            </button>
+          </Tooltip>
         </div>
       </td>
     );
@@ -158,14 +158,6 @@ const EditableValueCell = React.memo(function EditableValueCell({
           const truncated = display.length > 20 ? display.slice(0, 20) + '…' : display;
           return <Tooltip content={display}><span>{truncated}</span></Tooltip>;
         })() : <span className="text-gray-300 dark:text-gray-600">…</span>}
-        <Tooltip content={isEn ? 'Edit value' : 'Wert bearbeiten'}>
-          <button
-            onClick={(e) => { e.stopPropagation(); onOpen(id); }}
-            className="opacity-0 group-hover/value:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
-          >
-            <Pencil size={12} />
-          </button>
-        </Tooltip>
         {state && (
           <Tooltip content={state.ack ? (isEn ? 'Acknowledged' : 'Bestätigt') : (isEn ? 'Not acknowledged' : 'Nicht bestätigt')}>
             <span
@@ -173,6 +165,14 @@ const EditableValueCell = React.memo(function EditableValueCell({
             />
           </Tooltip>
         )}
+        <Tooltip content={isEn ? 'Edit value' : 'Wert bearbeiten'}>
+          <button
+            onClick={(e) => { e.stopPropagation(); onOpen(id); }}
+            className="ml-auto opacity-0 group-hover/value:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 shrink-0 transition-opacity"
+          >
+            <Pencil size={12} />
+          </button>
+        </Tooltip>
       </div>
     </td>
   );
