@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { Lock, ChevronDown, Check, Zap, Maximize2 } from 'lucide-react';
-import { hasHistory } from '../../api/iobroker';
+import { Lock, ChevronDown, Check, Zap } from 'lucide-react';
 import { formatTimestamp, formatValue } from '../../utils/format';
-import HistoryChart from '../history/HistoryChart';
 import type { IoBrokerObject, IoBrokerState } from '../../types/iobroker';
 import { getRoleColor } from '../../utils/roleColor';
 
@@ -186,8 +184,6 @@ interface DetailsTabProps {
   onSetValue: (val: unknown) => void;
   onSetRoom: (roomId: string | null) => void;
   onSetFunction: (fnId: string | null) => void;
-  onOpenHistory?: () => void;
-  onClose: () => void;
 }
 
 export default function DetailsTab({
@@ -195,7 +191,6 @@ export default function DetailsTab({
   roomEnumId, fnEnumId, roles, units, roomEnums, fnEnums,
   state, extendPending, setValuePending, setRoomPending, setFunctionPending,
   onExtend, onSetValue, onSetRoom, onSetFunction,
-  onOpenHistory, onClose,
 }: DetailsTabProps) {
   const isEn = language === 'en';
   const role = obj.common?.role ?? '';
@@ -461,30 +456,6 @@ export default function DetailsTab({
 
         </div>
       </div>{/* end grid */}
-
-      {/* ── History (full width) ── */}
-      {hasHistory(obj) && (
-        <>
-          <SectionHeader label="History" />
-          <HistoryChart
-            stateId={id}
-            unit={obj.common?.unit}
-            settingsCollapsible
-            language={language}
-            dateFormat={dateFormat}
-            statsAction={onOpenHistory ? (
-              <button
-                onClick={() => { onClose(); onOpenHistory(); }}
-                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-sm"
-                title={isEn ? 'Open in history modal' : 'Im History-Modal öffnen'}
-              >
-                <Maximize2 size={13} />
-                {isEn ? 'Fullscreen' : 'Vollbild'}
-              </button>
-            ) : undefined}
-          />
-        </>
-      )}
 
     </div>
   );

@@ -723,7 +723,7 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
       )}
 
       {stats && !isLoading && (
-        <div className="flex items-center gap-3 flex-wrap mb-2">
+        <div className="flex items-center gap-3 flex-wrap mb-6">
           {([
             { label: 'Min',   value: stats.min,   labelCls: 'text-blue-500 dark:text-blue-400',     valCls: 'text-blue-700 dark:text-blue-300',     bg: 'bg-blue-500/10 border border-blue-500/20',     hkey: 'min'  as const },
             { label: 'Max',   value: stats.max,   labelCls: 'text-red-500 dark:text-red-400',       valCls: 'text-red-700 dark:text-red-300',         bg: 'bg-red-500/10 border border-red-500/20',       hkey: 'max'  as const },
@@ -764,164 +764,172 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
             )}
           </button>
         )}
-        {settingsOpen && <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex gap-1">
-            {PRESETS.map((p) => (
+        {settingsOpen && <div className="flex flex-col gap-2">
+          {/* Row 1: time range + view/chart type */}
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex gap-1">
+              {PRESETS.map((p) => (
+                <button
+                  key={p.label}
+                  onClick={() => setRangeMs(p.ms)}
+                  className={`h-7 px-2.5 text-xs rounded-full font-medium transition-colors ${
+                    rangeMs === p.ms
+                      ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-500/50'
+                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-700/60 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-gray-200'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
               <button
-                key={p.label}
-                onClick={() => setRangeMs(p.ms)}
+                onClick={() => {
+                  setRangeMs(null);
+                  setCustomStart(toLocalDatetime(options.start));
+                  setCustomEnd(toLocalDatetime(options.end));
+                }}
                 className={`h-7 px-2.5 text-xs rounded-full font-medium transition-colors ${
-                  rangeMs === p.ms
+                  rangeMs === null
                     ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-500/50'
                     : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-700/60 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-gray-200'
                 }`}
               >
-                {p.label}
-              </button>
-            ))}
-            <button
-              onClick={() => {
-                setRangeMs(null);
-                setCustomStart(toLocalDatetime(options.start));
-                setCustomEnd(toLocalDatetime(options.end));
-              }}
-              className={`h-7 px-2.5 text-xs rounded-full font-medium transition-colors ${
-                rangeMs === null
-                  ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-500/50'
-                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-700/60 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-gray-200'
-              }`}
-            >
-              {isEn ? 'Manual' : 'Manuell'}
-            </button>
-          </div>
-          <div className="flex gap-1 items-center flex-wrap">
-            <div className="flex gap-1">
-              <button
-                onClick={() => setViewMode('chart')}
-                className={`h-7 w-7 flex items-center justify-center rounded ${
-                  viewMode === 'chart'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
-                }`}
-                title={isEn ? 'Chart view' : 'Diagrammansicht'}
-              >
-                <BarChart2 size={13} />
-              </button>
-              <button
-                onClick={() => setViewMode('table')}
-                className={`h-7 w-7 flex items-center justify-center rounded ${
-                  viewMode === 'table'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
-                }`}
-                title={isEn ? 'Table view' : 'Tabellenansicht'}
-              >
-                <Table2 size={13} />
+                {isEn ? 'Manual' : 'Manuell'}
               </button>
             </div>
-            {viewMode === 'chart' && (
+            <div className="flex gap-1 items-center flex-wrap">
               <div className="flex gap-1">
-                {CHART_TYPES.map((ct) => (
+                <button
+                  onClick={() => setViewMode('chart')}
+                  className={`h-7 w-7 flex items-center justify-center rounded ${
+                    viewMode === 'chart'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                  }`}
+                  title={isEn ? 'Chart view' : 'Diagrammansicht'}
+                >
+                  <BarChart2 size={13} />
+                </button>
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={`h-7 w-7 flex items-center justify-center rounded ${
+                    viewMode === 'table'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                  }`}
+                  title={isEn ? 'Table view' : 'Tabellenansicht'}
+                >
+                  <Table2 size={13} />
+                </button>
+              </div>
+              {viewMode === 'chart' && (
+                <div className="flex gap-1 pl-2 ml-1 border-l border-gray-200 dark:border-gray-700">
+                  {CHART_TYPES.map((ct) => (
+                    <button
+                      key={ct.value}
+                      onClick={() => setChartType(ct.value)}
+                      className={`h-7 px-2 text-xs rounded ${
+                        chartType === ct.value
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      {isEn ? ct.labelEn : ct.labelDe}
+                    </button>
+                  ))}
                   <button
-                    key={ct.value}
-                    onClick={() => setChartType(ct.value)}
-                    className={`h-7 px-2 text-xs rounded ${
-                      chartType === ct.value
+                    onClick={() => setShowDots(!showDots)}
+                    className={`h-7 w-7 flex items-center justify-center text-xs rounded ${
+                      showDots
                         ? 'bg-blue-600 text-white'
                         : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                     }`}
+                    title={isEn ? 'Show data points' : 'Datenpunkte anzeigen'}
                   >
-                    {isEn ? ct.labelEn : ct.labelDe}
+                    <CircleDot size={14} />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Row 2: aggregate, compare, export — delete actions separated on the right */}
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <select
+                value={aggregate}
+                onChange={(e) => setAggregate(e.target.value as HistoryOptions['aggregate'])}
+                className="h-7 bg-gray-200 text-gray-700 text-xs rounded px-2 border border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600"
+              >
+                {AGGREGATES.map((a) => (
+                  <option key={a.value} value={a.value}>{isEn ? a.labelEn : a.labelDe}</option>
+                ))}
+              </select>
+              <div className="flex items-center gap-1 pl-2 border-l border-gray-200 dark:border-gray-700">
+                {COMPARE_OFFSETS.map((c) => (
+                  <button
+                    key={c.value}
+                    onClick={() => setCompareOffset(compareOffset === c.value ? null : c.value)}
+                    className={`h-7 px-2 text-xs rounded ${
+                      compareOffset === c.value
+                        ? 'bg-orange-500 text-white'
+                        : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                    }`}
+                    title={isEn ? `Compare with ${c.labelEn}` : `Vergleich mit ${c.labelDe}`}
+                  >
+                    {isEn ? c.labelEn : c.labelDe}
                   </button>
                 ))}
               </div>
-            )}
-            {viewMode === 'chart' && (
-              <button
-                onClick={() => setShowDots(!showDots)}
-                className={`h-7 w-7 flex items-center justify-center text-xs rounded ${
-                  showDots
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
-                }`}
-                title={isEn ? 'Show data points' : 'Datenpunkte anzeigen'}
-              >
-                <CircleDot size={14} />
-              </button>
-            )}
-            <select
-              value={aggregate}
-              onChange={(e) => setAggregate(e.target.value as HistoryOptions['aggregate'])}
-              className="h-7 bg-gray-200 text-gray-700 text-xs rounded px-2 border border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600"
-            >
-              {AGGREGATES.map((a) => (
-                <option key={a.value} value={a.value}>{isEn ? a.labelEn : a.labelDe}</option>
-              ))}
-            </select>
-            {/* Comparison buttons */}
-            <div className="flex items-center gap-1">
-              {COMPARE_OFFSETS.map((c) => (
+              <div className="flex items-center gap-1 pl-2 border-l border-gray-200 dark:border-gray-700">
                 <button
-                  key={c.value}
-                  onClick={() => setCompareOffset(compareOffset === c.value ? null : c.value)}
-                  className={`h-7 px-2 text-xs rounded ${
-                    compareOffset === c.value
-                      ? 'bg-orange-500 text-white'
-                      : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
-                  }`}
-                  title={isEn ? `Compare with ${c.labelEn}` : `Vergleich mit ${c.labelDe}`}
+                  onClick={handleExportPng}
+                  className="h-7 flex items-center gap-1 px-2 text-xs rounded bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                  title={isEn ? 'Export chart as PNG' : 'Chart als PNG exportieren'}
                 >
-                  {isEn ? c.labelEn : c.labelDe}
+                  <Download size={12} />
+                  PNG
                 </button>
-              ))}
+                <button
+                  onClick={handleExportCsv}
+                  disabled={!data || data.length === 0}
+                  className="h-7 flex items-center gap-1 px-2 text-xs rounded bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed"
+                  title={isEn ? 'Export data as CSV' : 'Daten als CSV exportieren'}
+                >
+                  <Download size={12} />
+                  CSV
+                </button>
+              </div>
             </div>
-            {/* Export PNG */}
-            <button
-              onClick={handleExportPng}
-              className="h-7 flex items-center gap-1 px-2 text-xs rounded bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-              title={isEn ? 'Export chart as PNG' : 'Chart als PNG exportieren'}
-            >
-              <Download size={12} />
-              PNG
-            </button>
-            {/* Export CSV */}
-            <button
-              onClick={handleExportCsv}
-              disabled={!data || data.length === 0}
-              className="h-7 flex items-center gap-1 px-2 text-xs rounded bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed"
-              title={isEn ? 'Export data as CSV' : 'Daten als CSV exportieren'}
-            >
-              <Download size={12} />
-              CSV
-            </button>
-            <button
-              onClick={() => setDeleteMode(!deleteMode)}
-              className={`h-7 flex items-center gap-1 px-2 text-xs rounded ${
-                deleteMode
-                  ? 'bg-red-600/30 text-red-300 border border-red-500/40'
-                  : 'bg-gray-200 text-red-500 hover:bg-red-100 dark:bg-gray-700 dark:text-red-400 dark:hover:bg-red-900/30 dark:hover:text-red-300'
-              }`}
-              title={isEn ? 'Delete single value - click datapoint in chart' : 'Einzelwert löschen — Datenpunkt im Chart anklicken'}
-            >
-              <Trash2 size={12} />
-              {isEn ? 'Single value' : 'Einzelwert'}
-            </button>
-            <button
-              onClick={() => setConfirmAction({ type: 'range', start: options.start, end: options.end })}
-              className="h-7 flex items-center gap-1 px-2 text-xs rounded bg-gray-200 text-red-500 hover:bg-red-100 dark:bg-gray-700 dark:text-red-400 dark:hover:bg-red-900/30 dark:hover:text-red-300"
-              title={isEn ? 'Delete time range' : 'Zeitbereich löschen'}
-            >
-              <Trash2 size={12} />
-              {isEn ? 'Time range' : 'Zeitbereich'}
-            </button>
-            <button
-              onClick={() => setConfirmAction({ type: 'all' })}
-              className="h-7 flex items-center gap-1 px-2 text-xs rounded bg-gray-200 text-red-500 hover:bg-red-100 dark:bg-gray-700 dark:text-red-400 dark:hover:bg-red-900/30 dark:hover:text-red-300"
-              title={isEn ? 'Delete all history data' : 'Alle History-Daten löschen'}
-            >
-              <Trash2 size={12} />
-              {isEn ? 'All' : 'Alle'}
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setDeleteMode(!deleteMode)}
+                className={`h-7 flex items-center gap-1 px-2 text-xs rounded ${
+                  deleteMode
+                    ? 'bg-red-600/30 text-red-300 border border-red-500/40'
+                    : 'bg-gray-200 text-red-500 hover:bg-red-100 dark:bg-gray-700 dark:text-red-400 dark:hover:bg-red-900/30 dark:hover:text-red-300'
+                }`}
+                title={isEn ? 'Delete single value - click datapoint in chart' : 'Einzelwert löschen — Datenpunkt im Chart anklicken'}
+              >
+                <Trash2 size={12} />
+                {isEn ? 'Single value' : 'Einzelwert'}
+              </button>
+              <button
+                onClick={() => setConfirmAction({ type: 'range', start: options.start, end: options.end })}
+                className="h-7 flex items-center gap-1 px-2 text-xs rounded bg-gray-200 text-red-500 hover:bg-red-100 dark:bg-gray-700 dark:text-red-400 dark:hover:bg-red-900/30 dark:hover:text-red-300"
+                title={isEn ? 'Delete time range' : 'Zeitbereich löschen'}
+              >
+                <Trash2 size={12} />
+                {isEn ? 'Time range' : 'Zeitbereich'}
+              </button>
+              <button
+                onClick={() => setConfirmAction({ type: 'all' })}
+                className="h-7 flex items-center gap-1 px-2 text-xs rounded bg-gray-200 text-red-500 hover:bg-red-100 dark:bg-gray-700 dark:text-red-400 dark:hover:bg-red-900/30 dark:hover:text-red-300"
+                title={isEn ? 'Delete all history data' : 'Alle History-Daten löschen'}
+              >
+                <Trash2 size={12} />
+                {isEn ? 'All' : 'Alle'}
+              </button>
+            </div>
           </div>
         </div>}
         {settingsOpen && rangeMs === null && (

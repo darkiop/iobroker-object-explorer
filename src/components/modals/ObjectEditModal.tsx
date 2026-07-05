@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useLayoutEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Save, Wrench, Trash2, Copy, PenLine, FolderInput, Lock } from 'lucide-react';
 import { usePutObject, useExtendObject, useStateDetail, useSetState, useAllRoles, useAllUnits, useDeleteObject, useAllObjects, useRoomEnums, useFunctionEnums, useUpdateRoomMembership, useUpdateFunctionMembership, useCustomSupportedInstances, useObjectFresh, useScriptUsages } from '../../hooks/useStates';
+import { hasHistory } from '../../api/iobroker';
 import ConfirmDialog from './ConfirmDialog';
 import CopyDatapointModal from './CopyDatapointModal';
 import RenameDatapointModal from './RenameDatapointModal';
@@ -11,6 +12,7 @@ import { useToast } from '../../context/ToastContext';
 import { useAppSettingsContext } from '../../context/UIContext';
 import { ColoredId } from '../../utils/coloredId';
 import DetailsTab from '../tabs/DetailsTab';
+import HistoryTab from '../tabs/HistoryTab';
 import JsonTab from '../tabs/JsonTab';
 import AliasTab from '../tabs/AliasTab';
 import CustomTab from '../tabs/CustomTab';
@@ -24,10 +26,10 @@ interface Props {
   onOpenHistory?: () => void;
   language?: 'en' | 'de';
   dateFormat?: 'de' | 'us' | 'iso';
-  initialTab?: 'details' | 'json' | 'alias' | 'custom' | 'scripts' | 'smartname';
+  initialTab?: 'details' | 'history' | 'json' | 'alias' | 'custom' | 'scripts' | 'smartname';
 }
 
-type Tab = 'details' | 'json' | 'alias' | 'custom' | 'scripts' | 'smartname';
+type Tab = 'details' | 'history' | 'json' | 'alias' | 'custom' | 'scripts' | 'smartname';
 
 export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, language = 'en', dateFormat = 'de', initialTab }: Props) {
   const isEn = language === 'en';
@@ -361,7 +363,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
 
           {/* Tabs */}
           <div className="flex border-b border-gray-200 dark:border-gray-700 shrink-0 px-5">
-            {(['details', 'json', ...(id.startsWith('alias.') ? ['alias'] : []), 'custom', 'smartname', 'scripts'] as Tab[]).map((t) => (
+            {(['details', ...(hasHistory(obj) ? ['history'] : []), 'json', ...(id.startsWith('alias.') ? ['alias'] : []), 'custom', 'smartname', 'scripts'] as Tab[]).map((t) => (
               <button
                 key={t}
                 onClick={() => { setTab(t); setJsonError(null); }}
@@ -371,7 +373,7 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                     : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                 }`}
               >
-                {t === 'details' ? 'Details' : t === 'json' ? 'JSON' : t === 'alias' ? 'Alias' : t === 'custom' ? 'Custom' : t === 'smartname' ? 'SmartName' : (isEn ? 'Scripts' : 'Skripte')}
+                {t === 'details' ? 'Details' : t === 'history' ? (isEn ? 'History' : 'Verlauf') : t === 'json' ? 'JSON' : t === 'alias' ? 'Alias' : t === 'custom' ? 'Custom' : t === 'smartname' ? 'SmartName' : (isEn ? 'Scripts' : 'Skripte')}
               </button>
             ))}
           </div>
@@ -400,6 +402,15 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
                 onSetValue={handleSetValue}
                 onSetRoom={handleSetRoom}
                 onSetFunction={handleSetFunction}
+              />
+            )}
+
+            {tab === 'history' && (
+              <HistoryTab
+                id={id}
+                obj={obj}
+                language={language}
+                dateFormat={dateFormat}
                 onOpenHistory={onOpenHistory}
                 onClose={onClose}
               />
