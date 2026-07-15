@@ -681,13 +681,14 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
                 <th className="text-right px-3 py-2 text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
                   {isEn ? 'Value' : 'Wert'}{unit ? ` (${unit})` : ''}
                 </th>
+                <th className="w-8 px-2 py-2" aria-hidden="true" />
               </tr>
             </thead>
             <tbody>
               {pageRows.map((entry) => (
                 <tr
                   key={String(entry.ts)}
-                  className={`border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${deleteMode ? 'cursor-pointer hover:bg-red-50 dark:hover:bg-red-900/20' : ''}`}
+                  className={`group border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${deleteMode ? 'cursor-pointer hover:bg-red-50 dark:hover:bg-red-900/20' : ''}`}
                   onClick={deleteMode ? () => setConfirmAction({ type: 'entry', ts: entry.ts, val: entry.val }) : undefined}
                 >
                   <td className="px-3 py-1.5 text-gray-500 dark:text-gray-400 whitespace-nowrap">
@@ -695,6 +696,18 @@ export default function HistoryChart({ stateId, unit, fillHeight = false, extraS
                   </td>
                   <td className={`text-right px-3 py-1.5 ${deleteMode ? 'text-red-500 dark:text-red-400' : 'text-gray-700 dark:text-gray-300'}`}>
                     {entry.val != null ? `${entry.val}${unit ? ' ' + unit : ''}` : '—'}
+                  </td>
+                  <td className="px-2 py-1.5 text-right">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setConfirmAction({ type: 'entry', ts: entry.ts, val: entry.val });
+                      }}
+                      title={isEn ? 'Delete this entry' : 'Diesen Eintrag löschen'}
+                      className="opacity-0 group-hover:opacity-100 p-1 rounded text-red-500 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-900/30 transition-opacity"
+                    >
+                      <Trash2 size={13} />
+                    </button>
                   </td>
                 </tr>
               ))}
