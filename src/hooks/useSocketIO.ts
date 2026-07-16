@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import io, { type Socket } from 'socket.io-client';
 import type { IoBrokerState, IoBrokerObject } from '../types/iobroker';
 import { queryKeys } from './queryKeys';
-import { derivePatterns } from './useLongPolling';
+import { derivePatterns } from '../utils/idPatterns';
 
 /**
  * POC — Socket.IO transport as alternative to useLongPolling.
