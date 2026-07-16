@@ -66,7 +66,7 @@ interface StateListProps {
 export type { SortKey, DateFormatSetting } from './StateListColumns';
 export { ALL_COLUMNS, getColumnLabel, DEFAULT_COLS } from './StateListColumns';
 import type { SortKey } from './StateListColumns';
-import { DEFAULT_COLS, COMPACT_COLS, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MIN_WIDTHS, BUILTIN_MAX_WIDTHS } from './StateListColumns';
+import { DEFAULT_COLS, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MIN_WIDTHS, BUILTIN_MAX_WIDTHS } from './StateListColumns';
 
 
 
@@ -206,31 +206,12 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
     updateFnMutateRef.current = updateFn.mutate;
   }, [updateFn.mutate]);
 
-  const [isCompactView, setIsCompactView] = useState(false);
-  const preCompactColsRef = useRef<SortKey[] | null>(null);
-
   function handleColChange(cols: SortKey[]) {
-    if (isCompactView) setIsCompactView(false);
     if (onVisibleColsChange) {
       onVisibleColsChange(cols);
       setVisibleCols(cols);
     } else {
       persistSettings({ ...appSettings, visibleCols: cols });
-    }
-  }
-
-  function handleToggleCompact() {
-    if (isCompactView) {
-      const restore = preCompactColsRef.current ?? DEFAULT_COLS;
-      preCompactColsRef.current = null;
-      setIsCompactView(false);
-      if (onVisibleColsChange) { onVisibleColsChange(restore); setVisibleCols(restore); }
-      else persistSettings({ ...appSettings, visibleCols: restore });
-    } else {
-      preCompactColsRef.current = visibleCols;
-      setIsCompactView(true);
-      if (onVisibleColsChange) { onVisibleColsChange(COMPACT_COLS); setVisibleCols(COMPACT_COLS); }
-      else persistSettings({ ...appSettings, visibleCols: COMPACT_COLS });
     }
   }
 
@@ -860,8 +841,6 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
         onResetLs={() => setConfirmResetLs(true)}
         onPageSizeChange={onPageSizeChange}
         onColChange={handleColChange}
-        isCompactView={isCompactView}
-        onToggleCompact={handleToggleCompact}
       />
       <StateListBatchBar
         isEn={isEn}

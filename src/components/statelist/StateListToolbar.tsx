@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, History, Maximize2, Trash2, Plus, Link2, Download, Wand2, Upload, Tag, BarChart2, RotateCcw, EyeOff, Indent, FolderOpen, List, AlignLeft, LayoutList, FolderX } from 'lucide-react';
+import { X, History, Maximize2, Trash2, Plus, Link2, Download, Wand2, Upload, Tag, BarChart2, RotateCcw, EyeOff, Indent, FolderOpen, List, AlignLeft, FolderX } from 'lucide-react';
 import { isGlobPattern } from '../../api/iobroker';
 import ColPicker from '../ui/ColPicker';
 import type { SortKey } from './StateListColumns';
@@ -56,8 +56,6 @@ interface StateListToolbarProps {
   onResetLs: () => void;
   onPageSizeChange: (size: number) => void;
   onColChange: (cols: SortKey[]) => void;
-  isCompactView: boolean;
-  onToggleCompact: () => void;
 }
 
 export default function StateListToolbar({
@@ -75,7 +73,6 @@ export default function StateListToolbar({
   onDeleteSelected, onClearTreeFilter,
   onToggleShowDesc, onToggleHideAliasSubRows, onToggleGroupByPath, onToggleShortenGroupPaths,
   onFitToContainer, onResetLs, onPageSizeChange, onColChange,
-  isCompactView, onToggleCompact,
 }: StateListToolbarProps) {
   const checkedArr = [...checkedIds];
   const historyChecked = checkedArr.filter(id => allHistoryIds.has(id));
@@ -355,18 +352,6 @@ export default function StateListToolbar({
             {[200, 500, 1000, 3000].map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
         )}
-        <button
-          type="button"
-          onClick={onToggleCompact}
-          title={isEn ? 'Compact view' : 'Kompaktansicht'}
-          className={`p-2 rounded-lg transition-colors ${
-            isCompactView
-              ? 'text-blue-600 bg-blue-500/10 dark:text-blue-400 dark:bg-blue-500/10'
-              : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-500 dark:hover:text-gray-200 dark:hover:bg-gray-700'
-          }`}
-        >
-          <LayoutList size={17} />
-        </button>
         <ColPicker visible={visibleCols} onChange={onColChange} language={language} />
       </div>
     </div>
