@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import {
   isGlobPattern,
   compilePattern,
@@ -199,5 +199,67 @@ describe('hasSmartName', () => {
 
   it('false as value → false', () => {
     expect(hasSmartName(makeObj({ smartName: false }))).toBe(false)
+  })
+})
+
+describe('getStatesBatch fallback to per-namespace patterns', () => {
+  const originalFetch = global.fetch
+
+  afterEach(() => {
+    global.fetch = originalFetch
+    vi.resetModules()
+  })
+
+  it('requests one command/getStates call per derived namespace, not pattern=*', async () => {
+    const requestedUrls: string[] = []
+
+    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      requestedUrls.push(url)
+
+      // Bulk-by-id endpoint: simulate "unsupported" (404) so the code falls
+      // through to the command-based fallback under test.
+      if (url.includes('/state/')) {
+        return { ok: false, status: 404, statusText: 'Not Found' } as Response
+      }
+
+      // Command-based fallback: return namespace-scoped fake states.
+      if (url.includes('/command/getStates')) {
+        const patternMatch = url.match(/pattern=([^&]+)/)
+        const pattern = decodeURIComponent(patternMatch?.[1] ?? '')
+        if (pattern === 'hm-rpc.0.*') {
+          return {
+            ok: true,
+            json: async () => ({ result: { 'hm-rpc.0.foo': { val: 1, ack: true, ts: 0, lc: 0, from: 'x' } } }),
+          } as Response
+        }
+        if (pattern === 'javascript.0.*') {
+          return {
+            ok: true,
+            json: async () => ({ result: { 'javascript.0.bar': { val: 2, ack: true, ts: 0, lc: 0, from: 'x' } } }),
+          } as Response
+        }
+        return { ok: true, json: async () => ({ result: {} }) } as Response
+      }
+
+      throw new Error(`Unexpected fetch: ${url}`)
+    }) as unknown as typeof fetch
+
+    // Reset module-level support-detection flags by re-importing fresh.
+    vi.resetModules()
+    const { getStatesBatch } = await import('./iobroker')
+
+    const result = await getStatesBatch(['hm-rpc.0.foo', 'javascript.0.bar'])
+
+    expect(result).toEqual({
+      'hm-rpc.0.foo': { val: 1, ack: true, ts: 0, lc: 0, from: 'x' },
+      'javascript.0.bar': { val: 2, ack: true, ts: 0, lc: 0, from: 'x' },
+    })
+
+    const commandUrls = requestedUrls.filter((u) => u.includes('/command/getStates'))
+    expect(commandUrls.length).toBe(2)
+    expect(commandUrls.some((u) => u.includes('pattern=*') && !u.includes('pattern=%2A'))).toBe(false)
+    expect(commandUrls.some((u) => u.includes(encodeURIComponent('hm-rpc.0.*')))).toBe(true)
+    expect(commandUrls.some((u) => u.includes(encodeURIComponent('javascript.0.*')))).toBe(true)
   })
 })

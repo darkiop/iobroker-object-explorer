@@ -1,5 +1,6 @@
 import type { IoBrokerState, IoBrokerObject, IoBrokerObjectCommon, HistoryEntry, HistoryOptions } from '../types/iobroker';
 import { getLocalizedName, getAllNamesForSearch } from '../utils/i18n';
+import { derivePatterns } from '../utils/idPatterns';
 
 const LS_HOST_KEY = 'ioBrokerHost';
 const LS_CONNECTIONS_KEY = 'iob-connections';
@@ -550,18 +551,28 @@ async function getStatesBulkSmall(ids: string[]): Promise<Record<string, IoBroke
   return Object.keys(result).length > 0 ? result : null;
 }
 
+async function fetchStatesForPattern(pattern: string): Promise<Record<string, IoBrokerState> | null> {
+  const url = `${getBaseUrl()}/command/getStates?pattern=${encodeURIComponent(pattern)}`;
+  const res = await fetch(url);
+  if (!res.ok) return null;
+  const envelope: unknown = await res.json();
+  if (typeof envelope !== 'object' || envelope === null) return null;
+  const data = (envelope as { result?: unknown }).result;
+  if (typeof data !== 'object' || data === null || Array.isArray(data)) return null;
+  return data as Record<string, IoBrokerState>;
+}
+
 async function getStatesViaCommand(ids: string[]): Promise<Record<string, IoBrokerState> | null> {
   if (_commandStatesSupported === false) return null;
   try {
-    const url = `${getBaseUrl()}/command/getStates?pattern=*`;
-    const res = await fetch(url);
-    if (!res.ok) { _commandStatesSupported = false; return null; }
-    const envelope: unknown = await res.json();
-    if (typeof envelope !== 'object' || envelope === null) { _commandStatesSupported = false; return null; }
-    const allData = (envelope as { result?: unknown }).result;
-    if (typeof allData !== 'object' || allData === null || Array.isArray(allData)) { _commandStatesSupported = false; return null; }
+    const patterns = derivePatterns(ids);
+    const perPattern = await Promise.all(patterns.map(fetchStatesForPattern));
+    if (perPattern.some((r) => r === null)) {
+      _commandStatesSupported = false;
+      return null;
+    }
     _commandStatesSupported = true;
-    const all = allData as Record<string, IoBrokerState>;
+    const all = Object.assign({}, ...perPattern) as Record<string, IoBrokerState>;
     const result: Record<string, IoBrokerState> = {};
     for (const id of ids) {
       if (id in all) result[id] = all[id];
@@ -601,9 +612,9 @@ export async function getStatesBatch(ids: string[]): Promise<Record<string, IoBr
     if (_bulkStatesSupported === null) _bulkStatesSupported = false;
   }
 
-  // Bulk endpoint unsupported by this adapter version: fetch all states in one
-  // request, then filter to the requested IDs. One request beats hundreds of
-  // individual ones (though it transfers the whole DB — only used as fallback).
+  // Bulk endpoint unsupported by this adapter version: fetch per-namespace
+  // patterns derived from the requested IDs (adapter.instance.* subtrees)
+  // instead of the whole DB, then filter to the requested IDs.
   const commandResult = await getStatesViaCommand(ids);
   if (commandResult !== null) return commandResult;
 
