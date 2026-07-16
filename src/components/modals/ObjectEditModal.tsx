@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useLayoutEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useMemo, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Save, Wrench, Trash2, Copy, PenLine, FolderInput, Lock } from 'lucide-react';
 import { usePutObject, useExtendObject, useStateDetail, useSetState, useAllRoles, useAllUnits, useDeleteObject, useAllObjects, useRoomEnums, useFunctionEnums, useUpdateRoomMembership, useUpdateFunctionMembership, useCustomSupportedInstances, useObjectFresh, useScriptUsages } from '../../hooks/useStates';
@@ -12,7 +12,7 @@ import { useToast } from '../../context/ToastContext';
 import { useAppSettingsContext } from '../../context/UIContext';
 import { ColoredId } from '../../utils/coloredId';
 import DetailsTab from '../tabs/DetailsTab';
-import HistoryTab from '../tabs/HistoryTab';
+const HistoryTab = lazy(() => import('../tabs/HistoryTab'));
 import JsonTab from '../tabs/JsonTab';
 import AliasTab from '../tabs/AliasTab';
 import CustomTab from '../tabs/CustomTab';
@@ -406,14 +406,16 @@ export default function ObjectEditModal({ id, obj, onClose, onOpenHistory, langu
             )}
 
             {tab === 'history' && (
-              <HistoryTab
-                id={id}
-                obj={obj}
-                language={language}
-                dateFormat={dateFormat}
-                onOpenHistory={onOpenHistory}
-                onClose={onClose}
-              />
+              <Suspense fallback={null}>
+                <HistoryTab
+                  id={id}
+                  obj={obj}
+                  language={language}
+                  dateFormat={dateFormat}
+                  onOpenHistory={onOpenHistory}
+                  onClose={onClose}
+                />
+              </Suspense>
             )}
 
             {tab === 'json' && (

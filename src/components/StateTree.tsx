@@ -1,7 +1,7 @@
-import { useState, useMemo, useEffect, useCallback, useRef, memo } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef, memo, lazy, Suspense } from 'react';
 import { ChevronRight, ChevronDown, ChevronsUpDown, ChevronsDownUp, Folder, FolderOpen, FileText, Database, Copy, Check, Mic2, Search, Cpu, Layers, HardDrive, Pencil, LayoutList, LayoutGrid, Plus, FileCode2, Link2, UserRound, ShieldAlert, Download, Trash2, Filter } from 'lucide-react';
 import type { TreeNode, IoBrokerObject } from '../types/iobroker';
-import ObjectEditModal from './modals/ObjectEditModal';
+const ObjectEditModal = lazy(() => import('./modals/ObjectEditModal'));
 import ContextMenu from './ui/ContextMenu';
 import type { ContextMenuEntry } from './ui/ContextMenu';
 import ConfirmDialog from './modals/ConfirmDialog';
@@ -220,12 +220,14 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
   return (
     <div>
       {editOpen && (
-        <ObjectEditModal
-          id={node.fullPath}
-          obj={allObjects[node.fullPath] ?? { _id: node.fullPath, type: 'folder', common: { name: node.name }, native: {} } as IoBrokerObject}
-          language={language}
-          onClose={() => setEditOpen(false)}
-        />
+        <Suspense fallback={null}>
+          <ObjectEditModal
+            id={node.fullPath}
+            obj={allObjects[node.fullPath] ?? { _id: node.fullPath, type: 'folder', common: { name: node.name }, native: {} } as IoBrokerObject}
+            language={language}
+            onClose={() => setEditOpen(false)}
+          />
+        </Suspense>
       )}
       {confirmDelete && (
         <ConfirmDialog

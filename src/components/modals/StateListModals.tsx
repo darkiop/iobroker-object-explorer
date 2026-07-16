@@ -1,15 +1,16 @@
+import { lazy, Suspense } from 'react';
 import type { ToastType } from '../../context/ToastContext';
 import { createPortal } from 'react-dom';
 import { X, History, Trash2, Plus, Link2, FileEdit, Download, ChevronDown, ChevronRight, BarChart2, Copy, Check, Search, Zap, FolderInput, PenLine, Columns2 } from 'lucide-react';
 import NewDatapointModal from './NewDatapointModal';
 import ImportDatapointsModal from './ImportDatapointsModal';
 import OptimizeModal from './OptimizeModal';
-import ObjectEditModal from './ObjectEditModal';
+const ObjectEditModal = lazy(() => import('./ObjectEditModal'));
 import CreateAliasModal from './CreateAliasModal';
 import CopyDatapointModal from './CopyDatapointModal';
 import RenameDatapointModal from './RenameDatapointModal';
 import MoveDatapointModal from './MoveDatapointModal';
-import HistoryModal from './HistoryModal';
+const HistoryModal = lazy(() => import('./HistoryModal'));
 import ConfirmDialog from './ConfirmDialog';
 import MultiDeleteDialog from './MultiDeleteDialog';
 import ValueEditModal from './ValueEditModal';
@@ -213,14 +214,16 @@ export default function StateListModals({
         />
       )}
       {historyModalId && (
-        <HistoryModal
-          stateId={historyModalId}
-          unit={objects[historyModalId]?.common?.unit}
-          objects={objects}
-          language={language}
-          initialExtraSeries={historyInitialExtra.length > 0 ? historyInitialExtra : undefined}
-          onClose={onCloseHistory}
-        />
+        <Suspense fallback={null}>
+          <HistoryModal
+            stateId={historyModalId}
+            unit={objects[historyModalId]?.common?.unit}
+            objects={objects}
+            language={language}
+            initialExtraSeries={historyInitialExtra.length > 0 ? historyInitialExtra : undefined}
+            onClose={onCloseHistory}
+          />
+        </Suspense>
       )}
       {valueEditId && (
         <ValueEditModal
@@ -320,14 +323,16 @@ export default function StateListModals({
         />
       )}
       {editObjId && objects[editObjId] && (
-        <ObjectEditModal
-          id={editObjId}
-          obj={objects[editObjId]}
-          language={language}
-          initialTab={editObjInitialTab}
-          onClose={onCloseEditObj}
-          onOpenHistory={hasHistory(objects[editObjId]) ? onOpenHistoryFromEdit : undefined}
-        />
+        <Suspense fallback={null}>
+          <ObjectEditModal
+            id={editObjId}
+            obj={objects[editObjId]}
+            language={language}
+            initialTab={editObjInitialTab}
+            onClose={onCloseEditObj}
+            onOpenHistory={hasHistory(objects[editObjId]) ? onOpenHistoryFromEdit : undefined}
+          />
+        </Suspense>
       )}
 
       {ctxMenu && (() => {

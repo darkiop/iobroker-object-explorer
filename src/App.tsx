@@ -10,10 +10,8 @@ import Layout from './components/Layout';
 import SearchBar, { type SearchBarHandle } from './components/SearchBar';
 import StateTree from './components/StateTree';
 import StateList from './components/statelist/StateList';
-import ObjectEditModal from './components/modals/ObjectEditModal';
-// NOTE: also statically imported in StateListModals.tsx — not a real split chunk yet
+const ObjectEditModal = lazy(() => import('./components/modals/ObjectEditModal'));
 const HistoryModal = lazy(() => import('./components/modals/HistoryModal'));
-// NOTE: also statically imported in StateListModals.tsx — not a real split chunk yet
 const NewDatapointModal = lazy(() => import('./components/modals/NewDatapointModal'));
 const HelpModal = lazy(() => import('./components/modals/HelpModal'));
 const EnumManagerModal = lazy(() => import('./components/modals/EnumManagerModal'));
@@ -830,15 +828,17 @@ function AppContent() {
 
         <ErrorBoundary FallbackComponent={ModalErrorFallback} onError={(e) => console.error('Modal error:', e)}>
         {selectedId && allObjects[selectedId] && (
-          <ObjectEditModal
-            id={selectedId}
-            obj={allObjects[selectedId]}
-            language={appSettings.language}
-            dateFormat={appSettings.dateFormat}
-            onClose={() => { setSelectedId(null); setEditInitialTab(undefined); }}
-            onOpenHistory={hasHistory(allObjects[selectedId]) ? () => setHistoryModalId(selectedId) : undefined}
-            initialTab={editInitialTab}
-          />
+          <Suspense fallback={null}>
+            <ObjectEditModal
+              id={selectedId}
+              obj={allObjects[selectedId]}
+              language={appSettings.language}
+              dateFormat={appSettings.dateFormat}
+              onClose={() => { setSelectedId(null); setEditInitialTab(undefined); }}
+              onOpenHistory={hasHistory(allObjects[selectedId]) ? () => setHistoryModalId(selectedId) : undefined}
+              initialTab={editInitialTab}
+            />
+          </Suspense>
         )}
         {historyModalId && (
           <Suspense fallback={null}>
