@@ -29,6 +29,7 @@ export function useStateListModals() {
   const [sepCtxMenu, setSepCtxMenu] = useState<{ x: number; y: number; prefix: string } | null>(null);
   const [checkedSepPrefix, setCheckedSepPrefix] = useState<string | null>(null);
   const [virtualFoldersOpen, setVirtualFoldersOpen] = useState(false);
+  const [dbOverviewOpen, setDbOverviewOpen] = useState(false);
 
   useEffect(() => {
     if (!exportMenuOpen) return;
@@ -80,5 +81,6 @@ export function useStateListModals() {
     sepCtxMenu, setSepCtxMenu,
     checkedSepPrefix, setCheckedSepPrefix,
     virtualFoldersOpen, setVirtualFoldersOpen,
+    dbOverviewOpen, setDbOverviewOpen,
   };
 }

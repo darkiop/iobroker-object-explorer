@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import {
   getObjectsByPattern, getStateObjectsFastCached, getStatesBatch, getState,
-  getObject, getObjectFresh, getHistory, getAllRoles, getAllUnits,
+  getObject, getObjectFresh, getHistory, getDpOverview, getDbStats, getAllRoles, getAllUnits,
   getRoomMap, getAllObjectsCached, getRoomEnums, getFunctionMap, getFunctionEnums,
   buildAliasReverseMap, getCustomSupportedInstances, getAllScriptSourcesCached,
   getScriptUsedIds, findScriptsUsingObject, compilePattern, isGlobPattern,
@@ -124,6 +124,24 @@ export function useHistory(id: string | null, options: HistoryOptions | null) {
     queryFn: () => getHistory(id!, options!),
     enabled: !!id && !!options,
     staleTime: Infinity,
+  });
+}
+
+export function useDpOverview(enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.history.dpOverview,
+    queryFn: getDpOverview,
+    enabled,
+    staleTime: 60_000,
+  });
+}
+
+export function useDbStats(enabled: boolean) {
+  return useQuery({
+    queryKey: [...queryKeys.history.dpOverview, 'stats'] as const,
+    queryFn: getDbStats,
+    enabled,
+    staleTime: 60_000,
   });
 }
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, History, Maximize2, Trash2, Plus, Link2, Download, Wand2, Upload, Tag, BarChart2, RotateCcw, EyeOff, Indent, FolderOpen, List, AlignLeft, FolderX } from 'lucide-react';
+import { X, History, Maximize2, Trash2, Plus, Link2, Download, Wand2, Upload, Tag, BarChart2, RotateCcw, EyeOff, Indent, FolderOpen, List, AlignLeft, FolderX, Database } from 'lucide-react';
 import { isGlobPattern } from '../../api/iobroker';
 import ColPicker from '../ui/ColPicker';
 import type { SortKey } from './StateListColumns';
@@ -43,6 +43,7 @@ interface StateListToolbarProps {
   onScriptRefresh: () => void;
   onOptimize: () => void;
   onVirtualFolders: () => void;
+  onDbOverview: () => void;
   onAliasReplace: (initialStr: string) => void;
   onAutoAlias: (target: string) => void;
   onHistoryOpen: (primary: string, extra: ExtraSeries[]) => void;
@@ -68,7 +69,7 @@ export default function StateListToolbar({
   newMenuOpen, exportMenuOpen, newMenuRef, exportMenuRef,
   onNewMenuToggle, onNewDatapoint, onNewAlias,
   onExportMenuToggle, onExportCsv, onExportJson, onExportJsonClipboard,
-  onImport, onEnums, onStats, onScriptRefresh, onOptimize, onVirtualFolders,
+  onImport, onEnums, onStats, onScriptRefresh, onOptimize, onVirtualFolders, onDbOverview,
   onAliasReplace, onAutoAlias, onHistoryOpen,
   onDeleteSelected, onClearTreeFilter,
   onToggleShowDesc, onToggleHideAliasSubRows, onToggleGroupByPath, onToggleShortenGroupPaths,
@@ -205,6 +206,14 @@ export default function StateListToolbar({
         >
           <FolderX size={15} />
           {showToolbarLabels && <span>{isEn ? 'Virtual Folders' : 'Virt. Ordner'}</span>}
+        </button>
+        <button
+          onClick={onDbOverview}
+          title={isEn ? 'Database overview (datapoints stored in sql.0)' : 'Datenbank-Übersicht (in sql.0 gespeicherte Datenpunkte)'}
+          className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
+        >
+          <Database size={15} />
+          {showToolbarLabels && <span>{isEn ? 'Database' : 'Datenbank'}</span>}
         </button>
         {hasAliasChecked && (
           <button

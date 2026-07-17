@@ -90,7 +90,7 @@ The app is then reachable at `http://localhost:8080`.
 ├─────────────────────┬─────────────────────────────────────────────────────────┤
 │ StateTree           │ Toolbar                                                 │
 │ (Sidebar)           │   New · Export · Import · Enums ·                       │
-│                     │   Statistics · Optimize · Columns                       │
+│                     │   Statistics · Optimize · Database · Columns            │
 │                     ├─────────────────────────────────────────────────────────┤
 │ folder              │ SearchBar                                               │
 │  └ device           │   pattern · quick/saved filters ·                       │
@@ -261,6 +261,7 @@ Left side (action buttons):
 | **Statistics** | <img src="https://api.iconify.design/lucide:bar-chart-2.svg?color=%236b7280" width="16"> | Opens TreeStatsModal — namespace-level statistics table (total objects, states, structure nodes, history-enabled, smart, aliases, scripts) with subtree delete and namespace navigation |
 | **Script Index** | <img src="https://api.iconify.design/lucide:rotate-ccw.svg?color=%236b7280" width="16"> | Rebuilds and shows the script-usage index — which datapoint IDs are referenced by `javascript.0` scripts; cached in `localStorage` for 1 h |
 | **Optimize** | <img src="https://api.iconify.design/lucide:wand-2.svg?color=%236b7280" width="16"> | Opens OptimizeModal — scans datapoints for missing metadata (room, function, role, name, description, unit, min/max, type) and allows bulk-fixing them inline with batch controls |
+| **Database** | <img src="https://api.iconify.design/lucide:database.svg?color=%236b7280" width="16"> | Opens DbOverviewModal — lists all datapoints stored in the `sql.0` database (via `getDpOverview`), with per-row value count, DB-name rename, and history deletion — see [Database Overview](#database-overview-dboverviewmodal) |
 | **Alias Replace** | <img src="https://api.iconify.design/lucide:link-2.svg?color=%236b7280" width="16"> | Appears when at least one checked row starts with `alias.`; opens Find & Replace in Alias Targets modal pre-filled with the first selected alias target |
 | **Auto Alias** | <img src="https://api.iconify.design/lucide:link-2.svg?color=%236b7280" width="16"> | Auto-creates aliases for all child states of the current device/channel path (requires tree filter or non-glob ID filter) |
 | **History** | <img src="https://api.iconify.design/lucide:history.svg?color=%236b7280" width="16"> | Opens HistoryModal for 1–2 checked datapoints with history (disabled otherwise) |
@@ -463,6 +464,24 @@ Opened via **toolbar → Statistics**.
 - **Click a namespace row** to navigate directly to that namespace in the main table
 - **Script Index** toggle: includes or excludes script-referenced ID counts; requires a script index scan (cached 1 h in `localStorage`)
 - **Delete subtree**: select a namespace and delete all objects under it with a confirmation dialog and progress indicator
+
+---
+
+### Database Overview (DbOverviewModal)
+
+Opened via **toolbar → Database**.
+
+Lists all datapoints that actually have data stored in the **`sql.0` database** — independent of whether history recording is currently enabled on the object. Useful for spotting orphaned history (values kept for datapoints whose object was renamed or deleted).
+
+- **Header stats**: approximate total value rows across all history tables and total database size (data + index), read instantly from `information_schema.TABLES` (no full-table `COUNT`)
+- **Data source**: `sql.0` `getDpOverview` sendTo command; returns each stored datapoint's `id`, `type`, and last-value timestamp (`ts`, shown as local date/time)
+- **Type colors**: the `type` column uses the same color coding as the main datapoint table (`getTypeColor`)
+- **Dynamic columns**: derived from the adapter response (robust across adapter versions); `id` first, sortable by any column, free-text filter by ID
+- **Value count** (on demand): the **Values** column shows a `#` button per row — click to count that datapoint's stored values (fast, type-specific indexed query on `ts_number`/`ts_string`/`ts_bool`). Header **Count** button counts all currently shown rows sequentially. Full-table counting is intentionally *not* automatic — a `GROUP BY` over the whole `ts_number` table is too slow on large databases (single-datapoint lookups stay fast)
+- **Rename in DB** (pencil on row hover): updates `datapoints.name` via a raw `query` `UPDATE`. History is preserved (the `ts_*` tables reference the numeric `datapoints.id`, not the name), and existing target names are rejected. This touches **only the database** — it does not rename the ioBroker object (use [Rename Datapoint](#rename-datapoint) for that)
+- **Delete DB values** (trash on row hover): removes all stored values for the datapoint via `deleteAll` (irreversible, with inline confirmation)
+
+> **⚠️ Raw SQL:** Rename and count use the `sql.0` `query` command against the configured database (name defaults to `iobroker`, set in `src/api/iobroker.ts` → `SQL_DB_NAME`). Single quotes in IDs are escaped.
 
 ---
 
@@ -812,6 +831,8 @@ All history data is treated as immutable once fetched (`staleTime: Infinity`). R
 | POST | `/command/sendTo` | `delete` | Delete a single history entry by timestamp |
 | POST | `/command/sendTo` | `deleteRange` | Delete all entries in the visible time window |
 | POST | `/command/sendTo` | `deleteAll` | Delete entire history for the datapoint |
+| POST | `/command/sendTo` | `getDpOverview` | List all datapoints stored in the DB (Database Overview modal) |
+| POST | `/command/sendTo` | `query` | Raw SQL — value count per datapoint and DB-name rename (`UPDATE datapoints`) |
 
 ---
 
@@ -879,7 +900,7 @@ All writes go directly to the REST API. React Query optimistic updates (`onMutat
 | `src/components/LanguageDropdown.tsx` | EN/DE language selector |
 | `src/components/TypeIcon.tsx` | Object type icon component |
 | `src/components/statelist/StateList.tsx` | Main table: columns, sorting, filters, context menu, pagination, batch edit bar, threshold highlighting |
-| `src/components/statelist/StateListToolbar.tsx` | Toolbar extracted from StateList (New, Export, Import, Enums, Statistics, Optimize, Script Index) |
+| `src/components/statelist/StateListToolbar.tsx` | Toolbar extracted from StateList (New, Export, Import, Enums, Statistics, Optimize, Database, Script Index) |
 | `src/components/statelist/StateRow.tsx` | Individual virtualized table row |
 | `src/components/statelist/BatchComboControl.tsx` | Combo dropdown used in batch edit bar and OptimizeModal |
 | `src/components/statelist/StateListColumns.ts` | Column definitions, keys, labels, default widths |
@@ -903,6 +924,7 @@ All writes go directly to the REST API. React Query optimistic updates (`onMutat
 | `src/components/modals/EnumManagerModal.tsx` | Room and function enum manager |
 | `src/components/modals/OptimizeModal.tsx` | Metadata quality scanner with inline batch fix controls |
 | `src/components/modals/TreeStatsModal.tsx` | Namespace statistics table with subtree delete and script index |
+| `src/components/modals/DbOverviewModal.tsx` | Lists datapoints stored in the `sql.0` database (getDpOverview); per-row value count, DB rename, history delete |
 | `src/components/modals/HelpModal.tsx` | In-app help / feature overview |
 | `src/components/modals/SettingsModal.tsx` | All settings tabs (Connection, Display, Columns, Filters) |
 | `src/components/modals/StateListModals.tsx` | Modal container rendered within StateList context |

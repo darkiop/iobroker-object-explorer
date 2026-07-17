@@ -653,6 +653,46 @@ export async function getHistory(id: string, options: HistoryOptions): Promise<H
   return entries.filter((e) => e.ts >= options.start && e.ts <= options.end);
 }
 
+export interface DpOverviewRow {
+  id: string;
+  [key: string]: unknown;
+}
+
+// POC: list datapoints stored in the sql.0 database (independent of current history config).
+export async function getDpOverview(): Promise<DpOverviewRow[]> {
+  const data = await sendToSql('getDpOverview', {});
+  console.debug('[getDpOverview] raw', data);
+
+  // Response shape (sql.0): { success, result: { "<dp id>": { type, ts }, ... } }.
+  // Also tolerate a plain array or other envelopes.
+  const toRows = (v: unknown): DpOverviewRow[] => {
+    if (Array.isArray(v)) {
+      return v
+        .filter((r) => r && typeof r === 'object')
+        .map((r) => {
+          const row = r as Record<string, unknown>;
+          return { ...row, id: String(row.id ?? row._id ?? row.name ?? '') };
+        });
+    }
+    if (v && typeof v === 'object') {
+      // object keyed by datapoint id → attach the key as id
+      return Object.entries(v as Record<string, unknown>).map(([id, val]) =>
+        val && typeof val === 'object'
+          ? { ...(val as Record<string, unknown>), id }
+          : { id, value: val }
+      );
+    }
+    return [];
+  };
+
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    const o = data as Record<string, unknown>;
+    const nested = o.result ?? o.data ?? o.rows ?? o.list ?? o.dps ?? o.datapoints;
+    if (nested !== undefined) return toRows(nested);
+  }
+  return toRows(data);
+}
+
 async function sendToSql(command: string, message: unknown): Promise<unknown> {
   const res = await fetch(`${getBaseUrl()}/command/sendTo`, {
     method: 'POST',
@@ -675,6 +715,84 @@ export async function deleteHistoryRange(id: string, start: number, end: number)
 
 export async function deleteHistoryAll(id: string): Promise<void> {
   await sendToSql('deleteAll', [{ id }]);
+}
+
+// Database name of the sql.0 backend. Default for the SQL adapter is `iobroker`;
+// adjust here if the adapter is configured with a different database name.
+const SQL_DB_NAME = 'iobroker';
+
+function sqlQuote(v: string): string {
+  return `'${v.replace(/'/g, "''")}'`;
+}
+
+// Runs a raw SQL query via sql.0 `query` sendTo. Response envelope: { error, result }.
+async function querySql(sql: string): Promise<unknown[]> {
+  const res = (await sendToSql('query', sql)) as { error?: unknown; result?: unknown[] } | null;
+  if (res && typeof res === 'object' && res.error) {
+    throw new Error(String(res.error));
+  }
+  return (res?.result ?? []) as unknown[];
+}
+
+export interface DbStats {
+  totalValues: number;    // approx. sum of rows across ts_* tables
+  sizeBytes: number;      // data + index size of the whole database
+  tables: { name: string; rows: number; bytes: number }[];
+}
+
+// Database-wide stats via information_schema (instant — no full-table COUNT).
+// Row counts are InnoDB estimates (good enough for a header summary).
+export async function getDbStats(): Promise<DbStats> {
+  const rows = await querySql(
+    `SELECT table_name AS name, table_rows AS rowcount, (data_length + index_length) AS bytes ` +
+    `FROM information_schema.TABLES WHERE table_schema = ${sqlQuote(SQL_DB_NAME)}`
+  );
+  const tables = rows.map((r) => {
+    const o = r as Record<string, unknown>;
+    return { name: String(o.name ?? ''), rows: Number(o.rowcount ?? 0), bytes: Number(o.bytes ?? 0) };
+  });
+  const totalValues = tables.filter((t) => t.name.startsWith('ts_')).reduce((s, t) => s + t.rows, 0);
+  const sizeBytes = tables.reduce((s, t) => s + t.bytes, 0);
+  return { totalValues, sizeBytes, tables };
+}
+
+// Value-history table for a datapoint type (as reported by getDpOverview).
+function tsTableForType(type: unknown): string {
+  switch (String(type)) {
+    case 'string': return 'ts_string';
+    case 'boolean': return 'ts_bool';
+    default: return 'ts_number';
+  }
+}
+
+// Counts how many stored values a datapoint has in the sql.0 database.
+// Counting on demand per datapoint: a type-specific indexed lookup (fast),
+// unlike a full GROUP BY over the whole ts table (too slow on large DBs).
+export async function getDpValueCount(id: string, type: unknown): Promise<number> {
+  const table = tsTableForType(type);
+  const rows = await querySql(
+    `SELECT COUNT(*) c FROM ${SQL_DB_NAME}.${table} n ` +
+    `JOIN ${SQL_DB_NAME}.datapoints d ON d.id = n.id ` +
+    `WHERE d.name = ${sqlQuote(id)}`
+  );
+  const first = rows[0] as { c?: unknown } | undefined;
+  return Number(first?.c ?? 0);
+}
+
+// Renames a datapoint in the sql.0 database by updating datapoints.name.
+// History is preserved (ts_* tables reference the numeric datapoints.id, not the name).
+// This only touches the DB — it does NOT rename the ioBroker object/state.
+export async function renameDpInDb(oldId: string, newId: string): Promise<void> {
+  // Guard: refuse if target name already exists (would create ambiguous rows).
+  const existing = await querySql(
+    `SELECT id FROM ${SQL_DB_NAME}.datapoints WHERE name = ${sqlQuote(newId)} LIMIT 1`
+  );
+  if (existing.length > 0) {
+    throw new Error(`Target id already exists in database: ${newId}`);
+  }
+  await querySql(
+    `UPDATE ${SQL_DB_NAME}.datapoints SET name = ${sqlQuote(newId)} WHERE name = ${sqlQuote(oldId)}`
+  );
 }
 
 export async function getAllUnits(): Promise<string[]> {

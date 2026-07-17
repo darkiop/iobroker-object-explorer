@@ -8,6 +8,7 @@ import { useStateListView } from '../../hooks/useStateListView';
 import StateListToolbar from './StateListToolbar';
 import StateListModals from '../modals/StateListModals';
 import VirtualFoldersModal from '../modals/VirtualFoldersModal';
+import DbOverviewModal from '../modals/DbOverviewModal';
 import { useAllObjects } from '../../hooks/useStates';
 import type { IoBrokerState, IoBrokerObject } from '../../types/iobroker';
 import { copyText, copyToClipboard } from '../../utils/clipboard';
@@ -135,6 +136,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
     optimizeOpen, setOptimizeOpen,
     optimizePath, setOptimizePath,
     virtualFoldersOpen, setVirtualFoldersOpen,
+    dbOverviewOpen, setDbOverviewOpen,
     historyModalId, setHistoryModalId,
     historyInitialExtra, setHistoryInitialExtra,
     deletingId, setDeletingId,
@@ -828,6 +830,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
         onScriptRefresh={() => setConfirmScriptRefresh(true)}
         onOptimize={() => { setOptimizePath(undefined); setOptimizeOpen(true); }}
         onVirtualFolders={() => setVirtualFoldersOpen(true)}
+        onDbOverview={() => setDbOverviewOpen(true)}
         onAliasReplace={(str) => onOpenAliasReplace?.(str)}
         onAutoAlias={(target) => setAutoAliasDeviceId(target)}
         onHistoryOpen={(id, extra) => { setHistoryInitialExtra(extra); setHistoryModalId(id); }}
@@ -1524,6 +1527,12 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
           resetAllFilters();
           setDraftAndPropagate({ id });
         }}
+      />
+    )}
+    {dbOverviewOpen && (
+      <DbOverviewModal
+        onClose={() => setDbOverviewOpen(false)}
+        language={language as 'en' | 'de'}
       />
     )}
 </>

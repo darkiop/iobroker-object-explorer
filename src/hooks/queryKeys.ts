@@ -15,6 +15,7 @@ export const queryKeys = {
   },
   history: {
     root: ['history'] as const,
+    dpOverview: ['history', 'dpOverview'] as const,
     detail: (id: string, options: HistoryOptions) =>
       ['history', 'detail', id, options.start, options.end, options.aggregate] as const,
   },
