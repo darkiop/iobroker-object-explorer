@@ -710,8 +710,14 @@ export async function deleteHistoryEntry(id: string, ts: number): Promise<void> 
   await sendToSql('delete', [{ id, state: { ts } }]);
 }
 
+// The sql adapter gates its range branch on `if (message.start)` and builds the
+// SQL only when `start && end` — both truthy. A start of 0 is silently skipped
+// (adapter logs "Invalid state" and still answers success), so clamp to >= 1.
+// ts values are epoch ms, so 1 is effectively "from the beginning".
 export async function deleteHistoryRange(id: string, start: number, end: number): Promise<void> {
-  await sendToSql('deleteRange', [{ id, start, end }]);
+  const s = Math.max(1, Math.floor(start));
+  const e = Math.floor(end);
+  await sendToSql('deleteRange', [{ id, start: s, end: e }]);
 }
 
 export async function deleteHistoryAll(id: string): Promise<void> {
@@ -780,12 +786,22 @@ export function tsTableForType(type: unknown): string {
 // Counts how many stored values a datapoint has in the sql.0 database.
 // Counting on demand per datapoint: a type-specific indexed lookup (fast),
 // unlike a full GROUP BY over the whole ts table (too slow on large DBs).
-export async function getDpValueCount(id: string, type: unknown): Promise<number> {
+// Optional startTs/endTs narrow the count to a timestamp range (inclusive),
+// e.g. to preview how many rows a range delete would remove.
+export async function getDpValueCount(
+  id: string,
+  type: unknown,
+  startTs?: number | null,
+  endTs?: number | null,
+): Promise<number> {
   const table = tsTableForType(type);
+  let where = `d.name = ${sqlQuote(id)}`;
+  if (startTs != null && !Number.isNaN(startTs)) where += ` AND n.ts >= ${Math.floor(startTs)}`;
+  if (endTs != null && !Number.isNaN(endTs)) where += ` AND n.ts <= ${Math.floor(endTs)}`;
   const rows = await querySql(
     `SELECT COUNT(*) c FROM ${SQL_DB_NAME}.${table} n ` +
     `JOIN ${SQL_DB_NAME}.datapoints d ON d.id = n.id ` +
-    `WHERE d.name = ${sqlQuote(id)}`
+    `WHERE ${where}`
   );
   const first = rows[0] as { c?: unknown } | undefined;
   return Number(first?.c ?? 0);

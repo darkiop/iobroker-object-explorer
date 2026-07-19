@@ -1,9 +1,9 @@
 import { createPortal } from 'react-dom';
-import { X, Table2, Loader2, AlertTriangle, ChevronLeft, ChevronRight, Pencil, Check, Trash2, Copy } from 'lucide-react';
+import { X, Table2, Loader2, AlertTriangle, ChevronLeft, ChevronRight, Pencil, Check, Trash2, Copy, CalendarClock } from 'lucide-react';
 import { useState } from 'react';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { useDpValues } from '../../hooks/useObjectQueries';
-import { updateDpValue, deleteHistoryEntry, tsTableForType, buildDpValuesSql } from '../../api/iobroker';
+import { updateDpValue, deleteHistoryEntry, deleteHistoryRange, getDpValueCount, tsTableForType, buildDpValuesSql } from '../../api/iobroker';
 import { copyToClipboard } from '../../utils/clipboard';
 import { useToast } from '../../context/ToastContext';
 import { ColoredId } from '../../utils/coloredId';
@@ -40,6 +40,60 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
   const [saving, setSaving] = useState(false);
   const [delTs, setDelTs] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [confirmPurge, setConfirmPurge] = useState(false);
+  const [purging, setPurging] = useState(false);
+  const [purgeCount, setPurgeCount] = useState<number | null>(null);
+  const [countingPurge, setCountingPurge] = useState(false);
+  // Cutoff of the purge, resolved when the confirm opens so count and delete
+  // use the exact same timestamp.
+  const [purgeCutoff, setPurgeCutoff] = useState<number | null>(null);
+
+  // Opens the confirm and previews how many rows the purge would delete.
+  async function startPurge() {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 3);
+    const cutoff = d.getTime();
+    setPurgeCutoff(cutoff);
+    setPurgeCount(null);
+    setConfirmPurge(true);
+    setCountingPurge(true);
+    try {
+      setPurgeCount(await getDpValueCount(id, type, null, cutoff));
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : String(err), 'error');
+    } finally {
+      setCountingPurge(false);
+    }
+  }
+
+  // Delete all stored values older than 3 months for this datapoint.
+  async function purgeOld() {
+    if (purgeCutoff == null) return;
+    setPurging(true);
+    try {
+      await deleteHistoryRange(id, 1, purgeCutoff);
+      // The sql adapter answers {success:true} unconditionally — even when it
+      // discarded the request — so verify by re-counting instead of trusting it.
+      const remaining = await getDpValueCount(id, type, null, purgeCutoff);
+      if (remaining > 0) {
+        showToast(
+          isEn
+            ? `${remaining.toLocaleString()} value(s) older than 3 months could not be deleted`
+            : `${remaining.toLocaleString()} Wert(e) älter als 3 Monate konnten nicht gelöscht werden`,
+          'error',
+        );
+      } else {
+        showToast(isEn ? 'Values older than 3 months deleted' : 'Werte älter als 3 Monate gelöscht', 'success');
+      }
+      setConfirmPurge(false);
+      setPage(0);
+      await refetch();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : String(err), 'error');
+    } finally {
+      setPurging(false);
+    }
+  }
 
   function copySql() {
     const sql = buildDpValuesSql(id, type, PAGE_SIZE, page * PAGE_SIZE, startTs, endTs);
@@ -91,7 +145,7 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-6xl bg-white dark:bg-gray-900 animate-modal-in rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[85vh]"
+        className="w-full max-w-7xl bg-white dark:bg-gray-900 animate-modal-in rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col h-[85vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -110,6 +164,52 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
             </span>
           </div>
           <div className="flex items-center gap-1 shrink-0">
+            {confirmPurge ? (
+              <span className="inline-flex items-center gap-1">
+                <span className="text-xs text-red-600 dark:text-red-400 mr-1 flex items-center gap-1">
+                  {countingPurge ? (
+                    <>
+                      <Loader2 size={12} className="animate-spin" />
+                      {isEn ? 'Counting…' : 'Zähle…'}
+                    </>
+                  ) : purgeCount == null ? (
+                    isEn ? 'Delete values > 3 months?' : 'Werte > 3 Monate löschen?'
+                  ) : purgeCount === 0 ? (
+                    isEn ? 'No values older than 3 months' : 'Keine Werte älter als 3 Monate'
+                  ) : isEn ? (
+                    `Delete ${purgeCount.toLocaleString()} value${purgeCount === 1 ? '' : 's'} older than 3 months?`
+                  ) : (
+                    `${purgeCount.toLocaleString()} ${purgeCount === 1 ? 'Wert' : 'Werte'} älter als 3 Monate löschen?`
+                  )}
+                </span>
+                <button
+                  onClick={purgeOld}
+                  disabled={purging || countingPurge || purgeCount === 0}
+                  title={isEn ? 'Confirm delete' : 'Löschen bestätigen'}
+                  className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-40"
+                >
+                  {purging ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                  {isEn ? 'Confirm' : 'Bestätigen'}
+                </button>
+                <button
+                  onClick={() => setConfirmPurge(false)}
+                  disabled={purging}
+                  title={isEn ? 'Cancel' : 'Abbrechen'}
+                  className="p-1 rounded text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40"
+                >
+                  <X size={14} />
+                </button>
+              </span>
+            ) : (
+              <button
+                onClick={startPurge}
+                title={isEn ? 'Delete all values older than 3 months' : 'Alle Werte älter als 3 Monate löschen'}
+                className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-red-50 hover:text-red-600 hover:border-red-300 dark:hover:bg-red-900/20 dark:hover:text-red-400 dark:hover:border-red-700"
+              >
+                <CalendarClock size={12} />
+                {isEn ? '> 3M' : '> 3M'}
+              </button>
+            )}
             <button
               onClick={copySql}
               title={isEn ? 'Copy underlying SQL query' : 'Zugrundeliegende SQL-Abfrage kopieren'}
@@ -125,6 +225,16 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
               <X size={16} />
             </button>
           </div>
+        </div>
+
+        {/* Irreversible-action warning */}
+        <div className="shrink-0 flex items-center gap-2 px-5 py-2 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800">
+          <AlertTriangle size={14} className="text-red-500 shrink-0" />
+          <span className="text-xs font-semibold text-red-700 dark:text-red-300">
+            {isEn
+              ? 'Warning: changes and deletions made here act directly on the database and cannot be undone.'
+              : 'Achtung: Änderungen und Löschungen hier wirken direkt auf die Datenbank und können nicht rückgängig gemacht werden.'}
+          </span>
         </div>
 
         {/* Timestamp filter */}
