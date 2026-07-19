@@ -64,12 +64,13 @@ function getTokenAtCursor(value: string, cursor: number): { token: string; start
   return { token: value.slice(start, end), start, end };
 }
 
-function buildSuggestions(
+export function buildSuggestions(
   token: string,
   roomNames: string[],
   functionNames: string[],
   roleNames: string[],
   allObjectIds: string[],
+  bareIdSuggest = true,
 ): Suggestion[] {
   const lower = token.toLowerCase();
 
@@ -93,8 +94,24 @@ function buildSuggestions(
     return roleNames.filter((r) => r.toLowerCase().includes(query)).slice(0, 30)
       .map((r) => ({ display: r, insert: r.includes(' ') ? `role:"${r}"` : `role:${r}` }));
   }
+  if (lower.startsWith('id:')) {
+    const query = token.slice(3).toLowerCase();
+    const startsWith: string[] = [];
+    const contains: string[] = [];
+    for (const id of allObjectIds) {
+      const idLower = id.toLowerCase();
+      if (idLower.startsWith(query)) startsWith.push(id);
+      else if (query && idLower.includes(query)) contains.push(id);
+      if (startsWith.length + contains.length >= ID_SUGGEST_MAX * 2) break;
+    }
+    return [...startsWith, ...contains].slice(0, ID_SUGGEST_MAX)
+      .map((id) => ({ display: id, insert: `id:${id}`, autoSubmit: true }));
+  }
 
-  if (lower.length === 0) return [];
+  // Empty token (e.g. on focus) → show all filter prefixes
+  if (lower.length === 0) {
+    return COMMANDS.map((c) => ({ display: c.prefix, insert: c.prefix, keepOpen: true }));
+  }
 
   // Keyword suggestions
   const kwSuggestions = COMMANDS
@@ -103,7 +120,7 @@ function buildSuggestions(
   if (kwSuggestions.length > 0) return kwSuggestions;
 
   // ID suggestions (only when no command keyword detected)
-  if (allObjectIds.length > 0 && lower.length >= ID_SUGGEST_MIN_LEN) {
+  if (bareIdSuggest && allObjectIds.length > 0 && lower.length >= ID_SUGGEST_MIN_LEN) {
     const startsWith: string[] = [];
     const contains: string[] = [];
     for (const id of allObjectIds) {
@@ -176,8 +193,7 @@ const SearchBar = forwardRef<SearchBarHandle, SearchBarProps>(function SearchBar
   const recompute = useCallback((val: string, cursor: number) => {
     if (fulltextEnabled) { closeSuggestions(); return; }
     const { token } = getTokenAtCursor(val, cursor);
-    const ids = idSuggestEnabled ? allObjectIds : [];
-    const next = buildSuggestions(token, roomNames, functionNames, roleNames, ids);
+    const next = buildSuggestions(token, roomNames, functionNames, roleNames, allObjectIds, idSuggestEnabled);
     setSuggestions(next);
     setActiveIndex(-1);
   }, [fulltextEnabled, idSuggestEnabled, allObjectIds, roomNames, functionNames, roleNames, closeSuggestions]);
@@ -194,21 +210,27 @@ const SearchBar = forwardRef<SearchBarHandle, SearchBarProps>(function SearchBar
     const newValue = value.slice(0, start) + s.insert + value.slice(end) + (s.keepOpen ? '' : ' ');
     const trimmed = newValue.trim();
     setValue(trimmed);
-    closeSuggestions();
 
     if (s.autoSubmit) {
+      closeSuggestions();
       onSearch(trimmed || SEARCH_ALL);
       return;
     }
 
+    // Recompute synchronously so the value list appears immediately (same path as typing).
+    // rAF only restores focus + caret after React commits the new input value.
+    const caret = start + s.insert.length;
+    if (s.keepOpen) {
+      recompute(newValue, caret);
+    } else {
+      closeSuggestions();
+    }
+
     requestAnimationFrame(() => {
       if (!inputRef.current) return;
-      const pos = start + s.insert.length + (s.keepOpen ? 0 : 1);
+      const pos = caret + (s.keepOpen ? 0 : 1);
       inputRef.current.focus();
       inputRef.current.setSelectionRange(pos, pos);
-      if (s.keepOpen) {
-        recompute(newValue, start + s.insert.length);
-      }
     });
   }, [value, closeSuggestions, onSearch, recompute]);
 
