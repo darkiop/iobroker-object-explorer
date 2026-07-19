@@ -4,6 +4,7 @@ import { Lock, ChevronDown, Check, Zap } from 'lucide-react';
 import { formatTimestamp, formatValue } from '../../utils/format';
 import type { IoBrokerObject, IoBrokerState } from '../../types/iobroker';
 import { getRoleColor } from '../../utils/roleColor';
+import { validateNumberRange } from '../../utils/validation';
 
 const SELECT_CLS = 'w-full bg-gray-50/70 text-gray-700 text-sm rounded-md px-2.5 py-1.5 border border-gray-200 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300/70 disabled:opacity-50 dark:bg-gray-800/70 dark:text-gray-200 dark:border-gray-700 dark:focus:border-gray-600 dark:focus:ring-gray-600/60 transition-colors';
 
@@ -108,14 +109,25 @@ function ButtonControl({ onSet, isPending, disabled, language = 'en' }: { onSet:
   );
 }
 
-function NumberControl({ val, onSet, isPending, unit }: { val: unknown; onSet: (v: unknown) => void; isPending: boolean; unit?: string }) {
+function NumberControl({ val, onSet, isPending, unit, min, max, language = 'en' }: { val: unknown; onSet: (v: unknown) => void; isPending: boolean; unit?: string; min?: number; max?: number; language?: 'en' | 'de' }) {
   const [draft, setDraft] = useState(String(val ?? ''));
-  useEffect(() => { setDraft(String(val ?? '')); }, [val]);
-  function commit() { const n = Number(draft); if (!isNaN(n)) onSet(n); }
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => { setDraft(String(val ?? '')); setError(null); }, [val]);
+  function commit() {
+    const n = Number(draft);
+    if (isNaN(n)) return;
+    const rangeError = validateNumberRange(n, min, max, language);
+    if (rangeError) { setError(rangeError); return; }
+    setError(null);
+    onSet(n);
+  }
   return (
-    <div className="flex items-center gap-1.5">
-      <input type="number" value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') commit(); }} onBlur={commit} disabled={isPending} className="w-32 bg-white text-gray-800 text-sm rounded px-2 py-0.5 border border-gray-300 focus:border-blue-500 focus:outline-none disabled:opacity-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600" />
-      {unit && <span className="text-gray-500 dark:text-gray-400 text-sm">{unit}</span>}
+    <div className="flex flex-col gap-0.5">
+      <div className="flex items-center gap-1.5">
+        <input type="number" min={min} max={max} value={draft} onChange={(e) => { setDraft(e.target.value); setError(null); }} onKeyDown={(e) => { if (e.key === 'Enter') commit(); }} onBlur={commit} disabled={isPending} className={`w-32 bg-white text-gray-800 text-sm rounded px-2 py-0.5 border ${error ? 'border-red-500' : 'border-gray-300'} focus:border-blue-500 focus:outline-none disabled:opacity-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600`} />
+        {unit && <span className="text-gray-500 dark:text-gray-400 text-sm">{unit}</span>}
+      </div>
+      {error && <span className="text-red-500 text-xs">{error}</span>}
     </div>
   );
 }
@@ -133,13 +145,21 @@ function StringControl({ val, onSet, isPending, unit, language = 'en' }: { val: 
   );
 }
 
-function ExpertControl({ val, onSet, isPending, unit, type, language = 'en' }: { val: unknown; onSet: (v: unknown) => void; isPending: boolean; unit?: string; type?: string; language?: 'en' | 'de' }) {
+function ExpertControl({ val, onSet, isPending, unit, type, min, max, language = 'en' }: { val: unknown; onSet: (v: unknown) => void; isPending: boolean; unit?: string; type?: string; min?: number; max?: number; language?: 'en' | 'de' }) {
   const isEn = language === 'en';
   const [draft, setDraft] = useState(String(val ?? ''));
-  useEffect(() => { setDraft(String(val ?? '')); }, [val]);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => { setDraft(String(val ?? '')); setError(null); }, [val]);
   function commit(raw: string) {
     if (type === 'boolean') onSet(raw === 'true');
-    else if (type === 'number') { const n = Number(raw); if (!isNaN(n)) onSet(n); }
+    else if (type === 'number') {
+      const n = Number(raw);
+      if (isNaN(n)) return;
+      const rangeError = validateNumberRange(n, min, max, language);
+      if (rangeError) { setError(rangeError); return; }
+      setError(null);
+      onSet(n);
+    }
     else onSet(raw);
   }
   if (type === 'boolean') {
@@ -153,10 +173,13 @@ function ExpertControl({ val, onSet, isPending, unit, type, language = 'en' }: {
     );
   }
   return (
-    <div className="flex items-center gap-1.5">
-      <input type={type === 'number' ? 'number' : 'text'} value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') commit(draft); }} disabled={isPending} className="w-32 bg-white text-gray-800 text-sm rounded px-2 py-0.5 border border-gray-300 focus:border-blue-500 focus:outline-none disabled:opacity-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600" />
-      <button onClick={() => commit(draft)} disabled={isPending} className="text-green-500 hover:text-green-600 dark:text-green-400 disabled:opacity-50" title={isEn ? 'Send' : 'Senden'}><Check size={14} /></button>
-      {unit && <span className="text-gray-500 dark:text-gray-400 text-sm">{unit}</span>}
+    <div className="flex flex-col gap-0.5">
+      <div className="flex items-center gap-1.5">
+        <input type={type === 'number' ? 'number' : 'text'} min={type === 'number' ? min : undefined} max={type === 'number' ? max : undefined} value={draft} onChange={(e) => { setDraft(e.target.value); setError(null); }} onKeyDown={(e) => { if (e.key === 'Enter') commit(draft); }} disabled={isPending} className={`w-32 bg-white text-gray-800 text-sm rounded px-2 py-0.5 border ${error ? 'border-red-500' : 'border-gray-300'} focus:border-blue-500 focus:outline-none disabled:opacity-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600`} />
+        <button onClick={() => commit(draft)} disabled={isPending} className="text-green-500 hover:text-green-600 dark:text-green-400 disabled:opacity-50" title={isEn ? 'Send' : 'Senden'}><Check size={14} /></button>
+        {unit && <span className="text-gray-500 dark:text-gray-400 text-sm">{unit}</span>}
+      </div>
+      {error && <span className="text-red-500 text-xs">{error}</span>}
     </div>
   );
 }
@@ -224,11 +247,11 @@ export default function DetailsTab({
               {editValue ? (
                 <>
                   {expertMode ? (
-                    <ExpertControl val={frozenVal} onSet={onSetValue} isPending={setValuePending} unit={obj.common?.unit} type={type} language={language} />
+                    <ExpertControl val={frozenVal} onSet={onSetValue} isPending={setValuePending} unit={obj.common?.unit} type={type} min={obj.common?.min} max={obj.common?.max} language={language} />
                   ) : isButton ? (
                     <ButtonControl onSet={onSetValue} isPending={setValuePending} disabled={!isWritable} language={language} />
                   ) : isWritable && type === 'number' ? (
-                    <NumberControl val={frozenVal} onSet={onSetValue} isPending={setValuePending} unit={obj.common?.unit} />
+                    <NumberControl val={frozenVal} onSet={onSetValue} isPending={setValuePending} unit={obj.common?.unit} min={obj.common?.min} max={obj.common?.max} language={language} />
                   ) : isWritable && type === 'boolean' ? (
                     <BooleanSelectControl val={frozenVal} onSet={onSetValue} isPending={setValuePending} disabled={!isWritable} />
                   ) : isWritable && (type === 'string' || type === 'mixed') ? (

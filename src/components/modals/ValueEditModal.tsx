@@ -8,6 +8,7 @@ import { useSetState } from '../../hooks/useStates';
 import { ColoredId } from '../../utils/coloredId';
 import { getTypeColor } from '../../utils/typeColor';
 import { getRoleColor } from '../../utils/roleColor';
+import { validateNumberRange } from '../../utils/validation';
 
 interface ValueEditModalProps {
   id: string;
@@ -189,6 +190,10 @@ export default function ValueEditModal({ id, state, obj, onClose, language = 'en
           : (isEn ? 'Invalid JSON value' : 'Ungültiger JSON-Wert'));
       return;
     }
+    if (valType === 'number' && typeof parsed.value === 'number') {
+      const rangeError = validateNumberRange(parsed.value, obj?.common?.min, obj?.common?.max, language);
+      if (rangeError) { setError(rangeError); return; }
+    }
     setStateMutation.mutate(
       { id, val: parsed.value, ack },
       { onSuccess: () => onClose() }
@@ -339,6 +344,8 @@ export default function ValueEditModal({ id, state, obj, onClose, language = 'en
                   <input
                     type="text"
                     inputMode="numeric"
+                    min={obj?.common?.min}
+                    max={obj?.common?.max}
                     value={draft}
                     onChange={(e) => { setDraft(e.target.value); setError(''); }}
                     onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}

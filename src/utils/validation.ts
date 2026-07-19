@@ -38,3 +38,24 @@ export function validatePort(port: string): string | null {
   if (!Number.isInteger(n) || n < 1 || n > 65535) return 'Port must be a number between 1 and 65535.';
   return null;
 }
+
+/**
+ * Validates a numeric value against optional `common.min` / `common.max` bounds.
+ * Returns a localized error message, or null if the value is within range.
+ * Non-numeric min/max bounds are ignored.
+ */
+export function validateNumberRange(
+  value: number,
+  min: number | undefined,
+  max: number | undefined,
+  language: 'en' | 'de' = 'en',
+): string | null {
+  const isEn = language === 'en';
+  if (typeof min === 'number' && Number.isFinite(min) && value < min) {
+    return isEn ? `Value must be ≥ ${min}` : `Wert muss ≥ ${min} sein`;
+  }
+  if (typeof max === 'number' && Number.isFinite(max) && value > max) {
+    return isEn ? `Value must be ≤ ${max}` : `Wert muss ≤ ${max} sein`;
+  }
+  return null;
+}
