@@ -183,6 +183,7 @@ export default function AutoCreateAliasModal({ deviceId, allObjects, existingIds
     try {
       for (const row of checkedRows) {
         const aliasId = aliasIdForRow(row);
+        const srcCommon = allObjects[row.sourceId]?.common;
         const common: Partial<IoBrokerObjectCommon> = {
           name: row.nameDraft || row.name,
           type: (row.typeDraft || row.type) as IoBrokerObjectCommon['type'],
@@ -190,6 +191,11 @@ export default function AutoCreateAliasModal({ deviceId, allObjects, existingIds
           unit: row.unitDraft || undefined,
           read: row.read,
           write: row.write,
+          ...(srcCommon?.min !== undefined ? { min: srcCommon.min } : {}),
+          ...(srcCommon?.max !== undefined ? { max: srcCommon.max } : {}),
+          ...(srcCommon?.step !== undefined ? { step: srcCommon.step } : {}),
+          ...(srcCommon?.states !== undefined ? { states: srcCommon.states } : {}),
+          ...(srcCommon?.desc !== undefined ? { desc: srcCommon.desc } : {}),
           alias: { id: row.sourceId },
         };
         await createObject(aliasId, common, 'state');

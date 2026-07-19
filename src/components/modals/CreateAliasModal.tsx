@@ -113,6 +113,11 @@ export default function CreateAliasModal({ sourceId = '', sourceObj, existingIds
           unit: unit.trim() || undefined,
           read: srcRead,
           write: srcWrite,
+          ...(srcCommon?.min !== undefined ? { min: srcCommon.min } : {}),
+          ...(srcCommon?.max !== undefined ? { max: srcCommon.max } : {}),
+          ...(srcCommon?.step !== undefined ? { step: srcCommon.step } : {}),
+          ...(srcCommon?.states !== undefined ? { states: srcCommon.states } : {}),
+          ...(srcCommon?.desc !== undefined ? { desc: srcCommon.desc } : {}),
           alias: {
             id: localSourceId,
             read: aliasRead.trim() || undefined,
