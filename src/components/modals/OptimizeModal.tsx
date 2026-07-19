@@ -6,6 +6,7 @@ import type { IoBrokerObject, IoBrokerObjectCommon } from '../../types/iobroker'
 import { useExtendObject, useUpdateRoomMembershipBatch, useUpdateFunctionMembershipBatch, useUpdateRoomMembership, useUpdateFunctionMembership, useAllRoles, useAllUnits } from '../../hooks/useStates';
 import { useToast } from '../../context/ToastContext';
 import BatchComboControl, { EMPTY_SENTINEL } from '../statelist/BatchComboControl';
+import { ColoredId } from '../../utils/coloredId';
 
 interface Props {
   onClose: () => void;
@@ -423,7 +424,7 @@ export default function OptimizeModal({ onClose, language, allObjects, roomMap, 
                             const n = new Set(prev); n.has(r.id) ? n.delete(r.id) : n.add(r.id); return n;
                           })} className="w-3 h-3 accent-blue-500" />
                         </td>
-                        <td className="px-3 py-1.5 font-mono text-gray-600 dark:text-gray-400 max-w-[280px] truncate" title={r.id}>{r.id}</td>
+                        <td className="px-3 py-1.5 font-mono"><ColoredId id={r.id} className="!whitespace-normal !overflow-visible break-all" /></td>
                         <td className="px-3 py-1.5 text-gray-700 dark:text-gray-300 max-w-[180px] truncate" title={name}>{name || <span className="text-gray-300 dark:text-gray-600 italic">—</span>}</td>
                         <td className="px-3 py-1.5">
                           {isOk ? (
