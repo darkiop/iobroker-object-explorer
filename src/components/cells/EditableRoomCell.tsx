@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Pencil } from 'lucide-react';
 import { Tooltip } from '../ui/Tooltip';
+import { getEnumColor } from '../../utils/enumColor';
 
 const EditableRoomCell = React.memo(function EditableRoomCell({ id, currentRoomEnumId, roomName, roomEnums, onSelectRoom, forceEdit, onEditEnd, language = 'en' }: {
   id: string;
@@ -48,7 +49,7 @@ const EditableRoomCell = React.memo(function EditableRoomCell({ id, currentRoomE
       onClick={(e) => { e.stopPropagation(); openEdit(); }}
     >
       <div className="flex items-center gap-1.5">
-        {roomName && <Tooltip content={roomName}><span className="truncate min-w-0">{roomName}</span></Tooltip>}
+        {roomName && <Tooltip content={roomName}><span className={`truncate min-w-0 ${getEnumColor(roomName)}`}>{roomName}</span></Tooltip>}
         <Tooltip content={isEn ? 'Edit room' : 'Raum bearbeiten'}>
           <Pencil
             size={12}

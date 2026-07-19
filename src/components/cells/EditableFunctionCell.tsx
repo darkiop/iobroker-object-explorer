@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Pencil } from 'lucide-react';
 import { Tooltip } from '../ui/Tooltip';
+import { getEnumColor } from '../../utils/enumColor';
 
 const EditableFunctionCell = React.memo(function EditableFunctionCell({ id, currentFnEnumId, fnName, fnEnums, onSelectFunction, forceEdit, onEditEnd, language = 'en' }: {
   id: string;
@@ -48,7 +49,7 @@ const EditableFunctionCell = React.memo(function EditableFunctionCell({ id, curr
       onClick={(e) => { e.stopPropagation(); openEdit(); }}
     >
       <div className="flex items-center gap-1.5">
-        {fnName && <Tooltip content={fnName}><span className="truncate min-w-0">{fnName}</span></Tooltip>}
+        {fnName && <Tooltip content={fnName}><span className={`truncate min-w-0 ${getEnumColor(fnName)}`}>{fnName}</span></Tooltip>}
         <Tooltip content={isEn ? 'Edit function' : 'Funktion bearbeiten'}>
           <Pencil
             size={12}
