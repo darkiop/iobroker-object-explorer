@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Sun, Moon, Eclipse, Flower2, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Maximize, Minimize, RefreshCw, ExternalLink, Info, WifiOff, FilterX, Columns2, ArrowLeft, ArrowRight, Server, ChevronDown, Check, Download } from 'lucide-react';
+import { Sun, Moon, Eclipse, Flower2, PanelLeftClose, PanelLeftOpen, Settings, CircleHelp, Maximize, Minimize, RefreshCw, ExternalLink, Info, WifiOff, FilterX, Columns2, ArrowLeft, ArrowRight, Server, ChevronDown, Check, Download, Play, Pause } from 'lucide-react';
 import { getConnections, getActiveConnectionId, switchToConnection } from '../api/iobroker';
 import type { SavedConnection } from '../api/iobroker';
 import { useTheme } from '../context/ThemeContext';
@@ -23,6 +23,10 @@ interface LayoutProps {
   browserOffline?: boolean;
   lastUpdated?: number;
   onManualRefresh?: () => void;
+  /** true when live communication is paused */
+  paused?: boolean;
+  /** toggles the paused flag */
+  onTogglePause?: () => void;
   onConfirmScriptRefresh?: () => void;
   headerExtra?: React.ReactNode;
   onExtraReset?: () => void;
@@ -32,7 +36,7 @@ interface LayoutProps {
 const LS_SIDEBAR_WIDTH = 'iobroker-explorer-sidebar-width';
 const LS_SIDEBAR_COLLAPSED = 'iobroker-explorer-sidebar-collapsed';
 
-export default function Layout({ sidebar, children, apiConnected = true, realtimeTransport, realtimeStatus, realtimeFallback = false, browserOffline = false, lastUpdated, onManualRefresh, onConfirmScriptRefresh, headerExtra, onExtraReset, onFocusSearch }: LayoutProps) {
+export default function Layout({ sidebar, children, apiConnected = true, realtimeTransport, realtimeStatus, realtimeFallback = false, browserOffline = false, lastUpdated, onManualRefresh, paused = false, onTogglePause, onConfirmScriptRefresh, headerExtra, onExtraReset, onFocusSearch }: LayoutProps) {
   const {
     appSettings, confirmScriptRefresh, scriptLastUpdated,
     setConfirmScriptRefresh, openSettings, setShortcutsOpen,
@@ -297,6 +301,7 @@ export default function Layout({ sidebar, children, apiConnected = true, realtim
             realtimeTransport={realtimeTransport}
             realtimeStatus={realtimeStatus}
             realtimeFallback={realtimeFallback}
+            paused={paused}
             lastUpdated={lastUpdated}
           />
           <div className="hidden sm:block w-px h-4 bg-gray-300 dark:bg-gray-600" />
@@ -305,11 +310,22 @@ export default function Layout({ sidebar, children, apiConnected = true, realtim
             <span className="hidden sm:inline text-[10px] font-mono text-amber-500 dark:text-amber-400 select-none" title="Git branch">⎇ {__GIT_BRANCH__}</span>
           )}
           <div className="hidden sm:block w-px h-4 bg-gray-300 dark:bg-gray-600" />
+          {onTogglePause && (
+            <button
+              onClick={onTogglePause}
+              className={`p-1.5 rounded-lg transition-colors ${paused ? 'text-amber-600 bg-amber-500/15 hover:bg-amber-500/25 dark:text-amber-400 dark:bg-amber-500/20 dark:hover:bg-amber-500/30' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700'}`}
+              title={paused ? (language === 'en' ? 'Resume communication' : 'Kommunikation fortsetzen') : (language === 'en' ? 'Pause communication' : 'Kommunikation pausieren')}
+              aria-label={paused ? (language === 'en' ? 'Resume communication' : 'Kommunikation fortsetzen') : (language === 'en' ? 'Pause communication' : 'Kommunikation pausieren')}
+            >
+              {paused ? <Play size={16} /> : <Pause size={16} />}
+            </button>
+          )}
           {onManualRefresh && (
             <button
               onClick={onManualRefresh}
-              className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
-              title={language === 'en' ? 'Refresh' : 'Aktualisieren'}
+              disabled={paused}
+              className={`p-1.5 rounded-lg transition-colors ${paused ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700'}`}
+              title={paused ? (language === 'en' ? 'Paused — resume to refresh' : 'Pausiert — zum Aktualisieren fortsetzen') : (language === 'en' ? 'Refresh' : 'Aktualisieren')}
               aria-label={language === 'en' ? 'Refresh' : 'Aktualisieren'}
             >
               <RefreshCw size={16} />
@@ -420,6 +436,9 @@ export default function Layout({ sidebar, children, apiConnected = true, realtim
         </main>
       </div>
     </div>
+    {paused && (
+      <div className="pointer-events-none fixed inset-0 z-[9998] ring-4 ring-inset ring-amber-500/70 dark:ring-amber-400/60" aria-hidden="true" />
+    )}
     {confirmScriptRefresh && createPortal(
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onCancelScriptRefresh}>
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-sm mx-4 p-6 flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>

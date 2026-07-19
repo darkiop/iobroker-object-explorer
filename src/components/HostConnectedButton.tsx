@@ -1,4 +1,4 @@
-import { RefreshCw, AlertCircle, Plug, PlugZap, Zap, Radio } from 'lucide-react';
+import { RefreshCw, AlertCircle, Plug, PlugZap, Zap, Radio, Pause } from 'lucide-react';
 import { useUIContext } from '../context/UIContext';
 
 const LS_HOST_KEY = 'ioBrokerHost';
@@ -9,10 +9,12 @@ interface Props {
   realtimeStatus?: { supported: boolean | null; connected: boolean };
   /** true when socket.io was selected but unreachable and we auto-fell back to long polling */
   realtimeFallback?: boolean;
+  /** true when live communication is paused — replaces the auto-refresh + transport badges */
+  paused?: boolean;
   lastUpdated?: number;
 }
 
-export default function HostConnectedButton({ apiConnected, realtimeTransport, realtimeStatus, realtimeFallback = false, lastUpdated }: Props) {
+export default function HostConnectedButton({ apiConnected, realtimeTransport, realtimeStatus, realtimeFallback = false, paused = false, lastUpdated }: Props) {
   const { appSettings } = useUIContext();
   const language = appSettings.language;
   const objectsRefreshInterval = appSettings.objectsRefreshInterval;
@@ -30,7 +32,7 @@ export default function HostConnectedButton({ apiConnected, realtimeTransport, r
         {apiConnected ? <PlugZap size={13} className="shrink-0" /> : <Plug size={13} className="shrink-0" />}
         {currentHost || '—'}
       </div>
-      {objectsRefreshInterval && objectsRefreshInterval !== 'off' && (
+      {!paused && objectsRefreshInterval && objectsRefreshInterval !== 'off' && (
         <span
           className="inline-flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400"
           title={language === 'en' ? `Objects auto-refresh every ${objectsRefreshInterval}` : `Objekte werden alle ${objectsRefreshInterval} aktualisiert`}
@@ -39,7 +41,15 @@ export default function HostConnectedButton({ apiConnected, realtimeTransport, r
           {objectsRefreshInterval}
         </span>
       )}
-      {realtimeTransport && realtimeStatus && (() => {
+      {paused ? (
+        <span
+          className="inline-flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400"
+          title={language === 'en' ? 'Communication paused' : 'Kommunikation pausiert'}
+        >
+          <Pause size={10} />
+          {language === 'en' ? 'Paused' : 'Pausiert'}
+        </span>
+      ) : realtimeTransport && realtimeStatus && (() => {
         const isSocketIO = realtimeTransport === 'socketio';
         const { supported, connected } = realtimeStatus;
         const colorCls = connected

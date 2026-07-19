@@ -25,6 +25,7 @@ import { matchesTreeSearchStandalone } from './hooks/useTreeState';
 import { useApiConnectivity } from './hooks/useApiConnectivity';
 import { useLongPolling } from './hooks/useLongPolling';
 import { useSocketIO } from './hooks/useSocketIO';
+import { pausedObjectsRefetch, pausedStatesRefetch, pausedRealtimeEnabled, pausedLongPollEnabled } from './utils/commPause';
 import { hasHistory, hasSmartName, hasCustomEnabled, setIncludeNamespaces } from './api/iobroker';
 import { useQueryClient } from '@tanstack/react-query';
 import type { StateListHandle } from './components/statelist/StateList';
@@ -245,6 +246,11 @@ function AppContent() {
   const lpConnectedRef = useRef(false);
   const { isOnline, browserOnline } = useApiConnectivity(() => lpConnectedRef.current);
 
+  // Ephemeral pause mode — stops all live communication (object poll, state-value
+  // poll, and both realtime push transports). Not persisted: resets to running on reload.
+  const [paused, setPaused] = useState(false);
+  const togglePause = useCallback(() => setPaused((p) => !p), []);
+
   // ── React Query ──────────────────────────────────────────────────────────
   const fieldFilters = (idFilter || nameFilter || descFilter) ? { id: idFilter ?? undefined, name: nameFilter ?? undefined, desc: descFilter ?? undefined } : undefined;
   const { data: stateObjectsData, error: objectsError, refetch: refetchFilteredObjects, isPlaceholderData: objectsIsPartial } = useFilteredObjects(basePattern, fulltextEnabled, exactEnabled, fieldFilters);
@@ -252,7 +258,7 @@ function AppContent() {
     const map: Record<string, number | false> = { 'off': false, '30s': 30_000, '1m': 60_000, '5m': 300_000, '10m': 600_000 };
     return map[appSettings.objectsRefreshInterval] ?? false;
   }, [appSettings.objectsRefreshInterval]);
-  const { data: allObjectsData, refetch: refetchAllObjects } = useAllObjects(objectsRefetchMs);
+  const { data: allObjectsData, refetch: refetchAllObjects } = useAllObjects(pausedObjectsRefetch(paused, objectsRefetchMs));
   const { data: roomMapData, refetch: refetchRoomMap } = useRoomMap();
   const { data: functionMapData, refetch: refetchFunctionMap } = useFunctionMap();
   const { data: roomEnums = [], refetch: refetchRoomEnums } = useRoomEnums();
@@ -417,16 +423,17 @@ function AppContent() {
   // can also be selected explicitly in Settings as the only transport (REST-only, always works).
   // Recovers to socket.io automatically once the adapter reconnects.
   const useSocketTransport = appSettings.realtimeTransport === 'socketio';
-  const sioStatus = useSocketIO(pageIds, useSocketTransport, appSettings.socketHost);
-  const sioFailed = useSocketTransport && sioStatus.supported === false;
-  const lpEnabled = !useSocketTransport || sioFailed;
+  const socketEnabled = pausedRealtimeEnabled(paused, useSocketTransport);
+  const sioStatus = useSocketIO(pageIds, socketEnabled, appSettings.socketHost);
+  const sioFailed = socketEnabled && sioStatus.supported === false;
+  const lpEnabled = pausedLongPollEnabled(paused, useSocketTransport, sioFailed);
   const lpStatusRaw = useLongPolling(lpEnabled ? pageIds : []);
-  const lpStatus = useSocketTransport && !sioFailed ? sioStatus : lpStatusRaw;
+  const lpStatus = socketEnabled && !sioFailed ? sioStatus : lpStatusRaw;
   lpConnectedRef.current = lpStatus.connected;
 
   const { data: stateValues, refetch: refetchStateValues, dataUpdatedAt: statesUpdatedAt } = useStateValues(
     valueIds,
-    lpStatus.connected ? false : 10_000,
+    pausedStatesRefetch(paused, lpStatus.connected),
   );
   const lastValidUpdatedAt = useRef<number>(0);
   if (statesUpdatedAt > 0) lastValidUpdatedAt.current = statesUpdatedAt;
@@ -463,7 +470,7 @@ function AppContent() {
   );
   const p2TotalPages = p2PaginationDisabled ? 1 : Math.ceil(p2TotalCount / p2PageSize);
 
-  const { data: p2StateValues } = useStateValues(p2PageIds, lpStatus.connected ? false : 10_000);
+  const { data: p2StateValues } = useStateValues(p2PageIds, pausedStatesRefetch(paused, lpStatus.connected));
 
   const p2HandleColFilterChange = useCallback((filters: Partial<Record<SortKey, string>>) => {
     setP2ColFilters(filters);
@@ -504,6 +511,14 @@ function AppContent() {
       refetchFunctionMap(), refetchStateValues(), refetchRoomEnums(), refetchFunctionEnums(),
     ]).finally(() => { clearTimeout(timeout); setIsRefreshing(false); });
   }, [refetchFilteredObjects, refetchAllObjects, refetchRoomMap, refetchFunctionMap, refetchStateValues, refetchRoomEnums, refetchFunctionEnums]);
+
+  // On resume (paused true → false) refetch everything immediately so values are
+  // fresh right away instead of waiting for the next poll tick.
+  const prevPausedRef = useRef(paused);
+  useEffect(() => {
+    if (prevPausedRef.current && !paused) handleManualRefresh();
+    prevPausedRef.current = paused;
+  }, [paused, handleManualRefresh]);
 
   const handleCreateDatapointAtPath = useCallback((prefix: string) => {
     setNewDatapointInitialId(prefix);
@@ -557,6 +572,8 @@ function AppContent() {
       browserOffline={!browserOnline}
       lastUpdated={lastValidUpdatedAt.current > 0 ? lastValidUpdatedAt.current : undefined}
       onManualRefresh={handleManualRefresh}
+      paused={paused}
+      onTogglePause={togglePause}
       onFocusSearch={() => searchBarRef.current?.focus()}
       onConfirmScriptRefresh={() => handleScriptRefreshConfirmed(Object.keys(allObjects))}
       onExtraReset={() => {
