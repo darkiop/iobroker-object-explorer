@@ -4,6 +4,7 @@ import { X, BarChart2, ChevronUp, ChevronDown, Trash2, AlertTriangle, RotateCcw,
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { useDeleteSubtree } from '../../hooks/useStates';
 import { getScriptUsedIds, clearScriptUsedIdsCache } from '../../api/iobroker';
+import { ColoredId } from '../../utils/coloredId';
 import type { IoBrokerObject } from '../../types/iobroker';
 
 interface Props {
@@ -187,25 +188,25 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
                   {isEn ? 'Namespace' : 'Namespace'}<SortIcon k="ns" sortKey={sortKey} sortDir={sortDir} />
                 </th>
                 <th className={thRClass} onClick={() => handleSort('total')} style={{ minWidth: 140 }}>
-                  {isEn ? 'Objects' : 'Objekte'}<SortIcon k="total" sortKey={sortKey} sortDir={sortDir} />
+                  <Dot c="bg-blue-400" />{isEn ? 'Objects' : 'Objekte'}<SortIcon k="total" sortKey={sortKey} sortDir={sortDir} />
                 </th>
                 <th className={thRClass} onClick={() => handleSort('states')}>
-                  {isEn ? 'States' : 'States'}<SortIcon k="states" sortKey={sortKey} sortDir={sortDir} />
+                  <Dot c="bg-sky-400" />{isEn ? 'States' : 'States'}<SortIcon k="states" sortKey={sortKey} sortDir={sortDir} />
                 </th>
                 <th className={thRClass} onClick={() => handleSort('structure')}>
-                  {isEn ? 'Folders/Dev/Ch' : 'Ordner/Ger/Kan'}<SortIcon k="structure" sortKey={sortKey} sortDir={sortDir} />
+                  <Dot c="bg-indigo-400" />{isEn ? 'Folders/Dev/Ch' : 'Ordner/Ger/Kan'}<SortIcon k="structure" sortKey={sortKey} sortDir={sortDir} />
                 </th>
                 <th className={thRClass} onClick={() => handleSort('history')}>
-                  {isEn ? 'History' : 'History'}<SortIcon k="history" sortKey={sortKey} sortDir={sortDir} />
+                  <Dot c="bg-emerald-400" />{isEn ? 'History' : 'History'}<SortIcon k="history" sortKey={sortKey} sortDir={sortDir} />
                 </th>
                 <th className={thRClass} onClick={() => handleSort('smart')}>
-                  {isEn ? 'Smart' : 'Smart'}<SortIcon k="smart" sortKey={sortKey} sortDir={sortDir} />
+                  <Dot c="bg-violet-400" />{isEn ? 'Smart' : 'Smart'}<SortIcon k="smart" sortKey={sortKey} sortDir={sortDir} />
                 </th>
                 <th className={thRClass} onClick={() => handleSort('aliases')}>
-                  {isEn ? 'Aliases' : 'Aliase'}<SortIcon k="aliases" sortKey={sortKey} sortDir={sortDir} />
+                  <Dot c="bg-amber-400" />{isEn ? 'Aliases' : 'Aliase'}<SortIcon k="aliases" sortKey={sortKey} sortDir={sortDir} />
                 </th>
                 <th className={thRClass} onClick={() => handleSort('scripts')}>
-                  {isEn ? 'Scripts' : 'Skripte'}<SortIcon k="scripts" sortKey={sortKey} sortDir={sortDir} />
+                  <Dot c="bg-green-400" />{isEn ? 'Scripts' : 'Skripte'}<SortIcon k="scripts" sortKey={sortKey} sortDir={sortDir} />
                 </th>
                 <th className="px-2 py-2 w-8" />
               </tr>
@@ -218,9 +219,7 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
                   onClick={onSelectNamespace ? () => { onSelectNamespace(r.ns); onClose(); } : undefined}
                 >
                   <td className={`${tdClass} font-mono`}>
-                    {onSelectNamespace ? (
-                      <span className="text-blue-600 dark:text-blue-400 hover:underline">{r.ns}</span>
-                    ) : r.ns}
+                    <ColoredId id={r.ns} className={onSelectNamespace ? 'hover:underline' : ''} />
                   </td>
                   <td className={tdRClass} style={{ minWidth: 140 }}>
                     <div className="flex items-center justify-start gap-2">
@@ -233,8 +232,12 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
                       <span className="w-10 text-right">{r.total}</span>
                     </div>
                   </td>
-                  <td className={tdRClass}>{r.states}</td>
-                  <td className={tdRClass}>{r.structure}</td>
+                  <td className={`${tdRClass} ${r.states > 0 ? 'text-sky-600 dark:text-sky-400' : 'text-gray-400 dark:text-gray-600'}`}>
+                    {r.states > 0 ? r.states : '—'}
+                  </td>
+                  <td className={`${tdRClass} ${r.structure > 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 dark:text-gray-600'}`}>
+                    {r.structure > 0 ? r.structure : '—'}
+                  </td>
                   <td className={`${tdRClass} ${r.history > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400 dark:text-gray-600'}`}>
                     {r.history > 0 ? r.history : '—'}
                   </td>
@@ -265,8 +268,8 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
                   {isEn ? 'Total' : 'Gesamt'}
                 </td>
                 <td className={tdRClass}>{totals.total}</td>
-                <td className={tdRClass}>{totals.states}</td>
-                <td className={tdRClass}>{totals.structure}</td>
+                <td className={`${tdRClass} ${totals.states > 0 ? 'text-sky-600 dark:text-sky-400' : ''}`}>{totals.states}</td>
+                <td className={`${tdRClass} ${totals.structure > 0 ? 'text-indigo-600 dark:text-indigo-400' : ''}`}>{totals.structure}</td>
                 <td className={`${tdRClass} ${totals.history > 0 ? 'text-emerald-600 dark:text-emerald-400' : ''}`}>
                   {totals.history}
                 </td>
@@ -338,6 +341,10 @@ export default function TreeStatsModal({ onClose, allObjects, historyIds, smartI
     </div>,
     document.body
   );
+}
+
+function Dot({ c }: { c: string }) {
+  return <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle ${c}`} />;
 }
 
 function SortIcon({ k, sortKey, sortDir }: { k: SortKey; sortKey: SortKey; sortDir: 'asc' | 'desc' }) {
