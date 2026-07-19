@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import {
   getObjectsByPattern, getStateObjectsFastCached, getStatesBatch, getState,
-  getObject, getObjectFresh, getHistory, getDpOverview, getDbStats, getAllRoles, getAllUnits,
+  getObject, getObjectFresh, getHistory, getDpOverview, getDbStats, getDpValues, getDpNumericIdMap, getAllRoles, getAllUnits,
   getRoomMap, getAllObjectsCached, getRoomEnums, getFunctionMap, getFunctionEnums,
   buildAliasReverseMap, getCustomSupportedInstances, getAllScriptSourcesCached,
   getScriptUsedIds, findScriptsUsingObject, compilePattern, isGlobPattern,
@@ -136,12 +136,38 @@ export function useDpOverview(enabled: boolean) {
   });
 }
 
+export function useDpNumericIds(enabled: boolean) {
+  return useQuery({
+    queryKey: [...queryKeys.history.dpOverview, 'numericIds'] as const,
+    queryFn: getDpNumericIdMap,
+    enabled,
+    staleTime: 60_000,
+  });
+}
+
 export function useDbStats(enabled: boolean) {
   return useQuery({
     queryKey: [...queryKeys.history.dpOverview, 'stats'] as const,
     queryFn: getDbStats,
     enabled,
     staleTime: 60_000,
+  });
+}
+
+export function useDpValues(
+  id: string | null,
+  type: unknown,
+  page: number,
+  pageSize: number,
+  startTs?: number | null,
+  endTs?: number | null,
+) {
+  return useQuery({
+    queryKey: ['history', 'dpValues', id, String(type), page, pageSize, startTs ?? null, endTs ?? null] as const,
+    queryFn: () => getDpValues(id!, type, pageSize, page * pageSize, startTs, endTs),
+    enabled: !!id,
+    staleTime: 30_000,
+    placeholderData: (prev) => prev,
   });
 }
 

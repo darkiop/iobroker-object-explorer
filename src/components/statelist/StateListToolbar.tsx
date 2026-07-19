@@ -114,7 +114,7 @@ export default function StateListToolbar({
         <div className="relative" ref={newMenuRef}>
           <button
             onClick={onNewMenuToggle}
-            title={isEn ? 'New…' : 'Neu…'}
+            title={isEn ? 'Create new datapoint or alias' : 'Neuen Datenpunkt oder Alias erstellen'}
             className={`flex items-center gap-1.5 rounded-lg transition-colors ${newMenuOpen ? 'text-blue-600 bg-blue-500/15 dark:text-blue-400 dark:bg-blue-500/20' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10'} ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
           >
             <Plus size={16} />
@@ -142,7 +142,7 @@ export default function StateListToolbar({
         <div className="relative" ref={exportMenuRef}>
           <button
             onClick={onExportMenuToggle}
-            title={isEn ? 'Export' : 'Exportieren'}
+            title={isEn ? 'Export filtered list (CSV or JSON)' : 'Gefilterte Liste exportieren (CSV oder JSON)'}
             className={`flex items-center gap-1.5 rounded-lg transition-colors ${exportMenuOpen ? 'text-blue-600 bg-blue-500/15 dark:text-blue-400 dark:bg-blue-500/20' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10'} ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
           >
             <Download size={16} />
@@ -174,7 +174,7 @@ export default function StateListToolbar({
         </button>
         <button
           onClick={onStats}
-          title={isEn ? 'Statistics' : 'Statistik'}
+          title={isEn ? 'Show namespace statistics' : 'Namespace-Statistik anzeigen'}
           className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
         >
           <BarChart2 size={15} />
@@ -193,7 +193,7 @@ export default function StateListToolbar({
         </button>
         <button
           onClick={onOptimize}
-          title={isEn ? 'Analyze datapoints' : 'Datenpunkte analysieren'}
+          title={isEn ? 'Analyze datapoint metadata quality' : 'Metadaten-Qualität der Datenpunkte analysieren'}
           className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-colors ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
         >
           <Wand2 size={15} />
@@ -241,7 +241,7 @@ export default function StateListToolbar({
           onClick={handleHistoryClick}
           title={
             historyEnabled
-              ? (isEn ? 'History' : 'Verlauf')
+              ? (isEn ? 'Show history chart for selected datapoint(s)' : 'Verlaufsdiagramm für ausgewählte Datenpunkte anzeigen')
               : hasAnyHistory
                 ? (isEn ? 'Select 1–2 datapoints with history' : '1–2 Datenpunkte mit History auswählen')
                 : (isEn ? 'No datapoint with history selected' : 'Kein Datenpunkt mit History ausgewählt')

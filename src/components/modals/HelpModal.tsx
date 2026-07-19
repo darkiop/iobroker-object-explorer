@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { createPortal } from 'react-dom';
-import { X, CircleHelp, Search, Keyboard, MousePointerClick, CheckSquare, ArrowLeftRight, History, Mic2, Code2, Wand2, ChevronDown, BarChart2, Columns2, TrendingUp, PanelLeft, FolderTree, Table2, SlidersHorizontal, FilePenLine, Settings, LineChart, Wifi, Filter, Lock, Bookmark, Wrench, Move, FolderX } from 'lucide-react';
+import { X, CircleHelp, Search, Keyboard, MousePointerClick, CheckSquare, ArrowLeftRight, History, Mic2, Code2, Wand2, ChevronDown, BarChart2, Columns2, TrendingUp, PanelLeft, FolderTree, Table2, SlidersHorizontal, FilePenLine, Settings, LineChart, Wifi, Filter, Lock, Bookmark, Wrench, Move, FolderX, Database, Hash, Copy } from 'lucide-react';
 
 interface Props {
   onClose: () => void;
@@ -62,6 +62,7 @@ const SECTION_KEYWORDS: Record<string, string> = {
   optimize: 'optimize optimieren metadata metadaten missing fehlend quality room function role name description unit min max type batch fix scan',
   virtualfolders: 'virtual folder virtueller ordner ghost synthetic path pfad intermediate zwischenpfad no object kein objekt alias missing fehlend filter',
   history: 'history chart verlauf diagramm sql time range zeitraum preset aggregation average min max line area bar multi series vergleich compare period periode week month zoom pan stats badge export png delete löschen',
+  database: 'database datenbank sql sql.0 overview übersicht datapoints datenpunkte stored values gespeicherte werte count zählen ts_number ts_bool ts_string rename umbenennen delete löschen size größe stats statistik value count wertanzahl rows zeilen edit bearbeiten timestamp zeitstempel raw epoch copy sql kopieren abfrage query datapoints table tabelle numeric id numerische',
   connection: 'connection live updates verbindung echtzeit realtime long polling socket.io transport host badge refresh fallback 30 seconds sekunden no auth authentifizierung login token warning warnung trusted network',
   keys: 'keyboard shortcuts tastenkürzel keys tasten ctrl cmd strg esc tab enter arrow pfeil up down left right sidebar search settings help row page panel column filter',
   search: 'search commands suchbefehle pattern muster wildcard room function type role id name desc description filter combine kombinieren',
@@ -537,6 +538,53 @@ export default function HelpModal({ onClose, language = 'en' }: Props) {
                 ? 'Click the history icon on a datapoint to open the full-screen chart. Choose a time range (1 h / 6 h / 24 h / 7 d / 30 d / 1 year or a custom range), chart type (line / area / bar), and aggregation (none / average / min+max / min / max). Overlay up to 4 extra datapoints for comparison and a previous period (±1 week / ±1 month). Min/max/avg/last show as badges; zoom with the mouse wheel and pan by dragging; export as PNG. You can delete a single value, the visible range, or the entire history (with confirmation). History works with the sql.0 adapter only.'
                 : 'Klick auf das Verlaufs-Symbol eines Datenpunkts öffnet das Vollbild-Diagramm. Zeitraum wählen (1 h / 6 h / 24 h / 7 d / 30 d / 1 Jahr oder eigener Bereich), Diagrammtyp (Linie / Fläche / Balken) und Aggregation (keine / Durchschnitt / Min+Max / Min / Max). Bis zu 4 zusätzliche Datenpunkte zum Vergleich überlagern sowie einen vorherigen Zeitraum (±1 Woche / ±1 Monat). Min/Max/Durchschnitt/Letzter als Badges; mit dem Mausrad zoomen und per Ziehen verschieben; als PNG exportieren. Einzelwert, sichtbaren Bereich oder die gesamte Historie löschen (mit Bestätigung). Verlauf funktioniert nur mit dem sql.0-Adapter.'}
             </p>
+          </AccordionItem>
+
+          {/* Database (sql.0) */}
+          <AccordionItem
+            id="database"
+            open={openKey === 'database'}
+            onToggle={() => toggle('database')}
+            match={matches('database')}
+            searching={searching}
+            icon={<Database size={13} />}
+            label={isEn ? 'Database (sql.0)' : 'Datenbank (sql.0)'}
+          >
+            <div className="space-y-4">
+              <SubSection icon={<Database size={12} />} label={isEn ? 'Overview' : 'Übersicht'}>
+                {isEn
+                  ? 'The "Database" toolbar button opens a read-only view of all datapoints physically stored in the sql.0 database — independent of the current history config (a datapoint can still have rows in the DB after logging was disabled). The header shows the total value-row count and database size. Columns (Name, numeric DB id, type, timestamp) are sorted by clicking a header; filter by ID with the search box. Toggle "Raw ts" to show timestamps as raw epoch milliseconds.'
+                  : 'Der „Datenbank"-Button in der Werkzeugleiste öffnet eine schreibgeschützte Ansicht aller Datenpunkte, die physisch in der sql.0-Datenbank gespeichert sind — unabhängig von der aktuellen History-Konfiguration (ein Datenpunkt kann noch Zeilen in der DB haben, nachdem das Logging deaktiviert wurde). Der Kopf zeigt die Gesamtzahl der Wert-Zeilen und die Datenbankgröße. Spalten (Name, numerische DB-ID, Typ, Zeitstempel) durch Klick auf den Kopf sortieren; per Suchfeld nach ID filtern. „Roh-ts" zeigt Zeitstempel als Roh-Epoch-Millisekunden.'}
+              </SubSection>
+              <SubSection icon={<Hash size={12} />} label={isEn ? 'Value counts' : 'Wertanzahl'}>
+                {isEn
+                  ? 'The # icon on a row counts how many values that datapoint has stored (loaded on demand — a full count is too slow). "Count and Sort desc" counts all shown datapoints, then sorts by count descending.'
+                  : 'Das #-Symbol in einer Zeile zählt, wie viele Werte dieser Datenpunkt gespeichert hat (bei Bedarf geladen — ein Gesamtzähler wäre zu langsam). „Zählen & absteigend sortieren" zählt alle angezeigten Datenpunkte und sortiert dann absteigend nach Anzahl.'}
+              </SubSection>
+              <SubSection icon={<Table2 size={12} />} label={isEn ? 'Stored values' : 'Gespeicherte Werte'}>
+                {isEn
+                  ? 'Click a datapoint name to open its stored value rows (paginated, newest first, from the type-specific ts_* table). Filter by a timestamp range, edit a single value inline, or delete individual rows. The badge shows the source table (ts_number / ts_bool / ts_string).'
+                  : 'Klick auf einen Datenpunkt-Namen öffnet dessen gespeicherte Wert-Zeilen (seitenweise, neueste zuerst, aus der typ-spezifischen ts_*-Tabelle). Nach Zeitstempel-Bereich filtern, einen Einzelwert direkt bearbeiten oder einzelne Zeilen löschen. Das Badge zeigt die Quell-Tabelle (ts_number / ts_bool / ts_string).'}
+              </SubSection>
+              <SubSection icon={<FilePenLine size={12} />} label={isEn ? 'Rename & delete in DB' : 'Umbenennen & Löschen in der DB'}>
+                {isEn
+                  ? 'The pencil renames a datapoint\'s name in the database only (history is preserved, the ioBroker object stays untouched). The trash icon deletes ALL stored DB values for a datapoint — irreversible, with confirmation.'
+                  : 'Der Stift benennt den Namen eines Datenpunkts nur in der Datenbank um (History bleibt erhalten, das ioBroker-Objekt bleibt unberührt). Das Papierkorb-Symbol löscht ALLE gespeicherten DB-Werte eines Datenpunkts — unwiderruflich, mit Bestätigung.'}
+              </SubSection>
+              <SubSection icon={<Copy size={12} />} label={isEn ? 'Copy SQL' : 'SQL kopieren'}>
+                {isEn
+                  ? 'The "SQL" button copies the underlying SQL query to the clipboard — in the overview an equivalent aggregate query, in the stored-values view the exact query for the current datapoint, page, and timestamp filter. Handy for running or adapting it directly in the sql.0 adapter or a DB tool.'
+                  : 'Der „SQL"-Button kopiert die zugrundeliegende SQL-Abfrage in die Zwischenablage — in der Übersicht eine äquivalente Aggregat-Abfrage, in der Werte-Ansicht die exakte Abfrage für den aktuellen Datenpunkt, die Seite und den Zeitstempel-Filter. Praktisch, um sie direkt im sql.0-Adapter oder einem DB-Tool auszuführen oder anzupassen.'}
+              </SubSection>
+              <div className="flex items-start gap-1.5 text-amber-600 dark:text-amber-400 text-sm">
+                <Lock size={13} className="mt-0.5 shrink-0" />
+                <span>
+                  {isEn
+                    ? 'Requires a running sql.0 adapter. The database name defaults to "iobroker"; DB writes (rename / delete / value edits) are irreversible.'
+                    : 'Erfordert einen laufenden sql.0-Adapter. Der Datenbankname ist standardmäßig „iobroker"; DB-Schreibvorgänge (Umbenennen / Löschen / Wert-Änderungen) sind unwiderruflich.'}
+                </span>
+              </div>
+            </div>
           </AccordionItem>
 
           {/* Connection & live updates */}

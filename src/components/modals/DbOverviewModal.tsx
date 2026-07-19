@@ -1,13 +1,17 @@
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { X, Database, ChevronUp, ChevronDown, Loader2, AlertTriangle, Trash2, Pencil, Hash } from 'lucide-react';
+import { X, Database, ChevronUp, ChevronDown, Loader2, AlertTriangle, Trash2, Pencil, Hash, Copy } from 'lucide-react';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
-import { useDpOverview, useDbStats } from '../../hooks/useObjectQueries';
+import { useDpOverview, useDbStats, useDpNumericIds } from '../../hooks/useObjectQueries';
 import { queryKeys } from '../../hooks/queryKeys';
-import { deleteHistoryAll, renameDpInDb, getDpValueCount } from '../../api/iobroker';
+import { deleteHistoryAll, renameDpInDb, getDpValueCount, buildDpOverviewSql } from '../../api/iobroker';
+import { copyToClipboard } from '../../utils/clipboard';
 import { useToast } from '../../context/ToastContext';
 import { getTypeColor } from '../../utils/typeColor';
+import DpValuesModal from './DpValuesModal';
+import StyledCheckbox from '../ui/StyledCheckbox';
+import { ColoredId } from '../../utils/coloredId';
 import type { DpOverviewRow } from '../../api/iobroker';
 
 interface Props {
@@ -24,13 +28,16 @@ export default function DbOverviewModal({ onClose, language }: Props) {
 
   const { data, isLoading, isError, error } = useDpOverview(true);
   const { data: stats } = useDbStats(true);
+  const { data: idMap } = useDpNumericIds(true);
   const queryClient = useQueryClient();
   const showToast = useToast();
   const [filter, setFilter] = useState('');
   const [sortKey, setSortKey] = useState<string>('id');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [rawTs, setRawTs] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [valuesOf, setValuesOf] = useState<{ id: string; type: unknown } | null>(null);
   const [renameOldId, setRenameOldId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [renaming, setRenaming] = useState(false);
@@ -38,6 +45,12 @@ export default function DbOverviewModal({ onClose, language }: Props) {
   const idSet = useMemo(() => new Set((data ?? []).map((r) => r.id)), [data]);
   // Per-datapoint value counts, loaded on demand (full-table counts are too slow).
   const [counts, setCounts] = useState<Record<string, number | 'loading' | 'error'>>({});
+
+  function copySql() {
+    copyToClipboard(buildDpOverviewSql())
+      .then(() => showToast(isEn ? 'SQL copied' : 'SQL kopiert', 'success'))
+      .catch(() => showToast(isEn ? 'Copy failed' : 'Kopieren fehlgeschlagen', 'error'));
+  }
 
   async function loadCount(id: string, type: unknown) {
     setCounts((c) => ({ ...c, [id]: 'loading' }));
@@ -112,7 +125,11 @@ export default function DbOverviewModal({ onClose, language }: Props) {
     }
   }
 
-  const rows = useMemo<DpOverviewRow[]>(() => data ?? [], [data]);
+  const rows = useMemo<DpOverviewRow[]>(() => {
+    const base = data ?? [];
+    if (!idMap) return base;
+    return base.map((r) => ({ ...r, dbId: idMap[r.id] ?? null }));
+  }, [data, idMap]);
 
   // Union of all keys across rows; `id` first, rest alphabetical.
   const columns = useMemo<string[]>(() => {
@@ -174,6 +191,12 @@ export default function DbOverviewModal({ onClose, language }: Props) {
             <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
               {isEn ? 'Database Overview (sql.0)' : 'Datenbank-Übersicht (sql.0)'}
             </h2>
+            <span
+              className="px-1.5 py-0.5 rounded bg-gray-500/10 text-xs font-mono text-gray-600 dark:text-gray-300"
+              title={isEn ? 'Source table' : 'Quell-Tabelle'}
+            >
+              datapoints
+            </span>
             <span className="text-xs text-gray-400 dark:text-gray-500">
               ({filtered.length}{filter ? ` / ${rows.length}` : ''} {isEn ? 'datapoints' : 'Datenpunkte'})
             </span>
@@ -196,6 +219,18 @@ export default function DbOverviewModal({ onClose, language }: Props) {
             )}
           </div>
           <div className="flex items-center gap-2">
+            <label className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 cursor-pointer select-none" title={isEn ? 'Show ts as raw epoch (ms)' : 'ts als Roh-Zeitstempel (ms) anzeigen'}>
+              <StyledCheckbox checked={rawTs} onChange={(e) => setRawTs(e.target.checked)} />
+              {isEn ? 'Raw ts' : 'Roh-ts'}
+            </label>
+            <button
+              onClick={copySql}
+              title={isEn ? 'Copy equivalent SQL query' : 'Äquivalente SQL-Abfrage kopieren'}
+              className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              <Copy size={12} />
+              SQL
+            </button>
             <button
               onClick={() => countAllVisible(sorted)}
               disabled={countingAll || sorted.length === 0}
@@ -252,7 +287,7 @@ export default function DbOverviewModal({ onClose, language }: Props) {
                 <tr className="border-b border-gray-200 dark:border-gray-700">
                   {columns.map((col) => (
                     <th key={col} className={thClass} onClick={() => handleSort(col)}>
-                      {col}
+                      {COLUMN_LABELS[col] ?? col}
                       {sortKey === col && (
                         sortDir === 'asc'
                           ? <ChevronUp size={11} className="inline-block ml-0.5 opacity-60" />
@@ -284,13 +319,23 @@ export default function DbOverviewModal({ onClose, language }: Props) {
                             {formatCell(col, r[col])}
                           </span>
                         </td>
+                      ) : col === 'id' ? (
+                        <td key={col} className={`${tdClass} font-mono`}>
+                          <button
+                            className="text-left hover:underline"
+                            title={isEn ? 'Show stored values' : 'Gespeicherte Werte anzeigen'}
+                            onClick={(e) => { e.stopPropagation(); setValuesOf({ id: r.id, type: r.type }); }}
+                          >
+                            <ColoredId id={r.id} />
+                          </button>
+                        </td>
                       ) : (
-                        <td key={col} className={`${tdClass}${col === 'id' ? ' font-mono' : ' tabular-nums'}`}>
-                          {formatCell(col, r[col])}
+                        <td key={col} className={`${tdClass} tabular-nums`}>
+                          {formatCell(col, r[col], rawTs)}
                         </td>
                       )
                     ))}
-                    <td className="px-2 py-1.5 text-right tabular-nums whitespace-nowrap">
+                    <td className="px-2 py-1.5 text-right text-xs tabular-nums whitespace-nowrap">
                       {counts[r.id] === 'loading' ? (
                         <Loader2 size={13} className="inline-block animate-spin text-gray-400" />
                       ) : typeof counts[r.id] === 'number' ? (
@@ -398,10 +443,26 @@ export default function DbOverviewModal({ onClose, language }: Props) {
           </div>
         )}
       </div>
+
+      {valuesOf && (
+        <DpValuesModal
+          id={valuesOf.id}
+          type={valuesOf.type}
+          language={language}
+          onClose={() => setValuesOf(null)}
+        />
+      )}
     </div>,
     document.body
   );
 }
+
+const COLUMN_LABELS: Record<string, string> = {
+  id: 'Name',
+  dbId: 'ID',
+  ts: 'TS',
+  type: 'Type',
+};
 
 function formatBytes(b: number): string {
   if (!b || b < 1024) return `${b || 0} B`;
@@ -416,10 +477,10 @@ function formatCompact(n: number): string {
   return new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(n);
 }
 
-function formatCell(col: string, v: unknown): string {
+function formatCell(col: string, v: unknown, rawTs = false): string {
   if (v == null) return '—';
-  // ts columns are epoch-ms timestamps → show as local date/time
-  if ((col === 'ts' || col.endsWith('Ts')) && typeof v === 'number' && v > 1e12) {
+  // ts columns are epoch-ms timestamps → show as local date/time (unless raw)
+  if (!rawTs && (col === 'ts' || col.endsWith('Ts')) && typeof v === 'number' && v > 1e12) {
     return new Date(v).toLocaleString();
   }
   if (typeof v === 'object') return JSON.stringify(v);

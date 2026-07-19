@@ -756,8 +756,19 @@ export async function getDbStats(): Promise<DbStats> {
   return { totalValues, sizeBytes, tables };
 }
 
+// Maps ioBroker state id (datapoints.name) → numeric datapoints.id (the "real" DB id).
+export async function getDpNumericIdMap(): Promise<Record<string, number>> {
+  const rows = await querySql(`SELECT id, name FROM ${SQL_DB_NAME}.datapoints`);
+  const map: Record<string, number> = {};
+  for (const r of rows) {
+    const o = r as { id?: unknown; name?: unknown };
+    if (o.name != null) map[String(o.name)] = Number(o.id);
+  }
+  return map;
+}
+
 // Value-history table for a datapoint type (as reported by getDpOverview).
-function tsTableForType(type: unknown): string {
+export function tsTableForType(type: unknown): string {
   switch (String(type)) {
     case 'string': return 'ts_string';
     case 'boolean': return 'ts_bool';
@@ -777,6 +788,146 @@ export async function getDpValueCount(id: string, type: unknown): Promise<number
   );
   const first = rows[0] as { c?: unknown } | undefined;
   return Number(first?.c ?? 0);
+}
+
+export interface DpValueRow {
+  ts: number;
+  val: unknown;
+  ack: number;
+  q: number;
+  src: string | null;
+}
+
+// Resolves the numeric datapoints.id for an ioBroker state id (name).
+async function resolveDpNumericId(id: string): Promise<number | null> {
+  const rows = await querySql(
+    `SELECT id FROM ${SQL_DB_NAME}.datapoints WHERE name = ${sqlQuote(id)} LIMIT 1`
+  );
+  const first = rows[0] as { id?: unknown } | undefined;
+  if (first?.id == null) return null;
+  return Number(first.id);
+}
+
+// Fetches a page of stored value rows for a datapoint, newest first.
+// Two-step (resolve numeric id, then index scan on the ts table) keeps deep
+// pagination fast — the PK index (id, ts) avoids a filesort.
+export async function getDpValues(
+  id: string,
+  type: unknown,
+  limit: number,
+  offset: number,
+  startTs?: number | null,
+  endTs?: number | null,
+): Promise<DpValueRow[]> {
+  const numId = await resolveDpNumericId(id);
+  if (numId == null || Number.isNaN(numId)) return [];
+  const table = tsTableForType(type);
+  const lim = Math.max(1, Math.floor(limit));
+  const off = Math.max(0, Math.floor(offset));
+  let where = `n.id = ${numId}`;
+  if (startTs != null && !Number.isNaN(startTs)) where += ` AND n.ts >= ${Math.floor(startTs)}`;
+  if (endTs != null && !Number.isNaN(endTs)) where += ` AND n.ts <= ${Math.floor(endTs)}`;
+  const rows = await querySql(
+    `SELECT n.ts, n.val, n.ack, n.q, s.name AS src ` +
+    `FROM ${SQL_DB_NAME}.${table} n ` +
+    `LEFT JOIN ${SQL_DB_NAME}.sources s ON s.id = n._from ` +
+    `WHERE ${where} ORDER BY n.ts DESC LIMIT ${lim} OFFSET ${off}`
+  );
+  return rows.map((r) => {
+    const o = r as Record<string, unknown>;
+    return {
+      ts: Number(o.ts ?? 0),
+      val: o.val,
+      ack: Number(o.ack ?? 0),
+      q: Number(o.q ?? 0),
+      src: o.src == null ? null : String(o.src),
+    };
+  });
+}
+
+// --- SQL query builders -----------------------------------------------------
+// Exposed so the UI can show/copy the query behind a view. These return a
+// runnable, standalone statement — the live fetch may take a faster path
+// (e.g. resolving the numeric id first) but the result set is identical.
+
+// Standalone query reproducing the paginated value view of a datapoint.
+// Joins on datapoints.name so it runs as-is (no pre-resolved numeric id).
+export function buildDpValuesSql(
+  id: string,
+  type: unknown,
+  limit: number,
+  offset: number,
+  startTs?: number | null,
+  endTs?: number | null,
+): string {
+  const table = tsTableForType(type);
+  const lim = Math.max(1, Math.floor(limit));
+  const off = Math.max(0, Math.floor(offset));
+  let where = `d.name = ${sqlQuote(id)}`;
+  if (startTs != null && !Number.isNaN(startTs)) where += ` AND n.ts >= ${Math.floor(startTs)}`;
+  if (endTs != null && !Number.isNaN(endTs)) where += ` AND n.ts <= ${Math.floor(endTs)}`;
+  return (
+    `SELECT n.ts, n.val, n.ack, n.q, s.name AS src\n` +
+    `FROM ${SQL_DB_NAME}.${table} n\n` +
+    `JOIN ${SQL_DB_NAME}.datapoints d ON d.id = n.id\n` +
+    `LEFT JOIN ${SQL_DB_NAME}.sources s ON s.id = n._from\n` +
+    `WHERE ${where}\n` +
+    `ORDER BY n.ts DESC LIMIT ${lim} OFFSET ${off}`
+  );
+}
+
+// Best-effort standalone SQL reproducing the DB overview table. The live view
+// is fetched via the adapter's `getDpOverview` sendTo command (not raw SQL);
+// this query returns the same shape (id, type, last ts, value count) by
+// aggregating the ts_* value tables.
+export function buildDpOverviewSql(): string {
+  return (
+    `-- Equivalent query (live view uses the sql.0 getDpOverview sendTo command)\n` +
+    `SELECT d.id AS dbId, d.name AS id, d.type,\n` +
+    `       MAX(v.ts) AS ts, COUNT(*) AS count\n` +
+    `FROM ${SQL_DB_NAME}.datapoints d\n` +
+    `JOIN (\n` +
+    `  SELECT id, ts FROM ${SQL_DB_NAME}.ts_number\n` +
+    `  UNION ALL SELECT id, ts FROM ${SQL_DB_NAME}.ts_bool\n` +
+    `  UNION ALL SELECT id, ts FROM ${SQL_DB_NAME}.ts_string\n` +
+    `) v ON v.id = d.id\n` +
+    `GROUP BY d.id, d.name, d.type\n` +
+    `ORDER BY d.name`
+  );
+}
+
+// Updates a single stored value row (identified by datapoint + exact ts).
+// Raw UPDATE via the sql.0 `query` command; value is coerced/quoted per type.
+export async function updateDpValue(
+  id: string,
+  type: unknown,
+  ts: number,
+  val: unknown,
+): Promise<void> {
+  const numId = await resolveDpNumericId(id);
+  if (numId == null || Number.isNaN(numId)) {
+    throw new Error(`Datapoint not found in database: ${id}`);
+  }
+  const table = tsTableForType(type);
+  let valSql: string;
+  switch (String(type)) {
+    case 'boolean': {
+      const truthy = val === true || val === 1 || String(val).trim().toLowerCase() === 'true' || String(val).trim() === '1';
+      valSql = truthy ? '1' : '0';
+      break;
+    }
+    case 'string':
+      valSql = sqlQuote(String(val));
+      break;
+    default: {
+      const n = Number(val);
+      if (Number.isNaN(n)) throw new Error(`Invalid number: ${String(val)}`);
+      valSql = String(n);
+    }
+  }
+  await querySql(
+    `UPDATE ${SQL_DB_NAME}.${table} SET val = ${valSql} WHERE id = ${numId} AND ts = ${Math.floor(ts)}`
+  );
 }
 
 // Renames a datapoint in the sql.0 database by updating datapoints.name.
