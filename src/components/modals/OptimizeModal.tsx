@@ -7,6 +7,7 @@ import { useExtendObject, useUpdateRoomMembershipBatch, useUpdateFunctionMembers
 import { useToast } from '../../context/ToastContext';
 import BatchComboControl, { EMPTY_SENTINEL } from '../statelist/BatchComboControl';
 import { ColoredId } from '../../utils/coloredId';
+import StyledCheckbox from '../ui/StyledCheckbox';
 
 interface Props {
   onClose: () => void;
@@ -395,13 +396,13 @@ export default function OptimizeModal({ onClose, language, allObjects, roomMap, 
                 <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
                   <tr>
                     <th className="w-8 px-2 py-1.5 text-center">
-                      <input type="checkbox" checked={allDisplayedChecked} onChange={() => {
+                      <StyledCheckbox checked={allDisplayedChecked} onChange={() => {
                         if (allDisplayedChecked) {
                           setCheckedIds(prev => { const n = new Set(prev); displayed.forEach(r => n.delete(r.id)); return n; });
                         } else {
                           setCheckedIds(prev => new Set([...prev, ...displayed.map(r => r.id)]));
                         }
-                      }} className="w-3 h-3 accent-blue-500" />
+                      }} />
                     </th>
                     <th className="px-3 py-1.5 text-left font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{isEn ? 'ID' : 'ID'}</th>
                     <th className="px-3 py-1.5 text-left font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{isEn ? 'Name' : 'Name'}</th>
@@ -420,9 +421,9 @@ export default function OptimizeModal({ onClose, language, allObjects, roomMap, 
                       <React.Fragment key={r.id}>
                       <tr className={`border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${checkedIds.has(r.id) ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`}>
                         <td className="w-8 px-2 py-1.5 text-center" onClick={e => e.stopPropagation()}>
-                          <input type="checkbox" checked={checkedIds.has(r.id)} onChange={() => setCheckedIds(prev => {
+                          <StyledCheckbox checked={checkedIds.has(r.id)} onChange={() => setCheckedIds(prev => {
                             const n = new Set(prev); n.has(r.id) ? n.delete(r.id) : n.add(r.id); return n;
-                          })} className="w-3 h-3 accent-blue-500" />
+                          })} />
                         </td>
                         <td className="px-3 py-1.5 font-mono"><ColoredId id={r.id} className="!whitespace-normal !overflow-visible break-all" /></td>
                         <td className="px-3 py-1.5 text-gray-700 dark:text-gray-300 max-w-[180px] truncate" title={name}>{name || <span className="text-gray-300 dark:text-gray-600 italic">—</span>}</td>
