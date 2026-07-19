@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom';
-import { X, Table2, Loader2, AlertTriangle, ChevronLeft, ChevronRight, Pencil, Check, Trash2, Copy, CalendarClock } from 'lucide-react';
+import { X, Table2, Loader2, AlertTriangle, ChevronLeft, ChevronRight, Pencil, Check, Trash2, Copy } from 'lucide-react';
 import { useState } from 'react';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { useDpValues } from '../../hooks/useObjectQueries';
@@ -206,7 +206,7 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
                 title={isEn ? 'Delete all values older than 3 months' : 'Alle Werte älter als 3 Monate löschen'}
                 className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-red-50 hover:text-red-600 hover:border-red-300 dark:hover:bg-red-900/20 dark:hover:text-red-400 dark:hover:border-red-700"
               >
-                <CalendarClock size={12} />
+                <Trash2 size={12} />
                 {isEn ? '> 3M' : '> 3M'}
               </button>
             )}
