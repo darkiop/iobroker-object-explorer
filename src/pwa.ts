@@ -4,9 +4,7 @@ type Callback = () => void;
 
 let _onNeedRefresh: Callback | null = null;
 let _onOfflineReady: Callback | null = null;
-let _updateSW: ((reload?: boolean) => Promise<void>) | undefined;
-
-_updateSW = registerSW({
+const _updateSW: ((reload?: boolean) => Promise<void>) | undefined = registerSW({
   immediate: true,
   onNeedRefresh() {
     _onNeedRefresh?.();

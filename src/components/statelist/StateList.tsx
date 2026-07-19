@@ -154,7 +154,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
     exportMenuRef,
     ctxMenu, setCtxMenu,
     sepCtxMenu, setSepCtxMenu,
-    checkedSepPrefix, setCheckedSepPrefix,
+    checkedSepPrefix,
   } = useStateListModals();
   const showToolbarLabels = forceHideToolbarLabels ? false : toolbarLabels;
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
@@ -575,7 +575,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
     }
     setCheckedIds((prev) => {
       const next = new Set(prev);
-      checked ? next.add(id) : next.delete(id);
+      if (checked) next.add(id); else next.delete(id);
       return next;
     });
     if (checked) {
@@ -1500,12 +1500,12 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
       onSepSetFilter={(prefix) => setDraftAndPropagate({ ...colFiltersDraft, id: prefix })}
       onSepToggleCollapse={(prefix, isCollapsed) => setCollapsedPrefixes((prev) => {
         const base = prev === null ? new Set(allSepPrefixes) : new Set(prev);
-        isCollapsed ? base.delete(prefix) : base.add(prefix);
+        if (isCollapsed) base.delete(prefix); else base.add(prefix);
         return base;
       })}
       onSepSelectAll={(_prefix, groupIds, allChecked) => setCheckedIds((prev) => {
         const next = new Set(prev);
-        allChecked ? groupIds.forEach((id) => next.delete(id)) : groupIds.forEach((id) => next.add(id));
+        if (allChecked) groupIds.forEach((id) => next.delete(id)); else groupIds.forEach((id) => next.add(id));
         return next;
       })}
       onSepAutoAlias={(prefix) => setAutoAliasDeviceId(prefix)}

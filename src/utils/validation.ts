@@ -3,7 +3,7 @@
  * Valid segments: alphanumerics, underscores, hyphens — separated by dots.
  * Examples: "javascript.0.myValue", "alias.0.lights.main", "0_userdata.0.temp"
  */
-const IOBROKER_ID_RE = /^[a-zA-Z0-9_\-]+(\.[a-zA-Z0-9_\-]+)*$/;
+const IOBROKER_ID_RE = /^[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)*$/;
 
 export function isValidIoBrokerId(id: string): boolean {
   return IOBROKER_ID_RE.test(id.trim());
@@ -12,7 +12,7 @@ export function isValidIoBrokerId(id: string): boolean {
 /**
  * Validates a single ID segment (no dots allowed).
  */
-const ID_SEGMENT_RE = /^[a-zA-Z0-9_\-]+$/;
+const ID_SEGMENT_RE = /^[a-zA-Z0-9_-]+$/;
 
 export function isValidIdSegment(segment: string): boolean {
   return ID_SEGMENT_RE.test(segment.trim());

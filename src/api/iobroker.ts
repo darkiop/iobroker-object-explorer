@@ -602,8 +602,9 @@ export async function getStatesBatch(ids: string[]): Promise<Record<string, IoBr
           Object.assign(merged, r);
           // Yield to let the browser handle pending input events between chunks.
           // Prevents the merge loop from becoming a long task that delays clicks.
-          if ('scheduler' in globalThis && typeof (globalThis as any).scheduler?.yield === 'function') {
-            await (globalThis as any).scheduler.yield();
+          const sched = (globalThis as { scheduler?: { yield?: () => Promise<void> } }).scheduler;
+          if (typeof sched?.yield === 'function') {
+            await sched.yield();
           }
         }
         return merged;

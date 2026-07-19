@@ -68,14 +68,14 @@ const EditableValueCell = React.memo(function EditableValueCell({
                 onClick={(e) => {
                   e.stopPropagation();
                   if (!isWritable) return;
-                  setStateVal.mutate({ id, val: !Boolean(state.val) });
+                  setStateVal.mutate({ id, val: !state.val });
                 }}
                 disabled={setStateVal.isPending || !isWritable}
                 className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${
-                  Boolean(state.val) ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'
+                  state.val ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'
                 } ${(setStateVal.isPending || !isWritable) ? 'opacity-60 cursor-default' : 'cursor-pointer'}`}
               >
-                <span className={`inline-block h-3.5 w-3.5 mt-[3px] rounded-full bg-white shadow transition-transform ${Boolean(state.val) ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                <span className={`inline-block h-3.5 w-3.5 mt-[3px] rounded-full bg-white shadow transition-transform ${state.val ? 'translate-x-5' : 'translate-x-0.5'}`} />
               </button>
             </Tooltip>
           ) : (

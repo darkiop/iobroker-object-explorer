@@ -3,9 +3,14 @@ import { renderHook } from '@testing-library/react'
 import React from 'react'
 import { FilterContextProvider } from './FilterContext'
 import { usePanelContext, type PanelContextValue } from './PanelContext'
+import { UIContextProvider } from './UIContext'
 
 function wrapper({ children }: { children: React.ReactNode }) {
-  return React.createElement(FilterContextProvider, null, children)
+  return React.createElement(
+    UIContextProvider,
+    null,
+    React.createElement(FilterContextProvider, null, children)
+  )
 }
 
 describe('FilterContextProvider — panel1Value identity', () => {

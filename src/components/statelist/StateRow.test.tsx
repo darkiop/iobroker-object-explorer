@@ -32,7 +32,7 @@ function renderRow(overrides: { onSelect?: (id: string) => void; onDeleteClick?:
         <tbody>
           <StateRow
             id="test.0.foo"
-            state={{ val: 1, ack: true, ts: 1000, lc: 1000, q: 0, from: 'system' }}
+            state={{ val: 1, ack: true, ts: 1000, lc: 1000, q: 0, from: 'system', user: 'system', id: 'test.0.foo' }}
             obj={baseObj}
             roomName=""
             fnName=""
@@ -72,7 +72,6 @@ function renderRow(overrides: { onSelect?: (id: string) => void; onDeleteClick?:
 
 describe('StateRow', () => {
   beforeEach(() => {
-    // @ts-expect-error - jsdom has no ResizeObserver; Radix UI needs it for size measurement
     global.ResizeObserver = global.ResizeObserver ?? ResizeObserverStub;
   });
 

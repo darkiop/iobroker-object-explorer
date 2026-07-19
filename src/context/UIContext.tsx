@@ -158,7 +158,7 @@ export function loadAppSettings(): AppSettings {
     if (typeof unknown !== 'object' || unknown === null) return fallback;
     const parsed = unknown as Partial<AppSettings>;
     const validLanguage = parsed.language === 'de' || parsed.language === 'en' ? parsed.language : 'en';
-    let validCols = Array.isArray(parsed.visibleCols)
+    const validCols = Array.isArray(parsed.visibleCols)
       ? parsed.visibleCols.filter((k): k is SortKey => ALL_COLUMNS.some((c) => c.key === k))
       : [];
     if (validCols.length > 0 && !validCols.includes('scripts')) {

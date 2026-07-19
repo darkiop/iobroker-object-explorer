@@ -244,7 +244,7 @@ const StateRow = React.memo(function StateRow({
               </Tooltip>
               <Tooltip content={isEn ? 'Edit object' : 'Objekt bearbeiten'}>
                 <button
-                  onClick={(e) => { e.stopPropagation(); onEditClick ? onEditClick(id) : onSelect(id); }}
+                  onClick={(e) => { e.stopPropagation(); if (onEditClick) onEditClick(id); else onSelect(id); }}
                   className="opacity-0 group-hover/id:opacity-100 text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-white shrink-0"
                 >
                   <Pencil size={12} />

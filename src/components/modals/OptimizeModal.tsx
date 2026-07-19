@@ -310,7 +310,7 @@ export default function OptimizeModal({ onClose, language, allObjects, roomMap, 
               return (
                 <button key={c.key} onClick={() => setActiveChecks(prev => {
                   const next = new Set(prev);
-                  active ? next.delete(c.key) : next.add(c.key);
+                  if (active) next.delete(c.key); else next.add(c.key);
                   return next;
                 })}
                   title={isEn ? c.labelEn : c.labelDe}
@@ -422,7 +422,7 @@ export default function OptimizeModal({ onClose, language, allObjects, roomMap, 
                       <tr className={`border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${checkedIds.has(r.id) ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`}>
                         <td className="w-8 px-2 py-1.5 text-center" onClick={e => e.stopPropagation()}>
                           <StyledCheckbox checked={checkedIds.has(r.id)} onChange={() => setCheckedIds(prev => {
-                            const n = new Set(prev); n.has(r.id) ? n.delete(r.id) : n.add(r.id); return n;
+                            const n = new Set(prev); if (n.has(r.id)) n.delete(r.id); else n.add(r.id); return n;
                           })} />
                         </td>
                         <td className="px-3 py-1.5 font-mono"><ColoredId id={r.id} className="!whitespace-normal !overflow-visible break-all" /></td>

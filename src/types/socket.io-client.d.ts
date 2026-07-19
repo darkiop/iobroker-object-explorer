@@ -13,8 +13,11 @@ declare module 'socket.io-client' {
   export interface Socket {
     id: string;
     connected: boolean;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- socket.io emits heterogeneous, untyped payloads
     on(event: string, listener: (...args: any[]) => void): this;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- socket.io emits heterogeneous, untyped payloads
     off(event: string, listener?: (...args: any[]) => void): this;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- socket.io emits heterogeneous, untyped payloads
     emit(event: string, ...args: any[]): this;
     removeAllListeners(event?: string): this;
     disconnect(): this;
