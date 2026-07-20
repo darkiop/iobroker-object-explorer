@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import {
   getObjectsByPattern, getStateObjectsFastCached, getStatesBatch, getState,
-  getObject, getObjectFresh, getHistory, getDpOverview, getDbStats, getDpValues, getDpNumericIdMap, resolveDpNumericId, getAllRoles, getAllUnits,
+  getObject, getObjectFresh, getHistory, getDpOverview, getDbStats, getDpValues, getDpValueSpan, getDpNumericIdMap, resolveDpNumericId, getAllRoles, getAllUnits,
   getRoomMap, getAllObjectsCached, getRoomEnums, getFunctionMap, getFunctionEnums,
   buildAliasReverseMap, getCustomSupportedInstances, getAllScriptSourcesCached,
   getScriptUsedIds, findScriptsUsingObject, compilePattern, isGlobPattern,
@@ -165,6 +165,24 @@ export function useDpValues(
   return useQuery({
     queryKey: ['history', 'dpValues', id, String(type), page, pageSize, startTs ?? null, endTs ?? null] as const,
     queryFn: () => getDpValues(id!, type, pageSize, page * pageSize, startTs, endTs),
+    enabled: !!id,
+    staleTime: 30_000,
+    placeholderData: (prev) => prev,
+  });
+}
+
+// Row count + time span of a datapoint, for the header summary. Keyed on the
+// same timestamp filter as useDpValues (but not the page), so paging keeps the
+// cached summary while changing the filter refetches it.
+export function useDpValueSpan(
+  id: string | null,
+  type: unknown,
+  startTs?: number | null,
+  endTs?: number | null,
+) {
+  return useQuery({
+    queryKey: ['history', 'dpValueSpan', id, String(type), startTs ?? null, endTs ?? null] as const,
+    queryFn: () => getDpValueSpan(id!, type, startTs, endTs),
     enabled: !!id,
     staleTime: 30_000,
     placeholderData: (prev) => prev,

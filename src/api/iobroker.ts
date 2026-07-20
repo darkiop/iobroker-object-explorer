@@ -890,17 +890,47 @@ export async function getDpValueCount(
   startTs?: number | null,
   endTs?: number | null,
 ): Promise<number> {
-  const table = tsTableForType(type);
-  let where = `d.name = ${sqlQuote(id)}`;
-  if (startTs != null && !Number.isNaN(startTs)) where += ` AND n.ts >= ${Math.floor(startTs)}`;
-  if (endTs != null && !Number.isNaN(endTs)) where += ` AND n.ts <= ${Math.floor(endTs)}`;
   const rows = await querySql(
-    `SELECT COUNT(*) c FROM ${SQL_DB_NAME}.${table} n ` +
+    `SELECT COUNT(*) c FROM ${SQL_DB_NAME}.${tsTableForType(type)} n ` +
     `JOIN ${SQL_DB_NAME}.datapoints d ON d.id = n.id ` +
-    `WHERE ${where}`
+    `WHERE ${dpValueWhere(id, startTs, endTs)}`
   );
   const first = rows[0] as { c?: unknown } | undefined;
   return Number(first?.c ?? 0);
+}
+
+// Shared WHERE for the per-datapoint value queries: name match plus the optional
+// inclusive timestamp range.
+function dpValueWhere(id: string, startTs?: number | null, endTs?: number | null): string {
+  let where = `d.name = ${sqlQuote(id)}`;
+  if (startTs != null && !Number.isNaN(startTs)) where += ` AND n.ts >= ${Math.floor(startTs)}`;
+  if (endTs != null && !Number.isNaN(endTs)) where += ` AND n.ts <= ${Math.floor(endTs)}`;
+  return where;
+}
+
+export interface DpValueSpan {
+  count: number;
+  firstTs: number | null;  // oldest stored timestamp, null when there are no rows
+  lastTs: number | null;
+}
+
+// Row count plus the time span of one datapoint, in a single query. Same shape
+// as getDpValueCount (indexed range over one datapoint), so it stays cheap even
+// on datapoints with a lot of history.
+export async function getDpValueSpan(
+  id: string,
+  type: unknown,
+  startTs?: number | null,
+  endTs?: number | null,
+): Promise<DpValueSpan> {
+  const rows = await querySql(
+    `SELECT COUNT(*) c, MIN(n.ts) f, MAX(n.ts) l FROM ${SQL_DB_NAME}.${tsTableForType(type)} n ` +
+    `JOIN ${SQL_DB_NAME}.datapoints d ON d.id = n.id ` +
+    `WHERE ${dpValueWhere(id, startTs, endTs)}`
+  );
+  const r = rows[0] as { c?: unknown; f?: unknown; l?: unknown } | undefined;
+  const num = (v: unknown) => (v == null ? null : Number(v) || null);
+  return { count: Number(r?.c ?? 0), firstTs: num(r?.f), lastTs: num(r?.l) };
 }
 
 export interface DpValueRow {

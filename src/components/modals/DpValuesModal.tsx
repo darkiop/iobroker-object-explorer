@@ -2,7 +2,7 @@ import { createPortal } from 'react-dom';
 import { X, Table2, Loader2, AlertTriangle, ChevronLeft, ChevronRight, Pencil, Check, Trash2, Copy, Rows3, RefreshCw, Plus, LineChart } from 'lucide-react';
 import { useState } from 'react';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
-import { useDpValues, useDpNumericId } from '../../hooks/useObjectQueries';
+import { useDpValues, useDpValueSpan, useDpNumericId } from '../../hooks/useObjectQueries';
 import { updateDpValue, insertDpValue, deleteHistoryEntry, deleteHistoryRange, getDpValueCount, tsTableForType, buildDpValuesSql, buildDpPurgeSql, buildDpInsertSql, buildDpDedupeSql, findConsecutiveDuplicateTs, deleteDpValuesByTs } from '../../api/iobroker';
 import { copyToClipboard } from '../../utils/clipboard';
 import { useToast } from '../../context/ToastContext';
@@ -35,6 +35,7 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
   const rows = data ?? [];
   const hasNext = rows.length === PAGE_SIZE;
   const { data: dpNumericId } = useDpNumericId(id);
+  const { data: span, isFetching: spanFetching, refetch: refetchSpan } = useDpValueSpan(id, type, startTs, endTs);
 
   const [historyOpen, setHistoryOpen] = useState(false);
   const [editTs, setEditTs] = useState<number | null>(null);
@@ -79,6 +80,11 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
     }
   });
 
+  // Every mutation changes the header summary too, so both queries reload together.
+  async function reload() {
+    await Promise.all([refetch(), refetchSpan()]);
+  }
+
   // Opens the "add row" dialog, prefilled with the current time.
   function startAdd() {
     setAddTs(Date.now());
@@ -96,7 +102,7 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
       showToast(isEn ? 'Value added' : 'Wert hinzugefügt', 'success');
       setAddOpen(false);
       setPage(0);
-      await refetch();
+      await reload();
     } catch (err) {
       showToast(err instanceof Error ? err.message : String(err), 'error');
     } finally {
@@ -143,7 +149,7 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
       }
       setConfirmPurge(false);
       setPage(0);
-      await refetch();
+      await reload();
     } catch (err) {
       showToast(err instanceof Error ? err.message : String(err), 'error');
     } finally {
@@ -194,7 +200,7 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
       setConfirmDedupe(false);
       setDedupeTs(null);
       setPage(0);
-      await refetch();
+      await reload();
     } catch (err) {
       showToast(err instanceof Error ? err.message : String(err), 'error');
     } finally {
@@ -221,7 +227,7 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
       await deleteHistoryEntry(id, ts);
       showToast(isEn ? 'Value deleted' : 'Wert gelöscht', 'success');
       setDelTs(null);
-      await refetch();
+      await reload();
     } catch (err) {
       showToast(err instanceof Error ? err.message : String(err), 'error');
     } finally {
@@ -241,7 +247,7 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
       await updateDpValue(id, type, editTs, editVal);
       showToast(isEn ? 'Value updated' : 'Wert aktualisiert', 'success');
       setEditTs(null);
-      await refetch();
+      await reload();
     } catch (err) {
       showToast(err instanceof Error ? err.message : String(err), 'error');
     } finally {
@@ -290,10 +296,35 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
                 id={dpNumericId}
               </span>
             )}
+            {spanFetching && !span ? (
+              <Loader2 size={12} className="shrink-0 animate-spin text-gray-400" />
+            ) : span ? (
+              <>
+                <span
+                  className="shrink-0 px-1.5 py-0.5 rounded bg-blue-500/10 text-xs tabular-nums text-blue-600 dark:text-blue-300"
+                  title={
+                    hasTsFilter
+                      ? (isEn ? 'Stored value rows in the selected range' : 'Gespeicherte Wert-Zeilen im gewählten Bereich')
+                      : (isEn ? 'Stored value rows' : 'Gespeicherte Wert-Zeilen')
+                  }
+                >
+                  {span.count.toLocaleString()} {isEn ? 'rows' : 'Zeilen'}
+                  {hasTsFilter && <span className="opacity-60"> ({isEn ? 'filtered' : 'gefiltert'})</span>}
+                </span>
+                {span.firstTs != null && (
+                  <span
+                    className="shrink-0 px-1.5 py-0.5 rounded bg-emerald-500/10 text-xs tabular-nums text-emerald-600 dark:text-emerald-300"
+                    title={isEn ? 'Oldest stored value' : 'Ältester gespeicherter Wert'}
+                  >
+                    {isEn ? 'since' : 'seit'} {rawTs ? span.firstTs : new Date(span.firstTs).toLocaleString()}
+                  </span>
+                )}
+              </>
+            ) : null}
           </div>
           <div className="flex items-center gap-1 shrink-0">
             <button
-              onClick={() => refetch()}
+              onClick={() => reload()}
               disabled={isFetching}
               title={isEn ? 'Refresh rows' : 'Zeilen aktualisieren'}
               className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
