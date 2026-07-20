@@ -31,12 +31,14 @@ export default function OrphanValuesModal({ onClose, language }: Props) {
   const [scanError, setScanError] = useState<string | null>(null);
   const [pending, setPending] = useState<OrphanValueGroup | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
   async function scan() {
     setScanning(true);
     setScanError(null);
+    setProgress(null);
     try {
-      setRows(await getOrphanValueRows());
+      setRows(await getOrphanValueRows((done, total) => setProgress({ done, total })));
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setScanError(msg);
@@ -132,6 +134,11 @@ export default function OrphanValuesModal({ onClose, language }: Props) {
             <div className="flex items-center justify-center gap-2 py-16 text-sm text-gray-500 dark:text-gray-400">
               <Loader2 size={16} className="animate-spin" />
               {isEn ? 'Scanning value tables…' : 'Scanne Wert-Tabellen…'}
+              {progress && (
+                <span className="tabular-nums text-xs text-gray-400 dark:text-gray-500">
+                  {progress.done}/{progress.total}
+                </span>
+              )}
             </div>
           ) : scanError ? (
             <div className="flex items-start gap-2 px-5 py-16 text-sm text-red-600 dark:text-red-400">
@@ -150,8 +157,8 @@ export default function OrphanValuesModal({ onClose, language }: Props) {
               </p>
               <p className="text-xs text-gray-400 dark:text-gray-500">
                 {isEn
-                  ? 'Full scan over all value tables — can take a while on large databases.'
-                  : 'Vollständiger Scan über alle Wert-Tabellen — kann bei großen Datenbanken dauern.'}
+                  ? 'Probes only the gaps in the datapoints id sequence, using the (id, ts) index — no full table scan.'
+                  : 'Prüft nur die Lücken in der datapoints-ID-Folge über den (id, ts)-Index — kein vollständiger Tabellen-Scan.'}
               </p>
             </div>
           ) : rows.length === 0 ? (

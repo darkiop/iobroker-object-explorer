@@ -786,21 +786,77 @@ export interface OrphanValueGroup {
   lastTs: number;
 }
 
+// Hard cap on how many candidate ids we probe. Beyond this the datapoints table
+// has so many gaps that the scan degenerates into the full-table variant again.
+const ORPHAN_MAX_CANDIDATES = 20000;
+// Candidate ids per IN(...) query — keeps single statements short enough for the
+// sendTo transport while still batching aggressively.
+const ORPHAN_CHUNK = 500;
+
 // Finds value rows whose numeric id has no matching row in `datapoints` — left
 // behind when a datapoint was removed from `datapoints` without purging its
-// history. One group per (table, id); the PK index (id, ts) keeps the scan cheap.
-export async function getOrphanValueRows(): Promise<OrphanValueGroup[]> {
-  const rows = await querySql(buildOrphanValuesQuery());
-  return rows.map((r) => {
-    const o = r as Record<string, unknown>;
-    return {
-      table: String(o.tbl ?? '') as TsTable,
-      dbId: Number(o.dbId ?? 0),
-      count: Number(o.cnt ?? 0),
-      firstTs: Number(o.firstTs ?? 0),
-      lastTs: Number(o.lastTs ?? 0),
-    };
-  });
+// history. One group per (table, id).
+//
+// A LEFT JOIN over the whole ts_* table is unusable on large databases (full
+// index scan per table). Instead: orphan ids can only be *gaps* in the
+// AUTO_INCREMENT sequence of `datapoints`, so we derive the candidate ids from
+// that (tiny) table and probe only those via the (id, ts) index.
+export async function getOrphanValueRows(
+  onProgress?: (done: number, total: number) => void
+): Promise<OrphanValueGroup[]> {
+  const liveRows = await querySql(`SELECT id FROM ${SQL_DB_NAME}.datapoints`);
+  const live = new Set<number>();
+  for (const r of liveRows) live.add(Number((r as { id?: unknown }).id));
+
+  // Highest id actually present in the value tables — bounds the gap search and
+  // catches orphans above max(datapoints.id) (tail of the sequence deleted).
+  const maxRows = await querySql(
+    TS_TABLES.map((t) => `SELECT MAX(id) AS m FROM ${SQL_DB_NAME}.${t}`).join(' UNION ALL ')
+  );
+  let maxId = 0;
+  for (const r of maxRows) maxId = Math.max(maxId, Number((r as { m?: unknown }).m ?? 0) || 0);
+  if (!maxId) return [];
+
+  const candidates: number[] = [];
+  for (let id = 1; id <= maxId; id++) {
+    if (live.has(id)) continue;
+    candidates.push(id);
+    if (candidates.length > ORPHAN_MAX_CANDIDATES) {
+      throw new Error(
+        `Too many candidate ids (> ${ORPHAN_MAX_CANDIDATES}) — the datapoints table is too sparse for a fast scan.`
+      );
+    }
+  }
+  if (candidates.length === 0) return [];
+
+  const chunks: number[][] = [];
+  for (let i = 0; i < candidates.length; i += ORPHAN_CHUNK) {
+    chunks.push(candidates.slice(i, i + ORPHAN_CHUNK));
+  }
+
+  const groups: OrphanValueGroup[] = [];
+  const total = chunks.length * TS_TABLES.length;
+  let done = 0;
+  for (const table of TS_TABLES) {
+    for (const chunk of chunks) {
+      const rows = await querySql(
+        `SELECT id AS dbId, COUNT(*) AS cnt, MIN(ts) AS firstTs, MAX(ts) AS lastTs ` +
+        `FROM ${SQL_DB_NAME}.${table} WHERE id IN (${chunk.join(',')}) GROUP BY id`
+      );
+      for (const r of rows) {
+        const o = r as Record<string, unknown>;
+        groups.push({
+          table,
+          dbId: Number(o.dbId ?? 0),
+          count: Number(o.cnt ?? 0),
+          firstTs: Number(o.firstTs ?? 0),
+          lastTs: Number(o.lastTs ?? 0),
+        });
+      }
+      onProgress?.(++done, total);
+    }
+  }
+  return groups.sort((a, b) => b.count - a.count);
 }
 
 // Deletes all value rows of one orphan group. The table name comes from our own
@@ -812,19 +868,6 @@ export async function deleteOrphanValueRows(table: string, dbId: number): Promis
   const numId = Math.floor(Number(dbId));
   if (!Number.isFinite(numId)) throw new Error(`Invalid db id: ${dbId}`);
   await querySql(buildOrphanDeleteSql(table, numId));
-}
-
-// One UNION branch per ts_* table; grouped so the UI gets row count + time span.
-function buildOrphanValuesQuery(): string {
-  const parts = TS_TABLES.map(
-    (t) =>
-      `SELECT '${t}' AS tbl, n.id AS dbId, COUNT(*) AS cnt, ` +
-      `MIN(n.ts) AS firstTs, MAX(n.ts) AS lastTs ` +
-      `FROM ${SQL_DB_NAME}.${t} n ` +
-      `LEFT JOIN ${SQL_DB_NAME}.datapoints d ON d.id = n.id ` +
-      `WHERE d.id IS NULL GROUP BY n.id`
-  );
-  return `${parts.join(' UNION ALL ')} ORDER BY cnt DESC`;
 }
 
 // Value-history table for a datapoint type (as reported by getDpOverview).
@@ -1100,6 +1143,9 @@ export function buildDpOverviewSql(): string {
 
 // Standalone query reproducing the orphan scan — same statement the live scan
 // runs, just formatted for reading.
+// Equivalent single-statement form of the scan, for pasting into a DB client.
+// getOrphanValueRows() does NOT run this — it probes candidate ids instead,
+// because this version needs a full index scan per ts_* table.
 export function buildOrphanValuesSql(): string {
   const parts = TS_TABLES.map(
     (t) =>
