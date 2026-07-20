@@ -774,6 +774,59 @@ export async function getDpNumericIdMap(): Promise<Record<string, number>> {
   return map;
 }
 
+// The three value tables sql.0 writes to, keyed by datapoint type.
+const TS_TABLES = ['ts_number', 'ts_string', 'ts_bool'] as const;
+export type TsTable = (typeof TS_TABLES)[number];
+
+export interface OrphanValueGroup {
+  table: TsTable;
+  dbId: number;     // numeric id referenced by the value rows
+  count: number;    // how many rows carry that id
+  firstTs: number;
+  lastTs: number;
+}
+
+// Finds value rows whose numeric id has no matching row in `datapoints` — left
+// behind when a datapoint was removed from `datapoints` without purging its
+// history. One group per (table, id); the PK index (id, ts) keeps the scan cheap.
+export async function getOrphanValueRows(): Promise<OrphanValueGroup[]> {
+  const rows = await querySql(buildOrphanValuesQuery());
+  return rows.map((r) => {
+    const o = r as Record<string, unknown>;
+    return {
+      table: String(o.tbl ?? '') as TsTable,
+      dbId: Number(o.dbId ?? 0),
+      count: Number(o.cnt ?? 0),
+      firstTs: Number(o.firstTs ?? 0),
+      lastTs: Number(o.lastTs ?? 0),
+    };
+  });
+}
+
+// Deletes all value rows of one orphan group. The table name comes from our own
+// whitelist (never from the response) so it can't be smuggled into the statement.
+export async function deleteOrphanValueRows(table: string, dbId: number): Promise<void> {
+  if (!(TS_TABLES as readonly string[]).includes(table)) {
+    throw new Error(`Unknown value table: ${table}`);
+  }
+  const numId = Math.floor(Number(dbId));
+  if (!Number.isFinite(numId)) throw new Error(`Invalid db id: ${dbId}`);
+  await querySql(buildOrphanDeleteSql(table, numId));
+}
+
+// One UNION branch per ts_* table; grouped so the UI gets row count + time span.
+function buildOrphanValuesQuery(): string {
+  const parts = TS_TABLES.map(
+    (t) =>
+      `SELECT '${t}' AS tbl, n.id AS dbId, COUNT(*) AS cnt, ` +
+      `MIN(n.ts) AS firstTs, MAX(n.ts) AS lastTs ` +
+      `FROM ${SQL_DB_NAME}.${t} n ` +
+      `LEFT JOIN ${SQL_DB_NAME}.datapoints d ON d.id = n.id ` +
+      `WHERE d.id IS NULL GROUP BY n.id`
+  );
+  return `${parts.join(' UNION ALL ')} ORDER BY cnt DESC`;
+}
+
 // Value-history table for a datapoint type (as reported by getDpOverview).
 export function tsTableForType(type: unknown): string {
   switch (String(type)) {
@@ -816,7 +869,7 @@ export interface DpValueRow {
 }
 
 // Resolves the numeric datapoints.id for an ioBroker state id (name).
-async function resolveDpNumericId(id: string): Promise<number | null> {
+export async function resolveDpNumericId(id: string): Promise<number | null> {
   const rows = await querySql(
     `SELECT id FROM ${SQL_DB_NAME}.datapoints WHERE name = ${sqlQuote(id)} LIMIT 1`
   );
@@ -862,6 +915,104 @@ export async function getDpValues(
   });
 }
 
+// --- Dedupe (consecutive duplicate values) ----------------------------------
+
+// Normalizes a stored value for equality comparison, per datapoint type.
+// The DB returns bools as 0/1 and numbers sometimes as strings, so compare
+// on a canonical form instead of the raw driver value.
+function normalizeVal(val: unknown, type: unknown): string | number {
+  switch (String(type)) {
+    case 'boolean':
+      return val === true || val === 1 || String(val).trim().toLowerCase() === 'true' || String(val).trim() === '1' ? 1 : 0;
+    case 'string':
+      return val == null ? '' : String(val);
+    default:
+      return Number(val);
+  }
+}
+
+// Picks the timestamps of rows whose value equals the previous row's value.
+// `rows` must be sorted by ts ascending; the first row of a run is kept, so a
+// step chart drawn from the remaining rows is identical.
+// `prev` carries the last value of the preceding chunk across chunk borders.
+export function pickDuplicateTs(
+  rows: { ts: number; val: unknown }[],
+  type: unknown,
+  prev?: { val: string | number } | null,
+): { ts: number[]; last: { val: string | number } | null } {
+  const dupes: number[] = [];
+  let last = prev ?? null;
+  for (const r of rows) {
+    const v = normalizeVal(r.val, type);
+    const same = last != null && (v === last.val || (typeof v === 'number' && typeof last.val === 'number' && Number.isNaN(v) && Number.isNaN(last.val)));
+    if (same) dupes.push(r.ts);
+    else last = { val: v };
+  }
+  return { ts: dupes, last };
+}
+
+const DEDUPE_SCAN_CHUNK = 50000;
+const DEDUPE_DELETE_CHUNK = 1000;
+
+// Scans the stored values of a datapoint (ts ascending) and returns the
+// timestamps of all rows that merely repeat the previous value.
+// Reads ts/val only and pages via the PK index (id, ts) — no filesort, no
+// window functions (the sql.0 backend may run MariaDB < 10.2).
+export async function findConsecutiveDuplicateTs(
+  id: string,
+  type: unknown,
+  startTs?: number | null,
+  endTs?: number | null,
+): Promise<number[]> {
+  const numId = await resolveDpNumericId(id);
+  if (numId == null || Number.isNaN(numId)) return [];
+  const table = tsTableForType(type);
+  let where = `n.id = ${numId}`;
+  if (startTs != null && !Number.isNaN(startTs)) where += ` AND n.ts >= ${Math.floor(startTs)}`;
+  if (endTs != null && !Number.isNaN(endTs)) where += ` AND n.ts <= ${Math.floor(endTs)}`;
+
+  const all: number[] = [];
+  let prev: { val: string | number } | null = null;
+  let offset = 0;
+  for (;;) {
+    const rows = await querySql(
+      `SELECT n.ts, n.val FROM ${SQL_DB_NAME}.${table} n ` +
+      `WHERE ${where} ORDER BY n.ts ASC LIMIT ${DEDUPE_SCAN_CHUNK} OFFSET ${offset}`
+    );
+    if (rows.length === 0) break;
+    const mapped = rows.map((r) => {
+      const o = r as Record<string, unknown>;
+      return { ts: Number(o.ts ?? 0), val: o.val };
+    });
+    const res = pickDuplicateTs(mapped, type, prev);
+    all.push(...res.ts);
+    prev = res.last;
+    if (rows.length < DEDUPE_SCAN_CHUNK) break;
+    offset += DEDUPE_SCAN_CHUNK;
+  }
+  return all;
+}
+
+// Deletes stored value rows of a datapoint by exact timestamp, in chunks.
+// Raw DELETE via the sql.0 `query` command (same path as updateDpValue): the
+// adapter's per-row delete sendTo needs a roundtrip per row and reports success
+// even when it discarded the request.
+export async function deleteDpValuesByTs(id: string, type: unknown, tsList: number[]): Promise<number> {
+  if (tsList.length === 0) return 0;
+  const numId = await resolveDpNumericId(id);
+  if (numId == null || Number.isNaN(numId)) {
+    throw new Error(`Datapoint not found in database: ${id}`);
+  }
+  const table = tsTableForType(type);
+  for (let i = 0; i < tsList.length; i += DEDUPE_DELETE_CHUNK) {
+    const chunk = tsList.slice(i, i + DEDUPE_DELETE_CHUNK).map((t) => Math.floor(t));
+    await querySql(
+      `DELETE FROM ${SQL_DB_NAME}.${table} WHERE id = ${numId} AND ts IN (${chunk.join(',')})`
+    );
+  }
+  return tsList.length;
+}
+
 // --- SQL query builders -----------------------------------------------------
 // Exposed so the UI can show/copy the query behind a view. These return a
 // runnable, standalone statement — the live fetch may take a faster path
@@ -893,6 +1044,40 @@ export function buildDpValuesSql(
   );
 }
 
+// Standalone DELETE reproducing the "purge values older than cutoff" action.
+// The live delete goes through the sql.0 `deleteRange` sendTo command; this is
+// the equivalent statement, shown in the confirm dialog so the user can see
+// exactly what will be removed.
+export function buildDpPurgeSql(id: string, type: unknown, cutoffTs: number): string {
+  const table = tsTableForType(type);
+  const end = Math.floor(cutoffTs);
+  return (
+    `-- Equivalent statement (live delete uses the sql.0 deleteRange sendTo command)\n` +
+    `DELETE n FROM ${SQL_DB_NAME}.${table} n\n` +
+    `JOIN ${SQL_DB_NAME}.datapoints d ON d.id = n.id\n` +
+    `WHERE d.name = ${sqlQuote(id)}\n` +
+    `  AND n.ts >= 1 AND n.ts <= ${end}`
+  );
+}
+
+// Standalone statement reproducing the dedupe delete. The live delete resolves
+// the numeric datapoints.id first and runs in chunks of DEDUPE_DELETE_CHUNK
+// timestamps; this joins on datapoints.name so it runs as-is. Long ts lists are
+// truncated for display — `maxTs` caps how many are spelled out.
+export function buildDpDedupeSql(id: string, type: unknown, tsList: number[], maxTs = 20): string {
+  const table = tsTableForType(type);
+  const shown = tsList.slice(0, maxTs).map((t) => Math.floor(t));
+  const rest = tsList.length - shown.length;
+  const list = shown.join(', ') + (rest > 0 ? `, /* … +${rest} more */` : '');
+  return (
+    `-- Equivalent statement (live delete runs in chunks of ${DEDUPE_DELETE_CHUNK} timestamps)\n` +
+    `DELETE n FROM ${SQL_DB_NAME}.${table} n\n` +
+    `JOIN ${SQL_DB_NAME}.datapoints d ON d.id = n.id\n` +
+    `WHERE d.name = ${sqlQuote(id)}\n` +
+    `  AND n.ts IN (${list})`
+  );
+}
+
 // Best-effort standalone SQL reproducing the DB overview table. The live view
 // is fetched via the adapter's `getDpOverview` sendTo command (not raw SQL);
 // this query returns the same shape (id, type, last ts, value count) by
@@ -913,6 +1098,51 @@ export function buildDpOverviewSql(): string {
   );
 }
 
+// Standalone query reproducing the orphan scan — same statement the live scan
+// runs, just formatted for reading.
+export function buildOrphanValuesSql(): string {
+  const parts = TS_TABLES.map(
+    (t) =>
+      `SELECT '${t}' AS tbl, n.id AS dbId, COUNT(*) AS cnt,\n` +
+      `       MIN(n.ts) AS firstTs, MAX(n.ts) AS lastTs\n` +
+      `FROM ${SQL_DB_NAME}.${t} n\n` +
+      `LEFT JOIN ${SQL_DB_NAME}.datapoints d ON d.id = n.id\n` +
+      `WHERE d.id IS NULL\n` +
+      `GROUP BY n.id`
+  );
+  return `${parts.join('\nUNION ALL\n')}\nORDER BY cnt DESC`;
+}
+
+// Statement behind "delete orphan group". The NOT EXISTS guard re-checks the
+// missing datapoints row at delete time, so a datapoint recreated between scan
+// and confirm keeps its history instead of losing it to a stale scan result.
+export function buildOrphanDeleteSql(table: string, dbId: number): string {
+  return (
+    `DELETE n FROM ${SQL_DB_NAME}.${table} n\n` +
+    `WHERE n.id = ${Math.floor(dbId)}\n` +
+    `  AND NOT EXISTS (\n` +
+    `    SELECT 1 FROM ${SQL_DB_NAME}.datapoints d WHERE d.id = n.id\n` +
+    `  )`
+  );
+}
+
+// Coerces a value to the SQL literal matching the datapoint type.
+export function dpValueSql(type: unknown, val: unknown): string {
+  switch (String(type)) {
+    case 'boolean': {
+      const truthy = val === true || val === 1 || String(val).trim().toLowerCase() === 'true' || String(val).trim() === '1';
+      return truthy ? '1' : '0';
+    }
+    case 'string':
+      return sqlQuote(String(val));
+    default: {
+      const n = Number(val);
+      if (Number.isNaN(n)) throw new Error(`Invalid number: ${String(val)}`);
+      return String(n);
+    }
+  }
+}
+
 // Updates a single stored value row (identified by datapoint + exact ts).
 // Raw UPDATE via the sql.0 `query` command; value is coerced/quoted per type.
 export async function updateDpValue(
@@ -926,24 +1156,47 @@ export async function updateDpValue(
     throw new Error(`Datapoint not found in database: ${id}`);
   }
   const table = tsTableForType(type);
-  let valSql: string;
-  switch (String(type)) {
-    case 'boolean': {
-      const truthy = val === true || val === 1 || String(val).trim().toLowerCase() === 'true' || String(val).trim() === '1';
-      valSql = truthy ? '1' : '0';
-      break;
-    }
-    case 'string':
-      valSql = sqlQuote(String(val));
-      break;
-    default: {
-      const n = Number(val);
-      if (Number.isNaN(n)) throw new Error(`Invalid number: ${String(val)}`);
-      valSql = String(n);
-    }
+  await querySql(
+    `UPDATE ${SQL_DB_NAME}.${table} SET val = ${dpValueSql(type, val)} WHERE id = ${numId} AND ts = ${Math.floor(ts)}`
+  );
+}
+
+// Standalone INSERT reproducing the "add row" action, shown in the dialog.
+// `_from` is 0 (no source) and `q` is 0 (good quality).
+export function buildDpInsertSql(id: string, type: unknown, ts: number, val: unknown, ack: boolean): string {
+  const table = tsTableForType(type);
+  return (
+    `INSERT INTO ${SQL_DB_NAME}.${table} (id, ts, val, ack, _from, q)\n` +
+    `SELECT d.id, ${Math.floor(ts)}, ${dpValueSql(type, val)}, ${ack ? 1 : 0}, 0, 0\n` +
+    `FROM ${SQL_DB_NAME}.datapoints d WHERE d.name = ${sqlQuote(id)}`
+  );
+}
+
+// Inserts a new stored value row for a datapoint.
+// The ts_* tables are keyed by (id, ts), so an existing timestamp is rejected
+// up front with a clear message instead of a raw duplicate-key error.
+export async function insertDpValue(
+  id: string,
+  type: unknown,
+  ts: number,
+  val: unknown,
+  ack: boolean,
+): Promise<void> {
+  const numId = await resolveDpNumericId(id);
+  if (numId == null || Number.isNaN(numId)) {
+    throw new Error(`Datapoint not found in database: ${id}`);
+  }
+  const table = tsTableForType(type);
+  const t = Math.floor(ts);
+  const existing = await querySql(
+    `SELECT ts FROM ${SQL_DB_NAME}.${table} WHERE id = ${numId} AND ts = ${t}`
+  );
+  if (existing.length > 0) {
+    throw new Error(`A value already exists at this timestamp (${t})`);
   }
   await querySql(
-    `UPDATE ${SQL_DB_NAME}.${table} SET val = ${valSql} WHERE id = ${numId} AND ts = ${Math.floor(ts)}`
+    `INSERT INTO ${SQL_DB_NAME}.${table} (id, ts, val, ack, _from, q) ` +
+    `VALUES (${numId}, ${t}, ${dpValueSql(type, val)}, ${ack ? 1 : 0}, 0, 0)`
   );
 }
 

@@ -1,15 +1,17 @@
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { X, Database, ChevronUp, ChevronDown, Loader2, AlertTriangle, Trash2, Pencil, Hash, Copy } from 'lucide-react';
+import { X, Database, ChevronUp, ChevronDown, Loader2, AlertTriangle, Trash2, Pencil, Hash, Copy, Unlink, Search, RefreshCw, LineChart } from 'lucide-react';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
-import { useDpOverview, useDbStats, useDpNumericIds } from '../../hooks/useObjectQueries';
+import { useDpOverview, useDbStats, useDpNumericIds, useAllObjects } from '../../hooks/useObjectQueries';
 import { queryKeys } from '../../hooks/queryKeys';
-import { deleteHistoryAll, renameDpInDb, getDpValueCount, buildDpOverviewSql } from '../../api/iobroker';
+import { deleteHistoryAll, renameDpInDb, getDpValueCount, buildDpOverviewSql, hasHistory } from '../../api/iobroker';
 import { copyToClipboard } from '../../utils/clipboard';
 import { useToast } from '../../context/ToastContext';
 import { getTypeColor } from '../../utils/typeColor';
 import DpValuesModal from './DpValuesModal';
+import OrphanValuesModal from './OrphanValuesModal';
+import HistoryModal from './HistoryModal';
 import StyledCheckbox from '../ui/StyledCheckbox';
 import { ColoredId } from '../../utils/coloredId';
 import type { DpOverviewRow } from '../../api/iobroker';
@@ -18,6 +20,20 @@ interface Props {
   onClose: () => void;
   language: 'en' | 'de';
 }
+
+// Consistency between what sql.0 stores and what the object is configured for.
+type DpStatus = 'ok' | 'logging-off' | 'orphan' | 'unknown';
+
+// Sort rank: ascending puts the problems on top.
+const STATUS_RANK: Record<DpStatus, number> = { orphan: 0, 'logging-off': 1, ok: 2, unknown: 3 };
+
+// Tinted rows need their own hover variant, otherwise the generic row hover wins.
+const STATUS_ROW_CLASS: Record<DpStatus, string> = {
+  ok: 'hover:bg-gray-50 dark:hover:bg-gray-800/50',
+  unknown: 'hover:bg-gray-50 dark:hover:bg-gray-800/50',
+  'logging-off': 'bg-amber-50 dark:bg-amber-900/10 hover:bg-amber-100 dark:hover:bg-amber-900/20',
+  orphan: 'bg-red-50 dark:bg-red-900/10 hover:bg-red-100 dark:hover:bg-red-900/20',
+};
 
 // POC: read-only view of datapoints stored in the sql.0 database (via getDpOverview sendTo).
 // Columns are derived dynamically from the returned rows, since the adapter's response
@@ -29,6 +45,7 @@ export default function DbOverviewModal({ onClose, language }: Props) {
   const { data, isLoading, isError, error } = useDpOverview(true);
   const { data: stats } = useDbStats(true);
   const { data: idMap } = useDpNumericIds(true);
+  const { data: allObjects } = useAllObjects();
   const queryClient = useQueryClient();
   const showToast = useToast();
   const [filter, setFilter] = useState('');
@@ -38,6 +55,8 @@ export default function DbOverviewModal({ onClose, language }: Props) {
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [valuesOf, setValuesOf] = useState<{ id: string; type: unknown } | null>(null);
+  const [historyOf, setHistoryOf] = useState<string | null>(null);
+  const [orphansOpen, setOrphansOpen] = useState(false);
   const [renameOldId, setRenameOldId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [renaming, setRenaming] = useState(false);
@@ -76,6 +95,12 @@ export default function DbOverviewModal({ onClose, language }: Props) {
     } finally {
       setCountingAll(false);
     }
+  }
+
+  function copyId(id: string) {
+    copyToClipboard(id)
+      .then(() => showToast(isEn ? 'ID copied' : 'ID kopiert', 'success'))
+      .catch(() => showToast(isEn ? 'Copy failed' : 'Kopieren fehlgeschlagen', 'error'));
   }
 
   function startRename(id: string) {
@@ -131,6 +156,21 @@ export default function DbOverviewModal({ onClose, language }: Props) {
     return base.map((r) => ({ ...r, dbId: idMap[r.id] ?? null }));
   }, [data, idMap]);
 
+  // Join the DB side (rows) with the object side: a datapoint can sit in sql.0 while the
+  // object no longer exists, or exists but has sql.0 logging switched off.
+  // 'unknown' covers the window where allObjects is still loading — without it every row
+  // would briefly flash as an orphan.
+  const statusById = useMemo(() => {
+    const map = new Map<string, DpStatus>();
+    for (const r of rows) {
+      if (!allObjects) { map.set(r.id, 'unknown'); continue; }
+      const obj = allObjects[r.id];
+      if (!obj) { map.set(r.id, 'orphan'); continue; }
+      map.set(r.id, hasHistory(obj) ? 'ok' : 'logging-off');
+    }
+    return map;
+  }, [rows, allObjects]);
+
   // Union of all keys across rows; `id` first, rest alphabetical.
   const columns = useMemo<string[]>(() => {
     const keys = new Set<string>();
@@ -147,6 +187,11 @@ export default function DbOverviewModal({ onClose, language }: Props) {
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
+      if (sortKey === '__status__') {
+        const av = STATUS_RANK[statusById.get(a.id) ?? 'unknown'];
+        const bv = STATUS_RANK[statusById.get(b.id) ?? 'unknown'];
+        return sortDir === 'asc' ? av - bv : bv - av;
+      }
       if (sortKey === '__count__') {
         const av = typeof counts[a.id] === 'number' ? (counts[a.id] as number) : -1;
         const bv = typeof counts[b.id] === 'number' ? (counts[b.id] as number) : -1;
@@ -161,7 +206,7 @@ export default function DbOverviewModal({ onClose, language }: Props) {
       const bs = bv == null ? '' : String(bv);
       return sortDir === 'asc' ? as.localeCompare(bs) : bs.localeCompare(as);
     });
-  }, [filtered, sortKey, sortDir, counts]);
+  }, [filtered, sortKey, sortDir, counts, statusById]);
 
   function handleSort(key: string) {
     if (key === sortKey) {
@@ -178,7 +223,7 @@ export default function DbOverviewModal({ onClose, language }: Props) {
   return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center animate-backdrop-in bg-black/60 backdrop-blur-sm p-4"
-      onClick={pendingDelete || renameOldId ? undefined : onClose}
+      onClick={pendingDelete || renameOldId || orphansOpen || historyOf ? undefined : onClose}
     >
       <div
         className="w-full max-w-7xl bg-white dark:bg-gray-900 animate-modal-in rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[85vh]"
@@ -240,6 +285,14 @@ export default function DbOverviewModal({ onClose, language }: Props) {
               {countingAll ? <Loader2 size={12} className="animate-spin" /> : <Hash size={12} />}
               {isEn ? 'Count and Sort desc' : 'Zählen & absteigend sortieren'}
             </button>
+            <button
+              onClick={() => setOrphansOpen(true)}
+              title={isEn ? 'Find value rows whose datapoint no longer exists in the datapoints table' : 'Wert-Zeilen finden, deren Datenpunkt nicht mehr in der Tabelle datapoints existiert'}
+              className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              <Unlink size={12} />
+              {isEn ? 'Orphan rows' : 'Verwaiste Zeilen'}
+            </button>
             <input
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
@@ -253,6 +306,16 @@ export default function DbOverviewModal({ onClose, language }: Props) {
               <X size={16} />
             </button>
           </div>
+        </div>
+
+        {/* Irreversible-action warning */}
+        <div className="shrink-0 flex items-center gap-2 px-5 py-2 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800">
+          <AlertTriangle size={14} className="text-red-500 shrink-0" />
+          <span className="text-xs font-semibold text-red-700 dark:text-red-300">
+            {isEn
+              ? 'Warning: changes and deletions made here act directly on the database and cannot be undone.'
+              : 'Achtung: Änderungen und Löschungen hier wirken direkt auf die Datenbank und können nicht rückgängig gemacht werden.'}
+          </span>
         </div>
 
         {/* Body */}
@@ -285,6 +348,18 @@ export default function DbOverviewModal({ onClose, language }: Props) {
             <table className="w-full border-collapse">
               <thead className="sticky top-0 bg-white dark:bg-gray-900 z-10">
                 <tr className="border-b border-gray-200 dark:border-gray-700">
+                  <th
+                    className={`${thClass} w-8`}
+                    title={isEn ? 'Consistency with the object configuration' : 'Konsistenz mit der Objekt-Konfiguration'}
+                    onClick={() => handleSort('__status__')}
+                  >
+                    <AlertTriangle size={11} className="inline-block opacity-60" />
+                    {sortKey === '__status__' && (
+                      sortDir === 'asc'
+                        ? <ChevronUp size={11} className="inline-block ml-0.5 opacity-60" />
+                        : <ChevronDown size={11} className="inline-block ml-0.5 opacity-60" />
+                    )}
+                  </th>
                   {columns.map((col) => (
                     <th key={col} className={thClass} onClick={() => handleSort(col)}>
                       {COLUMN_LABELS[col] ?? col}
@@ -310,8 +385,30 @@ export default function DbOverviewModal({ onClose, language }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {sorted.map((r, i) => (
-                  <tr key={r.id || i} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 group">
+                {sorted.map((r, i) => {
+                  const status = statusById.get(r.id) ?? 'unknown';
+                  return (
+                  <tr key={r.id || i} className={`border-b border-gray-100 dark:border-gray-800 group ${STATUS_ROW_CLASS[status]}`}>
+                    <td
+                      className={`${tdClass} text-center`}
+                      title={
+                        status === 'orphan'
+                          ? (isEn
+                              ? 'Stored in sql.0, but the object no longer exists'
+                              : 'In sql.0 gespeichert, aber Objekt existiert nicht mehr')
+                          : status === 'logging-off'
+                          ? (isEn
+                              ? 'Stored in sql.0, but logging is not enabled on the object'
+                              : 'In sql.0 gespeichert, aber Logging am Objekt nicht aktiv')
+                          : undefined
+                      }
+                    >
+                      {status === 'orphan' ? (
+                        <Unlink size={13} className="inline-block text-red-500" />
+                      ) : status === 'logging-off' ? (
+                        <AlertTriangle size={13} className="inline-block text-amber-500" />
+                      ) : null}
+                    </td>
                     {columns.map((col) => (
                       col === 'type' ? (
                         <td key={col} className={tdClass}>
@@ -321,13 +418,47 @@ export default function DbOverviewModal({ onClose, language }: Props) {
                         </td>
                       ) : col === 'id' ? (
                         <td key={col} className={`${tdClass} font-mono`}>
-                          <button
-                            className="text-left hover:underline"
-                            title={isEn ? 'Show stored values' : 'Gespeicherte Werte anzeigen'}
-                            onClick={(e) => { e.stopPropagation(); setValuesOf({ id: r.id, type: r.type }); }}
-                          >
-                            <ColoredId id={r.id} />
-                          </button>
+                          <span className="inline-flex items-center gap-1">
+                            <button
+                              className="text-left hover:underline"
+                              title={isEn ? 'Show stored values' : 'Gespeicherte Werte anzeigen'}
+                              onClick={(e) => { e.stopPropagation(); setValuesOf({ id: r.id, type: r.type }); }}
+                            >
+                              <ColoredId id={r.id} />
+                            </button>
+                            <button
+                              disabled={!r.id}
+                              title={isEn ? 'Show stored values' : 'Gespeicherte Werte anzeigen'}
+                              className="opacity-0 group-hover:opacity-100 p-1 rounded text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-opacity disabled:opacity-0"
+                              onClick={(e) => { e.stopPropagation(); setValuesOf({ id: r.id, type: r.type }); }}
+                            >
+                              <Search size={13} />
+                            </button>
+                            <button
+                              disabled={!r.id}
+                              title={isEn ? 'Show history chart' : 'History-Diagramm anzeigen'}
+                              className="opacity-0 group-hover:opacity-100 p-1 rounded text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-opacity disabled:opacity-0"
+                              onClick={(e) => { e.stopPropagation(); setHistoryOf(r.id); }}
+                            >
+                              <LineChart size={13} />
+                            </button>
+                            <button
+                              disabled={!r.id}
+                              title={isEn ? `Copy id (${r.id})` : `ID kopieren (${r.id})`}
+                              className="opacity-0 group-hover:opacity-100 p-1 rounded text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-opacity disabled:opacity-0"
+                              onClick={(e) => { e.stopPropagation(); copyId(r.id); }}
+                            >
+                              <Copy size={13} />
+                            </button>
+                            <button
+                              disabled={!r.id}
+                              title={isEn ? `Rename id in DB (${r.id})` : `ID in DB umbenennen (${r.id})`}
+                              className="opacity-0 group-hover:opacity-100 p-1 rounded text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-opacity disabled:opacity-0"
+                              onClick={(e) => { e.stopPropagation(); startRename(r.id); }}
+                            >
+                              <Pencil size={13} />
+                            </button>
+                          </span>
                         </td>
                       ) : (
                         <td key={col} className={`${tdClass} tabular-nums`}>
@@ -339,7 +470,16 @@ export default function DbOverviewModal({ onClose, language }: Props) {
                       {counts[r.id] === 'loading' ? (
                         <Loader2 size={13} className="inline-block animate-spin text-gray-400" />
                       ) : typeof counts[r.id] === 'number' ? (
-                        <span className="text-gray-700 dark:text-gray-300">{(counts[r.id] as number).toLocaleString()}</span>
+                        <span className="inline-flex items-center justify-end gap-1">
+                          <button
+                            title={isEn ? 'Recount stored values' : 'Gespeicherte Werte neu zählen'}
+                            className="opacity-0 group-hover:opacity-100 p-1 rounded text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-opacity"
+                            onClick={(e) => { e.stopPropagation(); loadCount(r.id, r.type); }}
+                          >
+                            <RefreshCw size={12} />
+                          </button>
+                          <span className="text-gray-700 dark:text-gray-300">{(counts[r.id] as number).toLocaleString()}</span>
+                        </span>
                       ) : (
                         <button
                           disabled={!r.id}
@@ -354,14 +494,6 @@ export default function DbOverviewModal({ onClose, language }: Props) {
                     <td className="px-2 py-1.5 text-right whitespace-nowrap">
                       <button
                         disabled={!r.id}
-                        title={isEn ? `Rename id in DB (${r.id})` : `ID in DB umbenennen (${r.id})`}
-                        className="opacity-0 group-hover:opacity-100 p-1 rounded text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-opacity disabled:opacity-0"
-                        onClick={(e) => { e.stopPropagation(); startRename(r.id); }}
-                      >
-                        <Pencil size={13} />
-                      </button>
-                      <button
-                        disabled={!r.id}
                         title={isEn ? `Delete all DB values for ${r.id}` : `Alle DB-Werte für ${r.id} löschen`}
                         className="opacity-0 group-hover:opacity-100 p-1 rounded text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-opacity disabled:opacity-0"
                         onClick={(e) => { e.stopPropagation(); setPendingDelete(r.id); }}
@@ -370,7 +502,8 @@ export default function DbOverviewModal({ onClose, language }: Props) {
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -444,12 +577,27 @@ export default function DbOverviewModal({ onClose, language }: Props) {
         )}
       </div>
 
+      {orphansOpen && (
+        <OrphanValuesModal language={language} onClose={() => setOrphansOpen(false)} />
+      )}
+
       {valuesOf && (
         <DpValuesModal
           id={valuesOf.id}
           type={valuesOf.type}
           language={language}
           onClose={() => setValuesOf(null)}
+        />
+      )}
+
+      {historyOf && (
+        <HistoryModal
+          stateId={historyOf}
+          unit={allObjects?.[historyOf]?.common?.unit}
+          objects={allObjects}
+          language={language}
+          zClass="z-[60]"
+          onClose={() => setHistoryOf(null)}
         />
       )}
     </div>,

@@ -1,13 +1,14 @@
 import { createPortal } from 'react-dom';
-import { X, Table2, Loader2, AlertTriangle, ChevronLeft, ChevronRight, Pencil, Check, Trash2, Copy } from 'lucide-react';
+import { X, Table2, Loader2, AlertTriangle, ChevronLeft, ChevronRight, Pencil, Check, Trash2, Copy, Rows3, RefreshCw, Plus, LineChart } from 'lucide-react';
 import { useState } from 'react';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
-import { useDpValues } from '../../hooks/useObjectQueries';
-import { updateDpValue, deleteHistoryEntry, deleteHistoryRange, getDpValueCount, tsTableForType, buildDpValuesSql } from '../../api/iobroker';
+import { useDpValues, useDpNumericId } from '../../hooks/useObjectQueries';
+import { updateDpValue, insertDpValue, deleteHistoryEntry, deleteHistoryRange, getDpValueCount, tsTableForType, buildDpValuesSql, buildDpPurgeSql, buildDpInsertSql, buildDpDedupeSql, findConsecutiveDuplicateTs, deleteDpValuesByTs } from '../../api/iobroker';
 import { copyToClipboard } from '../../utils/clipboard';
 import { useToast } from '../../context/ToastContext';
 import { ColoredId } from '../../utils/coloredId';
 import StyledCheckbox from '../ui/StyledCheckbox';
+import HistoryModal from './HistoryModal';
 
 const PAGE_SIZE = 20;
 
@@ -20,7 +21,6 @@ interface Props {
 
 // Paginated view of the raw stored value rows of a single datapoint (from ts_*).
 export default function DpValuesModal({ id, type, language, onClose }: Props) {
-  useEscapeKey(onClose);
   const isEn = language === 'en';
   const [page, setPage] = useState(0);
   const [fromStr, setFromStr] = useState('');
@@ -34,7 +34,9 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
   const { data, isLoading, isFetching, isError, error, refetch } = useDpValues(id, type, page, PAGE_SIZE, startTs, endTs);
   const rows = data ?? [];
   const hasNext = rows.length === PAGE_SIZE;
+  const { data: dpNumericId } = useDpNumericId(id);
 
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [editTs, setEditTs] = useState<number | null>(null);
   const [editVal, setEditVal] = useState('');
   const [saving, setSaving] = useState(false);
@@ -47,6 +49,60 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
   // Cutoff of the purge, resolved when the confirm opens so count and delete
   // use the exact same timestamp.
   const [purgeCutoff, setPurgeCutoff] = useState<number | null>(null);
+  const [confirmDedupe, setConfirmDedupe] = useState(false);
+  const [scanningDedupe, setScanningDedupe] = useState(false);
+  const [dedupeTs, setDedupeTs] = useState<number[] | null>(null);
+  const [deduping, setDeduping] = useState(false);
+  // When set, the dedupe ignores the timestamp filter and scans the whole datapoint.
+  const [dedupeWholeDp, setDedupeWholeDp] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [addTs, setAddTs] = useState(Date.now());
+  const [addVal, setAddVal] = useState('');
+  const [addAck, setAddAck] = useState(true);
+  const [adding, setAdding] = useState(false);
+
+  const hasTsFilter = startTs != null || endTs != null;
+  const addTsValid = Number.isFinite(addTs) && addTs > 0;
+  // Numbers must be entered explicitly; '' would silently become 0.
+  const addValValid = String(type) === 'string' || String(type) === 'boolean' || addVal.trim() !== '';
+
+  // Escape closes an open confirm first, the modal only when none is open.
+  useEscapeKey(() => {
+    if (confirmPurge) {
+      if (!purging) setConfirmPurge(false);
+    } else if (confirmDedupe) {
+      if (!deduping && !scanningDedupe) setConfirmDedupe(false);
+    } else if (addOpen) {
+      if (!adding) setAddOpen(false);
+    } else {
+      onClose();
+    }
+  });
+
+  // Opens the "add row" dialog, prefilled with the current time.
+  function startAdd() {
+    setAddTs(Date.now());
+    setAddVal('');
+    setAddAck(true);
+    setAddOpen(true);
+  }
+
+  // Inserts a new value row for this datapoint.
+  async function addRow() {
+    if (!addTsValid || !addValValid) return;
+    setAdding(true);
+    try {
+      await insertDpValue(id, type, addTs, addVal, addAck);
+      showToast(isEn ? 'Value added' : 'Wert hinzugefügt', 'success');
+      setAddOpen(false);
+      setPage(0);
+      await refetch();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : String(err), 'error');
+    } finally {
+      setAdding(false);
+    }
+  }
 
   // Opens the confirm and previews how many rows the purge would delete.
   async function startPurge() {
@@ -93,6 +149,63 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
     } finally {
       setPurging(false);
     }
+  }
+
+  // Opens the confirm and previews which rows the dedupe would delete.
+  async function scanDedupe(wholeDp: boolean) {
+    setDedupeTs(null);
+    setConfirmDedupe(true);
+    setScanningDedupe(true);
+    try {
+      setDedupeTs(await findConsecutiveDuplicateTs(id, type, wholeDp ? null : startTs, wholeDp ? null : endTs));
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : String(err), 'error');
+      setDedupeTs([]);
+    } finally {
+      setScanningDedupe(false);
+    }
+  }
+
+  // Delete every row that merely repeats the previous value; the first row of
+  // each run is kept, so the step curve stays identical.
+  async function runDedupe() {
+    if (dedupeTs == null || dedupeTs.length === 0) return;
+    setDeduping(true);
+    try {
+      await deleteDpValuesByTs(id, type, dedupeTs);
+      // Verify by re-scanning instead of trusting the delete response.
+      const remaining = await findConsecutiveDuplicateTs(id, type, dedupeWholeDp ? null : startTs, dedupeWholeDp ? null : endTs);
+      const deleted = dedupeTs.length - remaining.length;
+      if (remaining.length > 0) {
+        showToast(
+          isEn
+            ? `${remaining.length.toLocaleString()} duplicate value(s) could not be deleted`
+            : `${remaining.length.toLocaleString()} doppelte Wert(e) konnten nicht gelöscht werden`,
+          'error',
+        );
+      } else {
+        showToast(
+          isEn
+            ? `${deleted.toLocaleString()} duplicate value(s) deleted`
+            : `${deleted.toLocaleString()} doppelte Wert(e) gelöscht`,
+          'success',
+        );
+      }
+      setConfirmDedupe(false);
+      setDedupeTs(null);
+      setPage(0);
+      await refetch();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : String(err), 'error');
+    } finally {
+      setDeduping(false);
+    }
+  }
+
+  function copyId() {
+    copyToClipboard(id)
+      .then(() => showToast(isEn ? 'ID copied' : 'ID kopiert', 'success'))
+      .catch(() => showToast(isEn ? 'Copy failed' : 'Kopieren fehlgeschlagen', 'error'));
   }
 
   function copySql() {
@@ -142,7 +255,7 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
   return createPortal(
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center animate-backdrop-in bg-black/60 backdrop-blur-sm p-4"
-      onClick={onClose}
+      onClick={historyOpen ? undefined : onClose}
     >
       <div
         className="w-full max-w-7xl bg-white dark:bg-gray-900 animate-modal-in rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col h-[85vh]"
@@ -156,60 +269,74 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
               {isEn ? 'Stored values' : 'Gespeicherte Werte'}
             </h2>
             <ColoredId id={id} className="text-xs font-mono truncate" />
+            <button
+              onClick={copyId}
+              title={isEn ? 'Copy ID' : 'ID kopieren'}
+              className="shrink-0 p-1 rounded text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+            >
+              <Copy size={12} />
+            </button>
             <span
               className="shrink-0 px-1.5 py-0.5 rounded bg-gray-500/10 text-xs font-mono text-gray-600 dark:text-gray-300"
               title={isEn ? 'Source table' : 'Quell-Tabelle'}
             >
               {tsTableForType(type)}
             </span>
+            {dpNumericId != null && (
+              <span
+                className="shrink-0 px-1.5 py-0.5 rounded bg-blue-500/10 text-xs font-mono text-blue-600 dark:text-blue-400"
+                title={isEn ? 'Database id (datapoints.id)' : 'Datenbank-ID (datapoints.id)'}
+              >
+                id={dpNumericId}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            {confirmPurge ? (
-              <span className="inline-flex items-center gap-1">
-                <span className="text-xs text-red-600 dark:text-red-400 mr-1 flex items-center gap-1">
-                  {countingPurge ? (
-                    <>
-                      <Loader2 size={12} className="animate-spin" />
-                      {isEn ? 'Counting…' : 'Zähle…'}
-                    </>
-                  ) : purgeCount == null ? (
-                    isEn ? 'Delete values > 3 months?' : 'Werte > 3 Monate löschen?'
-                  ) : purgeCount === 0 ? (
-                    isEn ? 'No values older than 3 months' : 'Keine Werte älter als 3 Monate'
-                  ) : isEn ? (
-                    `Delete ${purgeCount.toLocaleString()} value${purgeCount === 1 ? '' : 's'} older than 3 months?`
-                  ) : (
-                    `${purgeCount.toLocaleString()} ${purgeCount === 1 ? 'Wert' : 'Werte'} älter als 3 Monate löschen?`
-                  )}
-                </span>
-                <button
-                  onClick={purgeOld}
-                  disabled={purging || countingPurge || purgeCount === 0}
-                  title={isEn ? 'Confirm delete' : 'Löschen bestätigen'}
-                  className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-40"
-                >
-                  {purging ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-                  {isEn ? 'Confirm' : 'Bestätigen'}
-                </button>
-                <button
-                  onClick={() => setConfirmPurge(false)}
-                  disabled={purging}
-                  title={isEn ? 'Cancel' : 'Abbrechen'}
-                  className="p-1 rounded text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40"
-                >
-                  <X size={14} />
-                </button>
-              </span>
-            ) : (
-              <button
-                onClick={startPurge}
-                title={isEn ? 'Delete all values older than 3 months' : 'Alle Werte älter als 3 Monate löschen'}
-                className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-red-50 hover:text-red-600 hover:border-red-300 dark:hover:bg-red-900/20 dark:hover:text-red-400 dark:hover:border-red-700"
-              >
-                <Trash2 size={12} />
-                {isEn ? '> 3M' : '> 3M'}
-              </button>
-            )}
+            <button
+              onClick={() => refetch()}
+              disabled={isFetching}
+              title={isEn ? 'Refresh rows' : 'Zeilen aktualisieren'}
+              className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
+            >
+              <RefreshCw size={12} className={isFetching ? 'animate-spin' : undefined} />
+              {isEn ? 'Refresh' : 'Aktualisieren'}
+            </button>
+            <button
+              onClick={() => setHistoryOpen(true)}
+              title={isEn ? 'Show history chart' : 'History-Diagramm anzeigen'}
+              className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              <LineChart size={12} />
+              {isEn ? 'Chart' : 'Diagramm'}
+            </button>
+            <button
+              onClick={startAdd}
+              title={isEn ? 'Add a new value row' : 'Neue Wert-Zeile hinzufügen'}
+              className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              <Plus size={12} />
+              {isEn ? 'New row' : 'Neue Zeile'}
+            </button>
+            <button
+              onClick={startPurge}
+              title={isEn ? 'Delete all values older than 3 months' : 'Alle Werte älter als 3 Monate löschen'}
+              className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-red-50 hover:text-red-600 hover:border-red-300 dark:hover:bg-red-900/20 dark:hover:text-red-400 dark:hover:border-red-700"
+            >
+              <Trash2 size={12} />
+              {isEn ? '> 3M' : '> 3M'}
+            </button>
+            <button
+              onClick={() => { setDedupeWholeDp(false); scanDedupe(false); }}
+              title={
+                isEn
+                  ? 'Delete consecutive duplicate values (keeps the first of each run)'
+                  : 'Aufeinanderfolgende gleiche Werte löschen (der erste einer Serie bleibt)'
+              }
+              className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-red-50 hover:text-red-600 hover:border-red-300 dark:hover:bg-red-900/20 dark:hover:text-red-400 dark:hover:border-red-700"
+            >
+              <Rows3 size={12} />
+              {isEn ? 'Dedupe' : 'Dedupe'}
+            </button>
             <button
               onClick={copySql}
               title={isEn ? 'Copy underlying SQL query' : 'Zugrundeliegende SQL-Abfrage kopieren'}
@@ -286,7 +413,15 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
               {isEn ? 'No values on this page.' : 'Keine Werte auf dieser Seite.'}
             </div>
           ) : (
-            <table className="w-full border-collapse">
+            <table className="w-full table-fixed border-collapse">
+              <colgroup>
+                <col className="w-52" />
+                <col className="w-40" />
+                <col className="w-14" />
+                <col className="w-12" />
+                <col />
+                <col className="w-16" />
+              </colgroup>
               <thead className="sticky top-0 bg-white dark:bg-gray-900 z-10">
                 <tr className="border-b border-gray-200 dark:border-gray-700">
                   <th className={thClass}>{isEn ? 'Timestamp' : 'Zeitstempel'}</th>
@@ -294,7 +429,7 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
                   <th className={`${thClass} text-center`}>Ack</th>
                   <th className={`${thClass} text-center`}>Q</th>
                   <th className={thClass}>{isEn ? 'Source' : 'Quelle'}</th>
-                  <th className="px-2 py-2 w-8" />
+                  <th className="px-2 py-2" />
                 </tr>
               </thead>
               <tbody>
@@ -346,7 +481,7 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
                       <span className={`inline-block w-2 h-2 rounded-full ${r.ack ? 'bg-emerald-500' : 'bg-amber-400'}`} title={r.ack ? 'ack' : 'not ack'} />
                     </td>
                     <td className={`${tdClass} text-center ${r.q ? 'text-amber-600 dark:text-amber-400' : 'text-gray-400 dark:text-gray-600'}`}>{r.q}</td>
-                    <td className={`${tdClass} font-mono text-gray-500 dark:text-gray-400`}>{r.src ?? '—'}</td>
+                    <td className={`${tdClass} font-mono text-gray-500 dark:text-gray-400 truncate`} title={r.src ?? undefined}>{r.src ?? '—'}</td>
                     <td className="px-2 py-1.5 text-right whitespace-nowrap">
                       {delTs === r.ts ? (
                         <span className="inline-flex items-center gap-1">
@@ -410,9 +545,377 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Purge confirm — sits above the modal */}
+      {confirmPurge && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center animate-backdrop-in bg-black/60 backdrop-blur-sm p-4"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!purging) setConfirmPurge(false);
+          }}
+        >
+          <div
+            className="w-full max-w-2xl bg-white dark:bg-gray-900 animate-modal-in rounded-xl shadow-2xl border border-red-300 dark:border-red-800 flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-200 dark:border-gray-700">
+              <AlertTriangle size={15} className="text-red-500 shrink-0" />
+              <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                {isEn ? 'Delete values older than 3 months' : 'Werte älter als 3 Monate löschen'}
+              </h3>
+            </div>
+
+            <div className="px-5 py-4 space-y-3">
+              <div className="text-xs text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                <ColoredId id={id} className="font-mono" />
+              </div>
+
+              <p className="text-sm text-red-600 dark:text-red-400 flex items-center gap-1.5">
+                {countingPurge ? (
+                  <>
+                    <Loader2 size={13} className="animate-spin" />
+                    {isEn ? 'Counting…' : 'Zähle…'}
+                  </>
+                ) : purgeCount == null ? (
+                  isEn ? 'Delete values older than 3 months?' : 'Werte älter als 3 Monate löschen?'
+                ) : purgeCount === 0 ? (
+                  isEn ? 'No values older than 3 months' : 'Keine Werte älter als 3 Monate'
+                ) : isEn ? (
+                  `Delete ${purgeCount.toLocaleString()} value${purgeCount === 1 ? '' : 's'} older than 3 months? This cannot be undone.`
+                ) : (
+                  `${purgeCount.toLocaleString()} ${purgeCount === 1 ? 'Wert' : 'Werte'} älter als 3 Monate löschen? Das kann nicht rückgängig gemacht werden.`
+                )}
+              </p>
+
+              {purgeCutoff != null && (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+                      {isEn ? 'SQL to be executed' : 'Auszuführendes SQL'}
+                    </span>
+                    <button
+                      onClick={() => {
+                        copyToClipboard(buildDpPurgeSql(id, type, purgeCutoff))
+                          .then(() => showToast(isEn ? 'SQL copied' : 'SQL kopiert', 'success'))
+                          .catch(() => showToast(isEn ? 'Copy failed' : 'Kopieren fehlgeschlagen', 'error'));
+                      }}
+                      className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      <Copy size={12} />
+                      SQL
+                    </button>
+                  </div>
+                  <pre className="px-3 py-2 rounded bg-gray-100 dark:bg-gray-800 text-xs font-mono text-gray-700 dark:text-gray-300 overflow-x-auto whitespace-pre">
+                    {buildDpPurgeSql(id, type, purgeCutoff)}
+                  </pre>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => setConfirmPurge(false)}
+                disabled={purging}
+                className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
+              >
+                {isEn ? 'Cancel' : 'Abbrechen'}
+              </button>
+              <button
+                onClick={purgeOld}
+                disabled={purging || countingPurge || purgeCount === 0}
+                className="flex items-center gap-1 px-3 py-1.5 text-xs rounded border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-40"
+              >
+                {purging ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                {isEn ? 'Delete' : 'Löschen'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add row dialog — sits above the modal */}
+      {addOpen && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center animate-backdrop-in bg-black/60 backdrop-blur-sm p-4"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!adding) setAddOpen(false);
+          }}
+        >
+          <div
+            className="w-full max-w-2xl bg-white dark:bg-gray-900 animate-modal-in rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-200 dark:border-gray-700">
+              <Plus size={15} className="text-blue-500 shrink-0" />
+              <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                {isEn ? 'Add value row' : 'Wert-Zeile hinzufügen'}
+              </h3>
+            </div>
+
+            <div className="px-5 py-4 space-y-3">
+              <div className="text-xs text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                <ColoredId id={id} className="font-mono" />
+                <span className="px-1.5 py-0.5 rounded bg-gray-500/10 font-mono text-gray-600 dark:text-gray-300">
+                  {tsTableForType(type)}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-gray-500 dark:text-gray-400 w-24 shrink-0">
+                  {isEn ? 'Timestamp' : 'Zeitstempel'}
+                </span>
+                <input
+                  type="datetime-local"
+                  step="1"
+                  value={addTsValid ? toLocalInput(addTs) : ''}
+                  onChange={(e) => {
+                    const ms = new Date(e.target.value).getTime();
+                    if (!Number.isNaN(ms)) setAddTs(ms);
+                  }}
+                  className="px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400 [color-scheme:light] dark:[color-scheme:dark]"
+                />
+                <input
+                  type="number"
+                  value={Number.isFinite(addTs) ? addTs : ''}
+                  onChange={(e) => setAddTs(Number(e.target.value))}
+                  title={isEn ? 'Raw epoch (ms)' : 'Roh-Epoch (ms)'}
+                  className="w-40 px-2 py-1 text-xs font-mono tabular-nums rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                />
+                <button
+                  onClick={() => setAddTs(Date.now())}
+                  className="px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  {isEn ? 'Now' : 'Jetzt'}
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500 dark:text-gray-400 w-24 shrink-0">
+                  {isEn ? 'Value' : 'Wert'}
+                </span>
+                {String(type) === 'boolean' ? (
+                  <select
+                    value={addVal === 'true' ? 'true' : 'false'}
+                    onChange={(e) => setAddVal(e.target.value)}
+                    className="px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                  >
+                    <option value="true">true</option>
+                    <option value="false">false</option>
+                  </select>
+                ) : (
+                  <input
+                    autoFocus
+                    type={String(type) === 'string' ? 'text' : 'number'}
+                    value={addVal}
+                    onChange={(e) => setAddVal(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !adding) addRow(); }}
+                    className="flex-1 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                  />
+                )}
+                <label className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 cursor-pointer select-none">
+                  <StyledCheckbox checked={addAck} onChange={(e) => setAddAck(e.target.checked)} />
+                  Ack
+                </label>
+              </div>
+
+              {addTsValid && (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+                      {isEn ? 'SQL to be executed' : 'Auszuführendes SQL'}
+                    </span>
+                    <button
+                      onClick={() => {
+                        copyToClipboard(safeInsertSql(id, type, addTs, addVal, addAck))
+                          .then(() => showToast(isEn ? 'SQL copied' : 'SQL kopiert', 'success'))
+                          .catch(() => showToast(isEn ? 'Copy failed' : 'Kopieren fehlgeschlagen', 'error'));
+                      }}
+                      className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      <Copy size={12} />
+                      SQL
+                    </button>
+                  </div>
+                  <pre className="px-3 py-2 rounded bg-gray-100 dark:bg-gray-800 text-xs font-mono text-gray-700 dark:text-gray-300 overflow-x-auto whitespace-pre">
+                    {safeInsertSql(id, type, addTs, addVal, addAck)}
+                  </pre>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => setAddOpen(false)}
+                disabled={adding}
+                className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
+              >
+                {isEn ? 'Cancel' : 'Abbrechen'}
+              </button>
+              <button
+                onClick={addRow}
+                disabled={adding || !addTsValid || !addValValid}
+                className="flex items-center gap-1 px-3 py-1.5 text-xs rounded border border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 disabled:opacity-40"
+              >
+                {adding ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                {isEn ? 'Add' : 'Hinzufügen'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dedupe confirm — sits above the modal */}
+      {confirmDedupe && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center animate-backdrop-in bg-black/60 backdrop-blur-sm p-4"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!deduping && !scanningDedupe) setConfirmDedupe(false);
+          }}
+        >
+          <div
+            className="w-full max-w-2xl bg-white dark:bg-gray-900 animate-modal-in rounded-xl shadow-2xl border border-red-300 dark:border-red-800 flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-200 dark:border-gray-700">
+              <AlertTriangle size={15} className="text-red-500 shrink-0" />
+              <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                {isEn ? 'Delete consecutive duplicate values' : 'Aufeinanderfolgende gleiche Werte löschen'}
+              </h3>
+            </div>
+
+            <div className="px-5 py-4 space-y-3">
+              <div className="text-xs text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                <ColoredId id={id} className="font-mono" />
+              </div>
+
+              <p className="text-sm text-red-600 dark:text-red-400 flex items-center gap-1.5">
+                {scanningDedupe ? (
+                  <>
+                    <Loader2 size={13} className="animate-spin" />
+                    {isEn ? 'Scanning…' : 'Scanne…'}
+                  </>
+                ) : dedupeTs == null ? (
+                  isEn ? 'Delete consecutive duplicate values?' : 'Aufeinanderfolgende gleiche Werte löschen?'
+                ) : dedupeTs.length === 0 ? (
+                  isEn ? 'No consecutive duplicate values found' : 'Keine aufeinanderfolgenden gleichen Werte gefunden'
+                ) : isEn ? (
+                  `Delete ${dedupeTs.length.toLocaleString()} duplicate value${dedupeTs.length === 1 ? '' : 's'}? This cannot be undone.`
+                ) : (
+                  `${dedupeTs.length.toLocaleString()} doppelte ${dedupeTs.length === 1 ? 'Wert' : 'Werte'} löschen? Das kann nicht rückgängig gemacht werden.`
+                )}
+              </p>
+
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {isEn
+                  ? 'The first (oldest) value of each run is kept, so the history curve stays identical.'
+                  : 'Der erste (älteste) Wert jeder Serie bleibt erhalten — der Verlauf bleibt dadurch identisch.'}
+              </p>
+
+              {hasTsFilter && (
+                <label
+                  className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 cursor-pointer select-none"
+                  title={
+                    isEn
+                      ? 'Ignore the timestamp filter and scan all stored values of this datapoint'
+                      : 'Zeitfilter ignorieren und alle gespeicherten Werte dieses Datenpunkts scannen'
+                  }
+                >
+                  <StyledCheckbox
+                    checked={dedupeWholeDp}
+                    onChange={(e) => {
+                      if (scanningDedupe || deduping) return;
+                      setDedupeWholeDp(e.target.checked);
+                      scanDedupe(e.target.checked);
+                    }}
+                  />
+                  {isEn ? 'Whole datapoint (ignore timestamp filter)' : 'Ganzer Datenpunkt (Zeitfilter ignorieren)'}
+                </label>
+              )}
+
+              {hasTsFilter && !dedupeWholeDp && (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {isEn
+                    ? 'Only the filtered range is scanned — its first row is always kept, even if it repeats the value before the range.'
+                    : 'Es wird nur der gefilterte Bereich gescannt — dessen erste Zeile bleibt immer erhalten, auch wenn sie den Wert davor wiederholt.'}
+                </p>
+              )}
+
+              {dedupeTs != null && dedupeTs.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+                      {isEn ? 'SQL to be executed' : 'Auszuführendes SQL'}
+                    </span>
+                    <button
+                      onClick={() => {
+                        // Copy the full statement — the preview truncates the ts list.
+                        copyToClipboard(buildDpDedupeSql(id, type, dedupeTs, Infinity))
+                          .then(() => showToast(isEn ? 'SQL copied' : 'SQL kopiert', 'success'))
+                          .catch(() => showToast(isEn ? 'Copy failed' : 'Kopieren fehlgeschlagen', 'error'));
+                      }}
+                      className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      <Copy size={12} />
+                      SQL
+                    </button>
+                  </div>
+                  <pre className="px-3 py-2 rounded bg-gray-100 dark:bg-gray-800 text-xs font-mono text-gray-700 dark:text-gray-300 overflow-x-auto whitespace-pre">
+                    {buildDpDedupeSql(id, type, dedupeTs)}
+                  </pre>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => setConfirmDedupe(false)}
+                disabled={deduping}
+                className="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
+              >
+                {isEn ? 'Cancel' : 'Abbrechen'}
+              </button>
+              <button
+                onClick={runDedupe}
+                disabled={deduping || scanningDedupe || dedupeTs == null || dedupeTs.length === 0}
+                className="flex items-center gap-1 px-3 py-1.5 text-xs rounded border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-40"
+              >
+                {deduping ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                {isEn ? 'Delete' : 'Löschen'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {historyOpen && (
+        <HistoryModal
+          stateId={id}
+          language={language}
+          zClass="z-[70]"
+          onClose={() => setHistoryOpen(false)}
+        />
+      )}
     </div>,
     document.body
   );
+}
+
+// Epoch ms → the "YYYY-MM-DDTHH:mm:ss" string a datetime-local input expects (local time).
+function toLocalInput(ms: number): string {
+  const d = new Date(ms - new Date(ms).getTimezoneOffset() * 60000);
+  return d.toISOString().slice(0, 19);
+}
+
+// buildDpInsertSql throws on an unparsable number — show that instead of crashing.
+function safeInsertSql(id: string, type: unknown, ts: number, val: string, ack: boolean): string {
+  try {
+    return buildDpInsertSql(id, type, ts, val, ack);
+  } catch (err) {
+    return `-- ${err instanceof Error ? err.message : String(err)}`;
+  }
 }
 
 function formatVal(v: unknown): string {

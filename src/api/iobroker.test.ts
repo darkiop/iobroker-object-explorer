@@ -6,6 +6,10 @@ import {
   buildAliasReverseMap,
   hasHistory,
   hasSmartName,
+  pickDuplicateTs,
+  buildOrphanValuesSql,
+  buildOrphanDeleteSql,
+  deleteOrphanValueRows,
 } from './iobroker'
 import type { IoBrokerObject } from '../types/iobroker'
 
@@ -261,5 +265,126 @@ describe('getStatesBatch fallback to per-namespace patterns', () => {
     expect(commandUrls.some((u) => u.includes('pattern=*') && !u.includes('pattern=%2A'))).toBe(false)
     expect(commandUrls.some((u) => u.includes(encodeURIComponent('hm-rpc.0.*')))).toBe(true)
     expect(commandUrls.some((u) => u.includes(encodeURIComponent('javascript.0.*')))).toBe(true)
+  })
+})
+
+describe('pickDuplicateTs', () => {
+  it('empty input → no duplicates', () => {
+    const res = pickDuplicateTs([], 'number')
+    expect(res.ts).toEqual([])
+    expect(res.last).toBeNull()
+  })
+
+  it('all values distinct → nothing deleted', () => {
+    const rows = [{ ts: 1, val: 1 }, { ts: 2, val: 2 }, { ts: 3, val: 3 }]
+    expect(pickDuplicateTs(rows, 'number').ts).toEqual([])
+  })
+
+  it('keeps the first of each run, deletes the rest', () => {
+    const rows = [
+      { ts: 1, val: 5 },
+      { ts: 2, val: 5 },
+      { ts: 3, val: 5 },
+      { ts: 4, val: 7 },
+      { ts: 5, val: 5 },
+      { ts: 6, val: 5 },
+    ]
+    expect(pickDuplicateTs(rows, 'number').ts).toEqual([2, 3, 6])
+  })
+
+  it('whole series identical → all but the first deleted', () => {
+    const rows = [{ ts: 1, val: 42 }, { ts: 2, val: 42 }, { ts: 3, val: 42 }]
+    expect(pickDuplicateTs(rows, 'number').ts).toEqual([2, 3])
+  })
+
+  it('number values arriving as strings compare equal', () => {
+    const rows = [{ ts: 1, val: 1.5 }, { ts: 2, val: '1.5' }, { ts: 3, val: 2 }]
+    expect(pickDuplicateTs(rows, 'number').ts).toEqual([2])
+  })
+
+  it('boolean 0/1 and false/true compare equal', () => {
+    const rows = [
+      { ts: 1, val: 0 },
+      { ts: 2, val: false },
+      { ts: 3, val: 1 },
+      { ts: 4, val: true },
+      { ts: 5, val: 'true' },
+    ]
+    expect(pickDuplicateTs(rows, 'boolean').ts).toEqual([2, 4, 5])
+  })
+
+  it('string values compare exactly', () => {
+    const rows = [{ ts: 1, val: 'on' }, { ts: 2, val: 'on' }, { ts: 3, val: 'On' }]
+    expect(pickDuplicateTs(rows, 'string').ts).toEqual([2])
+  })
+
+  it('NaN repeats count as duplicates', () => {
+    const rows = [{ ts: 1, val: 'x' }, { ts: 2, val: 'y' }]
+    expect(pickDuplicateTs(rows, 'number').ts).toEqual([2])
+  })
+
+  it('carries the previous value across chunk borders', () => {
+    const first = pickDuplicateTs([{ ts: 1, val: 3 }, { ts: 2, val: 3 }], 'number')
+    expect(first.ts).toEqual([2])
+    const second = pickDuplicateTs([{ ts: 3, val: 3 }, { ts: 4, val: 4 }], 'number', first.last)
+    expect(second.ts).toEqual([3])
+  })
+
+  it('without carry the first row of a chunk is always kept', () => {
+    const second = pickDuplicateTs([{ ts: 3, val: 3 }, { ts: 4, val: 3 }], 'number')
+    expect(second.ts).toEqual([4])
+  })
+})
+
+describe('buildOrphanValuesSql', () => {
+  const sql = buildOrphanValuesSql()
+
+  it('covers all three value tables', () => {
+    expect(sql).toContain('iobroker.ts_number')
+    expect(sql).toContain('iobroker.ts_string')
+    expect(sql).toContain('iobroker.ts_bool')
+    expect(sql.match(/UNION ALL/g)).toHaveLength(2)
+  })
+
+  it('selects only rows with no matching datapoints row', () => {
+    expect(sql.match(/LEFT JOIN iobroker\.datapoints d ON d\.id = n\.id/g)).toHaveLength(3)
+    expect(sql.match(/WHERE d\.id IS NULL/g)).toHaveLength(3)
+  })
+
+  it('groups per id so each orphan id yields one row', () => {
+    expect(sql.match(/GROUP BY n\.id/g)).toHaveLength(3)
+  })
+})
+
+describe('buildOrphanDeleteSql', () => {
+  it('deletes only the given id and re-checks it is still orphaned', () => {
+    const sql = buildOrphanDeleteSql('ts_number', 42)
+    expect(sql).toContain('DELETE n FROM iobroker.ts_number n')
+    expect(sql).toContain('WHERE n.id = 42')
+    expect(sql).toContain('NOT EXISTS')
+    expect(sql).toContain('SELECT 1 FROM iobroker.datapoints d WHERE d.id = n.id')
+  })
+
+  it('floors the id so no fractional literal reaches the statement', () => {
+    expect(buildOrphanDeleteSql('ts_bool', 7.9)).toContain('WHERE n.id = 7')
+  })
+})
+
+describe('deleteOrphanValueRows', () => {
+  afterEach(() => { vi.restoreAllMocks() })
+
+  it('rejects a table name outside the ts_* whitelist', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+    await expect(deleteOrphanValueRows('datapoints', 1)).rejects.toThrow(/Unknown value table/)
+    await expect(deleteOrphanValueRows('ts_number; DROP TABLE datapoints', 1)).rejects.toThrow(
+      /Unknown value table/
+    )
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('rejects a non-numeric db id', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+    await expect(deleteOrphanValueRows('ts_number', Number('x'))).rejects.toThrow(/Invalid db id/)
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 })

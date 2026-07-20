@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import {
   getObjectsByPattern, getStateObjectsFastCached, getStatesBatch, getState,
-  getObject, getObjectFresh, getHistory, getDpOverview, getDbStats, getDpValues, getDpNumericIdMap, getAllRoles, getAllUnits,
+  getObject, getObjectFresh, getHistory, getDpOverview, getDbStats, getDpValues, getDpNumericIdMap, resolveDpNumericId, getAllRoles, getAllUnits,
   getRoomMap, getAllObjectsCached, getRoomEnums, getFunctionMap, getFunctionEnums,
   buildAliasReverseMap, getCustomSupportedInstances, getAllScriptSourcesCached,
   getScriptUsedIds, findScriptsUsingObject, compilePattern, isGlobPattern,
@@ -168,6 +168,16 @@ export function useDpValues(
     enabled: !!id,
     staleTime: 30_000,
     placeholderData: (prev) => prev,
+  });
+}
+
+// Numeric datapoints.id of a state — immutable for a given name, so never stale.
+export function useDpNumericId(id: string | null) {
+  return useQuery({
+    queryKey: ['history', 'dpNumericId', id] as const,
+    queryFn: () => resolveDpNumericId(id!),
+    enabled: !!id,
+    staleTime: Infinity,
   });
 }
 

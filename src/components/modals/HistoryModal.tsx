@@ -15,6 +15,8 @@ interface Props {
   language?: 'en' | 'de';
   dateFormat?: 'de' | 'us' | 'iso';
   initialExtraSeries?: ExtraSeries[];
+  /** Tailwind z-index class — raise it when opened from a modal that already sits above z-50. */
+  zClass?: string;
 }
 
 function getObjectName(obj: IoBrokerObject | undefined): string {
@@ -23,7 +25,7 @@ function getObjectName(obj: IoBrokerObject | undefined): string {
   return obj.common.name.de || obj.common.name.en || Object.values(obj.common.name)[0] || '';
 }
 
-export default function HistoryModal({ stateId, unit, onClose, objects, language = 'en', dateFormat = 'de', initialExtraSeries }: Props) {
+export default function HistoryModal({ stateId, unit, onClose, objects, language = 'en', dateFormat = 'de', initialExtraSeries, zClass = 'z-50' }: Props) {
   const isEn = language === 'en';
   const [extraSeries, setExtraSeries] = useState<ExtraSeries[]>(initialExtraSeries ?? []);
   const [addInput, setAddInput] = useState('');
@@ -93,7 +95,7 @@ export default function HistoryModal({ stateId, unit, onClose, objects, language
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center animate-backdrop-in bg-black/60 backdrop-blur-sm p-4"
+      className={`fixed inset-0 ${zClass} flex items-center justify-center animate-backdrop-in bg-black/60 backdrop-blur-sm p-4`}
       onClick={onClose}
     >
       <div

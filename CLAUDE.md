@@ -131,6 +131,7 @@ This ensures the tree always shows the full namespace, independent of the search
 | `ImportDatapointsModal` | `modals/ImportDatapointsModal.tsx` | Import datapoints from JSON file |
 | `OptimizeModal` | `modals/OptimizeModal.tsx` | Metadata quality scanner with inline batch fix controls |
 | `VirtualFoldersModal` | `modals/VirtualFoldersModal.tsx` | Lists intermediate folder paths that have no real ioBroker object; filter input (default `alias.0.`), row filter button sets table ID filter |
+| `OrphanValuesModal` | `modals/OrphanValuesModal.tsx` | On-demand scan for `ts_*` value rows whose numeric id no longer exists in `datapoints`; per-group delete with SQL preview. Opened from DbOverviewModal. |
 | `TreeStatsModal` | `modals/TreeStatsModal.tsx` | Namespace statistics table with subtree delete and script index |
 | `EnumManagerModal` | `modals/EnumManagerModal.tsx` | Room and function enum manager |
 | `ValueEditModal` | `modals/ValueEditModal.tsx` | Standalone value edit modal |
