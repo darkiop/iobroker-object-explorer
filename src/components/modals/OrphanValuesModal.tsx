@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Unlink, Loader2, AlertTriangle, Trash2, Copy, Search } from 'lucide-react';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
@@ -27,7 +27,9 @@ export default function OrphanValuesModal({ onClose, language }: Props) {
   const showToast = useToast();
 
   const [rows, setRows] = useState<OrphanValueGroup[] | null>(null);
-  const [scanning, setScanning] = useState(false);
+  // Starts true: the scan kicks off on mount, so the empty state would only
+  // flash for a frame before the spinner replaces it.
+  const [scanning, setScanning] = useState(true);
   const [scanError, setScanError] = useState<string | null>(null);
   const [pending, setPending] = useState<OrphanValueGroup | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -48,6 +50,13 @@ export default function OrphanValuesModal({ onClose, language }: Props) {
       setScanning(false);
     }
   }
+
+  // The gap-probing scan is fast enough to run unprompted; the button in the
+  // header is only there to re-run it.
+  useEffect(() => {
+    void scan();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function copySql() {
     copyToClipboard(buildOrphanValuesSql())
@@ -117,7 +126,7 @@ export default function OrphanValuesModal({ onClose, language }: Props) {
               className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
             >
               {scanning ? <Loader2 size={12} className="animate-spin" /> : <Search size={12} />}
-              {rows ? (isEn ? 'Rescan' : 'Neu scannen') : isEn ? 'Scan' : 'Scannen'}
+              {isEn ? 'Rescan' : 'Neu scannen'}
             </button>
             <button
               onClick={onClose}
@@ -148,22 +157,14 @@ export default function OrphanValuesModal({ onClose, language }: Props) {
                 <div className="text-xs text-red-500/80 mt-1">{scanError}</div>
               </div>
             </div>
-          ) : rows === null ? (
-            <div className="px-6 py-14 text-center text-sm text-gray-500 dark:text-gray-400 space-y-2">
-              <p>
-                {isEn
-                  ? 'Finds value rows whose datapoint id no longer exists in the datapoints table.'
-                  : 'Findet Wert-Zeilen, deren Datenpunkt-ID nicht mehr in der Tabelle datapoints existiert.'}
-              </p>
+          ) : rows === null || rows.length === 0 ? (
+            <div className="px-6 py-16 text-center text-sm text-gray-500 dark:text-gray-400 space-y-2">
+              <p>{isEn ? 'No orphan value rows found.' : 'Keine verwaisten Wert-Zeilen gefunden.'}</p>
               <p className="text-xs text-gray-400 dark:text-gray-500">
                 {isEn
-                  ? 'Probes only the gaps in the datapoints id sequence, using the (id, ts) index — no full table scan.'
-                  : 'Prüft nur die Lücken in der datapoints-ID-Folge über den (id, ts)-Index — kein vollständiger Tabellen-Scan.'}
+                  ? 'Every value row still has its datapoint in the datapoints table.'
+                  : 'Jede Wert-Zeile hat noch ihren Datenpunkt in der Tabelle datapoints.'}
               </p>
-            </div>
-          ) : rows.length === 0 ? (
-            <div className="py-16 text-center text-sm text-gray-500 dark:text-gray-400">
-              {isEn ? 'No orphan value rows found.' : 'Keine verwaisten Wert-Zeilen gefunden.'}
             </div>
           ) : (
             <table className="w-full border-collapse">
