@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { X, Database, ChevronUp, ChevronDown, Loader2, AlertTriangle, Trash2, Pencil, Hash, Copy, Unlink, Search, RefreshCw, LineChart } from 'lucide-react';
+import { X, Database, ChevronUp, ChevronDown, Loader2, AlertTriangle, Trash2, Pencil, Hash, Copy, Unlink, Search, RefreshCw, LineChart, FilterX } from 'lucide-react';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { useDpOverview, useDbStats, useDpNumericIds, useAllObjects } from '../../hooks/useObjectQueries';
 import { queryKeys } from '../../hooks/queryKeys';
@@ -48,7 +48,9 @@ export default function DbOverviewModal({ onClose, language }: Props) {
   const { data: allObjects } = useAllObjects();
   const queryClient = useQueryClient();
   const showToast = useToast();
-  const [filter, setFilter] = useState('');
+  // One filter per column, keyed by column name plus the two synthetic columns
+  // '__status__' (exact match on DpStatus) and '__count__' (substring on the count).
+  const [colFilters, setColFilters] = useState<Record<string, string>>({});
   const [sortKey, setSortKey] = useState<string>('id');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [rawTs, setRawTs] = useState(false);
@@ -179,11 +181,33 @@ export default function DbOverviewModal({ onClose, language }: Props) {
     return ['id', ...Array.from(keys).sort()];
   }, [rows]);
 
+  // Active filters as [column, lowercased query] pairs — recomputed once per change
+  // instead of per row.
+  const activeFilters = useMemo(
+    () =>
+      Object.entries(colFilters)
+        .map(([col, q]) => [col, q.trim().toLowerCase()] as const)
+        .filter(([, q]) => q !== ''),
+    [colFilters]
+  );
+
   const filtered = useMemo(() => {
-    const q = filter.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((r) => r.id.toLowerCase().includes(q));
-  }, [rows, filter]);
+    if (activeFilters.length === 0) return rows;
+    const now = Date.now();
+    return rows.filter((r) =>
+      activeFilters.every(([col, q]) => {
+        if (col === '__status__') return (statusById.get(r.id) ?? 'unknown') === q;
+        if (isTsColumn(col)) return matchesTsFilter(r[col], q, now);
+        if (col === '__count__') {
+          const c = counts[r.id];
+          return typeof c === 'number' && String(c).includes(q);
+        }
+        // Match what the cell actually shows, so a filter on a ts column works
+        // against the formatted date the user sees.
+        return formatCell(col, r[col], rawTs).toLowerCase().includes(q);
+      })
+    );
+  }, [rows, activeFilters, statusById, counts, rawTs]);
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
@@ -208,6 +232,10 @@ export default function DbOverviewModal({ onClose, language }: Props) {
     });
   }, [filtered, sortKey, sortDir, counts, statusById]);
 
+  function setColFilter(col: string, value: string) {
+    setColFilters((f) => ({ ...f, [col]: value }));
+  }
+
   function handleSort(key: string) {
     if (key === sortKey) {
       setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -219,6 +247,7 @@ export default function DbOverviewModal({ onClose, language }: Props) {
 
   const thClass = 'px-2 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 cursor-pointer select-none hover:text-gray-800 dark:hover:text-gray-200 whitespace-nowrap';
   const tdClass = 'px-2 py-1.5 text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap';
+  const filterInputClass = 'w-full min-w-0 px-1.5 py-0.5 text-xs font-normal rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400';
 
   return createPortal(
     <div
@@ -226,7 +255,7 @@ export default function DbOverviewModal({ onClose, language }: Props) {
       onClick={pendingDelete || renameOldId || orphansOpen || historyOf ? undefined : onClose}
     >
       <div
-        className="w-full max-w-7xl bg-white dark:bg-gray-900 animate-modal-in rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[85vh]"
+        className="w-full max-w-7xl bg-white dark:bg-gray-900 animate-modal-in rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col h-[85vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -243,7 +272,7 @@ export default function DbOverviewModal({ onClose, language }: Props) {
               datapoints
             </span>
             <span className="text-xs text-gray-400 dark:text-gray-500">
-              ({filtered.length}{filter ? ` / ${rows.length}` : ''} {isEn ? 'datapoints' : 'Datenpunkte'})
+              ({filtered.length}{activeFilters.length > 0 ? ` / ${rows.length}` : ''} {isEn ? 'datapoints' : 'Datenpunkte'})
             </span>
             {stats && (
               <span className="flex items-center gap-2 text-xs">
@@ -293,12 +322,16 @@ export default function DbOverviewModal({ onClose, language }: Props) {
               <Unlink size={12} />
               {isEn ? 'Orphan rows' : 'Verwaiste Zeilen'}
             </button>
-            <input
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              placeholder={isEn ? 'Filter by ID…' : 'Nach ID filtern…'}
-              className="px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400 w-48"
-            />
+            {activeFilters.length > 0 && (
+              <button
+                onClick={() => setColFilters({})}
+                title={isEn ? 'Clear all column filters' : 'Alle Spaltenfilter zurücksetzen'}
+                className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <FilterX size={12} />
+                {isEn ? 'Clear filters' : 'Filter löschen'}
+              </button>
+            )}
             <button
               onClick={onClose}
               className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -382,6 +415,65 @@ export default function DbOverviewModal({ onClose, language }: Props) {
                     )}
                   </th>
                   <th className="px-2 py-2 w-8" />
+                </tr>
+                {/* Per-column filters — replaces the single ID filter that used to sit in the header */}
+                <tr className="border-b border-gray-200 dark:border-gray-700">
+                  <th className="px-1 pb-2">
+                    <select
+                      value={colFilters.__status__ ?? ''}
+                      onChange={(e) => setColFilter('__status__', e.target.value)}
+                      title={isEn ? 'Filter by status' : 'Nach Status filtern'}
+                      className={filterInputClass}
+                    >
+                      <option value="">{isEn ? 'All' : 'Alle'}</option>
+                      <option value="ok">OK</option>
+                      <option value="logging-off">{isEn ? 'Logging off' : 'Logging aus'}</option>
+                      <option value="orphan">{isEn ? 'Orphan' : 'Verwaist'}</option>
+                      <option value="unknown">{isEn ? 'Unknown' : 'Unbekannt'}</option>
+                    </select>
+                  </th>
+                  {columns.map((col) => (
+                    <th key={col} className="px-1 pb-2">
+                      {isTsColumn(col) ? (
+                        <select
+                          value={colFilters[col] ?? ''}
+                          onChange={(e) => setColFilter(col, e.target.value)}
+                          title={isEn ? 'Filter by age' : 'Nach Alter filtern'}
+                          className={filterInputClass}
+                        >
+                          <option value="">{isEn ? 'Any date' : 'Beliebig'}</option>
+                          {TS_FILTER_OPTIONS.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {isEn ? o.en : o.de}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          value={colFilters[col] ?? ''}
+                          onChange={(e) => setColFilter(col, e.target.value)}
+                          placeholder={isEn ? 'Filter…' : 'Filter…'}
+                          spellCheck={false}
+                          className={filterInputClass}
+                        />
+                      )}
+                    </th>
+                  ))}
+                  <th className="px-1 pb-2">
+                    <input
+                      value={colFilters.__count__ ?? ''}
+                      onChange={(e) => setColFilter('__count__', e.target.value)}
+                      placeholder={isEn ? 'Filter…' : 'Filter…'}
+                      title={
+                        isEn
+                          ? 'Only matches rows whose values have been counted'
+                          : 'Trifft nur Zeilen, deren Werte gezählt wurden'
+                      }
+                      spellCheck={false}
+                      className={`${filterInputClass} text-right`}
+                    />
+                  </th>
+                  <th className="px-2 pb-2 w-8" />
                 </tr>
               </thead>
               <tbody>
@@ -603,6 +695,35 @@ export default function DbOverviewModal({ onClose, language }: Props) {
     </div>,
     document.body
   );
+}
+
+// Epoch-ms columns: `ts` plus anything camel-cased like `firstTs` / `lastTs`.
+function isTsColumn(col: string): boolean {
+  return col === 'ts' || col.endsWith('Ts');
+}
+
+const DAY = 86_400_000;
+
+// Relative age buckets for the ts filter dropdown. `dir` decides which side of
+// `now - ms` a row has to fall on; resolved against Date.now() at filter time.
+const TS_FILTER_OPTIONS: { value: string; ms: number; dir: 'newer' | 'older'; en: string; de: string }[] = [
+  { value: 'newer:1', ms: DAY, dir: 'newer', en: 'Last 24 hours', de: 'Letzte 24 Stunden' },
+  { value: 'newer:7', ms: 7 * DAY, dir: 'newer', en: 'Last 7 days', de: 'Letzte 7 Tage' },
+  { value: 'newer:30', ms: 30 * DAY, dir: 'newer', en: 'Last 30 days', de: 'Letzte 30 Tage' },
+  { value: 'older:7', ms: 7 * DAY, dir: 'older', en: 'Older than 7 days', de: 'Älter als 7 Tage' },
+  { value: 'older:30', ms: 30 * DAY, dir: 'older', en: 'Older than 30 days', de: 'Älter als 30 Tage' },
+  { value: 'older:365', ms: 365 * DAY, dir: 'older', en: 'Older than 1 year', de: 'Älter als 1 Jahr' },
+];
+
+// A row matches when its timestamp is on the requested side of the cutoff.
+// Missing / non-numeric timestamps never match a ts filter.
+function matchesTsFilter(v: unknown, value: string, now: number): boolean {
+  const opt = TS_FILTER_OPTIONS.find((o) => o.value === value);
+  if (!opt) return true;
+  const ts = Number(v);
+  if (!Number.isFinite(ts) || ts <= 0) return false;
+  const cutoff = now - opt.ms;
+  return opt.dir === 'newer' ? ts >= cutoff : ts < cutoff;
 }
 
 const COLUMN_LABELS: Record<string, string> = {
