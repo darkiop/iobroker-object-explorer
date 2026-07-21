@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { createPortal } from 'react-dom';
-import { X, CircleHelp, Search, Keyboard, MousePointerClick, CheckSquare, ArrowLeftRight, History, Mic2, Code2, Wand2, ChevronDown, BarChart2, Columns2, TrendingUp, PanelLeft, FolderTree, Table2, SlidersHorizontal, FilePenLine, Settings, LineChart, Wifi, Filter, Lock, Bookmark, Wrench, Move, FolderX, Database, Hash, Copy } from 'lucide-react';
+import { X, CircleHelp, Search, Keyboard, MousePointerClick, CheckSquare, ArrowLeftRight, History, Mic2, Code2, Wand2, ChevronDown, BarChart2, Columns2, TrendingUp, PanelLeft, FolderTree, Table2, SlidersHorizontal, FilePenLine, Settings, LineChart, Wifi, Filter, Lock, Bookmark, Wrench, Move, FolderX, Database, Hash, Copy, Download, Unlink } from 'lucide-react';
 
 interface Props {
   onClose: () => void;
@@ -49,7 +49,7 @@ const SEARCH_COMMANDS: SearchCommand[] = [
 
 // Searchable keywords per accordion (EN + DE terms) for the help freetext search.
 const SECTION_KEYWORDS: Record<string, string> = {
-  layout: 'layout navigation sidebar seitenleiste collapse einklappen fullscreen vollbild maximize minimize theme design dark light obsidian hell dunkel language sprache filter history verlauf back forward zurück vorwärts expert mode expertenmodus wrench schraubenschlüssel saved filters gespeicherte filter bookmark lesezeichen connection verbindung host badge resize divider trenner ctrl cmd strg esc',
+  layout: 'layout navigation sidebar seitenleiste collapse einklappen fullscreen vollbild maximize minimize theme design dark light abyss catppuccin frappe macchiato mocha hell dunkel language sprache filter history verlauf back forward zurück vorwärts expert mode expertenmodus wrench schraubenschlüssel saved filters gespeicherte filter bookmark lesezeichen connection verbindung host badge resize divider trenner ctrl cmd strg esc pwa install installieren app standalone offline cache zwischenspeicher update aktualisierung neue version download',
   features: 'features quick filters schnellfilter alias aliase virtual conversion formula formel history verlauf sql adapter script skript usage verwendung javascript smartname voice sprachsteuerung alexa google home custom settings value wert column spalte indicators symbole trend arrow pfeil up down threshold grenzwert min max boolean toggle switch button url dangling verwaiste',
   tree: 'object tree objektbaum baum node knoten folder ordner device gerät channel kanal datapoint datenpunkt icon color farbe yellow blue green indigo magnifier lupe copy kopieren expand collapse aufklappen einklappen smartname mikrofon context menu kontextmenü rename move delete auto alias',
   table: 'datapoint table datenpunkt tabelle column spalte resize fit auto-fit stretch strecken reset sort sortieren header filter row zeile pagination seite page virtual rendering rows unit value ack timestamp group path gruppieren picker',
@@ -62,7 +62,7 @@ const SECTION_KEYWORDS: Record<string, string> = {
   optimize: 'optimize optimieren metadata metadaten missing fehlend quality room function role name description unit min max type batch fix scan',
   virtualfolders: 'virtual folder virtueller ordner ghost synthetic path pfad intermediate zwischenpfad no object kein objekt alias missing fehlend filter',
   history: 'history chart verlauf diagramm sql time range zeitraum preset aggregation average min max line area bar multi series vergleich compare period periode week month zoom pan stats badge export png delete löschen',
-  database: 'database datenbank sql sql.0 overview übersicht datapoints datenpunkte stored values gespeicherte werte count zählen ts_number ts_bool ts_string rename umbenennen delete löschen size größe stats statistik value count wertanzahl rows zeilen edit bearbeiten timestamp zeitstempel raw epoch copy sql kopieren abfrage query datapoints table tabelle numeric id numerische',
+  database: 'database datenbank sql sql.0 overview übersicht datapoints datenpunkte stored values gespeicherte werte count zählen ts_number ts_bool ts_string rename umbenennen delete löschen size größe stats statistik value count wertanzahl rows zeilen edit bearbeiten timestamp zeitstempel raw epoch copy sql kopieren abfrage query datapoints table tabelle numeric id numerische column filter spaltenfilter filtern status ok logging off aus orphan verwaist unknown unbekannt age alter date datum range bereich clear filters filter löschen row count zeilenanzahl oldest ältester since seit span zeitraum orphan rows verwaiste zeilen leftover übrig dangling scan scannen rescan neu gruppen groups cleanup aufräumen',
   connection: 'connection live updates verbindung echtzeit realtime long polling socket.io transport host badge refresh fallback 30 seconds sekunden no auth authentifizierung login token warning warnung trusted network',
   keys: 'keyboard shortcuts tastenkürzel keys tasten ctrl cmd strg esc tab enter arrow pfeil up down left right sidebar search settings help row page panel column filter',
   search: 'search commands suchbefehle pattern muster wildcard room function type role id name desc description filter combine kombinieren',
@@ -173,8 +173,8 @@ export default function HelpModal({ onClose, language = 'en' }: Props) {
               </SubSection>
               <SubSection icon={<SlidersHorizontal size={12} />} label={isEn ? 'Theme & language' : 'Design & Sprache'}>
                 {isEn
-                  ? 'Settings let you pick one of three themes (Light / Dark / Obsidian) and the UI language (EN / DE), which switches all labels, dialogs, and tooltips. Both are saved in your browser.'
-                  : 'In den Einstellungen wählst du eines von drei Designs (Hell / Dunkel / Obsidian) und die Oberflächensprache (EN / DE), die alle Beschriftungen, Dialoge und Tooltips umstellt. Beides wird im Browser gespeichert.'}
+                  ? 'Settings let you pick one of six themes (Light / Dark / Abyss / Catppuccin Frappé / Macchiato / Mocha) and the UI language (EN / DE), which switches all labels, dialogs, and tooltips. Both are saved in your browser.'
+                  : 'In den Einstellungen wählst du eines von sechs Designs (Hell / Dunkel / Abyss / Catppuccin Frappé / Macchiato / Mocha) und die Oberflächensprache (EN / DE), die alle Beschriftungen, Dialoge und Tooltips umstellt. Beides wird im Browser gespeichert.'}
               </SubSection>
               <SubSection icon={<ArrowLeftRight size={12} />} label={isEn ? 'Filter history' : 'Filter-Verlauf'}>
                 {isEn
@@ -190,6 +190,11 @@ export default function HelpModal({ onClose, language = 'en' }: Props) {
                 {isEn
                   ? 'Frequently used filter combinations can be named and saved via the bookmark icon in the search bar. The host badge in the header shows the connection status and current host with a refresh button next to it; change the host in Settings → Connection.'
                   : 'Häufig genutzte Filterkombinationen lassen sich über das Lesezeichen-Symbol in der Suchleiste benennen und speichern. Das Host-Badge im Header zeigt den Verbindungsstatus und den aktuellen Host samt Aktualisieren-Button daneben; den Host änderst du unter Einstellungen → Verbindung.'}
+              </SubSection>
+              <SubSection icon={<Download size={12} />} label={isEn ? 'Install as an app' : 'Als App installieren'}>
+                {isEn
+                  ? 'On browsers that support it, a download icon appears in the header — it installs the Explorer as a standalone app with its own window and launcher entry. Once installed it also works offline: the interface loads from the cache, and the objects and values you last viewed stay readable. Editing requires a connection. When a new version is deployed, a toast offers to reload.'
+                  : 'In Browsern, die das unterstützen, erscheint ein Download-Symbol im Header — damit installierst du den Explorer als eigenständige App mit eigenem Fenster und Starter-Eintrag. Einmal installiert funktioniert er auch offline: Die Oberfläche lädt aus dem Cache, zuletzt angesehene Objekte und Werte bleiben lesbar. Zum Bearbeiten ist eine Verbindung nötig. Bei einer neuen Version bietet eine Meldung das Neuladen an.'}
               </SubSection>
             </div>
           </AccordionItem>
@@ -553,8 +558,13 @@ export default function HelpModal({ onClose, language = 'en' }: Props) {
             <div className="space-y-4">
               <SubSection icon={<Database size={12} />} label={isEn ? 'Overview' : 'Übersicht'}>
                 {isEn
-                  ? 'The "Database" toolbar button opens a read-only view of all datapoints physically stored in the sql.0 database — independent of the current history config (a datapoint can still have rows in the DB after logging was disabled). The header shows the total value-row count and database size. Columns (Name, numeric DB id, type, timestamp) are sorted by clicking a header; filter by ID with the search box. Toggle "Raw ts" to show timestamps as raw epoch milliseconds.'
-                  : 'Der „Datenbank"-Button in der Werkzeugleiste öffnet eine schreibgeschützte Ansicht aller Datenpunkte, die physisch in der sql.0-Datenbank gespeichert sind — unabhängig von der aktuellen History-Konfiguration (ein Datenpunkt kann noch Zeilen in der DB haben, nachdem das Logging deaktiviert wurde). Der Kopf zeigt die Gesamtzahl der Wert-Zeilen und die Datenbankgröße. Spalten (Name, numerische DB-ID, Typ, Zeitstempel) durch Klick auf den Kopf sortieren; per Suchfeld nach ID filtern. „Roh-ts" zeigt Zeitstempel als Roh-Epoch-Millisekunden.'}
+                  ? 'The "Database" toolbar button opens a read-only view of all datapoints physically stored in the sql.0 database — independent of the current history config (a datapoint can still have rows in the DB after logging was disabled). The header shows the total value-row count and database size. Columns (Name, numeric DB id, type, timestamp) are sorted by clicking a header. Toggle "Raw ts" to show timestamps as raw epoch milliseconds.'
+                  : 'Der „Datenbank"-Button in der Werkzeugleiste öffnet eine schreibgeschützte Ansicht aller Datenpunkte, die physisch in der sql.0-Datenbank gespeichert sind — unabhängig von der aktuellen History-Konfiguration (ein Datenpunkt kann noch Zeilen in der DB haben, nachdem das Logging deaktiviert wurde). Der Kopf zeigt die Gesamtzahl der Wert-Zeilen und die Datenbankgröße. Spalten (Name, numerische DB-ID, Typ, Zeitstempel) durch Klick auf den Kopf sortieren. „Roh-ts" zeigt Zeitstempel als Roh-Epoch-Millisekunden.'}
+              </SubSection>
+              <SubSection icon={<Filter size={12} />} label={isEn ? 'Filtering the list' : 'Liste filtern'}>
+                {isEn
+                  ? 'Every column has its own filter field directly under its header. Text columns match anything containing what you type, the status column offers a dropdown (OK / Logging off / Orphan / Unknown), and date columns let you pick an age range instead of typing a date. Filters combine — each one narrows the result further. The header counts how many datapoints are left out of the total, and "Clear filters" resets them all at once.'
+                  : 'Jede Spalte hat ein eigenes Filterfeld direkt unter der Überschrift. Textspalten treffen alles, was das Eingetippte enthält, die Status-Spalte bietet eine Auswahlliste (OK / Logging aus / Verwaist / Unbekannt), und Datumsspalten lassen dich einen Altersbereich wählen, statt ein Datum zu tippen. Filter wirken zusammen — jeder grenzt das Ergebnis weiter ein. Der Kopf zeigt, wie viele Datenpunkte von der Gesamtzahl übrig sind, und „Filter löschen" setzt alle auf einmal zurück.'}
               </SubSection>
               <SubSection icon={<Hash size={12} />} label={isEn ? 'Value counts' : 'Wertanzahl'}>
                 {isEn
@@ -563,8 +573,13 @@ export default function HelpModal({ onClose, language = 'en' }: Props) {
               </SubSection>
               <SubSection icon={<Table2 size={12} />} label={isEn ? 'Stored values' : 'Gespeicherte Werte'}>
                 {isEn
-                  ? 'Click a datapoint name to open its stored value rows (paginated, newest first, from the type-specific ts_* table). Filter by a timestamp range, edit a single value inline, or delete individual rows. The badge shows the source table (ts_number / ts_bool / ts_string).'
-                  : 'Klick auf einen Datenpunkt-Namen öffnet dessen gespeicherte Wert-Zeilen (seitenweise, neueste zuerst, aus der typ-spezifischen ts_*-Tabelle). Nach Zeitstempel-Bereich filtern, einen Einzelwert direkt bearbeiten oder einzelne Zeilen löschen. Das Badge zeigt die Quell-Tabelle (ts_number / ts_bool / ts_string).'}
+                  ? 'Click a datapoint name to open its stored value rows (paginated, newest first, from the type-specific ts_* table). Filter by a timestamp range, edit a single value inline, or delete individual rows. The badge shows the source table (ts_number / ts_bool / ts_string). Next to it the header tells you how many rows are stored and how far back they reach ("since …") — so you can see at a glance whether a datapoint has been recording for years or only since yesterday. With a timestamp filter active, the count refers to the filtered range.'
+                  : 'Klick auf einen Datenpunkt-Namen öffnet dessen gespeicherte Wert-Zeilen (seitenweise, neueste zuerst, aus der typ-spezifischen ts_*-Tabelle). Nach Zeitstempel-Bereich filtern, einen Einzelwert direkt bearbeiten oder einzelne Zeilen löschen. Das Badge zeigt die Quell-Tabelle (ts_number / ts_bool / ts_string). Daneben zeigt der Kopf, wie viele Zeilen gespeichert sind und wie weit sie zurückreichen („seit …") — so siehst du auf einen Blick, ob ein Datenpunkt seit Jahren oder erst seit gestern aufzeichnet. Bei aktivem Zeitstempel-Filter bezieht sich die Anzahl auf den gefilterten Bereich.'}
+              </SubSection>
+              <SubSection icon={<Unlink size={12} />} label={isEn ? 'Orphan value rows' : 'Verwaiste Wert-Zeilen'}>
+                {isEn
+                  ? 'The "Orphan rows" button looks for stored values whose datapoint no longer exists in the database — leftovers from datapoints that were deleted or renamed outside the app. The adapter can never reach these rows again, so they only take up space. The scan starts on its own when the view opens and reports its progress; the button re-runs it, for example after you deleted a group. Results are grouped by table and DB id with a row count each; the SQL button copies the matching query. Deleting a group removes those value rows for good — there is no undo.'
+                  : 'Der Button „Verwaiste Zeilen" sucht gespeicherte Werte, deren Datenpunkt es in der Datenbank nicht mehr gibt — Überbleibsel von Datenpunkten, die außerhalb der App gelöscht oder umbenannt wurden. Der Adapter erreicht diese Zeilen nie wieder, sie belegen also nur Platz. Der Scan startet von selbst, sobald die Ansicht öffnet, und zeigt seinen Fortschritt; der Button startet ihn neu, etwa nachdem du eine Gruppe gelöscht hast. Die Treffer sind nach Tabelle und DB-ID gruppiert, jeweils mit Zeilenanzahl; der SQL-Button kopiert die passende Abfrage. Das Löschen einer Gruppe entfernt diese Wert-Zeilen endgültig — es gibt kein Zurück.'}
               </SubSection>
               <SubSection icon={<FilePenLine size={12} />} label={isEn ? 'Rename & delete in DB' : 'Umbenennen & Löschen in der DB'}>
                 {isEn

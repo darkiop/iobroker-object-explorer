@@ -126,7 +126,7 @@ Resizable drag handle sits between **StateTree** sidebar and main content. In **
 - **Collapsible sidebar**: header button toggles the sidebar open/closed (CSS transition); state persisted in `localStorage`
 - **Drag-resize**: divider between sidebar and main area is draggable (180–600 px); width persisted in `localStorage`
 - **Fullscreen mode**: Maximize/Minimize button in header; press ESC to exit
-- **Theme**: Light / Dark / Obsidian — switchable in Settings, saved in `localStorage`
+- **Theme**: Light / Dark / Abyss / Catppuccin Frappé / Macchiato / Mocha — switchable in Settings, saved in `localStorage`
 - **Language toggle**: EN/DE selector in Settings → Display, saved in settings
 - **Filter history navigation**: Back / Forward arrow buttons in the header (next to the app title) navigate through the history of applied search filters — works like browser back/forward for filter state
 - **Expert mode toggle**: Wrench icon in the header (left of Settings); amber when active
@@ -313,7 +313,7 @@ Opened via the gear icon in the header. Changes are applied only on **Save** (dr
 
 | Setting | Options | Default | Description |
 |---------|---------|---------|-------------|
-| Theme | Light / Dark / Obsidian | Light | UI color scheme; saved immediately to `localStorage` |
+| Theme | Light / Dark / Abyss / Catppuccin Frappé / Macchiato / Mocha | Light | UI color scheme; saved immediately to `localStorage` |
 | Language | EN / DE | EN | UI language for labels, dialogs, and tooltips |
 | Date format | DD.MM.YYYY · MM/DD/YYYY · YYYY-MM-DD | DD.MM.YYYY | Timestamp display in the Value Last Update column |
 | Toolbar button labels | on/off | on | Show/hide text labels next to toolbar icons |
@@ -476,13 +476,28 @@ Lists all datapoints that actually have data stored in the **`sql.0` database** 
 - **Header stats**: approximate total value rows across all history tables and total database size (data + index), read instantly from `information_schema.TABLES` (no full-table `COUNT`)
 - **Data source**: `sql.0` `getDpOverview` sendTo command; returns each stored datapoint's `id`, `type`, and last-value timestamp (`ts`, shown as local date/time)
 - **Type colors**: the `type` column uses the same color coding as the main datapoint table (`getTypeColor`)
-- **Stored values** (click an ID): opens DpValuesModal showing the raw value rows for that datapoint (timestamp, value, ack, quality, source), newest first, paginated 20 rows/page. A **from/to timestamp filter** (datetime pickers) narrows the range (`WHERE ts BETWEEN …`). The **value is editable inline** (pencil on hover → raw `UPDATE ts_* SET val WHERE id AND ts`, type-coerced), and single rows can be **deleted** (trash on hover → `delete` by ts). Fast even for large datapoints — resolves the numeric `datapoints.id` first, then a PK-indexed scan on the `ts_*` table (no filesort)
-- **Dynamic columns**: derived from the adapter response (robust across adapter versions); `id` first, sortable by any column, free-text filter by ID
+- **Stored values** (click an ID): opens DpValuesModal showing the raw value rows for that datapoint (timestamp, value, ack, quality, source), newest first, paginated 20 rows/page. A **from/to timestamp filter** (datetime pickers) narrows the range (`WHERE ts BETWEEN …`). The **value is editable inline** (pencil on hover → raw `UPDATE ts_* SET val WHERE id AND ts`, type-coerced), and single rows can be **deleted** (trash on hover → `delete` by ts). Fast even for large datapoints — resolves the numeric `datapoints.id` first, then a PK-indexed scan on the `ts_*` table (no filesort). **Header badges** show the stored row count and the oldest timestamp (`since …`), both from a single `getDpValueSpan()` query (`COUNT(*)`, `MIN(ts)`, `MAX(ts)` in one indexed pass); they honour the active timestamp filter and the Raw ts toggle, hide when the datapoint has no rows, and reload after every mutation
+- **Dynamic columns**: derived from the adapter response (robust across adapter versions); `id` first, sortable by any column
+- **Per-column filters** (row of inputs under the header): text columns match a substring of the *formatted* cell value; the status column is a select over the four `DpStatus` values (`ok`, `logging-off`, `orphan`, `unknown`); `ts`/`*Ts` columns offer relative age buckets compared against a `Date.now()` cutoff (rows with a missing or non-numeric timestamp never match); the count column filters only rows already counted. Filters combine with AND, the header shows `filtered / total`, and **Clear filters** resets them
 - **Value count** (on demand): the **Values** column shows a `#` button per row — click to count that datapoint's stored values (fast, type-specific indexed query on `ts_number`/`ts_string`/`ts_bool`). Header **Count** button counts all currently shown rows sequentially. Full-table counting is intentionally *not* automatic — a `GROUP BY` over the whole `ts_number` table is too slow on large databases (single-datapoint lookups stay fast)
 - **Rename in DB** (pencil on row hover): updates `datapoints.name` via a raw `query` `UPDATE`. History is preserved (the `ts_*` tables reference the numeric `datapoints.id`, not the name), and existing target names are rejected. This touches **only the database** — it does not rename the ioBroker object (use [Rename Datapoint](#rename-datapoint) for that)
 - **Delete DB values** (trash on row hover): removes all stored values for the datapoint via `deleteAll` (irreversible, with inline confirmation)
 
 > **⚠️ Raw SQL:** Rename and count use the `sql.0` `query` command against the configured database (name defaults to `iobroker`, set in `src/api/iobroker.ts` → `SQL_DB_NAME`). Single quotes in IDs are escaped.
+
+#### Orphan Value Rows (OrphanValuesModal)
+
+Opened via the **Orphan rows** button in the Database Overview header.
+
+Finds value rows in `ts_number` / `ts_string` / `ts_bool` whose numeric `id` no longer has a row in `datapoints`. The adapter always joins via `datapoints`, so these rows are unreachable through it and only consume space — typically left behind when a datapoint was deleted or renamed directly in the database.
+
+- **Scan on open**: starts automatically when the modal opens and reports `done/total` progress; the header button re-runs it (e.g. after deleting a group)
+- **Gap probing, not a join**: rather than a `LEFT JOIN` across every value table, the scan probes the id gaps in `datapoints` in chunks of `ORPHAN_CHUNK` (500) and gives up after `ORPHAN_MAX_CANDIDATES` (20 000) candidates — this is what makes an unprompted scan affordable on a large database
+- **Results**: grouped by table and DB id with a per-group row count
+- **Copy SQL**: `buildOrphanValuesSql()` yields a *readable equivalent* of the query — not the chunked probing the scan actually executes
+- **Per-group delete**: re-checks with `NOT EXISTS` at delete time and restricts the target to the `TS_TABLES` whitelist. Irreversible
+
+> ⚠️ Distinct from the `orphan` **status** in the overview table, which marks a datapoint that has no ioBroker object. Here it is the DB row that has no datapoint.
 
 ---
 
@@ -578,6 +593,26 @@ Opened via **toolbar → Enums**.
 ### Toast Notifications
 
 Operation feedback (success/error) is displayed as toast messages in the bottom-right corner and auto-dismiss after a few seconds.
+
+---
+
+### Progressive Web App (PWA)
+
+The app is installable and works offline. Configured via `vite-plugin-pwa` in `vite.config.ts` (`generateSW` strategy, service worker emitted as `sw.js`, `registerType: 'autoUpdate'`, no dev-mode service worker).
+
+| Aspect | Behavior |
+|---|---|
+| Install | `useInstallPrompt` captures `beforeinstallprompt`; a download button appears in the header (`Layout.tsx`, hidden below the `sm` breakpoint) |
+| Precache | `**/*.{js,css,html,png,svg,ico,webmanifest}` — `config.js` is excluded so the injected host config is never cached |
+| Runtime cache | `/v1/objects` and `/v1/states` via `NetworkFirst`, 3 s network timeout, caches `iobroker-objects-v1` / `iobroker-states-v1`, cacheable statuses `[0, 200]` |
+| Update | `PwaManager` shows a toast with a reload action when a new service worker is waiting; reload calls `triggerSwUpdate()` |
+| Offline ready | A one-off success toast once precaching completes |
+
+Because both API caches are `NetworkFirst`, an online client always sees live data — the cache only serves after the 3 s timeout or an outright failure. Offline the UI and the last-seen objects/states remain readable; writes fail.
+
+`manifest: false` — the web app manifest is served from `public/` rather than generated by the plugin.
+
+> **Known issue:** the two `PwaManager` toast strings are hardcoded German and have no `i18n.ts` keys, so they do not follow the UI language.
 
 ---
 
@@ -864,7 +899,7 @@ All writes go directly to the REST API. React Query optimistic updates (`onMutat
 | `ioBrokerHost` | Last configured ioBroker host string (`ip:port`) |
 | `iob-script-used-ids-v1` | JSON array of datapoint IDs referenced in javascript.0 scripts (script index cache) |
 | `iob-script-used-ids-ts` | Unix timestamp of when the script index was last built (1 h TTL) |
-| `theme` | `"light"`, `"dark"`, or `"obsidian"` |
+| `theme` | `"light"`, `"dark"`, `"abyss"`, `"catppuccin-frappe"`, `"catppuccin-macchiato"`, or `"catppuccin-mocha"` (legacy `"obsidian"` migrates to `"catppuccin-mocha"`) |
 
 ---
 
@@ -887,6 +922,9 @@ All writes go directly to the REST API. React Query optimistic updates (`onMutat
 | `src/hooks/useBatchEdit.ts` | Batch edit state and mutation logic for checked rows |
 | `src/hooks/useApiConnectivity.ts` | Online/offline detection and periodic connectivity probe |
 | `src/hooks/useEscapeKey.ts` | Shared ESC key handler for modals |
+| `src/hooks/useInstallPrompt.ts` | Captures `beforeinstallprompt`; exposes `canInstall` / `install` for the header install button |
+| `src/pwa.ts` | Service worker registration; `setPwaCallbacks()` / `triggerSwUpdate()` |
+| `src/components/PwaManager.tsx` | Renders nothing; wires the PWA update / offline-ready callbacks to toasts |
 | `src/hooks/queryKeys.ts` | Centralized React Query key factory |
 | `src/context/ThemeContext.tsx` | Light/dark mode context with localStorage persistence |
 | `src/context/ToastContext.tsx` | Toast notification context |
@@ -925,7 +963,9 @@ All writes go directly to the REST API. React Query optimistic updates (`onMutat
 | `src/components/modals/EnumManagerModal.tsx` | Room and function enum manager |
 | `src/components/modals/OptimizeModal.tsx` | Metadata quality scanner with inline batch fix controls |
 | `src/components/modals/TreeStatsModal.tsx` | Namespace statistics table with subtree delete and script index |
-| `src/components/modals/DbOverviewModal.tsx` | Lists datapoints stored in the `sql.0` database (getDpOverview); per-row value count, DB rename, history delete |
+| `src/components/modals/DbOverviewModal.tsx` | Lists datapoints stored in the `sql.0` database (getDpOverview); per-column filters, per-row value count, DB rename, history delete |
+| `src/components/modals/DpValuesModal.tsx` | Stored value rows for one datapoint; row count + oldest-value badges, inline edit, dedupe, 3-month purge |
+| `src/components/modals/OrphanValuesModal.tsx` | Scans `ts_*` for value rows whose id is gone from `datapoints`; per-group delete with SQL preview |
 | `src/components/modals/HelpModal.tsx` | In-app help / feature overview |
 | `src/components/modals/SettingsModal.tsx` | All settings tabs (Connection, Display, Columns, Filters) |
 | `src/components/modals/StateListModals.tsx` | Modal container rendered within StateList context |
