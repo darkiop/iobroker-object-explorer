@@ -216,7 +216,7 @@
 - Object and state requests use a `NetworkFirst` cache with a 3 s network timeout, so an online client always sees live data
 - Automatic update check: when a new version is deployed, a toast offers a reload
 - One-off "ready for offline use" notification once precaching completes
-- Note: the two PWA notifications are currently German-only, regardless of the UI language
+- Both PWA notifications follow the UI language (EN/DE)
 
 ## Settings (SettingsModal)
 
