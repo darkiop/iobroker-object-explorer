@@ -1,183 +1,236 @@
 # Features
 
-## Suche & Filter
+## Search & Filters
 
-- Pattern-Suche mit Wildcard-Unterstützung (z.B. `alias.0.*`, `javascript.0.*`)
-- Volltextsuche in ID, Name, Beschreibung und Alias-Zielen
-- Exakter Treffer-Modus (kein Wildcard-Fuzzy)
-- ID-Suggest-Modus: Autovervollständigung für bekannte IDs
-- Typ-Filter im Pattern: z.B. `type:state`, `type:channel`
-- Raum-Filter und Funktions-Filter aus Pattern extrahiert
-- Schnellfilter-Buttons für häufige Namespaces in der Sidebar (konfigurierbar)
-- Schnellfilter-Buttons für alle konfigurierten Räume
-- Schnellfilter-Buttons für alle konfigurierten Funktionen
-- Schnellfilter-Buttons für Objekt-Typen
-- History-Filter: zeigt nur Datenpunkte mit aktiver History-Aufzeichnung
-- SmartName-Filter: zeigt nur Datenpunkte mit konfiguriertem SmartHome-Namen
-- Dangling-Alias-Filter: zeigt nur `alias.0.*`-Einträge mit fehlendem Ziel-Datenpunkt
-- Alle Filter kombinierbar; aktive Filter hervorgehoben, einzeln oder gesammelt löschbar
-- Ordner-Scoping: Datenpunkte unterhalb eines Baum-Pfads in der Tabelle anzeigen
-- Filter speichern & laden: benannte Filter-Sets persistent im localStorage
-- Filterstatus über Sessions hinweg wiederhergestellt (Pattern, Seite, alle aktiven Filter)
+- Pattern search with wildcard support (e.g. `alias.0.*`, `javascript.0.*`)
+- Full-text search across ID, name, description and alias targets
+- Exact-match mode (no wildcard fuzziness)
+- ID suggest mode: autocomplete for known IDs
+- Filter-prefix suggestions: focusing the empty search field lists all available prefixes; `id:` offers object-ID value suggestions with auto-submit
+- Type filter inside the pattern, e.g. `type:state`, `type:channel`
+- Room and function filters extracted from the pattern
+- Quick-filter buttons for common namespaces in the sidebar (configurable)
+- Quick-filter buttons for every configured room
+- Quick-filter buttons for every configured function
+- Quick-filter buttons for object types
+- History filter: only datapoints with active history recording
+- SmartName filter: only datapoints with a configured smart-home name
+- Dangling-alias filter: only `alias.0.*` entries whose target datapoint is missing
+- All filters combinable; active filters highlighted, clearable individually or all at once
+- Folder scoping: show datapoints below a tree path in the table
+- Save & load filters: named filter sets persisted in localStorage
+- Filter history: back/forward buttons next to the app title step through previously applied filters
+- Filter state restored across sessions (pattern, page, all active filters)
+- `defaultAliasFilterOnStartup`: first load defaults the pattern to `alias.0.*` (on by default)
 
-## Objektbaum (Sidebar)
+## Object Tree (Sidebar)
 
-- Hierarchische Darstellung der ioBroker-Objektstruktur (Ordner / Gerät / Kanal / Datenpunkt)
-- Zwei Anzeigemodi: Adapter-Sicht (Standard) und Pfad-Sicht
-- Knotentypen mit unterschiedlichen Icons; History- und SmartName-Indikator
-- Objekt-Zähler pro Namespace: konfigurierbar (aus / States / Objekte / beides)
-- Aufklappen / Zuklappen des gesamten Baums
-- Einklappbare Sidebar mit Drag-Resize (180–600 px), Breite wird im localStorage gespeichert
-- Schriftgröße unabhängig von Tabelle einstellbar (small / normal / large / xl)
-- Hover-Aktionen: Scopen, Kopieren, Neuer Datenpunkt
-- Rechtsklick-Kontextmenü: Als Filter setzen, Auswählen, ID kopieren, Objekt bearbeiten, Umbenennen, Verschieben, Alias-Ziel ersetzen, Auto-Alias anlegen, Datenpunkt löschen
+- Hierarchical view of the ioBroker object structure (folder / device / channel / datapoint)
+- Two display modes: adapter view (default) and path view
+- Distinct icons per node type; history and SmartName indicators
+- Object counter per namespace: configurable (off / states / objects / both)
+- Expand / collapse the whole tree
+- Collapsible sidebar with drag-resize (180–600 px), width persisted in localStorage
+- Font size configurable independently of the table (small / normal / large / xl)
+- Hover actions: scope, copy, new datapoint
+- Right-click context menu: set as filter, select, copy ID, edit object, rename, move, replace alias target, auto-create aliases, delete datapoint
 
-## Tabelle
+## Table
 
-- Sortierung auf- / absteigend durch Klick auf Spaltenüberschrift
-- Filterzeile direkt unter den Überschriften (ID, Name, Raum, Funktion, Rolle, Wert, Einheit)
-- Zeitstempel-Bereichsfilter (von / bis) für die Timestamp-Spalte
-- Icon-Spalten (Schreibschutz, History, SmartName, Alias) per Klick filtern
-- Spaltenbreiten manuell verschiebbar; Doppelklick passt Breite auf Inhalt an
-- Benutzerdefinierte Default-, Min- und Max-Breiten pro Spalte konfigurierbar
-- Spalten ein-/ausblendbar über Spalten-Picker; Auswahl wird im localStorage gespeichert
-- Alle Spaltenbreiten im localStorage gespeichert; Einstellungen zurücksetzbar
-- Schriftgröße konfigurierbar (small / normal / large / xl)
-- Beschreibungs-Spalte ein-/ausblendbar
-- Gruppierung nach Pfad-Präfix (optionales Klapp-Verhalten)
-- Paginierung: konfigurierbare Seitengröße; ohne aktiven Filter werden alle Zeilen angezeigt
-- Color-Coding für Werte: Boolean grün/rot, Null-Werte hervorgehoben
-- Threshold-Highlighting: Wert-Zelle gelb (Warn) oder rot (Exceeded) bei Überschreitung von `common.min`/`common.max`
-- Typ-Farben in der ID-Spalte (nach Objekt-Typ)
+- Sort ascending / descending by clicking a column header
+- Filter row directly below the headers (ID, name, room, function, role, value, unit)
+- Timestamp range filter (from / to) for the timestamp column
+- Icon columns (read-only, history, SmartName, alias) filterable by click
+- Column widths draggable; double-click fits width to content
+- Custom default, min and max widths configurable per column
+- Columns toggleable via the column picker; selection persisted in localStorage
+- All column widths persisted in localStorage; settings resettable
+- Font size configurable (small / normal / large / xl)
+- Row height density configurable (`rowHeight`, default comfortable)
+- Description column toggleable
+- Grouping by path prefix (optional collapse behavior), with a toggle for shortened vs. full group paths
+- Alias sub-rows hideable (`hideAliasSubRows`)
+- Object and object-type icons toggleable
+- Pagination: configurable page size; without an active filter all rows are shown
+- Color coding for values: boolean green/red, null values highlighted
+- Room and function values colorized
+- Threshold highlighting: value cell turns yellow (warn) or red (exceeded) when `common.min`/`common.max` is crossed
+- Type colors in the ID column (by object type)
+- Virtualized rendering via `@tanstack/react-virtual`
 
-## Zeilenaktionen & Kontextmenü
+## Row Actions & Context Menu
 
-- Klick auf Zeile öffnet ObjectEditModal
-- Doppelklick auf Wert öffnet ValueEditModal (fokussierter Wert-Editor)
-- Rechtsklick-Kontextmenü: ID / Name / Wert kopieren, History anzeigen, Als Filter setzen, Raum/Funktion bearbeiten, Objekt bearbeiten, Datenpunkt kopieren, Umbenennen, Verschieben, Alias anlegen, Alias-Ziel ersetzen, Datenpunkt löschen
-- Inline-Bearbeitung für Name, Rolle, Einheit und Wert direkt in der Tabelle
-- Inline-Bearbeitung für Raum und Funktion mit Enum-Zuordnung (Portal-Dropdown)
-- Mehrfachauswahl per Checkbox → Batch-Delete und Batch-Bearbeitung (Rolle, Einheit, Raum, Funktion)
-- Einzel-Löschen mit Bestätigungs-Dialog
+- Clicking a row opens the ObjectEditModal
+- Double-clicking a value opens the ValueEditModal (focused value editor)
+- Right-click context menu: copy ID / name / value, show history, set as filter, edit room/function, edit object, copy datapoint, rename, move, create alias, replace alias target, delete datapoint
+- Inline editing of name, role, unit and value directly in the table
+- Inline editing of room and function with enum assignment (portal dropdown)
+- Multi-select via checkbox → batch delete and batch edit (role, unit, room, function)
+- Single delete with confirmation dialog
 
-## Wert-Editor (ValueEditModal)
+## Value Editor (ValueEditModal)
 
-- Öffnet per Doppelklick auf Wert-Zelle
-- Typgerechte Eingabe mit automatischer Konvertierung (Zahl, Boolean, String)
-- Ack-Flag setzbar
-- Force-Write-Option (auch für Read-only-Datenpunkte)
-- JSON-Syntaxhighlight bei JSON-Werten
-- HTML-Vorschau bei HTML-Inhalten
+- Opens on double-click of a value cell
+- Type-aware input with automatic conversion (number, boolean, string)
+- Ack flag settable
+- Force-write option (also for read-only datapoints)
+- Numeric values validated against `common.min`/`common.max` — out-of-range input shows an inline error and blocks saving instead of clamping
+- JSON syntax highlighting for JSON values
+- HTML preview for HTML content
 
-## Objekt bearbeiten (ObjectEditModal)
+## Edit Object (ObjectEditModal)
 
-- Öffnet über Zeilen-Klick oder Rechtsklick → „Objekt bearbeiten"
-- Tab „Details": Metadaten (Name, Typ, Rolle, Einheit, Min/Max, Lese-/Schreibrecht), Live-Wert mit Ack/Qualität/Zeitstempel, Wert-Steuerung (Switch, Button, Zahl, Text, Boolean)
-- Expertenmodus: freies Eingabefeld mit automatischer Typkonvertierung
-- Integriertes Mini-History-Diagramm (wenn sql.0-History aktiv)
-- Tab „Objekt": vollständige JSON-Ansicht mit Roheditor und Syntaxfehler-Anzeige; speichern via PUT
-- Tab „Alias": Ziel-ID, Lese- und Schreib-Formel setzen oder entfernen; separate Read/Write-IDs
-- Tab „Custom Settings": Adapter-spezifische Einstellungen (`common.custom`)
-- Tab „Scripts": zeigt javascript.0-Skripte, die den aktuellen Datenpunkt referenzieren
-- Datenpunkt löschen direkt aus dem Modal
+- Opens via row click or right-click → "Edit object"
+- **Details** tab: metadata (name, type, role, unit, min/max, read/write), live value with ack/quality/timestamp, value controls (switch, button, number, text, boolean)
+- Expert mode: free-form input field with automatic type conversion
+- Number inputs validated against `common.min`/`common.max`, in both the number control and the expert control
+- **History** tab: own tab with the chart, shown only when history is configured (sql.0)
+- **JSON** tab: full JSON view with raw editor and syntax-error display; saved via PUT
+- **Alias** tab: set or clear target ID, read and write formulas; separate read/write IDs
+- **Custom** tab: adapter-specific settings (`common.custom`)
+- **SmartName** tab: smart-home name configuration
+- **Scripts** tab: javascript.0 scripts that reference the current datapoint
+- Delete datapoint directly from the modal
 
-## Datenpunkte anlegen & verwalten
+## Creating & Managing Datapoints
 
-- Neuer Datenpunkt: ID, Name, Typ, Rolle, Einheit, Initialwert, Min/Max, Lesen/Schreiben; ID aus aktivem Suchpfad vorbelegt
-- Datenpunkt kopieren: neue ID und Name vorbelegt; kopiert Typ, Rolle, Einheit, Lesen/Schreiben, Min/Max, Beschreibung, States-Mapping
-- Datenpunkt umbenennen: Dialog mit neuer ID (POST + DELETE)
-- Datenpunkt verschieben: Pfad-Änderung mit Validierung
-- Alias anlegen: schlägt `alias.0.<quell-id>` vor; übernimmt Typ, Rolle, Einheit, Lesen/Schreiben
-- Alias-Ziel ersetzen (AliasReplaceModal): Suchen & Ersetzen in allen Alias-Read/Write-Zielen mit Vorschau
-- Auto-Alias anlegen (AutoCreateAliasModal): alle State-Kinder eines Geräts auf einmal als `alias.0.*` anlegen, Raum/Funktion direkt zuweisen
+- New datapoint: ID, name, type, role, unit, initial value, min/max, read/write; ID pre-filled from the active search path
+- Copy datapoint: new ID and name pre-filled; copies type, role, unit, read/write, min/max, description, states mapping
+- Rename datapoint: dialog with a new ID (POST + DELETE)
+- Move datapoint: path change with validation
+- Create alias: suggests `alias.0.<source-id>`; carries over name, type, role, unit, read/write, min/max/step, states and description from the source
+- Replace alias target (AliasReplaceModal): find & replace across all alias read/write targets with preview
+- Auto-create aliases (AutoCreateAliasModal): create `alias.0.*` entries for all state children of a device at once, assigning room/function directly
 
-## Enum-Manager
+## Virtual Folders (VirtualFoldersModal)
 
-- Verwaltet Räume (`enum.rooms.*`) und Funktionen (`enum.functions.*`) in einem Modal
-- Neue Enum-Einträge anlegen, bestehende umbenennen oder löschen
-- Mitglieder pro Enum anzeigen und entfernen
-- Bestätigungs-Dialog vor dem Löschen
+- Lists intermediate folder paths that have no real ioBroker object behind them
+- Filter input (defaults to `alias.0.`); per-row filter button sets the table ID filter
+- Such separator rows are styled italic and dimmed in the table, with a tooltip
+- Paths of depth ≤ 2 (e.g. `alias`, `alias.0`) are excluded
 
-## Namespace-Statistik (TreeStatsModal)
+## Enum Manager
 
-- Übersicht aller Namespaces mit Objekt-/State-/History-/SmartName-/Alias-Zählern
-- Sortierbar nach jeder Spalte
-- Balken-Visualisierung für relativen Anteil
-- Namespace anklicken → direkt als Scope-Filter setzen
-- Ganzen Namespace (Teilbaum) löschen mit Bestätigung
-- Script-Analyse: welche Datenpunkte von javascript.0-Skripten verwendet werden
+- Manages rooms (`enum.rooms.*`) and functions (`enum.functions.*`) in one modal
+- Create new enum entries, rename or delete existing ones
+- Show and remove members per enum
+- Confirmation dialog before deleting
+
+## Namespace Statistics (TreeStatsModal)
+
+- Overview of all namespaces with object / state / history / SmartName / alias counters
+- Sortable by every column
+- Bar visualization of the relative share
+- Click a namespace → set it directly as the scope filter
+- Delete a whole namespace (subtree) with confirmation
+- Script analysis: which datapoints are used by javascript.0 scripts
+- Colorized IDs and columns, matching the table
 
 ## Import / Export
 
-- Export: gefilterte Datenpunkt-Liste als JSON (ID-keyed Object)
-- Import: JSON-Editor mit Syntaxhighlight, Datei-Upload per Button oder Drag & Drop
+- Export: filtered datapoint list as CSV or JSON (ID-keyed object)
+- Copy the filtered list as JSON to the clipboard
+- Import: JSON editor with syntax highlighting, file upload via button or drag & drop
 
-## History-Diagramm
+## History Chart
 
-> Aktuell wird ausschließlich der **`sql.0`-Adapter** unterstützt.
+> Only the **`sql.0` adapter** is currently supported.
 
-- Zeitraum-Voreinstellungen: 1 h, 6 h, 24 h, 7 d, 30 d, 1 Jahr; manueller Datetime-Picker
-- Diagrammtypen: Linie, Fläche, Balken
-- Aggregation: Keine / Durchschnitt / Min+Max / Min / Max
-- Statistik-Panel: Min / Max / Avg / Letzter Wert als Badges über dem Chart
-- Multi-Datenpunkt-Vergleich: mehrere History-fähige States auf einer Zeitachse
-- Periodischer Vergleich: aktuellen Zeitraum mit gleichem Zeitraum der Vorwoche überlagern
-- Zoom & Pan: Mausrad-Zoom auf Zeitachse + Drag-to-Pan
-- Chart-Export als PNG
-- Einzelwert löschen (Klick-Modus), Zeitbereich löschen, alle History löschen (je mit Bestätigung)
+- Range presets: 1 h, 6 h, 24 h, 7 d, 30 d, 1 year; manual datetime picker
+- Chart types: line, area, bar
+- Aggregation: none / average / min+max / min / max
+- Stats panel: min / max / avg / last value as badges above the chart
+- Multi-datapoint comparison: several history-capable states on one time axis
+- Periodic comparison: overlay the current range with the same range of the previous week
+- Zoom & pan: mouse-wheel zoom on the time axis plus drag-to-pan
+- Chart export as PNG
+- Delete a single value (click mode), delete a time range, delete all history (each with confirmation)
+- Table view with a per-row delete icon
+- Recharts is lazy-loaded, keeping it out of the initial bundle
 
-## Metadaten-Optimierung (OptimizeModal)
+## Database Overview (sql.0)
 
-- Qualitätsscanner: prüft alle sichtbaren Datenpunkte auf fehlende Metadaten (Raum, Funktion, Rolle, Name, Beschreibung, Einheit, Min/Max, Typ, SmartName)
-- Einzelne Prüfungen aktivierbar/deaktivierbar; Scope auf Namespace eingrenzbar
-- Issues pro Datenpunkt inline behebbar (Eingabefelder direkt in der Tabellenzeile)
-- Batch-Fix für alle markierten Datenpunkte auf einmal
-- Direktlink zum ObjectEditModal für tiefere Bearbeitung
+- **DbOverviewModal**: lists all datapoints stored in the sql.0 database via `getDpOverview`, independent of the current history configuration
+- Header stats: approximate total value rows and DB size via `information_schema` (instant, no full-table COUNT)
+- Per-row value count on demand (type-specific indexed query); "Count and sort desc" counts all shown rows and sorts by count
+- Per-column filter row: text columns match the formatted cell value, the status column uses a select over the four `DpStatus` values, epoch columns offer relative age buckets
+- Rename the DB name via raw query (`UPDATE datapoints`) — history preserved, object untouched; existing target names rejected, quotes escaped
+- Delete all stored values per row, with confirmation
+- Numeric DB id column, sortable columns, type column colored via `getTypeColor`
+- "Copy SQL" button in both DB modals (`buildDpValuesSql` / `buildDpOverviewSql`)
+- Per-row chart button opens the history modal on top of the DB modal
 
-## Dual-Pane-Modus
+### Stored Values (DpValuesModal)
 
-- Zwei unabhängige Panels nebeneinander (Tabelle + Baum) umschaltbar über Einstellungen
-- Jedes Panel hat eigenen Suchfilter, Baum-Navigation und Spalteneinstellungen
-- Drag & Drop: Zeile aus Panel 1 auf `alias.0.*`-Namespace in Panel 2 ziehen → CreateAliasModal wird vorausgefüllt geöffnet (aktivierbar in Einstellungen)
-- „In anderem Panel öffnen"-Aktion im Kontextmenü
+- Paginated per-datapoint value view: edit and delete rows, insert rows, timestamp range filter, raw-ts toggle
+- Header badges: total row count and oldest timestamp, via a single indexed `getDpValueSpan()` query
+- Deduplicate consecutive duplicate values
+- Purge values older than three months ("> 3M"), with the exact affected row count previewed before the irreversible delete
+- Chart button in the header
 
-## Echtzeit-Übertragung (Realtime Transport)
+### Orphan Values (OrphanValuesModal)
 
-- **Socket.io** (Standard): verbindet sich mit dem `socketio`-Adapter (Standard-Port 8084, socket.io-client v2); Live-Updates für State-Werte und Objekte ohne Polling
-  - Diff-basiertes Re-Subscribe: beim Filterwechsel werden nur neue/weggefallene Patterns (de)subscribt — keine Unterbrechung laufender Subscriptions
-  - Ack-basierte Fehlerbehandlung: fehlgeschlagene Subscribes werden einmalig nach 5 s wiederholt
-- **Long-Polling** (Fallback): REST-API `/states/subscribe`; automatisch aktiv, wenn Socket.io nicht erreichbar
-- Automatischer Fallback: wenn Socket.io-Adapter nicht antwortet, aktiviert die App Long-Polling parallel und zeigt effektiven Transport im Status-Badge an
-- Verbindungsstatus im Header (`HostConnectedButton`): Wifi-Icon (REST), Zap/Radio-Badge (Socket.io/Long-Polling) mit farbiger Statusanzeige; amber-Markierung wenn Fallback aktiv
-- Realtime-Transport-Einstellung: Socket.io-Host/Port konfigurierbar; Umschaltung ohne Seiten-Reload
+- Scans for `ts_*` value rows whose numeric id no longer exists in `datapoints`
+- Runs automatically when the modal opens (probes the id gaps in `datapoints` instead of a full table scan); the button rescans, e.g. after deleting a group
+- Per-group delete with SQL preview
 
-## Objekt-Cache (IndexedDB)
+## Metadata Optimization (OptimizeModal)
 
-- Große `/objects`-Bulk-Payloads werden in IndexedDB gecacht
-- Zwei-Phasen-Laden: Phase 1 holt sofort `type=state` (schnell, füllt Tabelle); Phase 2 lädt alle Typen parallel (vollständige Objektmap für Baum + Enums)
-- Cache-Ablauf: konfigurierbar nach Anzahl Reloads (`objectsCacheReloads`: aus / 5 / 10 / 20 / 50) und nach Zeit (`objectsCacheTTL`: aus / 1h / 6h / 24h / 7d)
-- `includeIdPrefixes`: bei Konfiguration werden nur Objekte mit bestimmten ID-Präfixen geladen — reduziert Payload bei großen ioBroker-Instanzen
+- Quality scanner: checks all visible datapoints for missing metadata (room, function, role, name, description, unit, min/max, type, SmartName)
+- Individual checks toggleable; scope narrowable to a namespace
+- Issues fixable inline per datapoint (input fields directly in the table row)
+- Batch fix for all flagged datapoints at once
+- Direct link to the ObjectEditModal for deeper editing
+- Colorized IDs, matching the table
 
-## Einstellungen (SettingsModal)
+## Dual-Pane Mode
 
-- Verbindung: ioBroker-Host, Socket.io-Host/Port, Admin-Port, Realtime-Transport
-- Anzeige: Sprache (DE/EN), Datumsformat (DE/US/ISO), Schriftgröße (Tabelle + Baum), Baumzähler-Modus, Beschreibung ein/aus, Gruppierung nach Pfad, Baum-Ansichtsmodus
-- Spalten: sichtbare Spalten auswählen, benutzerdefinierte Breiten, Einheit in Wert-Spalte anzeigen (`showUnitInValue`)
-- Filter: Schnellfilter-Buttons konfigurierbar, Script-IDs einbeziehen, Laden nur sichtbarer State-Werte (`loadOnlyVisibleStateValues`), ID-Präfix-Filter (`includeIdPrefixes`)
-- Performance: Objekte-Auto-Refresh, Cache-Einstellungen (Reloads + TTL)
-- Drag & Drop aktivieren (nur Dual-Pane)
-- Änderungen im Einstellungs-Draft — erst aktiv nach „Speichern"; einige Toggles (expertMode, toolbarLabels, groupByPath) speichern sofort
+- Two independent panels side by side (table + tree), toggled in the settings
+- Each panel has its own search filter, tree navigation and column settings
+- Drag & drop: drag a row from panel 1 onto the `alias.0.*` namespace in panel 2 → CreateAliasModal opens pre-filled (enabled in the settings)
+- "Open in other panel" action in the context menu
 
-## UI & Allgemein
+## Realtime Transport
 
-- 6 Themes: Light, Dark, Abyss, Catppuccin Frappé, Catppuccin Macchiato, Catppuccin Mocha; Theme-Wechsel per Klick im Header; gespeichert im localStorage
-- Deutsch und Englisch (Sprache umschaltbar im Header)
-- Responsive Layout; Sidebar einklappbar für mehr Tabellenbreite
-- Toast-Benachrichtigungen für Aktionen und Fehler
-- Keyboard-Shortcuts-Übersicht (Modal)
-- Lokaler Speicher löschbar (zurücksetzen aller gespeicherten Einstellungen)
-- ioBroker-Host direkt im Browser konfigurierbar: Klick auf den Verbindungs-Badge im Header → `host:port` eingeben → Enter; Verbindungstest vor dem Speichern mit Statusanzeige; Host wird im localStorage gespeichert
-- Auto-Refresh für Objekte: konfigurierbar (aus / 30s / 1min / 5min / 10min)
-- ioBroker-Admin-Port konfigurierbar (Standard 8081) für direkte Admin-Links
-- Script-IDs einbeziehen: javascript.0-Skripte auf verwendete Datenpunkte analysieren
-- Docker-kompatibel: `nginx.conf` proxied REST-API und Socket.io; Runtime-Config via `window.__CONFIG__.ioBrokerHost` aus Umgebungsvariablen
+- **Socket.io** (default): connects to the `socketio` adapter (default port 8084, socket.io-client v2); live updates for state values and objects without polling
+  - Diff-based resubscribe: on filter change only new/dropped patterns are (un)subscribed — running subscriptions are not interrupted
+  - Ack-based error handling: failed subscribes are retried once after 5 s
+- **Long polling** (fallback): REST API `/states/subscribe`; activates automatically when Socket.io is unreachable
+- Automatic fallback: if the Socket.io adapter does not answer, the app activates long polling in parallel and shows the effective transport in the status badge
+- Connection status in the header (`HostConnectedButton`): wifi icon (REST), zap/radio badge (Socket.io / long polling) with colored status; amber marker when the fallback is active
+- Realtime transport setting: Socket.io host/port configurable; switchable without a page reload
+- **Pause mode**: the header play/pause button halts the object poll, the state-value poll and both push transports. Ephemeral — resets to running on reload; resuming refetches everything immediately. An amber viewport ring and a "Paused" badge signal the state.
+
+## Object Cache (IndexedDB)
+
+- Large `/objects` bulk payloads are cached in IndexedDB
+- Two-phase loading: phase 1 fetches `type=state` immediately (fast, fills the table); phase 2 loads all types in parallel (full object map for tree + enums)
+- Cache expiry: configurable by number of reloads (`objectsCacheReloads`: off / 5 / 10 / 20 / 50) and by time (`objectsCacheTTL`: off / 1h / 6h / 24h / 7d); whichever triggers first forces a refetch
+- The manual refresh button always bypasses both and fetches fresh
+- `includeIdPrefixes`: when configured, only objects with the given ID prefixes are loaded — reduces payload on large ioBroker installs (enums are always fetched)
+
+## Settings (SettingsModal)
+
+- Connection: ioBroker host, Socket.io host/port, admin port, realtime transport
+- Display: language (DE/EN), date format (DE/US/ISO), font size (table + tree), row height, tree counter mode, description on/off, grouping by path, tree view mode, object icons, group-expand animation
+- Columns: pick visible columns, custom widths, show unit in the value column (`showUnitInValue`)
+- Filters: configurable quick-filter buttons, include script IDs, load only visible state values (`loadOnlyVisibleStateValues`), ID prefix filter (`includeIdPrefixes`), default alias filter on startup
+- Performance: object auto-refresh, cache settings (reloads + TTL)
+- Enable drag & drop (dual-pane only)
+- Changes live in a settings draft — applied on "Save"; a few toggles (expertMode, toolbarLabels, groupByPath) save immediately
+
+## UI & General
+
+- 6 themes: Light, Dark, Abyss, Catppuccin Frappé, Catppuccin Macchiato, Catppuccin Mocha; switched by click in the header, persisted in localStorage
+- German and English (switchable in the header)
+- Responsive layout; sidebar collapsible for more table width
+- Fullscreen mode
+- Toast notifications for actions and errors
+- Keyboard shortcuts overview (modal)
+- In-app help modal covering all feature areas, including a "Database (sql.0)" section
+- Local storage clearable (reset all persisted settings)
+- ioBroker host configurable directly in the browser: click the connection badge in the header → enter `host:port` → Enter; connection test before saving with status display; host persisted in localStorage
+- Auto-refresh for objects: configurable (off / 30s / 1min / 5min / 10min)
+- ioBroker admin port configurable (default 8081) for direct admin links
+- Include script IDs: analyze javascript.0 scripts for the datapoints they use
+- Docker-compatible: `nginx.conf` proxies the REST API and Socket.io; runtime config via `window.__CONFIG__.ioBrokerHost` from environment variables
