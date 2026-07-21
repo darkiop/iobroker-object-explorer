@@ -1089,39 +1089,50 @@ function normalizeVal(val: unknown, type: unknown): string | number {
   }
 }
 
-// Picks the timestamps of rows whose value equals the previous row's value.
+export interface DedupeScanRow {
+  ts: number;
+  val: unknown;
+  ack?: number;
+  q?: number;
+  src?: string | null;
+}
+
+// Picks the full row tuples of rows whose value equals the previous row's value.
 // `rows` must be sorted by ts ascending; the first row of a run is kept, so a
 // step chart drawn from the remaining rows is identical.
 // `prev` carries the last value of the preceding chunk across chunk borders.
-export function pickDuplicateTs(
-  rows: { ts: number; val: unknown }[],
+// Returning whole tuples (not just ts) lets the dedupe backup dump the deleted
+// rows without a second pass over the table.
+export function pickDuplicateRows(
+  rows: DedupeScanRow[],
   type: unknown,
   prev?: { val: string | number } | null,
-): { ts: number[]; last: { val: string | number } | null } {
-  const dupes: number[] = [];
+): { rows: DumpRow[]; last: { val: string | number } | null } {
+  const dupes: DumpRow[] = [];
   let last = prev ?? null;
   for (const r of rows) {
     const v = normalizeVal(r.val, type);
     const same = last != null && (v === last.val || (typeof v === 'number' && typeof last.val === 'number' && Number.isNaN(v) && Number.isNaN(last.val)));
-    if (same) dupes.push(r.ts);
+    if (same) dupes.push([r.ts, r.val, r.ack === 1 ? 1 : 0, Number(r.q ?? 0), r.src ?? null]);
     else last = { val: v };
   }
-  return { ts: dupes, last };
+  return { rows: dupes, last };
 }
 
 const DEDUPE_SCAN_CHUNK = 50000;
 const DEDUPE_DELETE_CHUNK = 1000;
 
-// Scans the stored values of a datapoint (ts ascending) and returns the
-// timestamps of all rows that merely repeat the previous value.
-// Reads ts/val only and pages via the PK index (id, ts) — no filesort, no
-// window functions (the sql.0 backend may run MariaDB < 10.2).
-export async function findConsecutiveDuplicateTs(
+// Scans the stored values of a datapoint (ts ascending) and returns the full
+// rows of every entry that merely repeats the previous value.
+// Pages via the PK index (id, ts) — no filesort, no window functions (the sql.0
+// backend may run MariaDB < 10.2). Selects ack/q/source as well so a backup of
+// the deleted rows needs no second pass over the table.
+export async function findConsecutiveDuplicateRows(
   id: string,
   type: unknown,
   startTs?: number | null,
   endTs?: number | null,
-): Promise<number[]> {
+): Promise<DumpRow[]> {
   const numId = await resolveDpNumericId(id);
   if (numId == null || Number.isNaN(numId)) return [];
   const table = tsTableForType(type);
@@ -1129,26 +1140,44 @@ export async function findConsecutiveDuplicateTs(
   if (startTs != null && !Number.isNaN(startTs)) where += ` AND n.ts >= ${Math.floor(startTs)}`;
   if (endTs != null && !Number.isNaN(endTs)) where += ` AND n.ts <= ${Math.floor(endTs)}`;
 
-  const all: number[] = [];
+  const all: DumpRow[] = [];
   let prev: { val: string | number } | null = null;
   let offset = 0;
   for (;;) {
     const rows = await querySql(
-      `SELECT n.ts, n.val FROM ${SQL_DB_NAME}.${table} n ` +
+      `SELECT n.ts, n.val, n.ack, n.q, s.name AS src FROM ${SQL_DB_NAME}.${table} n ` +
+      `LEFT JOIN ${SQL_DB_NAME}.sources s ON s.id = n._from ` +
       `WHERE ${where} ORDER BY n.ts ASC LIMIT ${DEDUPE_SCAN_CHUNK} OFFSET ${offset}`
     );
     if (rows.length === 0) break;
-    const mapped = rows.map((r) => {
+    const mapped: DedupeScanRow[] = rows.map((r) => {
       const o = r as Record<string, unknown>;
-      return { ts: Number(o.ts ?? 0), val: o.val };
+      return {
+        ts: Number(o.ts ?? 0),
+        val: o.val,
+        ack: Number(o.ack ?? 0),
+        q: Number(o.q ?? 0),
+        src: o.src == null ? null : String(o.src),
+      };
     });
-    const res = pickDuplicateTs(mapped, type, prev);
-    all.push(...res.ts);
+    const res = pickDuplicateRows(mapped, type, prev);
+    all.push(...res.rows);
     prev = res.last;
     if (rows.length < DEDUPE_SCAN_CHUNK) break;
     offset += DEDUPE_SCAN_CHUNK;
   }
   return all;
+}
+
+// Timestamp-only view of findConsecutiveDuplicateRows, kept for the existing
+// dedupe confirm/verify flow in DpValuesModal.
+export async function findConsecutiveDuplicateTs(
+  id: string,
+  type: unknown,
+  startTs?: number | null,
+  endTs?: number | null,
+): Promise<number[]> {
+  return (await findConsecutiveDuplicateRows(id, type, startTs, endTs)).map((r) => r[0]);
 }
 
 // Deletes stored value rows of a datapoint by exact timestamp, in chunks.

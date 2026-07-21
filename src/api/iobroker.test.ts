@@ -6,7 +6,7 @@ import {
   buildAliasReverseMap,
   hasHistory,
   hasSmartName,
-  pickDuplicateTs,
+  pickDuplicateRows,
   buildOrphanValuesSql,
   buildOrphanDeleteSql,
   deleteOrphanValueRows,
@@ -268,16 +268,20 @@ describe('getStatesBatch fallback to per-namespace patterns', () => {
   })
 })
 
-describe('pickDuplicateTs', () => {
+// The scan returns whole row tuples now; most cases here only care about which
+// timestamps were picked.
+const tsOf = (r: { rows: [number, ...unknown[]][] }) => r.rows.map((x) => x[0])
+
+describe('pickDuplicateRows', () => {
   it('empty input → no duplicates', () => {
-    const res = pickDuplicateTs([], 'number')
-    expect(res.ts).toEqual([])
+    const res = pickDuplicateRows([], 'number')
+    expect(res.rows).toEqual([])
     expect(res.last).toBeNull()
   })
 
   it('all values distinct → nothing deleted', () => {
     const rows = [{ ts: 1, val: 1 }, { ts: 2, val: 2 }, { ts: 3, val: 3 }]
-    expect(pickDuplicateTs(rows, 'number').ts).toEqual([])
+    expect(tsOf(pickDuplicateRows(rows, 'number'))).toEqual([])
   })
 
   it('keeps the first of each run, deletes the rest', () => {
@@ -289,17 +293,17 @@ describe('pickDuplicateTs', () => {
       { ts: 5, val: 5 },
       { ts: 6, val: 5 },
     ]
-    expect(pickDuplicateTs(rows, 'number').ts).toEqual([2, 3, 6])
+    expect(tsOf(pickDuplicateRows(rows, 'number'))).toEqual([2, 3, 6])
   })
 
   it('whole series identical → all but the first deleted', () => {
     const rows = [{ ts: 1, val: 42 }, { ts: 2, val: 42 }, { ts: 3, val: 42 }]
-    expect(pickDuplicateTs(rows, 'number').ts).toEqual([2, 3])
+    expect(tsOf(pickDuplicateRows(rows, 'number'))).toEqual([2, 3])
   })
 
   it('number values arriving as strings compare equal', () => {
     const rows = [{ ts: 1, val: 1.5 }, { ts: 2, val: '1.5' }, { ts: 3, val: 2 }]
-    expect(pickDuplicateTs(rows, 'number').ts).toEqual([2])
+    expect(tsOf(pickDuplicateRows(rows, 'number'))).toEqual([2])
   })
 
   it('boolean 0/1 and false/true compare equal', () => {
@@ -310,29 +314,53 @@ describe('pickDuplicateTs', () => {
       { ts: 4, val: true },
       { ts: 5, val: 'true' },
     ]
-    expect(pickDuplicateTs(rows, 'boolean').ts).toEqual([2, 4, 5])
+    expect(tsOf(pickDuplicateRows(rows, 'boolean'))).toEqual([2, 4, 5])
   })
 
   it('string values compare exactly', () => {
     const rows = [{ ts: 1, val: 'on' }, { ts: 2, val: 'on' }, { ts: 3, val: 'On' }]
-    expect(pickDuplicateTs(rows, 'string').ts).toEqual([2])
+    expect(tsOf(pickDuplicateRows(rows, 'string'))).toEqual([2])
   })
 
   it('NaN repeats count as duplicates', () => {
     const rows = [{ ts: 1, val: 'x' }, { ts: 2, val: 'y' }]
-    expect(pickDuplicateTs(rows, 'number').ts).toEqual([2])
+    expect(tsOf(pickDuplicateRows(rows, 'number'))).toEqual([2])
   })
 
   it('carries the previous value across chunk borders', () => {
-    const first = pickDuplicateTs([{ ts: 1, val: 3 }, { ts: 2, val: 3 }], 'number')
-    expect(first.ts).toEqual([2])
-    const second = pickDuplicateTs([{ ts: 3, val: 3 }, { ts: 4, val: 4 }], 'number', first.last)
-    expect(second.ts).toEqual([3])
+    const first = pickDuplicateRows([{ ts: 1, val: 3 }, { ts: 2, val: 3 }], 'number')
+    expect(tsOf(first)).toEqual([2])
+    const second = pickDuplicateRows([{ ts: 3, val: 3 }, { ts: 4, val: 4 }], 'number', first.last)
+    expect(tsOf(second)).toEqual([3])
   })
 
   it('without carry the first row of a chunk is always kept', () => {
-    const second = pickDuplicateTs([{ ts: 3, val: 3 }, { ts: 4, val: 3 }], 'number')
-    expect(second.ts).toEqual([4])
+    const second = pickDuplicateRows([{ ts: 3, val: 3 }, { ts: 4, val: 3 }], 'number')
+    expect(tsOf(second)).toEqual([4])
+  })
+
+  it('returns the full row tuple of every repeat, keeping the first of a run', () => {
+    const rows = [
+      { ts: 1, val: 5, ack: 1, q: 0, src: 'a' },
+      { ts: 2, val: 5, ack: 1, q: 0, src: 'a' },
+      { ts: 3, val: 5, ack: 0, q: 2, src: null },
+      { ts: 4, val: 6, ack: 1, q: 0, src: 'a' },
+    ]
+    const res = pickDuplicateRows(rows, 'number', null)
+    expect(res.rows).toEqual([
+      [2, 5, 1, 0, 'a'],
+      [3, 5, 0, 2, null],
+    ])
+    expect(res.last).toEqual({ val: 6 })
+  })
+
+  it('compares across a chunk border via prev', () => {
+    const res = pickDuplicateRows(
+      [{ ts: 9, val: 5, ack: 1, q: 0, src: null }],
+      'number',
+      { val: 5 },
+    )
+    expect(res.rows).toEqual([[9, 5, 1, 0, null]])
   })
 })
 
