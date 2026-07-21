@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { X, Database, ChevronUp, ChevronDown, Loader2, AlertTriangle, Trash2, Pencil, Hash, Copy, Unlink, Search, RefreshCw, LineChart, FilterX, Upload, Download } from 'lucide-react';
+import { X, Database, ChevronUp, ChevronDown, Loader2, AlertTriangle, Trash2, Pencil, Hash, Copy, Unlink, Search, RefreshCw, LineChart, FilterX, Upload, Download, Eraser } from 'lucide-react';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { useDpOverview, useDbStats, useDpNumericIds, useAllObjects } from '../../hooks/useObjectQueries';
 import { queryKeys } from '../../hooks/queryKeys';
-import { deleteHistoryAll, renameDpInDb, getDpValueCount, buildDpOverviewSql, hasHistory } from '../../api/iobroker';
+import { deleteHistoryAll, deleteDpCompletely, renameDpInDb, getDpValueCount, buildDpOverviewSql, hasHistory } from '../../api/iobroker';
 import { copyToClipboard } from '../../utils/clipboard';
 import { useToast } from '../../context/ToastContext';
 import { useAppSettingsContext } from '../../context/UIContext';
@@ -57,7 +57,9 @@ export default function DbOverviewModal({ onClose, language }: Props) {
   const [sortKey, setSortKey] = useState<string>('id');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [rawTs, setRawTs] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<{ id: string; type: unknown } | null>(null);
+  // 'values' clears the ts_* rows and keeps the datapoints row (sql.0 deleteAll);
+  // 'full' also drops the datapoints row, freeing its numeric id.
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; type: unknown; mode: 'values' | 'full' } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const { appSettings } = useAppSettingsContext();
   const backup = useDbBackup();
@@ -168,14 +170,19 @@ export default function DbOverviewModal({ onClose, language }: Props) {
     setDeleting(true);
     try {
       if (appSettings.dbBackupBeforeDelete) {
-        const res = await backup.exportNamed({
-          id: pendingDelete.id,
-          type: pendingDelete.type,
-          trigger: 'delete-all',
-          startTs: null,
-          endTs: null,
-          acceptCap,
-        });
+        // A full delete spans every value table, so it needs the all-tables
+        // export; a values-only delete goes through sql.0 deleteAll, which acts
+        // on the datapoint's current type table.
+        const res = pendingDelete.mode === 'full'
+          ? await backup.exportAllTables({ id: pendingDelete.id, trigger: 'delete-all', acceptCap })
+          : await backup.exportNamed({
+              id: pendingDelete.id,
+              type: pendingDelete.type,
+              trigger: 'delete-all',
+              startTs: null,
+              endTs: null,
+              acceptCap,
+            });
         if (!res.ok) {
           if ('needsCapDecision' in res) {
             setCapPrompt({ total: res.total, cap: res.cap });
@@ -188,11 +195,22 @@ export default function DbOverviewModal({ onClose, language }: Props) {
           return;
         }
       }
-      await deleteHistoryAll(pendingDelete.id);
-      showToast(
-        isEn ? `Deleted DB values for ${pendingDelete.id}` : `DB-Werte für ${pendingDelete.id} gelöscht`,
-        'success'
-      );
+      if (pendingDelete.mode === 'full') {
+        const n = await deleteDpCompletely(pendingDelete.id);
+        showToast(
+          isEn
+            ? `Removed ${pendingDelete.id} from the database (${n.toLocaleString()} value rows)`
+            : `${pendingDelete.id} vollständig aus der Datenbank entfernt (${n.toLocaleString()} Wertzeilen)`,
+          'success'
+        );
+      } else {
+        await deleteHistoryAll(pendingDelete.id);
+        showToast(
+          isEn ? `Cleared DB values for ${pendingDelete.id}` : `DB-Werte für ${pendingDelete.id} geleert`,
+          'success'
+        );
+      }
+      setCounts((c) => { const next = { ...c }; delete next[pendingDelete.id]; return next; });
       setPendingDelete(null);
       setCapPrompt(null);
       await queryClient.invalidateQueries({ queryKey: queryKeys.history.dpOverview });
@@ -692,9 +710,21 @@ export default function DbOverviewModal({ onClose, language }: Props) {
                       </button>
                       <button
                         disabled={!r.id}
-                        title={isEn ? `Delete all DB values for ${r.id}` : `Alle DB-Werte für ${r.id} löschen`}
+                        title={isEn
+                          ? `Clear all stored values for ${r.id} — the datapoint stays in the database`
+                          : `Alle gespeicherten Werte für ${r.id} leeren — der Datenpunkt bleibt in der Datenbank`}
+                        className="opacity-0 group-hover:opacity-100 p-1 rounded text-gray-400 hover:text-amber-500 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-opacity disabled:opacity-0"
+                        onClick={(e) => { e.stopPropagation(); setPendingDelete({ id: r.id, type: r.type, mode: 'values' }); }}
+                      >
+                        <Eraser size={13} />
+                      </button>
+                      <button
+                        disabled={!r.id}
+                        title={isEn
+                          ? `Remove ${r.id} from the database entirely — values and the datapoint row`
+                          : `${r.id} vollständig aus der Datenbank entfernen — Werte und datapoints-Zeile`}
                         className="opacity-0 group-hover:opacity-100 p-1 rounded text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-opacity disabled:opacity-0"
-                        onClick={(e) => { e.stopPropagation(); setPendingDelete({ id: r.id, type: r.type }); }}
+                        onClick={(e) => { e.stopPropagation(); setPendingDelete({ id: r.id, type: r.type, mode: 'full' }); }}
                       >
                         <Trash2 size={13} />
                       </button>
@@ -811,12 +841,20 @@ export default function DbOverviewModal({ onClose, language }: Props) {
 
         {/* Inline delete confirmation */}
         {pendingDelete && (
-          <div className="shrink-0 border-t border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-5 py-3 flex items-center gap-3">
-            <AlertTriangle size={15} className="text-red-500 shrink-0" />
-            <span className="text-xs text-red-700 dark:text-red-300 flex-1">
-              {isEn
-                ? `Delete ALL database values for "${pendingDelete.id}"? This removes the stored history and cannot be undone.`
-                : `ALLE Datenbank-Werte für „${pendingDelete.id}" löschen? Entfernt die gespeicherte History unwiderruflich.`}
+          <div className={`shrink-0 border-t px-5 py-3 flex items-center gap-3 ${
+            pendingDelete.mode === 'full'
+              ? 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20'
+              : 'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20'
+          }`}>
+            <AlertTriangle size={15} className={`shrink-0 ${pendingDelete.mode === 'full' ? 'text-red-500' : 'text-amber-500'}`} />
+            <span className={`text-xs flex-1 ${pendingDelete.mode === 'full' ? 'text-red-700 dark:text-red-300' : 'text-amber-800 dark:text-amber-200'}`}>
+              {pendingDelete.mode === 'full'
+                ? (isEn
+                    ? `Remove "${pendingDelete.id}" from the database entirely? This deletes every stored value AND the datapoints row. Its numeric id is freed and MariaDB may hand it to another datapoint later — a backup of this datapoint can then no longer be restored.`
+                    : `„${pendingDelete.id}" vollständig aus der Datenbank entfernen? Löscht alle gespeicherten Werte UND die datapoints-Zeile. Die numerische ID wird frei und kann von MariaDB später an einen anderen Datenpunkt vergeben werden — ein Backup dieses Datenpunkts lässt sich dann nicht mehr zurückspielen.`)
+                : (isEn
+                    ? `Clear ALL stored values for "${pendingDelete.id}"? The datapoint itself stays in the database and keeps its numeric id, so a backup can still be restored. This cannot be undone.`
+                    : `ALLE gespeicherten Werte für „${pendingDelete.id}" leeren? Der Datenpunkt selbst bleibt mit seiner numerischen ID in der Datenbank, ein Backup lässt sich also weiterhin zurückspielen. Nicht rückgängig zu machen.`)}
             </span>
             <button
               onClick={() => setPendingDelete(null)}
@@ -828,10 +866,14 @@ export default function DbOverviewModal({ onClose, language }: Props) {
             <button
               onClick={() => void handleDeleteConfirm()}
               disabled={deleting}
-              className="px-3 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white font-medium disabled:opacity-50 flex items-center gap-1"
+              className={`px-3 py-1 text-xs rounded text-white font-medium disabled:opacity-50 flex items-center gap-1 ${
+                pendingDelete.mode === 'full' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'
+              }`}
             >
               {deleting && <Loader2 size={12} className="animate-spin" />}
-              {isEn ? 'Delete' : 'Löschen'}
+              {pendingDelete.mode === 'full'
+                ? (isEn ? 'Remove completely' : 'Vollständig entfernen')
+                : (isEn ? 'Clear values' : 'Werte leeren')}
             </button>
           </div>
         )}

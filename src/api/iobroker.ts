@@ -1058,6 +1058,81 @@ export async function fetchDpRowsChunked(
   return fetchRowsChunked(tsTableForType(type), numId, opts);
 }
 
+// Counts a datapoint's stored rows across ALL three value tables.
+// A datapoint's type can change over its lifetime, and sql.0 then starts writing
+// to a different ts_* table without moving the old rows — so a single-table count
+// understates what a full delete would remove.
+export async function getDpValueCountAllTables(id: string): Promise<number> {
+  const numId = await resolveDpNumericId(id);
+  if (numId == null || Number.isNaN(numId)) return 0;
+  const rows = await querySql(
+    TS_TABLES.map((t) => `SELECT COUNT(*) c FROM ${SQL_DB_NAME}.${t} WHERE id = ${numId}`).join(' UNION ALL ')
+  );
+  return rows.reduce<number>((sum, r) => sum + Number((r as { c?: unknown }).c ?? 0), 0);
+}
+
+// Streams a datapoint's raw rows from every value table that holds any, so a
+// backup taken before a full delete covers the same ground the delete does.
+export async function fetchDpRowsAllTables(
+  id: string,
+  opts: ChunkedFetchOptions,
+): Promise<{ table: DumpTable; rows: DumpRow[] }[]> {
+  const numId = await resolveDpNumericId(id);
+  if (numId == null || Number.isNaN(numId)) {
+    throw new Error(`Datapoint not found in database: ${id}`);
+  }
+  const out: { table: DumpTable; rows: DumpRow[] }[] = [];
+  let fetched = 0;
+  for (const table of TS_TABLES) {
+    // The cap spans the whole datapoint, not each table, so later tables get
+    // whatever budget the earlier ones left.
+    const remaining = opts.cap - fetched;
+    if (remaining <= 0) break;
+    const rows = await fetchRowsChunked(table, numId, {
+      ...opts,
+      cap: remaining,
+      onProgress: (n) => opts.onProgress?.(fetched + n),
+    });
+    fetched += rows.length;
+    if (rows.length > 0) out.push({ table, rows });
+  }
+  return out;
+}
+
+// Rows per DELETE statement when clearing a datapoint. Bounded so a datapoint
+// with millions of rows does not become one long-running locking statement that
+// the sendTo call times out on.
+const FULL_DELETE_CHUNK = 50_000;
+
+// Removes a datapoint from the database entirely: every value row in every ts_*
+// table, then the `datapoints` row itself.
+//
+// Deleting the datapoints row frees its numeric id, and MariaDB reuses
+// AUTO_INCREMENT gaps — a later datapoint can inherit it. That is why the
+// values-only delete (sql.0 `deleteAll`) keeps the row: it holds the id down so
+// a restore can never write into a series that has since been reassigned.
+export async function deleteDpCompletely(id: string): Promise<number> {
+  const numId = await resolveDpNumericId(id);
+  if (numId == null || Number.isNaN(numId)) {
+    throw new Error(`Datapoint not found in database: ${id}`);
+  }
+  let deleted = 0;
+  for (const table of TS_TABLES) {
+    for (;;) {
+      const res = (await sendToSql(
+        'query',
+        `DELETE FROM ${SQL_DB_NAME}.${table} WHERE id = ${numId} LIMIT ${FULL_DELETE_CHUNK}`
+      )) as { error?: unknown; result?: { affectedRows?: number } } | null;
+      if (res && typeof res === 'object' && res.error) throw new Error(String(res.error));
+      const n = Number(res?.result?.affectedRows ?? 0);
+      deleted += n;
+      if (n < FULL_DELETE_CHUNK) break;
+    }
+  }
+  await querySql(`DELETE FROM ${SQL_DB_NAME}.datapoints WHERE id = ${numId}`);
+  return deleted;
+}
+
 // Streams the raw rows of an orphan group. Orphans have no name left, so the
 // lookup goes through the numeric id directly instead of datapoints.name.
 export async function fetchOrphanRowsChunked(

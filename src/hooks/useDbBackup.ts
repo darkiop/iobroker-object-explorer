@@ -3,6 +3,8 @@ import {
   fetchDpRowsChunked,
   fetchOrphanRowsChunked,
   getDpValueCount,
+  getDpValueCountAllTables,
+  fetchDpRowsAllTables,
   tsTableForType,
   insertDpValuesBatch,
   getSourceIdMap,
@@ -66,6 +68,12 @@ export interface ExportNamedArgs {
   startTs: number | null;
   endTs: number | null;
   /** Set after the user confirmed the cap dialog — exports the newest cap rows. */
+  acceptCap?: boolean;
+}
+
+export interface ExportAllTablesArgs {
+  id: string;
+  trigger: DumpTrigger;
   acceptCap?: boolean;
 }
 
@@ -206,6 +214,49 @@ export function useDbBackup(opts: Options = {}) {
     [emit],
   );
 
+  /** Dumps a datapoint's rows from every value table that holds any, as one
+   *  series per table. Needed before a full delete: a datapoint whose type
+   *  changed leaves rows behind in the previous ts_* table, and a single-table
+   *  export would silently miss them. */
+  const exportAllTables = useCallback(
+    async (args: ExportAllTablesArgs): Promise<ExportOutcome> => {
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
+      try {
+        setProgress({ phase: 'counting', done: 0, total: 0 });
+        const total = await getDpValueCountAllTables(args.id);
+        if (total > DB_DUMP_MAX_ROWS && !args.acceptCap) {
+          return { ok: false, needsCapDecision: true, total, cap: DB_DUMP_MAX_ROWS };
+        }
+        const truncated = total > DB_DUMP_MAX_ROWS;
+        const capped = Math.min(total, DB_DUMP_MAX_ROWS);
+
+        setProgress({ phase: 'fetching', done: 0, total: capped });
+        const perTable = await fetchDpRowsAllTables(args.id, {
+          cap: DB_DUMP_MAX_ROWS,
+          signal: ctrl.signal,
+          onProgress: (done) => setProgress({ phase: 'fetching', done, total: capped }),
+        });
+
+        const rowCount = perTable.reduce((n, t) => n + t.rows.length, 0);
+        emit(args.trigger, args.id, truncated, perTable.map((t) => ({
+          kind: 'named' as const,
+          id: args.id,
+          table: t.table,
+          type: t.table === 'ts_string' ? 'string' : t.table === 'ts_bool' ? 'boolean' : 'number',
+          rows: t.rows,
+        })));
+        return { ok: true, rows: rowCount, truncated };
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : String(err) };
+      } finally {
+        setProgress(null);
+        abortRef.current = null;
+      }
+    },
+    [emit],
+  );
+
   /** Dumps rows the caller already holds — used by dedupe, whose scan has to read
    *  the affected rows anyway, so no second pass over the table is needed. */
   const exportRows = useCallback(
@@ -285,5 +336,5 @@ export function useDbBackup(opts: Options = {}) {
     [],
   );
 
-  return { progress, abort, exportNamed, exportOrphan, exportRows, prepareRestore, runRestore };
+  return { progress, abort, exportNamed, exportAllTables, exportOrphan, exportRows, prepareRestore, runRestore };
 }

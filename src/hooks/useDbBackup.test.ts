@@ -5,6 +5,8 @@ import { parseDump, DB_DUMP_MAX_ROWS } from '../api/dbBackup'
 
 const fetchDpRowsChunked = vi.fn()
 const fetchOrphanRowsChunked = vi.fn()
+const fetchDpRowsAllTables = vi.fn()
+const getDpValueCountAllTables = vi.fn()
 const getDpValueCount = vi.fn()
 const insertDpValuesBatch = vi.fn()
 const getSourceIdMap = vi.fn()
@@ -15,6 +17,8 @@ vi.mock('../api/iobroker', () => ({
   fetchDpRowsChunked: (...a: unknown[]) => fetchDpRowsChunked(...a),
   fetchOrphanRowsChunked: (...a: unknown[]) => fetchOrphanRowsChunked(...a),
   getDpValueCount: (...a: unknown[]) => getDpValueCount(...a),
+  getDpValueCountAllTables: (...a: unknown[]) => getDpValueCountAllTables(...a),
+  fetchDpRowsAllTables: (...a: unknown[]) => fetchDpRowsAllTables(...a),
   insertDpValuesBatch: (...a: unknown[]) => insertDpValuesBatch(...a),
   getSourceIdMap: (...a: unknown[]) => getSourceIdMap(...a),
   getLiveDpIndex: (...a: unknown[]) => getLiveDpIndex(...a),
@@ -33,6 +37,8 @@ beforeEach(() => {
   fetchDpRowsChunked.mockReset()
   fetchOrphanRowsChunked.mockReset()
   getDpValueCount.mockReset()
+  fetchDpRowsAllTables.mockReset()
+  getDpValueCountAllTables.mockReset()
   vi.stubGlobal('URL', {
     createObjectURL: () => 'blob:fake',
     revokeObjectURL: () => {},
@@ -138,6 +144,41 @@ describe('useDbBackup export', () => {
     })
 
     expect(parseDump(downloads[0].text).trigger).toBe('orphan-delete')
+  })
+
+  it('emits one series per value table so a type change leaves nothing behind', async () => {
+    getDpValueCountAllTables.mockResolvedValue(3)
+    fetchDpRowsAllTables.mockResolvedValue([
+      { table: 'ts_number', rows: [[1690000000000, 21.5, 1, 0, null], [1690000060000, 22, 1, 0, null]] },
+      { table: 'ts_bool', rows: [[1680000000000, 1, 1, 0, null]] },
+    ])
+
+    const { result } = harness()
+    let outcome: unknown
+    await act(async () => {
+      outcome = await result.current.exportAllTables({ id: 'alias.0.foo', trigger: 'delete-all' })
+    })
+
+    expect(outcome).toEqual({ ok: true, rows: 3, truncated: false })
+    const dump = parseDump(downloads[0].text)
+    expect(dump.series.map((s) => s.table)).toEqual(['ts_number', 'ts_bool'])
+    // Type must follow the table, not the datapoint's current type — the rows in
+    // the old table were written under the old type.
+    expect(dump.series.map((s) => s.type)).toEqual(['number', 'boolean'])
+    expect(dump.series.map((s) => s.count)).toEqual([2, 1])
+  })
+
+  it('counts across all tables for the cap decision on a full delete', async () => {
+    getDpValueCountAllTables.mockResolvedValue(OVER_CAP)
+
+    const { result } = harness()
+    let outcome: unknown
+    await act(async () => {
+      outcome = await result.current.exportAllTables({ id: 'alias.0.foo', trigger: 'delete-all' })
+    })
+
+    expect(outcome).toEqual({ ok: false, needsCapDecision: true, total: OVER_CAP, cap: DB_DUMP_MAX_ROWS })
+    expect(fetchDpRowsAllTables).not.toHaveBeenCalled()
   })
 
   it('tracks progress phases', async () => {
