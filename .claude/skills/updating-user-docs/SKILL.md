@@ -61,7 +61,9 @@ New source file added? Add its row to the README `## Project Structure` table.
 
 ## Fix What You Touch
 
-While editing a section, stale neighbouring text is **in scope**, not out of it. Both docs currently claim "Light / Dark / Obsidian" while `ThemeContext.tsx` defines six themes — that is exactly the drift this skill exists to stop. Correct it and mention it in your report.
+While editing a section, stale neighbouring text is **in scope**, not out of it. Correct it and record it in `docs/bugs.md` with the fix you applied.
+
+The drift is never where you are looking. It is the sentence next to it, written when the feature behaved differently. B-02 in `docs/bugs.md` is the worked example: both docs advertised three themes for as long as the code had six, and it survived every previous docs pass because nobody was editing *that* line.
 
 Source comments are the exception: a comment that contradicts its own code is a real bug, but fixing it is a code change, not a docs change. Report it, do not silently edit it.
 
