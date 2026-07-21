@@ -8,6 +8,8 @@ import { queryKeys } from '../../hooks/queryKeys';
 import { deleteHistoryAll, renameDpInDb, getDpValueCount, buildDpOverviewSql, hasHistory } from '../../api/iobroker';
 import { copyToClipboard } from '../../utils/clipboard';
 import { useToast } from '../../context/ToastContext';
+import { useAppSettingsContext } from '../../context/UIContext';
+import { useDbBackup } from '../../hooks/useDbBackup';
 import { getTypeColor } from '../../utils/typeColor';
 import DpValuesModal from './DpValuesModal';
 import OrphanValuesModal from './OrphanValuesModal';
@@ -54,8 +56,11 @@ export default function DbOverviewModal({ onClose, language }: Props) {
   const [sortKey, setSortKey] = useState<string>('id');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [rawTs, setRawTs] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; type: unknown } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const { appSettings } = useAppSettingsContext();
+  const backup = useDbBackup();
+  const [capPrompt, setCapPrompt] = useState<{ total: number; cap: number } | null>(null);
   const [valuesOf, setValuesOf] = useState<{ id: string; type: unknown } | null>(null);
   const [historyOf, setHistoryOf] = useState<string | null>(null);
   const [orphansOpen, setOrphansOpen] = useState(false);
@@ -134,16 +139,41 @@ export default function DbOverviewModal({ onClose, language }: Props) {
     }
   }
 
-  async function handleDeleteConfirm() {
+  // Runs the backup export first when enabled and only deletes if it succeeded —
+  // a dump written after the delete would be worthless, and one that fails
+  // silently is worse than none.
+  async function handleDeleteConfirm(acceptCap = false) {
     if (!pendingDelete) return;
     setDeleting(true);
     try {
-      await deleteHistoryAll(pendingDelete);
+      if (appSettings.dbBackupBeforeDelete) {
+        const res = await backup.exportNamed({
+          id: pendingDelete.id,
+          type: pendingDelete.type,
+          trigger: 'delete-all',
+          startTs: null,
+          endTs: null,
+          acceptCap,
+        });
+        if (!res.ok) {
+          if ('needsCapDecision' in res) {
+            setCapPrompt({ total: res.total, cap: res.cap });
+            return;
+          }
+          showToast(
+            isEn ? `Backup failed, nothing deleted: ${res.error}` : `Backup fehlgeschlagen, nichts gelöscht: ${res.error}`,
+            'error',
+          );
+          return;
+        }
+      }
+      await deleteHistoryAll(pendingDelete.id);
       showToast(
-        isEn ? `Deleted DB values for ${pendingDelete}` : `DB-Werte für ${pendingDelete} gelöscht`,
+        isEn ? `Deleted DB values for ${pendingDelete.id}` : `DB-Werte für ${pendingDelete.id} gelöscht`,
         'success'
       );
       setPendingDelete(null);
+      setCapPrompt(null);
       await queryClient.invalidateQueries({ queryKey: queryKeys.history.dpOverview });
     } catch (err) {
       showToast(err instanceof Error ? err.message : String(err), 'error');
@@ -588,7 +618,7 @@ export default function DbOverviewModal({ onClose, language }: Props) {
                         disabled={!r.id}
                         title={isEn ? `Delete all DB values for ${r.id}` : `Alle DB-Werte für ${r.id} löschen`}
                         className="opacity-0 group-hover:opacity-100 p-1 rounded text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-opacity disabled:opacity-0"
-                        onClick={(e) => { e.stopPropagation(); setPendingDelete(r.id); }}
+                        onClick={(e) => { e.stopPropagation(); setPendingDelete({ id: r.id, type: r.type }); }}
                       >
                         <Trash2 size={13} />
                       </button>
@@ -641,14 +671,54 @@ export default function DbOverviewModal({ onClose, language }: Props) {
           </div>
         )}
 
+        {capPrompt && (
+          <div className="shrink-0 border-t border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-5 py-3 flex items-center gap-3">
+            <AlertTriangle size={15} className="text-amber-500 shrink-0" />
+            <span className="text-xs text-amber-800 dark:text-amber-200 flex-1">
+              {isEn
+                ? `${capPrompt.total.toLocaleString()} rows exceed the export limit of ${capPrompt.cap.toLocaleString()}. Only the newest ${capPrompt.cap.toLocaleString()} can be backed up — the oldest rows would be lost from the dump.`
+                : `${capPrompt.total.toLocaleString()} Zeilen überschreiten das Export-Limit von ${capPrompt.cap.toLocaleString()}. Nur die neuesten ${capPrompt.cap.toLocaleString()} können gesichert werden — die ältesten Zeilen fehlen dann im Dump.`}
+            </span>
+            <button
+              onClick={() => { setCapPrompt(null); setPendingDelete(null); }}
+              className="px-3 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              {isEn ? 'Cancel' : 'Abbrechen'}
+            </button>
+            <button
+              onClick={() => { setCapPrompt(null); void handleDeleteConfirm(true); }}
+              className="px-3 py-1 text-xs rounded bg-amber-600 hover:bg-amber-700 text-white font-medium"
+            >
+              {isEn ? 'Back up newest and delete' : 'Neueste sichern und löschen'}
+            </button>
+          </div>
+        )}
+        {backup.progress && (
+          <div className="shrink-0 border-t border-gray-200 dark:border-gray-700 px-5 py-2 flex items-center gap-3 text-xs text-gray-600 dark:text-gray-300">
+            <Loader2 size={12} className="animate-spin" />
+            <span>
+              {backup.progress.phase === 'counting'
+                ? (isEn ? 'Counting rows…' : 'Zeilen zählen…')
+                : backup.progress.phase === 'fetching'
+                  ? (isEn
+                      ? `Backing up ${backup.progress.done.toLocaleString()} / ${backup.progress.total.toLocaleString()}`
+                      : `Sichere ${backup.progress.done.toLocaleString()} / ${backup.progress.total.toLocaleString()}`)
+                  : (isEn ? 'Writing file…' : 'Datei schreiben…')}
+            </span>
+            <button onClick={backup.abort} className="underline">
+              {isEn ? 'Cancel' : 'Abbrechen'}
+            </button>
+          </div>
+        )}
+
         {/* Inline delete confirmation */}
         {pendingDelete && (
           <div className="shrink-0 border-t border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-5 py-3 flex items-center gap-3">
             <AlertTriangle size={15} className="text-red-500 shrink-0" />
             <span className="text-xs text-red-700 dark:text-red-300 flex-1">
               {isEn
-                ? `Delete ALL database values for "${pendingDelete}"? This removes the stored history and cannot be undone.`
-                : `ALLE Datenbank-Werte für „${pendingDelete}" löschen? Entfernt die gespeicherte History unwiderruflich.`}
+                ? `Delete ALL database values for "${pendingDelete.id}"? This removes the stored history and cannot be undone.`
+                : `ALLE Datenbank-Werte für „${pendingDelete.id}" löschen? Entfernt die gespeicherte History unwiderruflich.`}
             </span>
             <button
               onClick={() => setPendingDelete(null)}
@@ -658,7 +728,7 @@ export default function DbOverviewModal({ onClose, language }: Props) {
               {isEn ? 'Cancel' : 'Abbrechen'}
             </button>
             <button
-              onClick={handleDeleteConfirm}
+              onClick={() => void handleDeleteConfirm()}
               disabled={deleting}
               className="px-3 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white font-medium disabled:opacity-50 flex items-center gap-1"
             >
