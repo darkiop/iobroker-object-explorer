@@ -209,6 +209,15 @@
 - The manual refresh button always bypasses both and fetches fresh
 - `includeIdPrefixes`: when configured, only objects with the given ID prefixes are loaded — reduces payload on large ioBroker installs (enums are always fetched)
 
+## Progressive Web App (PWA)
+
+- Installable as a standalone app: a download button appears in the header on browsers that support `beforeinstallprompt` (hidden on narrow screens)
+- Works offline — the UI shell is precached, and the last-fetched objects and state values stay readable; writes need a connection
+- Object and state requests use a `NetworkFirst` cache with a 3 s network timeout, so an online client always sees live data
+- Automatic update check: when a new version is deployed, a toast offers a reload
+- One-off "ready for offline use" notification once precaching completes
+- Note: the two PWA notifications are currently German-only, regardless of the UI language
+
 ## Settings (SettingsModal)
 
 - Connection: ioBroker host, Socket.io host/port, admin port, realtime transport

@@ -1,7 +1,7 @@
 # ioBroker Object Explorer — Architecture
 
 Mermaid diagrams describing the full project and its internal + external relationships.
-Generated overview — not authoritative over the code. See [CLAUDE.md](CLAUDE.md) and [API.md](API.md) for detail.
+Generated overview — not authoritative over the code. See [CLAUDE.md](../CLAUDE.md) and [API.md](api.md) for detail.
 
 ---
 

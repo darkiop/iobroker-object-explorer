@@ -1,0 +1,18 @@
+# Bugs
+
+Kleinbefunde, die nebenbei auffallen — zu klein für ein Audit-Finding in [findings.md](findings.md), zu konkret für [ideas.md](ideas.md).
+
+Konvention: Zeilenangaben driften. Vor dem Beheben das **Symbol** neu greppen, nicht der Zeilennummer vertrauen.
+
+| ID | Status | Datei | Problem | Fix |
+|----|--------|-------|---------|-----|
+| B-01 | OPEN | `src/components/modals/OrphanValuesModal.tsx:23` | Kommentar behauptet „The scan is a full LEFT JOIN over every value table, so it runs on demand only." — beides falsch. Seit `a1bd1ee` probt der Scan ID-Lücken statt zu joinen, seit `951eb7c` läuft er beim Öffnen statt auf Knopfdruck. Zeile 54 im selben File beschreibt es korrekt, die beiden Kommentare widersprechen sich direkt. | Zeile 23 auf Gap-Probing + Scan-on-open umschreiben oder ersatzlos streichen, da 54 die Sache schon abdeckt. |
+| B-02 | FIXED | `README.md`, `src/components/modals/HelpModal.tsx` | Beide Docs nannten drei Themes „Light / Dark / Obsidian", während `ThemeContext.tsx` sechs definiert (`light`, `dark`, `abyss`, 3× catppuccin). `obsidian` existiert im Code nur noch als Legacy-Migration nach `catppuccin-mocha`. | Erledigt 2026-07-21: README (Feature-Liste, Settings-Tabelle, **localStorage-Tabelle**) und HelpModal (Prosa EN+DE, `layout`-Keywords) nennen jetzt sechs Themes. Die localStorage-Zeile war beim ersten Durchgang übersehen worden. |
+| B-03 | OPEN | `src/components/PwaManager.tsx:12,24` | Beide PWA-Toasts sind hartkodiert deutsch (`'Neue Version verfügbar'`, `'Neu laden'`, `'App bereit für Offline-Nutzung'`) und haben keine Keys in `utils/i18n.ts`. Englische UI zeigt trotzdem Deutsch. Alle anderen nutzersichtbaren Strings der App sind zweisprachig. | i18n-Keys anlegen und `PwaManager` die aktuelle Sprache lesen lassen. Achtung: Die Komponente rendert `null` und liest bisher keinen Sprach-Context — der muss mit rein. Bis dahin ist die Einschränkung in README und `features.md` als Known Issue vermerkt; diese Vermerke beim Fix wieder entfernen. |
+| B-04 | FIXED | `vitest.config.ts`, `eslint.config.js` | `.claude/worktrees/` enthält vollständige `src/`-Kopien aus Agent-Worktrees. Beide Tools globbten sie mit ein: `npx vitest run` meldete 585 statt 207 Tests inklusive eines Phantom-Fehlers aus einer veralteten `UIContext.tsx`, `npm run lint` meldete 21 Errors — **keiner davon aus `src/`**. Verfälscht Test- und Lint-Baseline sowie jede daraus abgeleitete Kennzahl. | Erledigt 2026-07-21: `vitest.config.ts` bekommt `include: ['src/**/*.{test,spec}.{ts,tsx}']`, `eslint.config.js` ignoriert `.claude`. Danach 207 Tests grün, 0 Lint-Errors (51 react-refresh-Warnings bleiben als bekannte Baseline). |
+
+## Herkunft
+
+B-01 und B-02 fielen beim Bauen des `updating-user-docs`-Skills an — Testläufe gegen die Doku-Oberflächen legen genau solche Drift offen. Das ist der erwartete Nebeneffekt, nicht Zufall.
+
+B-03 und B-04 kamen aus dem `refreshing-project-docs`-Skill, gleiches Muster: B-03 fand der Inverse-Sweep über `features.md` (PWA war auf allen drei Doku-Oberflächen unerwähnt), B-04 fiel beim Nachrechnen der Testanzahl für `stats.md` auf. Kennzahlen aus einem verseuchten Arbeitsverzeichnis zu ziehen wäre still danebengegangen — die Zahlen hätten plausibel ausgesehen.
