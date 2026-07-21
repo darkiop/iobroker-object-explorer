@@ -3,9 +3,12 @@ import { X, Table2, Loader2, AlertTriangle, ChevronLeft, ChevronRight, Pencil, C
 import { useState } from 'react';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { useDpValues, useDpValueSpan, useDpNumericId } from '../../hooks/useObjectQueries';
-import { updateDpValue, insertDpValue, deleteHistoryEntry, deleteHistoryRange, getDpValueCount, tsTableForType, buildDpValuesSql, buildDpPurgeSql, buildDpInsertSql, buildDpDedupeSql, findConsecutiveDuplicateTs, deleteDpValuesByTs } from '../../api/iobroker';
+import { updateDpValue, insertDpValue, deleteHistoryEntry, deleteHistoryRange, getDpValueCount, tsTableForType, buildDpValuesSql, buildDpPurgeSql, buildDpInsertSql, buildDpDedupeSql, findConsecutiveDuplicateTs, findConsecutiveDuplicateRows, deleteDpValuesByTs } from '../../api/iobroker';
+import type { DumpRow } from '../../api/dbBackup';
 import { copyToClipboard } from '../../utils/clipboard';
 import { useToast } from '../../context/ToastContext';
+import { useAppSettingsContext } from '../../context/UIContext';
+import { useDbBackup } from '../../hooks/useDbBackup';
 import { ColoredId } from '../../utils/coloredId';
 import StyledCheckbox from '../ui/StyledCheckbox';
 import HistoryModal from './HistoryModal';
@@ -27,6 +30,10 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
   const [toStr, setToStr] = useState('');
   const [rawTs, setRawTs] = useState(false);
   const showToast = useToast();
+  const { appSettings } = useAppSettingsContext();
+  const backup = useDbBackup();
+  const [capPrompt, setCapPrompt] = useState<{ total: number; cap: number; action: 'purge' } | null>(null);
+  const [dedupeRows, setDedupeRows] = useState<DumpRow[] | null>(null);
 
   const startTs = fromStr ? new Date(fromStr).getTime() : null;
   const endTs = toStr ? new Date(toStr).getTime() : null;
@@ -129,10 +136,26 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
   }
 
   // Delete all stored values older than 3 months for this datapoint.
-  async function purgeOld() {
+  async function purgeOld(acceptCap = false) {
     if (purgeCutoff == null) return;
     setPurging(true);
     try {
+      if (appSettings.dbBackupBeforeDelete) {
+        const res = await backup.exportNamed({
+          id, type, trigger: 'purge', startTs: null, endTs: purgeCutoff, acceptCap,
+        });
+        if (!res.ok) {
+          if ('needsCapDecision' in res) {
+            setCapPrompt({ total: res.total, cap: res.cap, action: 'purge' });
+            return;
+          }
+          showToast(
+            isEn ? `Backup failed, nothing deleted: ${res.error}` : `Backup fehlgeschlagen, nichts gelöscht: ${res.error}`,
+            'error',
+          );
+          return;
+        }
+      }
       await deleteHistoryRange(id, 1, purgeCutoff);
       // The sql adapter answers {success:true} unconditionally — even when it
       // discarded the request — so verify by re-counting instead of trusting it.
@@ -160,13 +183,19 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
   // Opens the confirm and previews which rows the dedupe would delete.
   async function scanDedupe(wholeDp: boolean) {
     setDedupeTs(null);
+    setDedupeRows(null);
     setConfirmDedupe(true);
     setScanningDedupe(true);
     try {
-      setDedupeTs(await findConsecutiveDuplicateTs(id, type, wholeDp ? null : startTs, wholeDp ? null : endTs));
+      // The scan reads ack/q/source too, so the dedupe backup needs no second
+      // pass over the table.
+      const scanned = await findConsecutiveDuplicateRows(id, type, wholeDp ? null : startTs, wholeDp ? null : endTs);
+      setDedupeRows(scanned);
+      setDedupeTs(scanned.map((r) => r[0]));
     } catch (err) {
       showToast(err instanceof Error ? err.message : String(err), 'error');
       setDedupeTs([]);
+      setDedupeRows([]);
     } finally {
       setScanningDedupe(false);
     }
@@ -178,6 +207,20 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
     if (dedupeTs == null || dedupeTs.length === 0) return;
     setDeduping(true);
     try {
+      if (appSettings.dbBackupBeforeDelete && dedupeRows && dedupeRows.length > 0) {
+        // No cap prompt here: the rows are already in memory from the scan, so
+        // there is nothing left to fetch and nothing to truncate.
+        const res = await backup.exportRows({ id, type, trigger: 'dedupe', rows: dedupeRows });
+        if (!res.ok) {
+          showToast(
+            isEn
+              ? `Backup failed, nothing deleted: ${'error' in res ? res.error : ''}`
+              : `Backup fehlgeschlagen, nichts gelöscht: ${'error' in res ? res.error : ''}`,
+            'error',
+          );
+          return;
+        }
+      }
       await deleteDpValuesByTs(id, type, dedupeTs);
       // Verify by re-scanning instead of trusting the delete response.
       const remaining = await findConsecutiveDuplicateTs(id, type, dedupeWholeDp ? null : startTs, dedupeWholeDp ? null : endTs);
@@ -199,6 +242,7 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
       }
       setConfirmDedupe(false);
       setDedupeTs(null);
+      setDedupeRows(null);
       setPage(0);
       await reload();
     } catch (err) {
@@ -642,6 +686,57 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
                   </pre>
                 </div>
               )}
+              {capPrompt && (
+                <div className="flex items-start gap-2 rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-3 py-2">
+                  <AlertTriangle size={14} className="text-amber-500 shrink-0 mt-0.5" />
+                  <div className="flex-1 text-xs text-amber-800 dark:text-amber-200">
+                    <span>
+                      {isEn
+                        ? `${capPrompt.total.toLocaleString()} rows exceed the export limit of ${capPrompt.cap.toLocaleString()}. Only the newest ${capPrompt.cap.toLocaleString()} can be backed up — the oldest rows would be lost from the dump.`
+                        : `${capPrompt.total.toLocaleString()} Zeilen überschreiten das Export-Limit von ${capPrompt.cap.toLocaleString()}. Nur die neuesten ${capPrompt.cap.toLocaleString()} können gesichert werden — die ältesten Zeilen fehlen dann im Dump.`}
+                    </span>
+                    {capPrompt.action === 'purge' && (
+                      <span className="block mt-1">
+                        {isEn
+                          ? 'For a 3-month purge these are the rows immediately before the cutoff — the oldest values are the ones that drop out of the dump.'
+                          : 'Beim 3-Monats-Purge sind das die Zeilen direkt vor dem Cutoff — gerade die ältesten Werte fallen aus dem Dump.'}
+                      </span>
+                    )}
+                    <div className="flex items-center gap-2 mt-2">
+                      <button
+                        onClick={() => setCapPrompt(null)}
+                        className="px-3 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      >
+                        {isEn ? 'Cancel' : 'Abbrechen'}
+                      </button>
+                      <button
+                        onClick={() => { setCapPrompt(null); void purgeOld(true); }}
+                        className="px-3 py-1 text-xs rounded bg-amber-600 hover:bg-amber-700 text-white font-medium"
+                      >
+                        {isEn ? 'Back up newest and delete' : 'Neueste sichern und löschen'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {backup.progress && (
+                <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
+                  <Loader2 size={12} className="animate-spin" />
+                  <span>
+                    {backup.progress.phase === 'counting'
+                      ? (isEn ? 'Counting rows…' : 'Zeilen zählen…')
+                      : backup.progress.phase === 'fetching'
+                        ? (isEn
+                            ? `Backing up ${backup.progress.done.toLocaleString()} / ${backup.progress.total.toLocaleString()}`
+                            : `Sichere ${backup.progress.done.toLocaleString()} / ${backup.progress.total.toLocaleString()}`)
+                        : (isEn ? 'Writing file…' : 'Datei schreiben…')}
+                  </span>
+                  <button onClick={backup.abort} className="underline">
+                    {isEn ? 'Cancel' : 'Abbrechen'}
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200 dark:border-gray-700">
@@ -653,7 +748,7 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
                 {isEn ? 'Cancel' : 'Abbrechen'}
               </button>
               <button
-                onClick={purgeOld}
+                onClick={() => void purgeOld()}
                 disabled={purging || countingPurge || purgeCount === 0}
                 className="flex items-center gap-1 px-3 py-1.5 text-xs rounded border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-40"
               >
