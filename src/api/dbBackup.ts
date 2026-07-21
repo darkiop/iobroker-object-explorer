@@ -157,3 +157,45 @@ export function parseDump(text: string): Dump {
   }
   return validateDump(decoded);
 }
+
+export type RestoreStatus = 'ok' | 'missing' | 'blocked';
+
+export interface RestoreClassification {
+  status: RestoreStatus;
+  reason?: string;
+}
+
+/** Live state of the datapoints table, needed to judge whether a series can be
+ *  restored: which ids exist by name, and which numeric ids are in use. */
+export interface LiveDpIndex {
+  names: Set<string>;
+  ids: Set<number>;
+}
+
+/** Decides whether one dump series may be written back.
+ *
+ *  A named series needs its id to still exist — the restore never creates
+ *  datapoints, that is the adapter's job.
+ *
+ *  An orphan series is blocked when its numeric id is in use again: MariaDB
+ *  reuses AUTO_INCREMENT gaps, so the id may now belong to a different
+ *  datapoint, and writing would inject foreign values into a live series. */
+export function classifyRestoreSeries(series: DumpSeries, live: LiveDpIndex): RestoreClassification {
+  if (series.kind === 'named') {
+    return live.names.has(series.id)
+      ? { status: 'ok' }
+      : { status: 'missing', reason: `Datapoint no longer exists in the database: ${series.id}` };
+  }
+  return live.ids.has(series.dbId)
+    ? {
+        status: 'blocked',
+        reason: `Numeric id ${series.dbId} has been reassigned to another datapoint — restoring would write foreign values into a live series`,
+      }
+    : { status: 'ok' };
+}
+
+export function dumpFilename(trigger: DumpTrigger, subject: string, now: Date): string {
+  const safe = subject.replace(/[^A-Za-z0-9._-]/g, '_').replace(/\./g, '_');
+  const date = now.toISOString().slice(0, 10);
+  return `iobroker-dbdump-${trigger}-${safe}-${date}.json`;
+}

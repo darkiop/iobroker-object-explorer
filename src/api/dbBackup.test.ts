@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { buildDump, serializeDump, parseDump, DUMP_FORMAT, DUMP_VERSION } from './dbBackup'
+import {
+  buildDump, serializeDump, parseDump, classifyRestoreSeries, dumpFilename,
+  DUMP_FORMAT, DUMP_VERSION,
+} from './dbBackup'
 
 describe('buildDump', () => {
   it('builds a named series with range and count derived from the rows', () => {
@@ -143,5 +146,50 @@ describe('parseDump', () => {
   it('preserves truncated: true', () => {
     const d = { ...valid(), truncated: true }
     expect(parseDump(JSON.stringify(d)).truncated).toBe(true)
+  })
+})
+
+describe('classifyRestoreSeries', () => {
+  const named = (id: string) => ({
+    kind: 'named' as const, id, table: 'ts_number' as const, type: 'number',
+    range: { from: 1, to: 2 }, count: 0, rows: [],
+  })
+  const orphan = (dbId: number) => ({
+    kind: 'orphan' as const, dbId, table: 'ts_number' as const, type: 'number',
+    range: { from: 1, to: 2 }, count: 0, rows: [],
+  })
+
+  const live = { names: new Set(['alias.0.foo']), ids: new Set([1, 2, 3]) }
+
+  it('marks a named series ok when the id still exists', () => {
+    expect(classifyRestoreSeries(named('alias.0.foo'), live).status).toBe('ok')
+  })
+
+  it('marks a named series missing when the id is gone', () => {
+    const r = classifyRestoreSeries(named('alias.0.gone'), live)
+    expect(r.status).toBe('missing')
+    expect(r.reason).toMatch(/no longer exists/i)
+  })
+
+  it('blocks an orphan series whose dbId was reassigned', () => {
+    const r = classifyRestoreSeries(orphan(2), live)
+    expect(r.status).toBe('blocked')
+    expect(r.reason).toMatch(/reassigned/i)
+  })
+
+  it('marks an orphan series ok when its dbId is still free', () => {
+    expect(classifyRestoreSeries(orphan(99), live).status).toBe('ok')
+  })
+})
+
+describe('dumpFilename', () => {
+  it('encodes trigger, subject and date', () => {
+    const name = dumpFilename('purge', 'alias.0.foo', new Date('2026-07-20T10:00:00Z'))
+    expect(name).toBe('iobroker-dbdump-purge-alias_0_foo-2026-07-20.json')
+  })
+
+  it('strips characters that are unsafe in a filename', () => {
+    expect(dumpFilename('manual', 'a/b\\c:d*?"<>|e', new Date('2026-07-20T00:00:00Z')))
+      .toBe('iobroker-dbdump-manual-a_b_c_d______e-2026-07-20.json')
   })
 })
