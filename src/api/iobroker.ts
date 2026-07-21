@@ -1,6 +1,7 @@
 import type { IoBrokerState, IoBrokerObject, IoBrokerObjectCommon, HistoryEntry, HistoryOptions } from '../types/iobroker';
 import { getLocalizedName, getAllNamesForSearch } from '../utils/i18n';
 import { derivePatterns } from '../utils/idPatterns';
+import type { DumpRow, DumpTable } from './dbBackup';
 
 const LS_HOST_KEY = 'ioBrokerHost';
 const LS_CONNECTIONS_KEY = 'iob-connections';
@@ -986,6 +987,90 @@ export async function getDpValues(
       src: o.src == null ? null : String(o.src),
     };
   });
+}
+
+// --- Backup: chunked raw row fetch -------------------------------------------
+
+// Rows per request when streaming a datapoint out of the database. Large enough
+// to keep the roundtrip count sane, small enough that a single sendTo response
+// stays manageable.
+const BACKUP_FETCH_CHUNK = 10_000;
+
+export interface ChunkedFetchOptions {
+  startTs?: number | null;
+  endTs?: number | null;
+  // Stop after this many rows (newest first).
+  cap: number;
+  // Called after every chunk with the running total.
+  onProgress?: (fetched: number) => void;
+  signal?: AbortSignal;
+}
+
+async function fetchRowsChunked(
+  table: string,
+  numId: number,
+  opts: ChunkedFetchOptions,
+): Promise<DumpRow[]> {
+  let where = `n.id = ${numId}`;
+  if (opts.startTs != null && !Number.isNaN(opts.startTs)) where += ` AND n.ts >= ${Math.floor(opts.startTs)}`;
+  if (opts.endTs != null && !Number.isNaN(opts.endTs)) where += ` AND n.ts <= ${Math.floor(opts.endTs)}`;
+
+  const out: DumpRow[] = [];
+  let offset = 0;
+  for (;;) {
+    if (opts.signal?.aborted) throw new Error('Export aborted');
+    const remaining = opts.cap - out.length;
+    if (remaining <= 0) break;
+    const limit = Math.min(BACKUP_FETCH_CHUNK, remaining);
+    const rows = await querySql(
+      `SELECT n.ts, n.val, n.ack, n.q, s.name AS src ` +
+      `FROM ${SQL_DB_NAME}.${table} n ` +
+      `LEFT JOIN ${SQL_DB_NAME}.sources s ON s.id = n._from ` +
+      `WHERE ${where} ORDER BY n.ts DESC LIMIT ${limit} OFFSET ${offset}`
+    );
+    for (const r of rows) {
+      const o = r as Record<string, unknown>;
+      out.push([
+        Number(o.ts ?? 0),
+        o.val,
+        Number(o.ack ?? 0) === 1 ? 1 : 0,
+        Number(o.q ?? 0),
+        o.src == null ? null : String(o.src),
+      ]);
+    }
+    opts.onProgress?.(out.length);
+    if (rows.length < limit) break;
+    offset += limit;
+  }
+  return out;
+}
+
+// Streams the raw stored rows of a datapoint, newest first.
+export async function fetchDpRowsChunked(
+  id: string,
+  type: unknown,
+  opts: ChunkedFetchOptions,
+): Promise<DumpRow[]> {
+  const numId = await resolveDpNumericId(id);
+  if (numId == null || Number.isNaN(numId)) {
+    throw new Error(`Datapoint not found in database: ${id}`);
+  }
+  return fetchRowsChunked(tsTableForType(type), numId, opts);
+}
+
+// Streams the raw rows of an orphan group. Orphans have no name left, so the
+// lookup goes through the numeric id directly instead of datapoints.name.
+export async function fetchOrphanRowsChunked(
+  table: DumpTable,
+  dbId: number,
+  opts: ChunkedFetchOptions,
+): Promise<DumpRow[]> {
+  if (!(TS_TABLES as readonly string[]).includes(table)) {
+    throw new Error(`Unknown value table: ${table}`);
+  }
+  const numId = Math.floor(Number(dbId));
+  if (!Number.isFinite(numId)) throw new Error(`Invalid db id: ${dbId}`);
+  return fetchRowsChunked(table, numId, opts);
 }
 
 // --- Dedupe (consecutive duplicate values) ----------------------------------
