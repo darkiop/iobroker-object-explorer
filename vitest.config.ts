@@ -8,5 +8,8 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    // Scope to src/ — agent worktrees under .claude/ carry duplicate test files
+    // that would otherwise be globbed in and reported as stale failures.
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
   },
 })
