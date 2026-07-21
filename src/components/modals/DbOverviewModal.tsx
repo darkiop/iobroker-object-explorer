@@ -45,7 +45,7 @@ export default function DbOverviewModal({ onClose, language }: Props) {
   useEscapeKey(onClose);
   const isEn = language === 'en';
 
-  const { data, isLoading, isError, error } = useDpOverview(true);
+  const { data, isLoading, isError, error, isFetching } = useDpOverview(true);
   const { data: stats } = useDbStats(true);
   const { data: idMap } = useDpNumericIds(true);
   const { data: allObjects } = useAllObjects();
@@ -66,6 +66,7 @@ export default function DbOverviewModal({ onClose, language }: Props) {
   // cap decision instead of borrowing pendingDelete's.
   const [exportCap, setExportCap] = useState<{ id: string; type: unknown; total: number; cap: number } | null>(null);
   const [exportingId, setExportingId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [valuesOf, setValuesOf] = useState<{ id: string; type: unknown } | null>(null);
   const [historyOf, setHistoryOf] = useState<string | null>(null);
   const [orphansOpen, setOrphansOpen] = useState(false);
@@ -77,6 +78,20 @@ export default function DbOverviewModal({ onClose, language }: Props) {
   const idSet = useMemo(() => new Set((data ?? []).map((r) => r.id)), [data]);
   // Per-datapoint value counts, loaded on demand (full-table counts are too slow).
   const [counts, setCounts] = useState<Record<string, number | 'loading' | 'error'>>({});
+
+  // Reloads the overview plus its two child queries (numeric ids, table stats) —
+  // they all hang under the dpOverview key prefix. The on-demand row counts live
+  // in component state, not in React Query, so they are dropped here: after a
+  // delete or a rename they would otherwise keep showing pre-change numbers.
+  async function refreshAll() {
+    setRefreshing(true);
+    try {
+      setCounts({});
+      await queryClient.invalidateQueries({ queryKey: queryKeys.history.dpOverview });
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   function copySql() {
     copyToClipboard(buildDpOverviewSql())
@@ -379,6 +394,15 @@ export default function DbOverviewModal({ onClose, language }: Props) {
             >
               {countingAll ? <Loader2 size={12} className="animate-spin" /> : <Hash size={12} />}
               {isEn ? 'Count and Sort desc' : 'Zählen & absteigend sortieren'}
+            </button>
+            <button
+              onClick={() => void refreshAll()}
+              disabled={refreshing || isFetching}
+              title={isEn ? 'Reload the datapoint overview from the database' : 'Datenpunkt-Übersicht neu aus der Datenbank laden'}
+              className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
+            >
+              <RefreshCw size={12} className={refreshing || isFetching ? 'animate-spin' : undefined} />
+              {isEn ? 'Refresh' : 'Aktualisieren'}
             </button>
             <button
               onClick={() => setOrphansOpen(true)}
