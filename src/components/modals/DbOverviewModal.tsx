@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { X, Database, ChevronUp, ChevronDown, Loader2, AlertTriangle, Trash2, Pencil, Hash, Copy, Unlink, Search, RefreshCw, LineChart, FilterX } from 'lucide-react';
+import { X, Database, ChevronUp, ChevronDown, Loader2, AlertTriangle, Trash2, Pencil, Hash, Copy, Unlink, Search, RefreshCw, LineChart, FilterX, Upload } from 'lucide-react';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { useDpOverview, useDbStats, useDpNumericIds, useAllObjects } from '../../hooks/useObjectQueries';
 import { queryKeys } from '../../hooks/queryKeys';
@@ -13,6 +13,7 @@ import { useDbBackup } from '../../hooks/useDbBackup';
 import { getTypeColor } from '../../utils/typeColor';
 import DpValuesModal from './DpValuesModal';
 import OrphanValuesModal from './OrphanValuesModal';
+import DbBackupModal from './DbBackupModal';
 import HistoryModal from './HistoryModal';
 import StyledCheckbox from '../ui/StyledCheckbox';
 import { ColoredId } from '../../utils/coloredId';
@@ -64,6 +65,7 @@ export default function DbOverviewModal({ onClose, language }: Props) {
   const [valuesOf, setValuesOf] = useState<{ id: string; type: unknown } | null>(null);
   const [historyOf, setHistoryOf] = useState<string | null>(null);
   const [orphansOpen, setOrphansOpen] = useState(false);
+  const [restoreOpen, setRestoreOpen] = useState(false);
   const [renameOldId, setRenameOldId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [renaming, setRenaming] = useState(false);
@@ -282,7 +284,7 @@ export default function DbOverviewModal({ onClose, language }: Props) {
   return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center animate-backdrop-in bg-black/60 backdrop-blur-sm p-4"
-      onClick={pendingDelete || renameOldId || orphansOpen || historyOf ? undefined : onClose}
+      onClick={pendingDelete || renameOldId || orphansOpen || restoreOpen || historyOf ? undefined : onClose}
     >
       <div
         className="w-full max-w-7xl bg-white dark:bg-gray-900 animate-modal-in rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col h-[85vh]"
@@ -351,6 +353,14 @@ export default function DbOverviewModal({ onClose, language }: Props) {
             >
               <Unlink size={12} />
               {isEn ? 'Orphan rows' : 'Verwaiste Zeilen'}
+            </button>
+            <button
+              onClick={() => setRestoreOpen(true)}
+              title={isEn ? 'Restore values from a backup dump' : 'Werte aus einem Backup-Dump wiederherstellen'}
+              className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              <Upload size={12} />
+              {isEn ? 'Restore' : 'Restore'}
             </button>
             {activeFilters.length > 0 && (
               <button
@@ -741,6 +751,10 @@ export default function DbOverviewModal({ onClose, language }: Props) {
 
       {orphansOpen && (
         <OrphanValuesModal language={language} onClose={() => setOrphansOpen(false)} />
+      )}
+
+      {restoreOpen && (
+        <DbBackupModal language={language} onClose={() => setRestoreOpen(false)} />
       )}
 
       {valuesOf && (
