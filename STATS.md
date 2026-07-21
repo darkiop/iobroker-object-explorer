@@ -4,14 +4,15 @@
 
 | Metric | Value |
 |---|---|
-| Source files (`.ts` / `.tsx`) | 89 (excl. test) / 94 total |
-| Lines of code — TypeScript/TSX | ~21 500 |
-| Lines of code — all sources (incl. CSS/HTML/JSON) | ~28 000 |
-| Components (`src/components/`) | 49 `.tsx` / 53 total |
+| Source files (`.ts` / `.tsx`) | 104 (excl. test) / 124 total |
+| Lines of code — TypeScript/TSX | ~25 200 (excl. test) / ~27 100 total |
+| Lines of code — all sources (incl. CSS/HTML/config) | ~28 100 |
+| Components (`src/components/`) | 59 `.tsx` (excl. test) / 70 files total |
 | Context providers (`src/context/`) | 6 |
-| React Query hooks (`useObjectQueries.ts`) | 19 exports |
-| API functions (`src/api/iobroker.ts`) | 57 exports |
+| React Query hooks (`useObjectQueries.ts`) | 25 exports |
+| API functions (`src/api/iobroker.ts`) | 87 exports (77 functions) |
 | TypeScript interfaces / types | 6 (in `src/types/iobroker.ts`) |
+| Test files | 20 (207 test cases) |
 
 > Line counts exclude `node_modules/`, `dist/`, and `.git/`.
 
@@ -19,40 +20,47 @@
 
 | File | Lines |
 |---|---|
-| `statelist/StateList.tsx` | 1 532 |
-| `modals/SettingsModal.tsx` | 1 214 |
-| `App.tsx` | 1 078 |
-| `api/iobroker.ts` | 1 074 |
-| `history/HistoryChart.tsx` | 962 |
-| `StateTree.tsx` | 681 |
-| `modals/HelpModal.tsx` | 641 |
-| `modals/OptimizeModal.tsx` | 540 |
-| `context/FilterContext.tsx` | 516 |
-| `modals/ObjectEditModal.tsx` | 501 (Tabs extrahiert nach `tabs/`) |
+| `api/iobroker.ts` | 1 703 |
+| `statelist/StateList.tsx` | 1 542 |
+| `modals/SettingsModal.tsx` | 1 242 |
+| `App.tsx` | 1 151 |
+| `history/HistoryChart.tsx` | 1 017 |
+| `modals/DpValuesModal.tsx` | 956 |
+| `modals/DbOverviewModal.tsx` | 757 |
+| `modals/HelpModal.tsx` | 707 |
+| `StateTree.tsx` | 660 |
+| `statelist/StateRow.tsx` | 576 |
+| `modals/ObjectEditModal.tsx` | 546 (Tabs extrahiert nach `tabs/`) |
+| `modals/OptimizeModal.tsx` | 542 |
+| `context/FilterContext.tsx` | 525 |
+| `Layout.tsx` | 514 |
 
 ## Git History
 
 | Metric | Value |
 |---|---|
-| Total commits | 550 |
-| Project period | 20 Feb 2026 – 24 Jun 2026 (~18 weeks) |
-| Contributors | 1 (darkiop) |
-| `feat` commits | 174 |
-| `fix` commits | 110 |
-| `docs` commits | 18 |
-| `refactor` commits | 20 |
-| `perf` commits | 13 |
-| `chore` commits | 14 |
+| Total commits | 662 |
+| Project period | 20 Feb 2026 – 20 Jul 2026 (~21 weeks) |
+| Contributors | 1 (Thorsten Walk / darkiop) |
+| `feat` commits | 270 |
+| `fix` commits | 168 |
+| `refactor` commits | 46 |
+| `docs` commits | 41 |
+| `perf` commits | 25 |
+| `chore` commits | 16 |
+| `style` commits | 10 |
+| `test` commits | 7 |
+| `ci` commits | 1 |
 
 ## Dependencies
 
 **Runtime (10):** `react`, `react-dom`, `@tanstack/react-query`, `@tanstack/react-virtual`, `recharts`, `lucide-react`, `dompurify`, `expr-eval`, `react-error-boundary`, `socket.io-client`
 
-**Dev (22):** `vite`, `vite-plugin-pwa`, `typescript`, `typescript-eslint`, `tailwindcss`, `eslint`, `eslint-plugin-react-hooks`, `eslint-plugin-react-refresh`, `@eslint/js`, `globals`, `postcss`, `autoprefixer`, `vitest`, `@vitest/ui`, `@testing-library/react`, `@testing-library/user-event`, `jsdom`, `@types/react`, `@types/react-dom`, `@types/dompurify`, `@vitejs/plugin-react`
+**Dev (23):** `vite`, `vite-plugin-pwa`, `typescript`, `typescript-eslint`, `tailwindcss`, `eslint`, `eslint-plugin-react-hooks`, `eslint-plugin-react-refresh`, `@eslint/js`, `globals`, `postcss`, `autoprefixer`, `vitest`, `@vitest/ui`, `@testing-library/react`, `@testing-library/user-event`, `jsdom`, `@types/node`, `@types/react`, `@types/react-dom`, `@types/dompurify`, `@vitejs/plugin-react`, `rollup-plugin-visualizer`
 
 ## API Coverage
 
-43 functions in `src/api/iobroker.ts` cover:
+77 functions in `src/api/iobroker.ts` cover:
 
 - Read / write / delete / rename / move / import objects
 - Read / write states (single + batch)
@@ -61,3 +69,4 @@
 - Subtree delete
 - Script-used-ID analysis (javascript.0)
 - Utilities: units, roles, alias reverse map, SQL instances
+- **SQL database tooling:** DB stats, datapoint overview (`getDpOverview`), value browsing/editing (`getDpValues`, `updateDpValue`, `insertDpValue`), purge & dedupe, DP rename in DB, orphan value scan & delete (`getOrphanValueRows`, `deleteOrphanValueRows`)
