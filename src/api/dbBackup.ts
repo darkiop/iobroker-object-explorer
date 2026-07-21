@@ -5,8 +5,18 @@
 export const DUMP_FORMAT = 'iobroker-object-explorer/db-dump';
 export const DUMP_VERSION = 1;
 
-/** Hard cap on how many rows a single export may collect. */
-export const DB_DUMP_MAX_ROWS = 500_000;
+/** Hard cap on how many rows a single export may collect.
+ *
+ *  A row serializes to ~44 chars, so 2M rows are ~88 MB of JSON plus ~285 MB of
+ *  heap for the row arrays — comfortable in a browser tab. The walls sit much
+ *  further out: V8 refuses strings beyond 536,870,888 chars (~12M rows) and the
+ *  heap gives out before that. The binding constraint in practice is fetch time
+ *  — 2M rows are 200 sendTo roundtrips — which is what the abort button is for.
+ *
+ *  The cap exists mainly for the delete guard: there a truncated export would be
+ *  paired with a full delete, so it forces an explicit decision instead of
+ *  silently dropping the oldest rows. */
+export const DB_DUMP_MAX_ROWS = 2_000_000;
 
 /** The three value tables sql.0 writes to. Whitelist for anything read from a file. */
 export const DUMP_TABLES = ['ts_number', 'ts_string', 'ts_bool'] as const;

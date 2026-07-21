@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useDbBackup } from './useDbBackup'
-import { parseDump } from '../api/dbBackup'
+import { parseDump, DB_DUMP_MAX_ROWS } from '../api/dbBackup'
 
 const fetchDpRowsChunked = vi.fn()
 const fetchOrphanRowsChunked = vi.fn()
@@ -24,6 +24,9 @@ vi.mock('../api/iobroker', () => ({
 
 // Capture what the hook would download instead of touching the DOM.
 const downloads: { name: string; text: string }[] = []
+
+// Derived from the cap so the tests keep testing the boundary, not a fixed number.
+const OVER_CAP = DB_DUMP_MAX_ROWS + 100_000
 
 beforeEach(() => {
   downloads.length = 0
@@ -68,7 +71,7 @@ describe('useDbBackup export', () => {
   })
 
   it('reports needsCapDecision instead of exporting when the count exceeds the cap', async () => {
-    getDpValueCount.mockResolvedValue(600_000)
+    getDpValueCount.mockResolvedValue(OVER_CAP)
 
     const { result } = harness()
     let outcome: unknown
@@ -78,13 +81,13 @@ describe('useDbBackup export', () => {
       })
     })
 
-    expect(outcome).toEqual({ ok: false, needsCapDecision: true, total: 600_000, cap: 500_000 })
+    expect(outcome).toEqual({ ok: false, needsCapDecision: true, total: OVER_CAP, cap: DB_DUMP_MAX_ROWS })
     expect(fetchDpRowsChunked).not.toHaveBeenCalled()
     expect(downloads).toHaveLength(0)
   })
 
   it('marks the dump truncated when the cap decision was accepted', async () => {
-    getDpValueCount.mockResolvedValue(600_000)
+    getDpValueCount.mockResolvedValue(OVER_CAP)
     fetchDpRowsChunked.mockResolvedValue([[1690000000000, 1, 1, 0, null]])
 
     const { result } = harness()

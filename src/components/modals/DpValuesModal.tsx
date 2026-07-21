@@ -343,62 +343,72 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
         className="w-full max-w-7xl bg-white dark:bg-gray-900 animate-modal-in rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col h-[85vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700 shrink-0">
-          <div className="flex items-center gap-2 min-w-0">
-            <Table2 size={15} className="text-blue-500 shrink-0" />
-            <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100 shrink-0">
-              {isEn ? 'Stored values' : 'Gespeicherte Werte'}
-            </h2>
-            <ColoredId id={id} className="text-xs font-mono truncate" />
-            <button
-              onClick={copyId}
-              title={isEn ? 'Copy ID' : 'ID kopieren'}
-              className="shrink-0 p-1 rounded text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-            >
-              <Copy size={12} />
-            </button>
-            <span
-              className="shrink-0 px-1.5 py-0.5 rounded bg-gray-500/10 text-xs font-mono text-gray-600 dark:text-gray-300"
-              title={isEn ? 'Source table' : 'Quell-Tabelle'}
-            >
-              {tsTableForType(type)}
-            </span>
-            {dpNumericId != null && (
-              <span
-                className="shrink-0 px-1.5 py-0.5 rounded bg-blue-500/10 text-xs font-mono text-blue-600 dark:text-blue-400"
-                title={isEn ? 'Database id (datapoints.id)' : 'Datenbank-ID (datapoints.id)'}
+        {/* Header — title/meta on the first line, actions on the second, so the
+            button row does not squeeze the id and the badges. */}
+        <div className="flex flex-col gap-2 px-5 py-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <Table2 size={15} className="text-blue-500 shrink-0" />
+              <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100 shrink-0">
+                {isEn ? 'Stored values' : 'Gespeicherte Werte'}
+              </h2>
+              <ColoredId id={id} className="text-xs font-mono truncate" />
+              <button
+                onClick={copyId}
+                title={isEn ? 'Copy ID' : 'ID kopieren'}
+                className="shrink-0 p-1 rounded text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-800"
               >
-                id={dpNumericId}
+                <Copy size={12} />
+              </button>
+              <span
+                className="shrink-0 px-1.5 py-0.5 rounded bg-gray-500/10 text-xs font-mono text-gray-600 dark:text-gray-300"
+                title={isEn ? 'Source table' : 'Quell-Tabelle'}
+              >
+                {tsTableForType(type)}
               </span>
-            )}
-            {spanFetching && !span ? (
-              <Loader2 size={12} className="shrink-0 animate-spin text-gray-400" />
-            ) : span ? (
-              <>
+              {dpNumericId != null && (
                 <span
-                  className="shrink-0 px-1.5 py-0.5 rounded bg-blue-500/10 text-xs tabular-nums text-blue-600 dark:text-blue-300"
-                  title={
-                    hasTsFilter
-                      ? (isEn ? 'Stored value rows in the selected range' : 'Gespeicherte Wert-Zeilen im gewählten Bereich')
-                      : (isEn ? 'Stored value rows' : 'Gespeicherte Wert-Zeilen')
-                  }
+                  className="shrink-0 px-1.5 py-0.5 rounded bg-blue-500/10 text-xs font-mono text-blue-600 dark:text-blue-400"
+                  title={isEn ? 'Database id (datapoints.id)' : 'Datenbank-ID (datapoints.id)'}
                 >
-                  {span.count.toLocaleString()} {isEn ? 'rows' : 'Zeilen'}
-                  {hasTsFilter && <span className="opacity-60"> ({isEn ? 'filtered' : 'gefiltert'})</span>}
+                  id={dpNumericId}
                 </span>
-                {span.firstTs != null && (
+              )}
+              {spanFetching && !span ? (
+                <Loader2 size={12} className="shrink-0 animate-spin text-gray-400" />
+              ) : span ? (
+                <>
                   <span
-                    className="shrink-0 px-1.5 py-0.5 rounded bg-emerald-500/10 text-xs tabular-nums text-emerald-600 dark:text-emerald-300"
-                    title={isEn ? 'Oldest stored value' : 'Ältester gespeicherter Wert'}
+                    className="shrink-0 px-1.5 py-0.5 rounded bg-blue-500/10 text-xs tabular-nums text-blue-600 dark:text-blue-300"
+                    title={
+                      hasTsFilter
+                        ? (isEn ? 'Stored value rows in the selected range' : 'Gespeicherte Wert-Zeilen im gewählten Bereich')
+                        : (isEn ? 'Stored value rows' : 'Gespeicherte Wert-Zeilen')
+                    }
                   >
-                    {isEn ? 'since' : 'seit'} {rawTs ? span.firstTs : new Date(span.firstTs).toLocaleString()}
+                    {span.count.toLocaleString()} {isEn ? 'rows' : 'Zeilen'}
+                    {hasTsFilter && <span className="opacity-60"> ({isEn ? 'filtered' : 'gefiltert'})</span>}
                   </span>
-                )}
-              </>
-            ) : null}
+                  {span.firstTs != null && (
+                    <span
+                      className="shrink-0 px-1.5 py-0.5 rounded bg-emerald-500/10 text-xs tabular-nums text-emerald-600 dark:text-emerald-300"
+                      title={isEn ? 'Oldest stored value' : 'Ältester gespeicherter Wert'}
+                    >
+                      {isEn ? 'since' : 'seit'} {rawTs ? span.firstTs : new Date(span.firstTs).toLocaleString()}
+                    </span>
+                  )}
+                </>
+              ) : null}
+            </div>
+            <button
+              onClick={onClose}
+              className="shrink-0 p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
+            >
+              <X size={16} />
+            </button>
           </div>
-          <div className="flex items-center gap-1 shrink-0">
+
+          <div className="flex items-center gap-1 flex-wrap">
             <button
               onClick={() => reload()}
               disabled={isFetching}
@@ -464,12 +474,6 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
             >
               <Copy size={12} />
               SQL
-            </button>
-            <button
-              onClick={onClose}
-              className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
-            >
-              <X size={16} />
             </button>
           </div>
         </div>
