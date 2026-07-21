@@ -84,3 +84,76 @@ export function buildDump(input: BuildDumpInput): Dump {
     }),
   };
 }
+
+export function serializeDump(dump: Dump): string {
+  return JSON.stringify(dump);
+}
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
+function isUInt(v: unknown): v is number {
+  return typeof v === 'number' && Number.isSafeInteger(v) && v >= 0;
+}
+
+/** Validates a decoded dump. A dump is a user-picked file, so nothing in it is
+ *  trusted: the table name and numeric ids end up in SQL, and the row tuples are
+ *  written back to the database. Throws on the first problem with a message the
+ *  restore UI can show verbatim. */
+export function validateDump(value: unknown): Dump {
+  if (!isPlainObject(value)) throw new Error('Dump is not an object');
+  if (value.format !== DUMP_FORMAT) throw new Error('This file is not a database dump');
+  if (value.version !== DUMP_VERSION) {
+    throw new Error(`Unsupported dump version ${String(value.version)} (expected ${DUMP_VERSION})`);
+  }
+  if (!isUInt(value.createdAt)) throw new Error('Invalid createdAt');
+  if (typeof value.truncated !== 'boolean') throw new Error('Invalid truncated flag');
+  if (!Array.isArray(value.series)) throw new Error('Dump has no series array');
+
+  const triggers: DumpTrigger[] = ['delete-all', 'purge', 'dedupe', 'orphan-delete', 'manual'];
+  if (!triggers.includes(value.trigger as DumpTrigger)) {
+    throw new Error(`Unknown trigger ${String(value.trigger)}`);
+  }
+  if (!isPlainObject(value.source) || typeof value.source.db !== 'string' || typeof value.source.host !== 'string') {
+    throw new Error('Invalid source block');
+  }
+
+  for (const s of value.series) {
+    if (!isPlainObject(s)) throw new Error('Series is not an object');
+    if (!(DUMP_TABLES as readonly unknown[]).includes(s.table)) {
+      throw new Error(`Unknown value table ${String(s.table)}`);
+    }
+    if (typeof s.type !== 'string') throw new Error('Invalid series type');
+    if (s.kind === 'named') {
+      if (typeof s.id !== 'string' || s.id === '') throw new Error('Invalid series id');
+    } else if (s.kind === 'orphan') {
+      if (!isUInt(s.dbId)) throw new Error(`Invalid db id ${String(s.dbId)}`);
+    } else {
+      throw new Error(`Unknown series kind ${String(s.kind)}`);
+    }
+    if (!Array.isArray(s.rows)) throw new Error('Series has no rows array');
+    for (const r of s.rows) {
+      if (!Array.isArray(r) || r.length !== 5) throw new Error('Every row must have 5 columns');
+      if (!isUInt(r[0]) || r[0] === 0) throw new Error(`Invalid timestamp ${String(r[0])}`);
+      if (r[2] !== 0 && r[2] !== 1) throw new Error(`Invalid ack ${String(r[2])}`);
+      if (!isUInt(r[3])) throw new Error(`Invalid quality ${String(r[3])}`);
+      if (r[4] !== null && typeof r[4] !== 'string') throw new Error('Invalid source name');
+    }
+    if (!isPlainObject(s.range) || !isUInt(s.range.from) || !isUInt(s.range.to)) {
+      throw new Error('Invalid series range');
+    }
+    if (!isUInt(s.count)) throw new Error('Invalid series count');
+  }
+  return value as unknown as Dump;
+}
+
+export function parseDump(text: string): Dump {
+  let decoded: unknown;
+  try {
+    decoded = JSON.parse(text);
+  } catch {
+    throw new Error('File is not valid JSON');
+  }
+  return validateDump(decoded);
+}
