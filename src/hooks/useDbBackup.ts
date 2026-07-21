@@ -4,17 +4,49 @@ import {
   fetchOrphanRowsChunked,
   getDpValueCount,
   tsTableForType,
+  insertDpValuesBatch,
+  getSourceIdMap,
+  getLiveDpIndex,
+  resolveDpNumericId,
 } from '../api/iobroker';
 import {
   buildDump,
   serializeDump,
+  parseDump,
+  classifyRestoreSeries,
   dumpFilename,
   DB_DUMP_MAX_ROWS,
+  type Dump,
   type DumpRow,
+  type DumpSeries,
   type DumpTable,
   type DumpTrigger,
   type DumpSeriesInput,
+  type RestoreStatus,
 } from '../api/dbBackup';
+
+export interface RestorePlanSeries {
+  index: number;
+  series: DumpSeries;
+  status: RestoreStatus;
+  reason?: string;
+}
+
+export interface RestorePlan {
+  dump: Dump;
+  series: RestorePlanSeries[];
+}
+
+export interface RestoreReport {
+  inserted: number;
+  skipped: number;
+  missing: number;
+  blocked: number;
+  unresolvedSources: number;
+  /** Index of the last series written successfully, -1 if none. */
+  lastCompleted: number;
+  error?: string;
+}
 
 export interface BackupProgress {
   phase: 'counting' | 'fetching' | 'writing';
@@ -194,5 +226,62 @@ export function useDbBackup(opts: Options = {}) {
     [emit],
   );
 
-  return { progress, abort, exportNamed, exportOrphan, exportRows };
+  const prepareRestore = useCallback(async (text: string): Promise<RestorePlan> => {
+    const dump = parseDump(text);
+    const live = await getLiveDpIndex();
+    return {
+      dump,
+      series: dump.series.map((s, index) => ({ index, series: s, ...classifyRestoreSeries(s, live) })),
+    };
+  }, []);
+
+  const runRestore = useCallback(
+    async (plan: RestorePlan, selected: number[]): Promise<RestoreReport> => {
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
+      const chosen = new Set(selected);
+      const report: RestoreReport = {
+        inserted: 0, skipped: 0, missing: 0, blocked: 0, unresolvedSources: 0, lastCompleted: -1,
+      };
+      try {
+        const sourceIds = await getSourceIdMap();
+        const writable = plan.series.filter((s) => chosen.has(s.index));
+        const totalRows = writable.reduce((n, s) => n + (s.status === 'ok' ? s.series.rows.length : 0), 0);
+        let doneRows = 0;
+
+        for (const entry of writable) {
+          if (entry.status === 'missing') { report.missing += 1; continue; }
+          if (entry.status === 'blocked') { report.blocked += 1; continue; }
+
+          const s = entry.series;
+          const numId = s.kind === 'orphan' ? s.dbId : await resolveDpNumericId(s.id);
+          if (numId == null || Number.isNaN(numId)) { report.missing += 1; continue; }
+
+          setProgress({ phase: 'writing', done: doneRows, total: totalRows });
+          const res = await insertDpValuesBatch(
+            s.table, s.type, numId, s.rows, sourceIds,
+            (done) => setProgress({ phase: 'writing', done: doneRows + done, total: totalRows }),
+            ctrl.signal,
+          );
+          report.inserted += res.inserted;
+          report.skipped += res.skipped;
+          report.unresolvedSources += res.unresolvedSources;
+          report.lastCompleted = entry.index;
+          doneRows += s.rows.length;
+        }
+        return report;
+      } catch (err) {
+        // Blocks written before the failure stay in place. INSERT IGNORE makes a
+        // re-run with the same file safe, so the report names the position rather
+        // than pretending to roll back.
+        return { ...report, error: err instanceof Error ? err.message : String(err) };
+      } finally {
+        setProgress(null);
+        abortRef.current = null;
+      }
+    },
+    [],
+  );
+
+  return { progress, abort, exportNamed, exportOrphan, exportRows, prepareRestore, runRestore };
 }

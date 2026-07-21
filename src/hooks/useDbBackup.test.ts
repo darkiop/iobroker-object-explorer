@@ -5,15 +5,19 @@ import { parseDump } from '../api/dbBackup'
 
 const fetchDpRowsChunked = vi.fn()
 const getDpValueCount = vi.fn()
+const insertDpValuesBatch = vi.fn()
+const getSourceIdMap = vi.fn()
+const getLiveDpIndex = vi.fn()
+const resolveDpNumericId = vi.fn()
 
 vi.mock('../api/iobroker', () => ({
   fetchDpRowsChunked: (...a: unknown[]) => fetchDpRowsChunked(...a),
   fetchOrphanRowsChunked: vi.fn(),
   getDpValueCount: (...a: unknown[]) => getDpValueCount(...a),
-  insertDpValuesBatch: vi.fn(),
-  getSourceIdMap: vi.fn(),
-  getLiveDpIndex: vi.fn(),
-  resolveDpNumericId: vi.fn(),
+  insertDpValuesBatch: (...a: unknown[]) => insertDpValuesBatch(...a),
+  getSourceIdMap: (...a: unknown[]) => getSourceIdMap(...a),
+  getLiveDpIndex: (...a: unknown[]) => getLiveDpIndex(...a),
+  resolveDpNumericId: (...a: unknown[]) => resolveDpNumericId(...a),
   tsTableForType: (t: unknown) => (t === 'string' ? 'ts_string' : t === 'boolean' ? 'ts_bool' : 'ts_number'),
 }))
 
@@ -124,5 +128,78 @@ describe('useDbBackup export', () => {
 
     // Back to idle once the run finished.
     expect(result.current.progress).toBeNull()
+  })
+})
+
+describe('useDbBackup restore', () => {
+  const dumpText = () => JSON.stringify({
+    format: 'iobroker-object-explorer/db-dump',
+    version: 1,
+    createdAt: 1753000000000,
+    source: { db: 'iobroker', host: 'h' },
+    trigger: 'delete-all',
+    truncated: false,
+    series: [
+      {
+        kind: 'named', id: 'alias.0.live', table: 'ts_number', type: 'number',
+        range: { from: 1, to: 2 }, count: 1, rows: [[1690000000000, 21.5, 1, 0, 'src.a']],
+      },
+      {
+        kind: 'named', id: 'alias.0.gone', table: 'ts_number', type: 'number',
+        range: { from: 1, to: 2 }, count: 1, rows: [[1690000000000, 1, 1, 0, null]],
+      },
+      {
+        kind: 'orphan', dbId: 7, table: 'ts_number', type: 'number',
+        range: { from: 1, to: 2 }, count: 1, rows: [[1690000000000, 2, 1, 0, null]],
+      },
+    ],
+  })
+
+  beforeEach(() => {
+    insertDpValuesBatch.mockReset()
+    getSourceIdMap.mockReset()
+    getLiveDpIndex.mockReset()
+    resolveDpNumericId.mockReset()
+    getSourceIdMap.mockResolvedValue({ 'src.a': 3 })
+    getLiveDpIndex.mockResolvedValue({ names: new Set(['alias.0.live']), ids: new Set([7]) })
+    resolveDpNumericId.mockResolvedValue(42)
+    insertDpValuesBatch.mockResolvedValue({ inserted: 1, skipped: 0, unresolvedSources: 0 })
+  })
+
+  it('classifies every series before writing anything', async () => {
+    const { result } = harness()
+    let plan: Awaited<ReturnType<typeof result.current.prepareRestore>> | undefined
+    await act(async () => { plan = await result.current.prepareRestore(dumpText()) })
+
+    expect(plan?.series.map((s) => s.status)).toEqual(['ok', 'missing', 'blocked'])
+    expect(insertDpValuesBatch).not.toHaveBeenCalled()
+  })
+
+  it('writes only the selected ok series and reports the totals', async () => {
+    const { result } = harness()
+    let plan: Awaited<ReturnType<typeof result.current.prepareRestore>>
+    await act(async () => { plan = await result.current.prepareRestore(dumpText()) })
+
+    let report: Awaited<ReturnType<typeof result.current.runRestore>> | undefined
+    await act(async () => { report = await result.current.runRestore(plan!, [0, 1, 2]) })
+
+    expect(insertDpValuesBatch).toHaveBeenCalledTimes(1)
+    expect(report).toMatchObject({ inserted: 1, skipped: 0, missing: 1, blocked: 1, unresolvedSources: 0 })
+  })
+
+  it('reports how many rows were skipped as already present', async () => {
+    insertDpValuesBatch.mockResolvedValue({ inserted: 0, skipped: 1, unresolvedSources: 1 })
+    const { result } = harness()
+    let plan: Awaited<ReturnType<typeof result.current.prepareRestore>>
+    await act(async () => { plan = await result.current.prepareRestore(dumpText()) })
+    let report: Awaited<ReturnType<typeof result.current.runRestore>> | undefined
+    await act(async () => { report = await result.current.runRestore(plan!, [0]) })
+
+    expect(report).toMatchObject({ inserted: 0, skipped: 1, unresolvedSources: 1 })
+  })
+
+  it('rejects a file that is not a dump', async () => {
+    const { result } = harness()
+    await expect(result.current.prepareRestore('{"format":"nope"}')).rejects.toThrow(/not a database dump/i)
   })
 })
