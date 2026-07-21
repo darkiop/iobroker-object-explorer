@@ -11,6 +11,8 @@ import {
 import type { OrphanValueGroup } from '../../api/iobroker';
 import { copyToClipboard } from '../../utils/clipboard';
 import { useToast } from '../../context/ToastContext';
+import { useAppSettingsContext } from '../../context/UIContext';
+import { useDbBackup } from '../../hooks/useDbBackup';
 
 interface Props {
   onClose: () => void;
@@ -33,6 +35,9 @@ export default function OrphanValuesModal({ onClose, language }: Props) {
   const [pending, setPending] = useState<OrphanValueGroup | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const { appSettings } = useAppSettingsContext();
+  const backup = useDbBackup();
+  const [capPrompt, setCapPrompt] = useState<{ total: number; cap: number } | null>(null);
 
   async function scan() {
     setScanning(true);
@@ -63,10 +68,31 @@ export default function OrphanValuesModal({ onClose, language }: Props) {
       .catch(() => showToast(isEn ? 'Copy failed' : 'Kopieren fehlgeschlagen', 'error'));
   }
 
-  async function handleDeleteConfirm() {
+  // Backup first when enabled; a failed export aborts the delete, since a dump
+  // written afterwards would be worthless.
+  async function handleDeleteConfirm(acceptCap = false) {
     if (!pending) return;
     setDeleting(true);
     try {
+      if (appSettings.dbBackupBeforeDelete) {
+        const res = await backup.exportOrphan({
+          table: pending.table,
+          dbId: pending.dbId,
+          count: pending.count,
+          acceptCap,
+        });
+        if (!res.ok) {
+          if ('needsCapDecision' in res) {
+            setCapPrompt({ total: res.total, cap: res.cap });
+            return;
+          }
+          showToast(
+            isEn ? `Backup failed, nothing deleted: ${res.error}` : `Backup fehlgeschlagen, nichts gelöscht: ${res.error}`,
+            'error',
+          );
+          return;
+        }
+      }
       await deleteOrphanValueRows(pending.table, pending.dbId);
       showToast(
         isEn
@@ -76,6 +102,7 @@ export default function OrphanValuesModal({ onClose, language }: Props) {
       );
       setRows((r) => (r ?? []).filter((x) => !(x.table === pending.table && x.dbId === pending.dbId)));
       setPending(null);
+      setCapPrompt(null);
     } catch (err) {
       showToast(err instanceof Error ? err.message : String(err), 'error');
     } finally {
@@ -225,6 +252,49 @@ export default function OrphanValuesModal({ onClose, language }: Props) {
             <pre className="text-[11px] font-mono text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 rounded border border-red-200 dark:border-red-800 px-2 py-1.5 overflow-x-auto">
               {buildOrphanDeleteSql(pending.table, pending.dbId)}
             </pre>
+            {capPrompt && (
+              <div className="flex items-start gap-2 rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-3 py-2">
+                <AlertTriangle size={14} className="text-amber-500 shrink-0 mt-0.5" />
+                <div className="flex-1 text-xs text-amber-800 dark:text-amber-200">
+                  <span>
+                    {isEn
+                      ? `${capPrompt.total.toLocaleString()} rows exceed the export limit of ${capPrompt.cap.toLocaleString()}. Only the newest ${capPrompt.cap.toLocaleString()} can be backed up — the oldest rows would be lost from the dump.`
+                      : `${capPrompt.total.toLocaleString()} Zeilen überschreiten das Export-Limit von ${capPrompt.cap.toLocaleString()}. Nur die neuesten ${capPrompt.cap.toLocaleString()} können gesichert werden — die ältesten Zeilen fehlen dann im Dump.`}
+                  </span>
+                  <div className="flex items-center gap-2 mt-2">
+                    <button
+                      onClick={() => { setCapPrompt(null); setPending(null); }}
+                      className="px-3 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      {isEn ? 'Cancel' : 'Abbrechen'}
+                    </button>
+                    <button
+                      onClick={() => { setCapPrompt(null); void handleDeleteConfirm(true); }}
+                      className="px-3 py-1 text-xs rounded bg-amber-600 hover:bg-amber-700 text-white font-medium"
+                    >
+                      {isEn ? 'Back up newest and delete' : 'Neueste sichern und löschen'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {backup.progress && (
+              <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
+                <Loader2 size={12} className="animate-spin" />
+                <span>
+                  {backup.progress.phase === 'fetching'
+                    ? (isEn
+                        ? `Backing up ${backup.progress.done.toLocaleString()} / ${backup.progress.total.toLocaleString()}`
+                        : `Sichere ${backup.progress.done.toLocaleString()} / ${backup.progress.total.toLocaleString()}`)
+                    : (isEn ? 'Writing file…' : 'Datei schreiben…')}
+                </span>
+                <button onClick={backup.abort} className="underline">
+                  {isEn ? 'Cancel' : 'Abbrechen'}
+                </button>
+              </div>
+            )}
+
             <div className="flex items-center justify-end gap-2">
               <button
                 onClick={() => setPending(null)}
@@ -234,7 +304,7 @@ export default function OrphanValuesModal({ onClose, language }: Props) {
                 {isEn ? 'Cancel' : 'Abbrechen'}
               </button>
               <button
-                onClick={handleDeleteConfirm}
+                onClick={() => void handleDeleteConfirm()}
                 disabled={deleting}
                 className="px-3 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white font-medium disabled:opacity-50 flex items-center gap-1"
               >
