@@ -1361,6 +1361,99 @@ export async function insertDpValue(
   );
 }
 
+// --- Backup: restore -----------------------------------------------------------
+
+// Rows per INSERT statement during a restore.
+const RESTORE_INSERT_CHUNK = 5_000;
+
+// Maps sources.name → sources.id, so a dump's source names can be written back
+// as _from. Names missing from the table fall back to 0 — the restore never
+// inserts into `sources`, that stays the adapter's business.
+export async function getSourceIdMap(): Promise<Record<string, number>> {
+  const rows = await querySql(`SELECT id, name FROM ${SQL_DB_NAME}.sources`);
+  const map: Record<string, number> = {};
+  for (const r of rows) {
+    const o = r as { id?: unknown; name?: unknown };
+    if (o.name != null) map[String(o.name)] = Number(o.id);
+  }
+  return map;
+}
+
+// Live datapoints index used to classify dump series before restoring.
+export async function getLiveDpIndex(): Promise<{ names: Set<string>; ids: Set<number> }> {
+  const rows = await querySql(`SELECT id, name FROM ${SQL_DB_NAME}.datapoints`);
+  const names = new Set<string>();
+  const ids = new Set<number>();
+  for (const r of rows) {
+    const o = r as { id?: unknown; name?: unknown };
+    if (o.name != null) names.add(String(o.name));
+    ids.add(Number(o.id));
+  }
+  return { names, ids };
+}
+
+export interface BatchInsertResult {
+  inserted: number;
+  skipped: number;
+}
+
+// Writes dump rows back into a value table.
+//
+// INSERT IGNORE relies on the (id, ts) primary key: rows that already exist stay
+// untouched and are reported as skipped. That gives skip-and-report semantics
+// atomically per block, without pulling half a million timestamps into the
+// browser first and without a check-then-insert race in between.
+//
+// `rows` carry a source *name*; the caller resolves it to a numeric _from via
+// getSourceIdMap() and passes the resolved map in.
+export async function insertDpValuesBatch(
+  table: DumpTable,
+  type: unknown,
+  numId: number,
+  rows: DumpRow[],
+  sourceIds: Record<string, number>,
+  onProgress?: (done: number) => void,
+  signal?: AbortSignal,
+): Promise<BatchInsertResult & { unresolvedSources: number }> {
+  if (!(TS_TABLES as readonly string[]).includes(table)) {
+    throw new Error(`Unknown value table: ${table}`);
+  }
+  const id = Math.floor(Number(numId));
+  if (!Number.isFinite(id)) throw new Error(`Invalid db id: ${numId}`);
+
+  let inserted = 0;
+  let unresolvedSources = 0;
+
+  for (let i = 0; i < rows.length; i += RESTORE_INSERT_CHUNK) {
+    if (signal?.aborted) throw new Error('Restore aborted');
+    const chunk = rows.slice(i, i + RESTORE_INSERT_CHUNK);
+    const values = chunk.map((r) => {
+      const src = r[4];
+      let from = 0;
+      if (src != null) {
+        const resolved = sourceIds[src];
+        if (resolved == null) unresolvedSources += 1;
+        else from = resolved;
+      }
+      // dpValueSql quotes strings and coerces per type; it throws on values that
+      // cannot be represented, which is what we want for untrusted file input.
+      return `(${id}, ${Math.floor(r[0])}, ${dpValueSql(type, r[1])}, ${r[2] === 1 ? 1 : 0}, ${from}, ${Math.floor(r[3])})`;
+    });
+    const res = (await sendToSql(
+      'query',
+      `INSERT IGNORE INTO ${SQL_DB_NAME}.${table} (id, ts, val, ack, _from, q) VALUES ${values.join(', ')}`
+    )) as { error?: unknown; result?: { affectedRows?: number } } | null;
+    if (res && typeof res === 'object' && res.error) throw new Error(String(res.error));
+    // MariaDB reports how many rows the statement actually wrote; the rest hit
+    // the primary key and were ignored.
+    const affected = Number(res?.result?.affectedRows ?? 0);
+    inserted += affected;
+    onProgress?.(i + chunk.length);
+  }
+
+  return { inserted, skipped: rows.length - inserted, unresolvedSources };
+}
+
 // Renames a datapoint in the sql.0 database by updating datapoints.name.
 // History is preserved (ts_* tables reference the numeric datapoints.id, not the name).
 // This only touches the DB — it does NOT rename the ioBroker object/state.
