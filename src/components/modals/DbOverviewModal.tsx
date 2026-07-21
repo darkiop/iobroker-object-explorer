@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { X, Database, ChevronUp, ChevronDown, Loader2, AlertTriangle, Trash2, Pencil, Hash, Copy, Unlink, Search, RefreshCw, LineChart, FilterX, Upload } from 'lucide-react';
+import { X, Database, ChevronUp, ChevronDown, Loader2, AlertTriangle, Trash2, Pencil, Hash, Copy, Unlink, Search, RefreshCw, LineChart, FilterX, Upload, Download } from 'lucide-react';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { useDpOverview, useDbStats, useDpNumericIds, useAllObjects } from '../../hooks/useObjectQueries';
 import { queryKeys } from '../../hooks/queryKeys';
@@ -62,6 +62,10 @@ export default function DbOverviewModal({ onClose, language }: Props) {
   const { appSettings } = useAppSettingsContext();
   const backup = useDbBackup();
   const [capPrompt, setCapPrompt] = useState<{ total: number; cap: number } | null>(null);
+  // Manual export runs independently of the delete guard, so it carries its own
+  // cap decision instead of borrowing pendingDelete's.
+  const [exportCap, setExportCap] = useState<{ id: string; type: unknown; total: number; cap: number } | null>(null);
+  const [exportingId, setExportingId] = useState<string | null>(null);
   const [valuesOf, setValuesOf] = useState<{ id: string; type: unknown } | null>(null);
   const [historyOf, setHistoryOf] = useState<string | null>(null);
   const [orphansOpen, setOrphansOpen] = useState(false);
@@ -181,6 +185,36 @@ export default function DbOverviewModal({ onClose, language }: Props) {
       showToast(err instanceof Error ? err.message : String(err), 'error');
     } finally {
       setDeleting(false);
+    }
+  }
+
+  // Downloads a dump of one datapoint without deleting anything.
+  async function handleManualExport(id: string, type: unknown, acceptCap = false) {
+    setExportingId(id);
+    try {
+      const res = await backup.exportNamed({
+        id, type, trigger: 'manual', startTs: null, endTs: null, acceptCap,
+      });
+      if (!res.ok) {
+        if ('needsCapDecision' in res) {
+          setExportCap({ id, type, total: res.total, cap: res.cap });
+          return;
+        }
+        showToast(
+          isEn ? `Export failed: ${res.error}` : `Export fehlgeschlagen: ${res.error}`,
+          'error',
+        );
+        return;
+      }
+      setExportCap(null);
+      showToast(
+        isEn
+          ? `Exported ${res.rows.toLocaleString()} value(s) for ${id}`
+          : `${res.rows.toLocaleString()} Wert(e) für ${id} exportiert`,
+        'success',
+      );
+    } finally {
+      setExportingId(null);
     }
   }
 
@@ -625,6 +659,14 @@ export default function DbOverviewModal({ onClose, language }: Props) {
                     </td>
                     <td className="px-2 py-1.5 text-right whitespace-nowrap">
                       <button
+                        disabled={!r.id || exportingId === r.id}
+                        title={isEn ? `Export all DB values for ${r.id} as JSON` : `Alle DB-Werte für ${r.id} als JSON exportieren`}
+                        className="opacity-0 group-hover:opacity-100 p-1 rounded text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-opacity disabled:opacity-0"
+                        onClick={(e) => { e.stopPropagation(); void handleManualExport(r.id, r.type); }}
+                      >
+                        {exportingId === r.id ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+                      </button>
+                      <button
                         disabled={!r.id}
                         title={isEn ? `Delete all DB values for ${r.id}` : `Alle DB-Werte für ${r.id} löschen`}
                         className="opacity-0 group-hover:opacity-100 p-1 rounded text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-opacity disabled:opacity-0"
@@ -681,6 +723,28 @@ export default function DbOverviewModal({ onClose, language }: Props) {
           </div>
         )}
 
+        {exportCap && (
+          <div className="shrink-0 border-t border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-5 py-3 flex items-center gap-3">
+            <AlertTriangle size={15} className="text-amber-500 shrink-0" />
+            <span className="text-xs text-amber-800 dark:text-amber-200 flex-1">
+              {isEn
+                ? `${exportCap.total.toLocaleString()} rows exceed the export limit of ${exportCap.cap.toLocaleString()}. Only the newest ${exportCap.cap.toLocaleString()} can be written to the dump.`
+                : `${exportCap.total.toLocaleString()} Zeilen überschreiten das Export-Limit von ${exportCap.cap.toLocaleString()}. Nur die neuesten ${exportCap.cap.toLocaleString()} landen im Dump.`}
+            </span>
+            <button
+              onClick={() => setExportCap(null)}
+              className="px-3 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              {isEn ? 'Cancel' : 'Abbrechen'}
+            </button>
+            <button
+              onClick={() => { const c = exportCap; setExportCap(null); void handleManualExport(c.id, c.type, true); }}
+              className="px-3 py-1 text-xs rounded bg-amber-600 hover:bg-amber-700 text-white font-medium"
+            >
+              {isEn ? 'Export newest' : 'Neueste exportieren'}
+            </button>
+          </div>
+        )}
         {capPrompt && (
           <div className="shrink-0 border-t border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-5 py-3 flex items-center gap-3">
             <AlertTriangle size={15} className="text-amber-500 shrink-0" />

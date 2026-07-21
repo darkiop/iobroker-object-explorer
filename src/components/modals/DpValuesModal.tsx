@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom';
-import { X, Table2, Loader2, AlertTriangle, ChevronLeft, ChevronRight, Pencil, Check, Trash2, Copy, Rows3, RefreshCw, Plus, LineChart } from 'lucide-react';
+import { X, Table2, Loader2, AlertTriangle, ChevronLeft, ChevronRight, Pencil, Check, Trash2, Copy, Rows3, RefreshCw, Plus, LineChart, Download } from 'lucide-react';
 import { useState } from 'react';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { useDpValues, useDpValueSpan, useDpNumericId } from '../../hooks/useObjectQueries';
@@ -34,6 +34,10 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
   const backup = useDbBackup();
   const [capPrompt, setCapPrompt] = useState<{ total: number; cap: number; action: 'purge' } | null>(null);
   const [dedupeRows, setDedupeRows] = useState<DumpRow[] | null>(null);
+  // Manual export is independent of the delete guard and carries its own cap
+  // decision; capPrompt belongs to the purge flow.
+  const [exportCap, setExportCap] = useState<{ total: number; cap: number } | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const startTs = fromStr ? new Date(fromStr).getTime() : null;
   const endTs = toStr ? new Date(toStr).getTime() : null;
@@ -177,6 +181,34 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
       showToast(err instanceof Error ? err.message : String(err), 'error');
     } finally {
       setPurging(false);
+    }
+  }
+
+  // Downloads a dump of this datapoint without deleting anything. Honours the
+  // active timestamp filter, so a narrowed view exports exactly what it shows.
+  async function handleManualExport(acceptCap = false) {
+    setExporting(true);
+    try {
+      const res = await backup.exportNamed({
+        id, type, trigger: 'manual', startTs, endTs, acceptCap,
+      });
+      if (!res.ok) {
+        if ('needsCapDecision' in res) {
+          setExportCap({ total: res.total, cap: res.cap });
+          return;
+        }
+        showToast(isEn ? `Export failed: ${res.error}` : `Export fehlgeschlagen: ${res.error}`, 'error');
+        return;
+      }
+      setExportCap(null);
+      showToast(
+        isEn
+          ? `Exported ${res.rows.toLocaleString()} value(s)`
+          : `${res.rows.toLocaleString()} Wert(e) exportiert`,
+        'success',
+      );
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -393,6 +425,19 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
               {isEn ? 'New row' : 'Neue Zeile'}
             </button>
             <button
+              onClick={() => void handleManualExport()}
+              disabled={exporting}
+              title={
+                hasTsFilter
+                  ? (isEn ? 'Export the values in the selected range as JSON' : 'Werte im gewählten Zeitraum als JSON exportieren')
+                  : (isEn ? 'Export all stored values as JSON' : 'Alle gespeicherten Werte als JSON exportieren')
+              }
+              className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
+            >
+              {exporting ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+              {isEn ? 'Export' : 'Export'}
+            </button>
+            <button
               onClick={startPurge}
               title={isEn ? 'Delete all values older than 3 months' : 'Alle Werte älter als 3 Monate löschen'}
               className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-red-50 hover:text-red-600 hover:border-red-300 dark:hover:bg-red-900/20 dark:hover:text-red-400 dark:hover:border-red-700"
@@ -470,6 +515,47 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
             {isEn ? 'Raw ts' : 'Roh-ts'}
           </label>
         </div>
+
+        {/* Manual export: cap decision and progress */}
+        {exportCap && (
+          <div className="shrink-0 border-b border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-5 py-2.5 flex items-center gap-3">
+            <AlertTriangle size={14} className="text-amber-500 shrink-0" />
+            <span className="text-xs text-amber-800 dark:text-amber-200 flex-1">
+              {isEn
+                ? `${exportCap.total.toLocaleString()} rows exceed the export limit of ${exportCap.cap.toLocaleString()}. Only the newest ${exportCap.cap.toLocaleString()} can be written to the dump.`
+                : `${exportCap.total.toLocaleString()} Zeilen überschreiten das Export-Limit von ${exportCap.cap.toLocaleString()}. Nur die neuesten ${exportCap.cap.toLocaleString()} landen im Dump.`}
+            </span>
+            <button
+              onClick={() => setExportCap(null)}
+              className="px-3 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              {isEn ? 'Cancel' : 'Abbrechen'}
+            </button>
+            <button
+              onClick={() => { setExportCap(null); void handleManualExport(true); }}
+              className="px-3 py-1 text-xs rounded bg-amber-600 hover:bg-amber-700 text-white font-medium"
+            >
+              {isEn ? 'Export newest' : 'Neueste exportieren'}
+            </button>
+          </div>
+        )}
+        {exporting && backup.progress && (
+          <div className="shrink-0 border-b border-gray-200 dark:border-gray-700 px-5 py-2 flex items-center gap-3 text-xs text-gray-600 dark:text-gray-300">
+            <Loader2 size={12} className="animate-spin" />
+            <span>
+              {backup.progress.phase === 'counting'
+                ? (isEn ? 'Counting rows…' : 'Zeilen zählen…')
+                : backup.progress.phase === 'fetching'
+                  ? (isEn
+                      ? `Exporting ${backup.progress.done.toLocaleString()} / ${backup.progress.total.toLocaleString()}`
+                      : `Exportiere ${backup.progress.done.toLocaleString()} / ${backup.progress.total.toLocaleString()}`)
+                  : (isEn ? 'Writing file…' : 'Datei schreiben…')}
+            </span>
+            <button onClick={backup.abort} className="underline">
+              {isEn ? 'Cancel' : 'Abbrechen'}
+            </button>
+          </div>
+        )}
 
         {/* Body */}
         <div className="overflow-auto flex-1 min-h-0">

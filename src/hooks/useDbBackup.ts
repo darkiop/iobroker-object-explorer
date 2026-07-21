@@ -74,6 +74,8 @@ export interface ExportOrphanArgs {
   dbId: number;
   count: number;
   acceptCap?: boolean;
+  /** Defaults to the delete-guard trigger; a manual export passes 'manual'. */
+  trigger?: DumpTrigger;
 }
 
 export interface ExportRowsArgs {
@@ -186,7 +188,7 @@ export function useDbBackup(opts: Options = {}) {
         });
 
         const type = args.table === 'ts_string' ? 'string' : args.table === 'ts_bool' ? 'boolean' : 'number';
-        emit('orphan-delete', `${args.table}-${args.dbId}`, truncated, [{
+        emit(args.trigger ?? 'orphan-delete', `${args.table}-${args.dbId}`, truncated, [{
           kind: 'orphan',
           dbId: args.dbId,
           table: args.table,

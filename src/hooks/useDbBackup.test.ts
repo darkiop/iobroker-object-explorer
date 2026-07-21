@@ -4,6 +4,7 @@ import { useDbBackup } from './useDbBackup'
 import { parseDump } from '../api/dbBackup'
 
 const fetchDpRowsChunked = vi.fn()
+const fetchOrphanRowsChunked = vi.fn()
 const getDpValueCount = vi.fn()
 const insertDpValuesBatch = vi.fn()
 const getSourceIdMap = vi.fn()
@@ -12,7 +13,7 @@ const resolveDpNumericId = vi.fn()
 
 vi.mock('../api/iobroker', () => ({
   fetchDpRowsChunked: (...a: unknown[]) => fetchDpRowsChunked(...a),
-  fetchOrphanRowsChunked: vi.fn(),
+  fetchOrphanRowsChunked: (...a: unknown[]) => fetchOrphanRowsChunked(...a),
   getDpValueCount: (...a: unknown[]) => getDpValueCount(...a),
   insertDpValuesBatch: (...a: unknown[]) => insertDpValuesBatch(...a),
   getSourceIdMap: (...a: unknown[]) => getSourceIdMap(...a),
@@ -27,6 +28,7 @@ const downloads: { name: string; text: string }[] = []
 beforeEach(() => {
   downloads.length = 0
   fetchDpRowsChunked.mockReset()
+  fetchOrphanRowsChunked.mockReset()
   getDpValueCount.mockReset()
   vi.stubGlobal('URL', {
     createObjectURL: () => 'blob:fake',
@@ -110,6 +112,29 @@ describe('useDbBackup export', () => {
     expect(outcome?.ok).toBe(false)
     expect(outcome?.error).toMatch(/sendTo timeout/)
     expect(downloads).toHaveLength(0)
+  })
+
+  it('records the manual trigger for an orphan export instead of orphan-delete', async () => {
+    fetchOrphanRowsChunked.mockResolvedValue([[1690000000000, 1, 1, 0, null]])
+
+    const { result } = harness()
+    await act(async () => {
+      await result.current.exportOrphan({ table: 'ts_bool', dbId: 42, count: 1, trigger: 'manual' })
+    })
+
+    expect(parseDump(downloads[0].text).trigger).toBe('manual')
+    expect(downloads[0].name).toMatch(/^iobroker-dbdump-manual-ts_bool-42-/)
+  })
+
+  it('defaults an orphan export to the orphan-delete trigger', async () => {
+    fetchOrphanRowsChunked.mockResolvedValue([[1690000000000, 1, 1, 0, null]])
+
+    const { result } = harness()
+    await act(async () => {
+      await result.current.exportOrphan({ table: 'ts_bool', dbId: 42, count: 1 })
+    })
+
+    expect(parseDump(downloads[0].text).trigger).toBe('orphan-delete')
   })
 
   it('tracks progress phases', async () => {
