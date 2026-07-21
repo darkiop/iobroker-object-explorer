@@ -20,7 +20,6 @@ interface Props {
 // Value rows in ts_number / ts_string / ts_bool whose numeric id no longer has a
 // row in `datapoints` — they are unreachable through the adapter (which always
 // joins via datapoints) and just take up space.
-// The scan is a full LEFT JOIN over every value table, so it runs on demand only.
 export default function OrphanValuesModal({ onClose, language }: Props) {
   useEscapeKey(onClose);
   const isEn = language === 'en';
