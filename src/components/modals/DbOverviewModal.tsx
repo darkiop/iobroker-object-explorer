@@ -1,16 +1,19 @@
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { X, Database, ChevronUp, ChevronDown, Loader2, AlertTriangle, Trash2, Pencil, Hash, Copy, Unlink, Search, RefreshCw, LineChart, FilterX } from 'lucide-react';
+import { X, Database, ChevronUp, ChevronDown, Loader2, AlertTriangle, Trash2, Pencil, Hash, Copy, Unlink, Search, RefreshCw, LineChart, FilterX, Upload, Download, Eraser } from 'lucide-react';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { useDpOverview, useDbStats, useDpNumericIds, useAllObjects } from '../../hooks/useObjectQueries';
 import { queryKeys } from '../../hooks/queryKeys';
-import { deleteHistoryAll, renameDpInDb, getDpValueCount, buildDpOverviewSql, hasHistory } from '../../api/iobroker';
+import { deleteHistoryAll, deleteDpCompletely, renameDpInDb, getDpValueCount, buildDpOverviewSql, hasHistory } from '../../api/iobroker';
 import { copyToClipboard } from '../../utils/clipboard';
 import { useToast } from '../../context/ToastContext';
+import { useAppSettingsContext } from '../../context/UIContext';
+import { useDbBackup } from '../../hooks/useDbBackup';
 import { getTypeColor } from '../../utils/typeColor';
 import DpValuesModal from './DpValuesModal';
 import OrphanValuesModal from './OrphanValuesModal';
+import DbBackupModal from './DbBackupModal';
 import HistoryModal from './HistoryModal';
 import StyledCheckbox from '../ui/StyledCheckbox';
 import { ColoredId } from '../../utils/coloredId';
@@ -42,7 +45,7 @@ export default function DbOverviewModal({ onClose, language }: Props) {
   useEscapeKey(onClose);
   const isEn = language === 'en';
 
-  const { data, isLoading, isError, error } = useDpOverview(true);
+  const { data, isLoading, isError, error, isFetching } = useDpOverview(true);
   const { data: stats } = useDbStats(true);
   const { data: idMap } = useDpNumericIds(true);
   const { data: allObjects } = useAllObjects();
@@ -54,11 +57,22 @@ export default function DbOverviewModal({ onClose, language }: Props) {
   const [sortKey, setSortKey] = useState<string>('id');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [rawTs, setRawTs] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  // 'values' clears the ts_* rows and keeps the datapoints row (sql.0 deleteAll);
+  // 'full' also drops the datapoints row, freeing its numeric id.
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; type: unknown; mode: 'values' | 'full' } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const { appSettings } = useAppSettingsContext();
+  const backup = useDbBackup();
+  const [capPrompt, setCapPrompt] = useState<{ total: number; cap: number } | null>(null);
+  // Manual export runs independently of the delete guard, so it carries its own
+  // cap decision instead of borrowing pendingDelete's.
+  const [exportCap, setExportCap] = useState<{ id: string; type: unknown; total: number; cap: number } | null>(null);
+  const [exportingId, setExportingId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [valuesOf, setValuesOf] = useState<{ id: string; type: unknown } | null>(null);
   const [historyOf, setHistoryOf] = useState<string | null>(null);
   const [orphansOpen, setOrphansOpen] = useState(false);
+  const [restoreOpen, setRestoreOpen] = useState(false);
   const [renameOldId, setRenameOldId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [renaming, setRenaming] = useState(false);
@@ -66,6 +80,20 @@ export default function DbOverviewModal({ onClose, language }: Props) {
   const idSet = useMemo(() => new Set((data ?? []).map((r) => r.id)), [data]);
   // Per-datapoint value counts, loaded on demand (full-table counts are too slow).
   const [counts, setCounts] = useState<Record<string, number | 'loading' | 'error'>>({});
+
+  // Reloads the overview plus its two child queries (numeric ids, table stats) —
+  // they all hang under the dpOverview key prefix. The on-demand row counts live
+  // in component state, not in React Query, so they are dropped here: after a
+  // delete or a rename they would otherwise keep showing pre-change numbers.
+  async function refreshAll() {
+    setRefreshing(true);
+    try {
+      setCounts({});
+      await queryClient.invalidateQueries({ queryKey: queryKeys.history.dpOverview });
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   function copySql() {
     copyToClipboard(buildDpOverviewSql())
@@ -134,21 +162,92 @@ export default function DbOverviewModal({ onClose, language }: Props) {
     }
   }
 
-  async function handleDeleteConfirm() {
+  // Runs the backup export first when enabled and only deletes if it succeeded —
+  // a dump written after the delete would be worthless, and one that fails
+  // silently is worse than none.
+  async function handleDeleteConfirm(acceptCap = false) {
     if (!pendingDelete) return;
     setDeleting(true);
     try {
-      await deleteHistoryAll(pendingDelete);
-      showToast(
-        isEn ? `Deleted DB values for ${pendingDelete}` : `DB-Werte für ${pendingDelete} gelöscht`,
-        'success'
-      );
+      if (appSettings.dbBackupBeforeDelete) {
+        // A full delete spans every value table, so it needs the all-tables
+        // export; a values-only delete goes through sql.0 deleteAll, which acts
+        // on the datapoint's current type table.
+        const res = pendingDelete.mode === 'full'
+          ? await backup.exportAllTables({ id: pendingDelete.id, trigger: 'delete-all', acceptCap })
+          : await backup.exportNamed({
+              id: pendingDelete.id,
+              type: pendingDelete.type,
+              trigger: 'delete-all',
+              startTs: null,
+              endTs: null,
+              acceptCap,
+            });
+        if (!res.ok) {
+          if ('needsCapDecision' in res) {
+            setCapPrompt({ total: res.total, cap: res.cap });
+            return;
+          }
+          showToast(
+            isEn ? `Backup failed, nothing deleted: ${res.error}` : `Backup fehlgeschlagen, nichts gelöscht: ${res.error}`,
+            'error',
+          );
+          return;
+        }
+      }
+      if (pendingDelete.mode === 'full') {
+        const n = await deleteDpCompletely(pendingDelete.id);
+        showToast(
+          isEn
+            ? `Removed ${pendingDelete.id} from the database (${n.toLocaleString()} value rows)`
+            : `${pendingDelete.id} vollständig aus der Datenbank entfernt (${n.toLocaleString()} Wertzeilen)`,
+          'success'
+        );
+      } else {
+        await deleteHistoryAll(pendingDelete.id);
+        showToast(
+          isEn ? `Cleared DB values for ${pendingDelete.id}` : `DB-Werte für ${pendingDelete.id} geleert`,
+          'success'
+        );
+      }
+      setCounts((c) => { const next = { ...c }; delete next[pendingDelete.id]; return next; });
       setPendingDelete(null);
+      setCapPrompt(null);
       await queryClient.invalidateQueries({ queryKey: queryKeys.history.dpOverview });
     } catch (err) {
       showToast(err instanceof Error ? err.message : String(err), 'error');
     } finally {
       setDeleting(false);
+    }
+  }
+
+  // Downloads a dump of one datapoint without deleting anything.
+  async function handleManualExport(id: string, type: unknown, acceptCap = false) {
+    setExportingId(id);
+    try {
+      const res = await backup.exportNamed({
+        id, type, trigger: 'manual', startTs: null, endTs: null, acceptCap,
+      });
+      if (!res.ok) {
+        if ('needsCapDecision' in res) {
+          setExportCap({ id, type, total: res.total, cap: res.cap });
+          return;
+        }
+        showToast(
+          isEn ? `Export failed: ${res.error}` : `Export fehlgeschlagen: ${res.error}`,
+          'error',
+        );
+        return;
+      }
+      setExportCap(null);
+      showToast(
+        isEn
+          ? `Exported ${res.rows.toLocaleString()} value(s) for ${id}`
+          : `${res.rows.toLocaleString()} Wert(e) für ${id} exportiert`,
+        'success',
+      );
+    } finally {
+      setExportingId(null);
     }
   }
 
@@ -252,7 +351,7 @@ export default function DbOverviewModal({ onClose, language }: Props) {
   return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center animate-backdrop-in bg-black/60 backdrop-blur-sm p-4"
-      onClick={pendingDelete || renameOldId || orphansOpen || historyOf ? undefined : onClose}
+      onClick={pendingDelete || renameOldId || orphansOpen || restoreOpen || historyOf ? undefined : onClose}
     >
       <div
         className="w-full max-w-7xl bg-white dark:bg-gray-900 animate-modal-in rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col h-[85vh]"
@@ -315,12 +414,29 @@ export default function DbOverviewModal({ onClose, language }: Props) {
               {isEn ? 'Count and Sort desc' : 'Zählen & absteigend sortieren'}
             </button>
             <button
+              onClick={() => void refreshAll()}
+              disabled={refreshing || isFetching}
+              title={isEn ? 'Reload the datapoint overview from the database' : 'Datenpunkt-Übersicht neu aus der Datenbank laden'}
+              className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
+            >
+              <RefreshCw size={12} className={refreshing || isFetching ? 'animate-spin' : undefined} />
+              {isEn ? 'Refresh' : 'Aktualisieren'}
+            </button>
+            <button
               onClick={() => setOrphansOpen(true)}
               title={isEn ? 'Find value rows whose datapoint no longer exists in the datapoints table' : 'Wert-Zeilen finden, deren Datenpunkt nicht mehr in der Tabelle datapoints existiert'}
               className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
             >
               <Unlink size={12} />
               {isEn ? 'Orphan rows' : 'Verwaiste Zeilen'}
+            </button>
+            <button
+              onClick={() => setRestoreOpen(true)}
+              title={isEn ? 'Restore values from a backup dump' : 'Werte aus einem Backup-Dump wiederherstellen'}
+              className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              <Upload size={12} />
+              {isEn ? 'Restore' : 'Restore'}
             </button>
             {activeFilters.length > 0 && (
               <button
@@ -585,10 +701,30 @@ export default function DbOverviewModal({ onClose, language }: Props) {
                     </td>
                     <td className="px-2 py-1.5 text-right whitespace-nowrap">
                       <button
+                        disabled={!r.id || exportingId === r.id}
+                        title={isEn ? `Export all DB values for ${r.id} as JSON` : `Alle DB-Werte für ${r.id} als JSON exportieren`}
+                        className="opacity-0 group-hover:opacity-100 p-1 rounded text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-opacity disabled:opacity-0"
+                        onClick={(e) => { e.stopPropagation(); void handleManualExport(r.id, r.type); }}
+                      >
+                        {exportingId === r.id ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+                      </button>
+                      <button
                         disabled={!r.id}
-                        title={isEn ? `Delete all DB values for ${r.id}` : `Alle DB-Werte für ${r.id} löschen`}
+                        title={isEn
+                          ? `Clear all stored values for ${r.id} — the datapoint stays in the database`
+                          : `Alle gespeicherten Werte für ${r.id} leeren — der Datenpunkt bleibt in der Datenbank`}
+                        className="opacity-0 group-hover:opacity-100 p-1 rounded text-gray-400 hover:text-amber-500 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-opacity disabled:opacity-0"
+                        onClick={(e) => { e.stopPropagation(); setPendingDelete({ id: r.id, type: r.type, mode: 'values' }); }}
+                      >
+                        <Eraser size={13} />
+                      </button>
+                      <button
+                        disabled={!r.id}
+                        title={isEn
+                          ? `Remove ${r.id} from the database entirely — values and the datapoint row`
+                          : `${r.id} vollständig aus der Datenbank entfernen — Werte und datapoints-Zeile`}
                         className="opacity-0 group-hover:opacity-100 p-1 rounded text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-opacity disabled:opacity-0"
-                        onClick={(e) => { e.stopPropagation(); setPendingDelete(r.id); }}
+                        onClick={(e) => { e.stopPropagation(); setPendingDelete({ id: r.id, type: r.type, mode: 'full' }); }}
                       >
                         <Trash2 size={13} />
                       </button>
@@ -641,14 +777,84 @@ export default function DbOverviewModal({ onClose, language }: Props) {
           </div>
         )}
 
+        {exportCap && (
+          <div className="shrink-0 border-t border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-5 py-3 flex items-center gap-3">
+            <AlertTriangle size={15} className="text-amber-500 shrink-0" />
+            <span className="text-xs text-amber-800 dark:text-amber-200 flex-1">
+              {isEn
+                ? `${exportCap.total.toLocaleString()} rows exceed the export limit of ${exportCap.cap.toLocaleString()}. Only the newest ${exportCap.cap.toLocaleString()} can be written to the dump.`
+                : `${exportCap.total.toLocaleString()} Zeilen überschreiten das Export-Limit von ${exportCap.cap.toLocaleString()}. Nur die neuesten ${exportCap.cap.toLocaleString()} landen im Dump.`}
+            </span>
+            <button
+              onClick={() => setExportCap(null)}
+              className="px-3 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              {isEn ? 'Cancel' : 'Abbrechen'}
+            </button>
+            <button
+              onClick={() => { const c = exportCap; setExportCap(null); void handleManualExport(c.id, c.type, true); }}
+              className="px-3 py-1 text-xs rounded bg-amber-600 hover:bg-amber-700 text-white font-medium"
+            >
+              {isEn ? 'Export newest' : 'Neueste exportieren'}
+            </button>
+          </div>
+        )}
+        {capPrompt && (
+          <div className="shrink-0 border-t border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-5 py-3 flex items-center gap-3">
+            <AlertTriangle size={15} className="text-amber-500 shrink-0" />
+            <span className="text-xs text-amber-800 dark:text-amber-200 flex-1">
+              {isEn
+                ? `${capPrompt.total.toLocaleString()} rows exceed the export limit of ${capPrompt.cap.toLocaleString()}. Only the newest ${capPrompt.cap.toLocaleString()} can be backed up — the oldest rows would be lost from the dump.`
+                : `${capPrompt.total.toLocaleString()} Zeilen überschreiten das Export-Limit von ${capPrompt.cap.toLocaleString()}. Nur die neuesten ${capPrompt.cap.toLocaleString()} können gesichert werden — die ältesten Zeilen fehlen dann im Dump.`}
+            </span>
+            <button
+              onClick={() => { setCapPrompt(null); setPendingDelete(null); }}
+              className="px-3 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              {isEn ? 'Cancel' : 'Abbrechen'}
+            </button>
+            <button
+              onClick={() => { setCapPrompt(null); void handleDeleteConfirm(true); }}
+              className="px-3 py-1 text-xs rounded bg-amber-600 hover:bg-amber-700 text-white font-medium"
+            >
+              {isEn ? 'Back up newest and delete' : 'Neueste sichern und löschen'}
+            </button>
+          </div>
+        )}
+        {backup.progress && (
+          <div className="shrink-0 border-t border-gray-200 dark:border-gray-700 px-5 py-2 flex items-center gap-3 text-xs text-gray-600 dark:text-gray-300">
+            <Loader2 size={12} className="animate-spin" />
+            <span>
+              {backup.progress.phase === 'counting'
+                ? (isEn ? 'Counting rows…' : 'Zeilen zählen…')
+                : backup.progress.phase === 'fetching'
+                  ? (isEn
+                      ? `Backing up ${backup.progress.done.toLocaleString()} / ${backup.progress.total.toLocaleString()}`
+                      : `Sichere ${backup.progress.done.toLocaleString()} / ${backup.progress.total.toLocaleString()}`)
+                  : (isEn ? 'Writing file…' : 'Datei schreiben…')}
+            </span>
+            <button onClick={backup.abort} className="underline">
+              {isEn ? 'Cancel' : 'Abbrechen'}
+            </button>
+          </div>
+        )}
+
         {/* Inline delete confirmation */}
         {pendingDelete && (
-          <div className="shrink-0 border-t border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-5 py-3 flex items-center gap-3">
-            <AlertTriangle size={15} className="text-red-500 shrink-0" />
-            <span className="text-xs text-red-700 dark:text-red-300 flex-1">
-              {isEn
-                ? `Delete ALL database values for "${pendingDelete}"? This removes the stored history and cannot be undone.`
-                : `ALLE Datenbank-Werte für „${pendingDelete}" löschen? Entfernt die gespeicherte History unwiderruflich.`}
+          <div className={`shrink-0 border-t px-5 py-3 flex items-center gap-3 ${
+            pendingDelete.mode === 'full'
+              ? 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20'
+              : 'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20'
+          }`}>
+            <AlertTriangle size={15} className={`shrink-0 ${pendingDelete.mode === 'full' ? 'text-red-500' : 'text-amber-500'}`} />
+            <span className={`text-xs flex-1 ${pendingDelete.mode === 'full' ? 'text-red-700 dark:text-red-300' : 'text-amber-800 dark:text-amber-200'}`}>
+              {pendingDelete.mode === 'full'
+                ? (isEn
+                    ? `Remove "${pendingDelete.id}" from the database entirely? This deletes every stored value AND the datapoints row. Its numeric id is freed and MariaDB may hand it to another datapoint later — a backup of this datapoint can then no longer be restored.`
+                    : `„${pendingDelete.id}" vollständig aus der Datenbank entfernen? Löscht alle gespeicherten Werte UND die datapoints-Zeile. Die numerische ID wird frei und kann von MariaDB später an einen anderen Datenpunkt vergeben werden — ein Backup dieses Datenpunkts lässt sich dann nicht mehr zurückspielen.`)
+                : (isEn
+                    ? `Clear ALL stored values for "${pendingDelete.id}"? The datapoint itself stays in the database and keeps its numeric id, so a backup can still be restored. This cannot be undone.`
+                    : `ALLE gespeicherten Werte für „${pendingDelete.id}" leeren? Der Datenpunkt selbst bleibt mit seiner numerischen ID in der Datenbank, ein Backup lässt sich also weiterhin zurückspielen. Nicht rückgängig zu machen.`)}
             </span>
             <button
               onClick={() => setPendingDelete(null)}
@@ -658,12 +864,16 @@ export default function DbOverviewModal({ onClose, language }: Props) {
               {isEn ? 'Cancel' : 'Abbrechen'}
             </button>
             <button
-              onClick={handleDeleteConfirm}
+              onClick={() => void handleDeleteConfirm()}
               disabled={deleting}
-              className="px-3 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white font-medium disabled:opacity-50 flex items-center gap-1"
+              className={`px-3 py-1 text-xs rounded text-white font-medium disabled:opacity-50 flex items-center gap-1 ${
+                pendingDelete.mode === 'full' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'
+              }`}
             >
               {deleting && <Loader2 size={12} className="animate-spin" />}
-              {isEn ? 'Delete' : 'Löschen'}
+              {pendingDelete.mode === 'full'
+                ? (isEn ? 'Remove completely' : 'Vollständig entfernen')
+                : (isEn ? 'Clear values' : 'Werte leeren')}
             </button>
           </div>
         )}
@@ -671,6 +881,10 @@ export default function DbOverviewModal({ onClose, language }: Props) {
 
       {orphansOpen && (
         <OrphanValuesModal language={language} onClose={() => setOrphansOpen(false)} />
+      )}
+
+      {restoreOpen && (
+        <DbBackupModal language={language} onClose={() => setRestoreOpen(false)} />
       )}
 
       {valuesOf && (

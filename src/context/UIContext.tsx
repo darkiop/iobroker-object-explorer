@@ -83,6 +83,10 @@ export interface AppSettings {
    *  alias (only active in dual-pane view). Off by default — avoids click latency
    *  from the native draggable attribute. */
   dragDropEnabled: boolean;
+  /** When on, every destructive database action (delete-all, 3-month purge,
+   *  dedupe, orphan delete) downloads a JSON dump of the affected rows first and
+   *  aborts the delete if that export fails. On by default. */
+  dbBackupBeforeDelete: boolean;
   /** When on, the search pattern defaults to `alias.0.*` on first load (no saved
    *  filter state yet). On by default. Turn off to start with `*` instead. */
   defaultAliasFilterOnStartup: boolean;
@@ -128,6 +132,7 @@ export function getDefaultAppSettings(): AppSettings {
     showUnitInValue: true,
     includeIdPrefixes: [],
     dragDropEnabled: false,
+    dbBackupBeforeDelete: true,
     defaultAliasFilterOnStartup: true,
   };
 }
@@ -217,6 +222,9 @@ export function loadAppSettings(): AppSettings {
         ? parsed.includeIdPrefixes.filter((x): x is string => typeof x === 'string' && x.length > 0)
         : [],
       dragDropEnabled: parsed.dragDropEnabled === true,
+      // Default on: an absent key (settings saved before this feature existed)
+      // must mean "backup enabled", so `!== false` rather than `=== true`.
+      dbBackupBeforeDelete: parsed.dbBackupBeforeDelete !== false,
       defaultAliasFilterOnStartup: parsed.defaultAliasFilterOnStartup !== false,
     };
   } catch { return fallback; }

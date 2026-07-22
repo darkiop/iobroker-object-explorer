@@ -1,11 +1,14 @@
 import { createPortal } from 'react-dom';
-import { X, Table2, Loader2, AlertTriangle, ChevronLeft, ChevronRight, Pencil, Check, Trash2, Copy, Rows3, RefreshCw, Plus, LineChart } from 'lucide-react';
+import { X, Table2, Loader2, AlertTriangle, ChevronLeft, ChevronRight, Pencil, Check, Trash2, Copy, Rows3, RefreshCw, Plus, LineChart, Download } from 'lucide-react';
 import { useState } from 'react';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { useDpValues, useDpValueSpan, useDpNumericId } from '../../hooks/useObjectQueries';
-import { updateDpValue, insertDpValue, deleteHistoryEntry, deleteHistoryRange, getDpValueCount, tsTableForType, buildDpValuesSql, buildDpPurgeSql, buildDpInsertSql, buildDpDedupeSql, findConsecutiveDuplicateTs, deleteDpValuesByTs } from '../../api/iobroker';
+import { updateDpValue, insertDpValue, deleteHistoryEntry, deleteHistoryRange, getDpValueCount, tsTableForType, buildDpValuesSql, buildDpPurgeSql, buildDpInsertSql, buildDpDedupeSql, findConsecutiveDuplicateTs, findConsecutiveDuplicateRows, deleteDpValuesByTs } from '../../api/iobroker';
+import type { DumpRow } from '../../api/dbBackup';
 import { copyToClipboard } from '../../utils/clipboard';
 import { useToast } from '../../context/ToastContext';
+import { useAppSettingsContext } from '../../context/UIContext';
+import { useDbBackup } from '../../hooks/useDbBackup';
 import { ColoredId } from '../../utils/coloredId';
 import StyledCheckbox from '../ui/StyledCheckbox';
 import HistoryModal from './HistoryModal';
@@ -27,6 +30,14 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
   const [toStr, setToStr] = useState('');
   const [rawTs, setRawTs] = useState(false);
   const showToast = useToast();
+  const { appSettings } = useAppSettingsContext();
+  const backup = useDbBackup();
+  const [capPrompt, setCapPrompt] = useState<{ total: number; cap: number; action: 'purge' } | null>(null);
+  const [dedupeRows, setDedupeRows] = useState<DumpRow[] | null>(null);
+  // Manual export is independent of the delete guard and carries its own cap
+  // decision; capPrompt belongs to the purge flow.
+  const [exportCap, setExportCap] = useState<{ total: number; cap: number } | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const startTs = fromStr ? new Date(fromStr).getTime() : null;
   const endTs = toStr ? new Date(toStr).getTime() : null;
@@ -129,10 +140,26 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
   }
 
   // Delete all stored values older than 3 months for this datapoint.
-  async function purgeOld() {
+  async function purgeOld(acceptCap = false) {
     if (purgeCutoff == null) return;
     setPurging(true);
     try {
+      if (appSettings.dbBackupBeforeDelete) {
+        const res = await backup.exportNamed({
+          id, type, trigger: 'purge', startTs: null, endTs: purgeCutoff, acceptCap,
+        });
+        if (!res.ok) {
+          if ('needsCapDecision' in res) {
+            setCapPrompt({ total: res.total, cap: res.cap, action: 'purge' });
+            return;
+          }
+          showToast(
+            isEn ? `Backup failed, nothing deleted: ${res.error}` : `Backup fehlgeschlagen, nichts gelöscht: ${res.error}`,
+            'error',
+          );
+          return;
+        }
+      }
       await deleteHistoryRange(id, 1, purgeCutoff);
       // The sql adapter answers {success:true} unconditionally — even when it
       // discarded the request — so verify by re-counting instead of trusting it.
@@ -157,16 +184,50 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
     }
   }
 
+  // Downloads a dump of this datapoint without deleting anything. Honours the
+  // active timestamp filter, so a narrowed view exports exactly what it shows.
+  async function handleManualExport(acceptCap = false) {
+    setExporting(true);
+    try {
+      const res = await backup.exportNamed({
+        id, type, trigger: 'manual', startTs, endTs, acceptCap,
+      });
+      if (!res.ok) {
+        if ('needsCapDecision' in res) {
+          setExportCap({ total: res.total, cap: res.cap });
+          return;
+        }
+        showToast(isEn ? `Export failed: ${res.error}` : `Export fehlgeschlagen: ${res.error}`, 'error');
+        return;
+      }
+      setExportCap(null);
+      showToast(
+        isEn
+          ? `Exported ${res.rows.toLocaleString()} value(s)`
+          : `${res.rows.toLocaleString()} Wert(e) exportiert`,
+        'success',
+      );
+    } finally {
+      setExporting(false);
+    }
+  }
+
   // Opens the confirm and previews which rows the dedupe would delete.
   async function scanDedupe(wholeDp: boolean) {
     setDedupeTs(null);
+    setDedupeRows(null);
     setConfirmDedupe(true);
     setScanningDedupe(true);
     try {
-      setDedupeTs(await findConsecutiveDuplicateTs(id, type, wholeDp ? null : startTs, wholeDp ? null : endTs));
+      // The scan reads ack/q/source too, so the dedupe backup needs no second
+      // pass over the table.
+      const scanned = await findConsecutiveDuplicateRows(id, type, wholeDp ? null : startTs, wholeDp ? null : endTs);
+      setDedupeRows(scanned);
+      setDedupeTs(scanned.map((r) => r[0]));
     } catch (err) {
       showToast(err instanceof Error ? err.message : String(err), 'error');
       setDedupeTs([]);
+      setDedupeRows([]);
     } finally {
       setScanningDedupe(false);
     }
@@ -178,6 +239,20 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
     if (dedupeTs == null || dedupeTs.length === 0) return;
     setDeduping(true);
     try {
+      if (appSettings.dbBackupBeforeDelete && dedupeRows && dedupeRows.length > 0) {
+        // No cap prompt here: the rows are already in memory from the scan, so
+        // there is nothing left to fetch and nothing to truncate.
+        const res = await backup.exportRows({ id, type, trigger: 'dedupe', rows: dedupeRows });
+        if (!res.ok) {
+          showToast(
+            isEn
+              ? `Backup failed, nothing deleted: ${'error' in res ? res.error : ''}`
+              : `Backup fehlgeschlagen, nichts gelöscht: ${'error' in res ? res.error : ''}`,
+            'error',
+          );
+          return;
+        }
+      }
       await deleteDpValuesByTs(id, type, dedupeTs);
       // Verify by re-scanning instead of trusting the delete response.
       const remaining = await findConsecutiveDuplicateTs(id, type, dedupeWholeDp ? null : startTs, dedupeWholeDp ? null : endTs);
@@ -199,6 +274,7 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
       }
       setConfirmDedupe(false);
       setDedupeTs(null);
+      setDedupeRows(null);
       setPage(0);
       await reload();
     } catch (err) {
@@ -267,62 +343,72 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
         className="w-full max-w-7xl bg-white dark:bg-gray-900 animate-modal-in rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col h-[85vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700 shrink-0">
-          <div className="flex items-center gap-2 min-w-0">
-            <Table2 size={15} className="text-blue-500 shrink-0" />
-            <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100 shrink-0">
-              {isEn ? 'Stored values' : 'Gespeicherte Werte'}
-            </h2>
-            <ColoredId id={id} className="text-xs font-mono truncate" />
-            <button
-              onClick={copyId}
-              title={isEn ? 'Copy ID' : 'ID kopieren'}
-              className="shrink-0 p-1 rounded text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-            >
-              <Copy size={12} />
-            </button>
-            <span
-              className="shrink-0 px-1.5 py-0.5 rounded bg-gray-500/10 text-xs font-mono text-gray-600 dark:text-gray-300"
-              title={isEn ? 'Source table' : 'Quell-Tabelle'}
-            >
-              {tsTableForType(type)}
-            </span>
-            {dpNumericId != null && (
-              <span
-                className="shrink-0 px-1.5 py-0.5 rounded bg-blue-500/10 text-xs font-mono text-blue-600 dark:text-blue-400"
-                title={isEn ? 'Database id (datapoints.id)' : 'Datenbank-ID (datapoints.id)'}
+        {/* Header — title/meta on the first line, actions on the second, so the
+            button row does not squeeze the id and the badges. */}
+        <div className="flex flex-col gap-2 px-5 py-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <Table2 size={15} className="text-blue-500 shrink-0" />
+              <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100 shrink-0">
+                {isEn ? 'Stored values' : 'Gespeicherte Werte'}
+              </h2>
+              <ColoredId id={id} className="text-xs font-mono truncate" />
+              <button
+                onClick={copyId}
+                title={isEn ? 'Copy ID' : 'ID kopieren'}
+                className="shrink-0 p-1 rounded text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-800"
               >
-                id={dpNumericId}
+                <Copy size={12} />
+              </button>
+              <span
+                className="shrink-0 px-1.5 py-0.5 rounded bg-gray-500/10 text-xs font-mono text-gray-600 dark:text-gray-300"
+                title={isEn ? 'Source table' : 'Quell-Tabelle'}
+              >
+                {tsTableForType(type)}
               </span>
-            )}
-            {spanFetching && !span ? (
-              <Loader2 size={12} className="shrink-0 animate-spin text-gray-400" />
-            ) : span ? (
-              <>
+              {dpNumericId != null && (
                 <span
-                  className="shrink-0 px-1.5 py-0.5 rounded bg-blue-500/10 text-xs tabular-nums text-blue-600 dark:text-blue-300"
-                  title={
-                    hasTsFilter
-                      ? (isEn ? 'Stored value rows in the selected range' : 'Gespeicherte Wert-Zeilen im gewählten Bereich')
-                      : (isEn ? 'Stored value rows' : 'Gespeicherte Wert-Zeilen')
-                  }
+                  className="shrink-0 px-1.5 py-0.5 rounded bg-blue-500/10 text-xs font-mono text-blue-600 dark:text-blue-400"
+                  title={isEn ? 'Database id (datapoints.id)' : 'Datenbank-ID (datapoints.id)'}
                 >
-                  {span.count.toLocaleString()} {isEn ? 'rows' : 'Zeilen'}
-                  {hasTsFilter && <span className="opacity-60"> ({isEn ? 'filtered' : 'gefiltert'})</span>}
+                  id={dpNumericId}
                 </span>
-                {span.firstTs != null && (
+              )}
+              {spanFetching && !span ? (
+                <Loader2 size={12} className="shrink-0 animate-spin text-gray-400" />
+              ) : span ? (
+                <>
                   <span
-                    className="shrink-0 px-1.5 py-0.5 rounded bg-emerald-500/10 text-xs tabular-nums text-emerald-600 dark:text-emerald-300"
-                    title={isEn ? 'Oldest stored value' : 'Ältester gespeicherter Wert'}
+                    className="shrink-0 px-1.5 py-0.5 rounded bg-blue-500/10 text-xs tabular-nums text-blue-600 dark:text-blue-300"
+                    title={
+                      hasTsFilter
+                        ? (isEn ? 'Stored value rows in the selected range' : 'Gespeicherte Wert-Zeilen im gewählten Bereich')
+                        : (isEn ? 'Stored value rows' : 'Gespeicherte Wert-Zeilen')
+                    }
                   >
-                    {isEn ? 'since' : 'seit'} {rawTs ? span.firstTs : new Date(span.firstTs).toLocaleString()}
+                    {span.count.toLocaleString()} {isEn ? 'rows' : 'Zeilen'}
+                    {hasTsFilter && <span className="opacity-60"> ({isEn ? 'filtered' : 'gefiltert'})</span>}
                   </span>
-                )}
-              </>
-            ) : null}
+                  {span.firstTs != null && (
+                    <span
+                      className="shrink-0 px-1.5 py-0.5 rounded bg-emerald-500/10 text-xs tabular-nums text-emerald-600 dark:text-emerald-300"
+                      title={isEn ? 'Oldest stored value' : 'Ältester gespeicherter Wert'}
+                    >
+                      {isEn ? 'since' : 'seit'} {rawTs ? span.firstTs : new Date(span.firstTs).toLocaleString()}
+                    </span>
+                  )}
+                </>
+              ) : null}
+            </div>
+            <button
+              onClick={onClose}
+              className="shrink-0 p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
+            >
+              <X size={16} />
+            </button>
           </div>
-          <div className="flex items-center gap-1 shrink-0">
+
+          <div className="flex items-center gap-1 flex-wrap">
             <button
               onClick={() => reload()}
               disabled={isFetching}
@@ -347,6 +433,19 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
             >
               <Plus size={12} />
               {isEn ? 'New row' : 'Neue Zeile'}
+            </button>
+            <button
+              onClick={() => void handleManualExport()}
+              disabled={exporting}
+              title={
+                hasTsFilter
+                  ? (isEn ? 'Export the values in the selected range as JSON' : 'Werte im gewählten Zeitraum als JSON exportieren')
+                  : (isEn ? 'Export all stored values as JSON' : 'Alle gespeicherten Werte als JSON exportieren')
+              }
+              className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40"
+            >
+              {exporting ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+              {isEn ? 'Export' : 'Export'}
             </button>
             <button
               onClick={startPurge}
@@ -375,12 +474,6 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
             >
               <Copy size={12} />
               SQL
-            </button>
-            <button
-              onClick={onClose}
-              className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
-            >
-              <X size={16} />
             </button>
           </div>
         </div>
@@ -426,6 +519,47 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
             {isEn ? 'Raw ts' : 'Roh-ts'}
           </label>
         </div>
+
+        {/* Manual export: cap decision and progress */}
+        {exportCap && (
+          <div className="shrink-0 border-b border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-5 py-2.5 flex items-center gap-3">
+            <AlertTriangle size={14} className="text-amber-500 shrink-0" />
+            <span className="text-xs text-amber-800 dark:text-amber-200 flex-1">
+              {isEn
+                ? `${exportCap.total.toLocaleString()} rows exceed the export limit of ${exportCap.cap.toLocaleString()}. Only the newest ${exportCap.cap.toLocaleString()} can be written to the dump.`
+                : `${exportCap.total.toLocaleString()} Zeilen überschreiten das Export-Limit von ${exportCap.cap.toLocaleString()}. Nur die neuesten ${exportCap.cap.toLocaleString()} landen im Dump.`}
+            </span>
+            <button
+              onClick={() => setExportCap(null)}
+              className="px-3 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              {isEn ? 'Cancel' : 'Abbrechen'}
+            </button>
+            <button
+              onClick={() => { setExportCap(null); void handleManualExport(true); }}
+              className="px-3 py-1 text-xs rounded bg-amber-600 hover:bg-amber-700 text-white font-medium"
+            >
+              {isEn ? 'Export newest' : 'Neueste exportieren'}
+            </button>
+          </div>
+        )}
+        {exporting && backup.progress && (
+          <div className="shrink-0 border-b border-gray-200 dark:border-gray-700 px-5 py-2 flex items-center gap-3 text-xs text-gray-600 dark:text-gray-300">
+            <Loader2 size={12} className="animate-spin" />
+            <span>
+              {backup.progress.phase === 'counting'
+                ? (isEn ? 'Counting rows…' : 'Zeilen zählen…')
+                : backup.progress.phase === 'fetching'
+                  ? (isEn
+                      ? `Exporting ${backup.progress.done.toLocaleString()} / ${backup.progress.total.toLocaleString()}`
+                      : `Exportiere ${backup.progress.done.toLocaleString()} / ${backup.progress.total.toLocaleString()}`)
+                  : (isEn ? 'Writing file…' : 'Datei schreiben…')}
+            </span>
+            <button onClick={backup.abort} className="underline">
+              {isEn ? 'Cancel' : 'Abbrechen'}
+            </button>
+          </div>
+        )}
 
         {/* Body */}
         <div className="overflow-auto flex-1 min-h-0">
@@ -642,6 +776,57 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
                   </pre>
                 </div>
               )}
+              {capPrompt && (
+                <div className="flex items-start gap-2 rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-3 py-2">
+                  <AlertTriangle size={14} className="text-amber-500 shrink-0 mt-0.5" />
+                  <div className="flex-1 text-xs text-amber-800 dark:text-amber-200">
+                    <span>
+                      {isEn
+                        ? `${capPrompt.total.toLocaleString()} rows exceed the export limit of ${capPrompt.cap.toLocaleString()}. Only the newest ${capPrompt.cap.toLocaleString()} can be backed up — the oldest rows would be lost from the dump.`
+                        : `${capPrompt.total.toLocaleString()} Zeilen überschreiten das Export-Limit von ${capPrompt.cap.toLocaleString()}. Nur die neuesten ${capPrompt.cap.toLocaleString()} können gesichert werden — die ältesten Zeilen fehlen dann im Dump.`}
+                    </span>
+                    {capPrompt.action === 'purge' && (
+                      <span className="block mt-1">
+                        {isEn
+                          ? 'For a 3-month purge these are the rows immediately before the cutoff — the oldest values are the ones that drop out of the dump.'
+                          : 'Beim 3-Monats-Purge sind das die Zeilen direkt vor dem Cutoff — gerade die ältesten Werte fallen aus dem Dump.'}
+                      </span>
+                    )}
+                    <div className="flex items-center gap-2 mt-2">
+                      <button
+                        onClick={() => setCapPrompt(null)}
+                        className="px-3 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      >
+                        {isEn ? 'Cancel' : 'Abbrechen'}
+                      </button>
+                      <button
+                        onClick={() => { setCapPrompt(null); void purgeOld(true); }}
+                        className="px-3 py-1 text-xs rounded bg-amber-600 hover:bg-amber-700 text-white font-medium"
+                      >
+                        {isEn ? 'Back up newest and delete' : 'Neueste sichern und löschen'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {backup.progress && (
+                <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
+                  <Loader2 size={12} className="animate-spin" />
+                  <span>
+                    {backup.progress.phase === 'counting'
+                      ? (isEn ? 'Counting rows…' : 'Zeilen zählen…')
+                      : backup.progress.phase === 'fetching'
+                        ? (isEn
+                            ? `Backing up ${backup.progress.done.toLocaleString()} / ${backup.progress.total.toLocaleString()}`
+                            : `Sichere ${backup.progress.done.toLocaleString()} / ${backup.progress.total.toLocaleString()}`)
+                        : (isEn ? 'Writing file…' : 'Datei schreiben…')}
+                  </span>
+                  <button onClick={backup.abort} className="underline">
+                    {isEn ? 'Cancel' : 'Abbrechen'}
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200 dark:border-gray-700">
@@ -653,7 +838,7 @@ export default function DpValuesModal({ id, type, language, onClose }: Props) {
                 {isEn ? 'Cancel' : 'Abbrechen'}
               </button>
               <button
-                onClick={purgeOld}
+                onClick={() => void purgeOld()}
                 disabled={purging || countingPurge || purgeCount === 0}
                 className="flex items-center gap-1 px-3 py-1.5 text-xs rounded border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-40"
               >

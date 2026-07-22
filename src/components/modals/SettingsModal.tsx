@@ -151,6 +151,7 @@ export default function SettingsModal({ namespaceSuggestions = [] }: { namespace
       showUnitInValue: settingsDraft.showUnitInValue ?? false,
       includeIdPrefixes: settingsDraft.includeIdPrefixes ?? [],
       dragDropEnabled: settingsDraft.dragDropEnabled ?? false,
+      dbBackupBeforeDelete: settingsDraft.dbBackupBeforeDelete ?? true,
       defaultAliasFilterOnStartup: settingsDraft.defaultAliasFilterOnStartup ?? true,
     };
     applySettings(next);
@@ -419,6 +420,15 @@ export default function SettingsModal({ namespaceSuggestions = [] }: { namespace
                       {isEn
                         ? 'Lets you drag a StateList row onto an alias.0.* tree node to create an alias. Only active in dual-pane view. Off by default — the native draggable attribute can add a slight delay to row clicks.'
                         : 'Erlaubt das Ziehen einer StateList-Zeile auf einen alias.0.*-Baumknoten, um einen Alias zu erstellen. Nur in der Zwei-Panel-Ansicht aktiv. Standardmäßig aus — das native draggable-Attribut kann Klicks leicht verzögern.'}
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <SettingsToggleRow isEn={isEn} labelEn="Back up database values before deleting" labelDe="DB-Werte vor dem Löschen sichern"
+                      value={settingsDraft.dbBackupBeforeDelete ?? true} onToggle={() => setSettingsDraft((prev) => ({ ...prev, dbBackupBeforeDelete: !prev.dbBackupBeforeDelete }))} />
+                    <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
+                      {isEn
+                        ? 'Downloads a JSON dump of the affected rows before delete-all, 3-month purge, dedupe and orphan delete. If the export fails, nothing is deleted.'
+                        : 'Lädt vor Delete-all, 3-Monats-Purge, Dedupe und Orphan-Delete einen JSON-Dump der betroffenen Zeilen herunter. Schlägt der Export fehl, wird nichts gelöscht.'}
                     </p>
                   </div>
                   <div className="flex flex-col gap-1">

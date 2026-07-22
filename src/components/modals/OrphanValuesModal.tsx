@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Unlink, Loader2, AlertTriangle, Trash2, Copy, Search } from 'lucide-react';
+import { X, Unlink, Loader2, AlertTriangle, Trash2, Copy, Search, Download } from 'lucide-react';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 import {
   getOrphanValueRows,
@@ -11,6 +11,8 @@ import {
 import type { OrphanValueGroup } from '../../api/iobroker';
 import { copyToClipboard } from '../../utils/clipboard';
 import { useToast } from '../../context/ToastContext';
+import { useAppSettingsContext } from '../../context/UIContext';
+import { useDbBackup } from '../../hooks/useDbBackup';
 
 interface Props {
   onClose: () => void;
@@ -33,6 +35,13 @@ export default function OrphanValuesModal({ onClose, language }: Props) {
   const [pending, setPending] = useState<OrphanValueGroup | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const { appSettings } = useAppSettingsContext();
+  const backup = useDbBackup();
+  const [capPrompt, setCapPrompt] = useState<{ total: number; cap: number } | null>(null);
+  // Manual export runs without deleting, so it keeps its own cap decision apart
+  // from the delete guard's capPrompt.
+  const [exportCap, setExportCap] = useState<{ group: OrphanValueGroup; total: number; cap: number } | null>(null);
+  const [exportingKey, setExportingKey] = useState<string | null>(null);
 
   async function scan() {
     setScanning(true);
@@ -63,10 +72,60 @@ export default function OrphanValuesModal({ onClose, language }: Props) {
       .catch(() => showToast(isEn ? 'Copy failed' : 'Kopieren fehlgeschlagen', 'error'));
   }
 
-  async function handleDeleteConfirm() {
+  // Downloads a dump of one orphan group without deleting it — lets you inspect
+  // the rows before deciding.
+  async function handleManualExport(g: OrphanValueGroup, acceptCap = false) {
+    const key = `${g.table}:${g.dbId}`;
+    setExportingKey(key);
+    try {
+      const res = await backup.exportOrphan({
+        table: g.table, dbId: g.dbId, count: g.count, trigger: 'manual', acceptCap,
+      });
+      if (!res.ok) {
+        if ('needsCapDecision' in res) {
+          setExportCap({ group: g, total: res.total, cap: res.cap });
+          return;
+        }
+        showToast(isEn ? `Export failed: ${res.error}` : `Export fehlgeschlagen: ${res.error}`, 'error');
+        return;
+      }
+      setExportCap(null);
+      showToast(
+        isEn
+          ? `Exported ${res.rows.toLocaleString()} row(s) (${g.table} #${g.dbId})`
+          : `${res.rows.toLocaleString()} Zeile(n) exportiert (${g.table} #${g.dbId})`,
+        'success',
+      );
+    } finally {
+      setExportingKey(null);
+    }
+  }
+
+  // Backup first when enabled; a failed export aborts the delete, since a dump
+  // written afterwards would be worthless.
+  async function handleDeleteConfirm(acceptCap = false) {
     if (!pending) return;
     setDeleting(true);
     try {
+      if (appSettings.dbBackupBeforeDelete) {
+        const res = await backup.exportOrphan({
+          table: pending.table,
+          dbId: pending.dbId,
+          count: pending.count,
+          acceptCap,
+        });
+        if (!res.ok) {
+          if ('needsCapDecision' in res) {
+            setCapPrompt({ total: res.total, cap: res.cap });
+            return;
+          }
+          showToast(
+            isEn ? `Backup failed, nothing deleted: ${res.error}` : `Backup fehlgeschlagen, nichts gelöscht: ${res.error}`,
+            'error',
+          );
+          return;
+        }
+      }
       await deleteOrphanValueRows(pending.table, pending.dbId);
       showToast(
         isEn
@@ -76,6 +135,7 @@ export default function OrphanValuesModal({ onClose, language }: Props) {
       );
       setRows((r) => (r ?? []).filter((x) => !(x.table === pending.table && x.dbId === pending.dbId)));
       setPending(null);
+      setCapPrompt(null);
     } catch (err) {
       showToast(err instanceof Error ? err.message : String(err), 'error');
     } finally {
@@ -190,6 +250,20 @@ export default function OrphanValuesModal({ onClose, language }: Props) {
                     <td className={`${tdClass} tabular-nums`}>{formatTs(r.lastTs)}</td>
                     <td className="px-2 py-1.5 text-right whitespace-nowrap">
                       <button
+                        disabled={exportingKey === `${r.table}:${r.dbId}`}
+                        title={
+                          isEn
+                            ? `Export ${r.count} orphan rows from ${r.table} as JSON`
+                            : `${r.count} verwaiste Zeilen aus ${r.table} als JSON exportieren`
+                        }
+                        className="opacity-0 group-hover:opacity-100 p-1 rounded text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-opacity disabled:opacity-40"
+                        onClick={(e) => { e.stopPropagation(); void handleManualExport(r); }}
+                      >
+                        {exportingKey === `${r.table}:${r.dbId}`
+                          ? <Loader2 size={13} className="animate-spin" />
+                          : <Download size={13} />}
+                      </button>
+                      <button
                         title={
                           isEn
                             ? `Delete ${r.count} orphan rows from ${r.table}`
@@ -211,6 +285,45 @@ export default function OrphanValuesModal({ onClose, language }: Props) {
           )}
         </div>
 
+        {/* Manual export: cap decision and progress */}
+        {exportCap && (
+          <div className="shrink-0 border-t border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-5 py-2.5 flex items-center gap-3">
+            <AlertTriangle size={14} className="text-amber-500 shrink-0" />
+            <span className="text-xs text-amber-800 dark:text-amber-200 flex-1">
+              {isEn
+                ? `${exportCap.total.toLocaleString()} rows exceed the export limit of ${exportCap.cap.toLocaleString()}. Only the newest ${exportCap.cap.toLocaleString()} can be written to the dump.`
+                : `${exportCap.total.toLocaleString()} Zeilen überschreiten das Export-Limit von ${exportCap.cap.toLocaleString()}. Nur die neuesten ${exportCap.cap.toLocaleString()} landen im Dump.`}
+            </span>
+            <button
+              onClick={() => setExportCap(null)}
+              className="px-3 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              {isEn ? 'Cancel' : 'Abbrechen'}
+            </button>
+            <button
+              onClick={() => { const c = exportCap; setExportCap(null); void handleManualExport(c.group, true); }}
+              className="px-3 py-1 text-xs rounded bg-amber-600 hover:bg-amber-700 text-white font-medium"
+            >
+              {isEn ? 'Export newest' : 'Neueste exportieren'}
+            </button>
+          </div>
+        )}
+        {exportingKey && backup.progress && (
+          <div className="shrink-0 border-t border-gray-200 dark:border-gray-700 px-5 py-2 flex items-center gap-3 text-xs text-gray-600 dark:text-gray-300">
+            <Loader2 size={12} className="animate-spin" />
+            <span>
+              {backup.progress.phase === 'fetching'
+                ? (isEn
+                    ? `Exporting ${backup.progress.done.toLocaleString()} / ${backup.progress.total.toLocaleString()}`
+                    : `Exportiere ${backup.progress.done.toLocaleString()} / ${backup.progress.total.toLocaleString()}`)
+                : (isEn ? 'Writing file…' : 'Datei schreiben…')}
+            </span>
+            <button onClick={backup.abort} className="underline">
+              {isEn ? 'Cancel' : 'Abbrechen'}
+            </button>
+          </div>
+        )}
+
         {/* Inline delete confirmation */}
         {pending && (
           <div className="shrink-0 border-t border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-5 py-3 space-y-2">
@@ -225,6 +338,49 @@ export default function OrphanValuesModal({ onClose, language }: Props) {
             <pre className="text-[11px] font-mono text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 rounded border border-red-200 dark:border-red-800 px-2 py-1.5 overflow-x-auto">
               {buildOrphanDeleteSql(pending.table, pending.dbId)}
             </pre>
+            {capPrompt && (
+              <div className="flex items-start gap-2 rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-3 py-2">
+                <AlertTriangle size={14} className="text-amber-500 shrink-0 mt-0.5" />
+                <div className="flex-1 text-xs text-amber-800 dark:text-amber-200">
+                  <span>
+                    {isEn
+                      ? `${capPrompt.total.toLocaleString()} rows exceed the export limit of ${capPrompt.cap.toLocaleString()}. Only the newest ${capPrompt.cap.toLocaleString()} can be backed up — the oldest rows would be lost from the dump.`
+                      : `${capPrompt.total.toLocaleString()} Zeilen überschreiten das Export-Limit von ${capPrompt.cap.toLocaleString()}. Nur die neuesten ${capPrompt.cap.toLocaleString()} können gesichert werden — die ältesten Zeilen fehlen dann im Dump.`}
+                  </span>
+                  <div className="flex items-center gap-2 mt-2">
+                    <button
+                      onClick={() => { setCapPrompt(null); setPending(null); }}
+                      className="px-3 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      {isEn ? 'Cancel' : 'Abbrechen'}
+                    </button>
+                    <button
+                      onClick={() => { setCapPrompt(null); void handleDeleteConfirm(true); }}
+                      className="px-3 py-1 text-xs rounded bg-amber-600 hover:bg-amber-700 text-white font-medium"
+                    >
+                      {isEn ? 'Back up newest and delete' : 'Neueste sichern und löschen'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {backup.progress && (
+              <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
+                <Loader2 size={12} className="animate-spin" />
+                <span>
+                  {backup.progress.phase === 'fetching'
+                    ? (isEn
+                        ? `Backing up ${backup.progress.done.toLocaleString()} / ${backup.progress.total.toLocaleString()}`
+                        : `Sichere ${backup.progress.done.toLocaleString()} / ${backup.progress.total.toLocaleString()}`)
+                    : (isEn ? 'Writing file…' : 'Datei schreiben…')}
+                </span>
+                <button onClick={backup.abort} className="underline">
+                  {isEn ? 'Cancel' : 'Abbrechen'}
+                </button>
+              </div>
+            )}
+
             <div className="flex items-center justify-end gap-2">
               <button
                 onClick={() => setPending(null)}
@@ -234,7 +390,7 @@ export default function OrphanValuesModal({ onClose, language }: Props) {
                 {isEn ? 'Cancel' : 'Abbrechen'}
               </button>
               <button
-                onClick={handleDeleteConfirm}
+                onClick={() => void handleDeleteConfirm()}
                 disabled={deleting}
                 className="px-3 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white font-medium disabled:opacity-50 flex items-center gap-1"
               >

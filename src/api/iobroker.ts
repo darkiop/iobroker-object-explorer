@@ -1,6 +1,7 @@
 import type { IoBrokerState, IoBrokerObject, IoBrokerObjectCommon, HistoryEntry, HistoryOptions } from '../types/iobroker';
 import { getLocalizedName, getAllNamesForSearch } from '../utils/i18n';
 import { derivePatterns } from '../utils/idPatterns';
+import type { DumpRow, DumpTable } from './dbBackup';
 
 const LS_HOST_KEY = 'ioBrokerHost';
 const LS_CONNECTIONS_KEY = 'iob-connections';
@@ -988,6 +989,165 @@ export async function getDpValues(
   });
 }
 
+// --- Backup: chunked raw row fetch -------------------------------------------
+
+// Rows per request when streaming a datapoint out of the database. Large enough
+// to keep the roundtrip count sane, small enough that a single sendTo response
+// stays manageable.
+const BACKUP_FETCH_CHUNK = 10_000;
+
+export interface ChunkedFetchOptions {
+  startTs?: number | null;
+  endTs?: number | null;
+  // Stop after this many rows (newest first).
+  cap: number;
+  // Called after every chunk with the running total.
+  onProgress?: (fetched: number) => void;
+  signal?: AbortSignal;
+}
+
+async function fetchRowsChunked(
+  table: string,
+  numId: number,
+  opts: ChunkedFetchOptions,
+): Promise<DumpRow[]> {
+  let where = `n.id = ${numId}`;
+  if (opts.startTs != null && !Number.isNaN(opts.startTs)) where += ` AND n.ts >= ${Math.floor(opts.startTs)}`;
+  if (opts.endTs != null && !Number.isNaN(opts.endTs)) where += ` AND n.ts <= ${Math.floor(opts.endTs)}`;
+
+  const out: DumpRow[] = [];
+  let offset = 0;
+  for (;;) {
+    if (opts.signal?.aborted) throw new Error('Export aborted');
+    const remaining = opts.cap - out.length;
+    if (remaining <= 0) break;
+    const limit = Math.min(BACKUP_FETCH_CHUNK, remaining);
+    const rows = await querySql(
+      `SELECT n.ts, n.val, n.ack, n.q, s.name AS src ` +
+      `FROM ${SQL_DB_NAME}.${table} n ` +
+      `LEFT JOIN ${SQL_DB_NAME}.sources s ON s.id = n._from ` +
+      `WHERE ${where} ORDER BY n.ts DESC LIMIT ${limit} OFFSET ${offset}`
+    );
+    for (const r of rows) {
+      const o = r as Record<string, unknown>;
+      out.push([
+        Number(o.ts ?? 0),
+        o.val,
+        Number(o.ack ?? 0) === 1 ? 1 : 0,
+        Number(o.q ?? 0),
+        o.src == null ? null : String(o.src),
+      ]);
+    }
+    opts.onProgress?.(out.length);
+    if (rows.length < limit) break;
+    offset += limit;
+  }
+  return out;
+}
+
+// Streams the raw stored rows of a datapoint, newest first.
+export async function fetchDpRowsChunked(
+  id: string,
+  type: unknown,
+  opts: ChunkedFetchOptions,
+): Promise<DumpRow[]> {
+  const numId = await resolveDpNumericId(id);
+  if (numId == null || Number.isNaN(numId)) {
+    throw new Error(`Datapoint not found in database: ${id}`);
+  }
+  return fetchRowsChunked(tsTableForType(type), numId, opts);
+}
+
+// Counts a datapoint's stored rows across ALL three value tables.
+// A datapoint's type can change over its lifetime, and sql.0 then starts writing
+// to a different ts_* table without moving the old rows — so a single-table count
+// understates what a full delete would remove.
+export async function getDpValueCountAllTables(id: string): Promise<number> {
+  const numId = await resolveDpNumericId(id);
+  if (numId == null || Number.isNaN(numId)) return 0;
+  const rows = await querySql(
+    TS_TABLES.map((t) => `SELECT COUNT(*) c FROM ${SQL_DB_NAME}.${t} WHERE id = ${numId}`).join(' UNION ALL ')
+  );
+  return rows.reduce<number>((sum, r) => sum + Number((r as { c?: unknown }).c ?? 0), 0);
+}
+
+// Streams a datapoint's raw rows from every value table that holds any, so a
+// backup taken before a full delete covers the same ground the delete does.
+export async function fetchDpRowsAllTables(
+  id: string,
+  opts: ChunkedFetchOptions,
+): Promise<{ table: DumpTable; rows: DumpRow[] }[]> {
+  const numId = await resolveDpNumericId(id);
+  if (numId == null || Number.isNaN(numId)) {
+    throw new Error(`Datapoint not found in database: ${id}`);
+  }
+  const out: { table: DumpTable; rows: DumpRow[] }[] = [];
+  let fetched = 0;
+  for (const table of TS_TABLES) {
+    // The cap spans the whole datapoint, not each table, so later tables get
+    // whatever budget the earlier ones left.
+    const remaining = opts.cap - fetched;
+    if (remaining <= 0) break;
+    const rows = await fetchRowsChunked(table, numId, {
+      ...opts,
+      cap: remaining,
+      onProgress: (n) => opts.onProgress?.(fetched + n),
+    });
+    fetched += rows.length;
+    if (rows.length > 0) out.push({ table, rows });
+  }
+  return out;
+}
+
+// Rows per DELETE statement when clearing a datapoint. Bounded so a datapoint
+// with millions of rows does not become one long-running locking statement that
+// the sendTo call times out on.
+const FULL_DELETE_CHUNK = 50_000;
+
+// Removes a datapoint from the database entirely: every value row in every ts_*
+// table, then the `datapoints` row itself.
+//
+// Deleting the datapoints row frees its numeric id, and MariaDB reuses
+// AUTO_INCREMENT gaps — a later datapoint can inherit it. That is why the
+// values-only delete (sql.0 `deleteAll`) keeps the row: it holds the id down so
+// a restore can never write into a series that has since been reassigned.
+export async function deleteDpCompletely(id: string): Promise<number> {
+  const numId = await resolveDpNumericId(id);
+  if (numId == null || Number.isNaN(numId)) {
+    throw new Error(`Datapoint not found in database: ${id}`);
+  }
+  let deleted = 0;
+  for (const table of TS_TABLES) {
+    for (;;) {
+      const res = (await sendToSql(
+        'query',
+        `DELETE FROM ${SQL_DB_NAME}.${table} WHERE id = ${numId} LIMIT ${FULL_DELETE_CHUNK}`
+      )) as { error?: unknown; result?: { affectedRows?: number } } | null;
+      if (res && typeof res === 'object' && res.error) throw new Error(String(res.error));
+      const n = Number(res?.result?.affectedRows ?? 0);
+      deleted += n;
+      if (n < FULL_DELETE_CHUNK) break;
+    }
+  }
+  await querySql(`DELETE FROM ${SQL_DB_NAME}.datapoints WHERE id = ${numId}`);
+  return deleted;
+}
+
+// Streams the raw rows of an orphan group. Orphans have no name left, so the
+// lookup goes through the numeric id directly instead of datapoints.name.
+export async function fetchOrphanRowsChunked(
+  table: DumpTable,
+  dbId: number,
+  opts: ChunkedFetchOptions,
+): Promise<DumpRow[]> {
+  if (!(TS_TABLES as readonly string[]).includes(table)) {
+    throw new Error(`Unknown value table: ${table}`);
+  }
+  const numId = Math.floor(Number(dbId));
+  if (!Number.isFinite(numId)) throw new Error(`Invalid db id: ${dbId}`);
+  return fetchRowsChunked(table, numId, opts);
+}
+
 // --- Dedupe (consecutive duplicate values) ----------------------------------
 
 // Normalizes a stored value for equality comparison, per datapoint type.
@@ -1004,39 +1164,50 @@ function normalizeVal(val: unknown, type: unknown): string | number {
   }
 }
 
-// Picks the timestamps of rows whose value equals the previous row's value.
+export interface DedupeScanRow {
+  ts: number;
+  val: unknown;
+  ack?: number;
+  q?: number;
+  src?: string | null;
+}
+
+// Picks the full row tuples of rows whose value equals the previous row's value.
 // `rows` must be sorted by ts ascending; the first row of a run is kept, so a
 // step chart drawn from the remaining rows is identical.
 // `prev` carries the last value of the preceding chunk across chunk borders.
-export function pickDuplicateTs(
-  rows: { ts: number; val: unknown }[],
+// Returning whole tuples (not just ts) lets the dedupe backup dump the deleted
+// rows without a second pass over the table.
+export function pickDuplicateRows(
+  rows: DedupeScanRow[],
   type: unknown,
   prev?: { val: string | number } | null,
-): { ts: number[]; last: { val: string | number } | null } {
-  const dupes: number[] = [];
+): { rows: DumpRow[]; last: { val: string | number } | null } {
+  const dupes: DumpRow[] = [];
   let last = prev ?? null;
   for (const r of rows) {
     const v = normalizeVal(r.val, type);
     const same = last != null && (v === last.val || (typeof v === 'number' && typeof last.val === 'number' && Number.isNaN(v) && Number.isNaN(last.val)));
-    if (same) dupes.push(r.ts);
+    if (same) dupes.push([r.ts, r.val, r.ack === 1 ? 1 : 0, Number(r.q ?? 0), r.src ?? null]);
     else last = { val: v };
   }
-  return { ts: dupes, last };
+  return { rows: dupes, last };
 }
 
 const DEDUPE_SCAN_CHUNK = 50000;
 const DEDUPE_DELETE_CHUNK = 1000;
 
-// Scans the stored values of a datapoint (ts ascending) and returns the
-// timestamps of all rows that merely repeat the previous value.
-// Reads ts/val only and pages via the PK index (id, ts) — no filesort, no
-// window functions (the sql.0 backend may run MariaDB < 10.2).
-export async function findConsecutiveDuplicateTs(
+// Scans the stored values of a datapoint (ts ascending) and returns the full
+// rows of every entry that merely repeats the previous value.
+// Pages via the PK index (id, ts) — no filesort, no window functions (the sql.0
+// backend may run MariaDB < 10.2). Selects ack/q/source as well so a backup of
+// the deleted rows needs no second pass over the table.
+export async function findConsecutiveDuplicateRows(
   id: string,
   type: unknown,
   startTs?: number | null,
   endTs?: number | null,
-): Promise<number[]> {
+): Promise<DumpRow[]> {
   const numId = await resolveDpNumericId(id);
   if (numId == null || Number.isNaN(numId)) return [];
   const table = tsTableForType(type);
@@ -1044,26 +1215,44 @@ export async function findConsecutiveDuplicateTs(
   if (startTs != null && !Number.isNaN(startTs)) where += ` AND n.ts >= ${Math.floor(startTs)}`;
   if (endTs != null && !Number.isNaN(endTs)) where += ` AND n.ts <= ${Math.floor(endTs)}`;
 
-  const all: number[] = [];
+  const all: DumpRow[] = [];
   let prev: { val: string | number } | null = null;
   let offset = 0;
   for (;;) {
     const rows = await querySql(
-      `SELECT n.ts, n.val FROM ${SQL_DB_NAME}.${table} n ` +
+      `SELECT n.ts, n.val, n.ack, n.q, s.name AS src FROM ${SQL_DB_NAME}.${table} n ` +
+      `LEFT JOIN ${SQL_DB_NAME}.sources s ON s.id = n._from ` +
       `WHERE ${where} ORDER BY n.ts ASC LIMIT ${DEDUPE_SCAN_CHUNK} OFFSET ${offset}`
     );
     if (rows.length === 0) break;
-    const mapped = rows.map((r) => {
+    const mapped: DedupeScanRow[] = rows.map((r) => {
       const o = r as Record<string, unknown>;
-      return { ts: Number(o.ts ?? 0), val: o.val };
+      return {
+        ts: Number(o.ts ?? 0),
+        val: o.val,
+        ack: Number(o.ack ?? 0),
+        q: Number(o.q ?? 0),
+        src: o.src == null ? null : String(o.src),
+      };
     });
-    const res = pickDuplicateTs(mapped, type, prev);
-    all.push(...res.ts);
+    const res = pickDuplicateRows(mapped, type, prev);
+    all.push(...res.rows);
     prev = res.last;
     if (rows.length < DEDUPE_SCAN_CHUNK) break;
     offset += DEDUPE_SCAN_CHUNK;
   }
   return all;
+}
+
+// Timestamp-only view of findConsecutiveDuplicateRows, kept for the existing
+// dedupe confirm/verify flow in DpValuesModal.
+export async function findConsecutiveDuplicateTs(
+  id: string,
+  type: unknown,
+  startTs?: number | null,
+  endTs?: number | null,
+): Promise<number[]> {
+  return (await findConsecutiveDuplicateRows(id, type, startTs, endTs)).map((r) => r[0]);
 }
 
 // Deletes stored value rows of a datapoint by exact timestamp, in chunks.
@@ -1274,6 +1463,99 @@ export async function insertDpValue(
     `INSERT INTO ${SQL_DB_NAME}.${table} (id, ts, val, ack, _from, q) ` +
     `VALUES (${numId}, ${t}, ${dpValueSql(type, val)}, ${ack ? 1 : 0}, 0, 0)`
   );
+}
+
+// --- Backup: restore -----------------------------------------------------------
+
+// Rows per INSERT statement during a restore.
+const RESTORE_INSERT_CHUNK = 5_000;
+
+// Maps sources.name → sources.id, so a dump's source names can be written back
+// as _from. Names missing from the table fall back to 0 — the restore never
+// inserts into `sources`, that stays the adapter's business.
+export async function getSourceIdMap(): Promise<Record<string, number>> {
+  const rows = await querySql(`SELECT id, name FROM ${SQL_DB_NAME}.sources`);
+  const map: Record<string, number> = {};
+  for (const r of rows) {
+    const o = r as { id?: unknown; name?: unknown };
+    if (o.name != null) map[String(o.name)] = Number(o.id);
+  }
+  return map;
+}
+
+// Live datapoints index used to classify dump series before restoring.
+export async function getLiveDpIndex(): Promise<{ names: Set<string>; ids: Set<number> }> {
+  const rows = await querySql(`SELECT id, name FROM ${SQL_DB_NAME}.datapoints`);
+  const names = new Set<string>();
+  const ids = new Set<number>();
+  for (const r of rows) {
+    const o = r as { id?: unknown; name?: unknown };
+    if (o.name != null) names.add(String(o.name));
+    ids.add(Number(o.id));
+  }
+  return { names, ids };
+}
+
+export interface BatchInsertResult {
+  inserted: number;
+  skipped: number;
+}
+
+// Writes dump rows back into a value table.
+//
+// INSERT IGNORE relies on the (id, ts) primary key: rows that already exist stay
+// untouched and are reported as skipped. That gives skip-and-report semantics
+// atomically per block, without pulling half a million timestamps into the
+// browser first and without a check-then-insert race in between.
+//
+// `rows` carry a source *name*; the caller resolves it to a numeric _from via
+// getSourceIdMap() and passes the resolved map in.
+export async function insertDpValuesBatch(
+  table: DumpTable,
+  type: unknown,
+  numId: number,
+  rows: DumpRow[],
+  sourceIds: Record<string, number>,
+  onProgress?: (done: number) => void,
+  signal?: AbortSignal,
+): Promise<BatchInsertResult & { unresolvedSources: number }> {
+  if (!(TS_TABLES as readonly string[]).includes(table)) {
+    throw new Error(`Unknown value table: ${table}`);
+  }
+  const id = Math.floor(Number(numId));
+  if (!Number.isFinite(id)) throw new Error(`Invalid db id: ${numId}`);
+
+  let inserted = 0;
+  let unresolvedSources = 0;
+
+  for (let i = 0; i < rows.length; i += RESTORE_INSERT_CHUNK) {
+    if (signal?.aborted) throw new Error('Restore aborted');
+    const chunk = rows.slice(i, i + RESTORE_INSERT_CHUNK);
+    const values = chunk.map((r) => {
+      const src = r[4];
+      let from = 0;
+      if (src != null) {
+        const resolved = sourceIds[src];
+        if (resolved == null) unresolvedSources += 1;
+        else from = resolved;
+      }
+      // dpValueSql quotes strings and coerces per type; it throws on values that
+      // cannot be represented, which is what we want for untrusted file input.
+      return `(${id}, ${Math.floor(r[0])}, ${dpValueSql(type, r[1])}, ${r[2] === 1 ? 1 : 0}, ${from}, ${Math.floor(r[3])})`;
+    });
+    const res = (await sendToSql(
+      'query',
+      `INSERT IGNORE INTO ${SQL_DB_NAME}.${table} (id, ts, val, ack, _from, q) VALUES ${values.join(', ')}`
+    )) as { error?: unknown; result?: { affectedRows?: number } } | null;
+    if (res && typeof res === 'object' && res.error) throw new Error(String(res.error));
+    // MariaDB reports how many rows the statement actually wrote; the rest hit
+    // the primary key and were ignored.
+    const affected = Number(res?.result?.affectedRows ?? 0);
+    inserted += affected;
+    onProgress?.(i + chunk.length);
+  }
+
+  return { inserted, skipped: rows.length - inserted, unresolvedSources };
 }
 
 // Renames a datapoint in the sql.0 database by updating datapoints.name.
