@@ -151,6 +151,7 @@ function AppContent() {
     historyModalId, setHistoryModalId, newDatapointInitialId, setNewDatapointInitialId,
     enumManagerOpen, setEnumManagerOpen, aliasReplaceInitialStr, setAliasReplaceInitialStr,
     autoAliasDeviceId, setAutoAliasDeviceId,
+    autoAliasSourceIds, setAutoAliasSourceIds,
   } = useSelectionContext();
 
   // ── UI Context ───────────────────────────────────────────────────────────
@@ -892,10 +893,11 @@ function AppContent() {
           <Suspense fallback={null}>
             <AutoCreateAliasModal
               deviceId={autoAliasDeviceId}
+              sourceIds={autoAliasSourceIds}
               allObjects={allObjects}
               existingIds={existingIds}
               language={appSettings.language}
-              onClose={() => setAutoAliasDeviceId(null)}
+              onClose={() => { setAutoAliasDeviceId(null); setAutoAliasSourceIds(null); }}
               onCreated={(ids) => { handleNavigateTo(ids.length === 1 ? ids : ['alias.0.*']); }}
             />
           </Suspense>

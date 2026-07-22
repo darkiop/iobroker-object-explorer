@@ -11,6 +11,8 @@ import { compilePattern, isGlobPattern } from '../../api/iobroker';
 
 interface Props {
   deviceId: string;
+  /** Restrict the rows to these source states; null/undefined lists every child state of deviceId. */
+  sourceIds?: string[] | null;
   allObjects: Record<string, IoBrokerObject>;
   existingIds: Set<string>;
   onClose: () => void;
@@ -43,7 +45,7 @@ function getObjectName(obj: IoBrokerObject | undefined): string {
 
 const ALIAS_PREFIX = 'alias.0.';
 
-export default function AutoCreateAliasModal({ deviceId, allObjects, existingIds, onClose, onCreated, language = 'en' }: Props) {
+export default function AutoCreateAliasModal({ deviceId, sourceIds, allObjects, existingIds, onClose, onCreated, language = 'en' }: Props) {
   const isEn = language === 'en';
   const prefix = deviceId + '.';
 
@@ -68,10 +70,12 @@ export default function AutoCreateAliasModal({ deviceId, allObjects, existingIds
 
   useEscapeKey(onClose);
 
-  // Build rows from child state objects of the device
+  // Build rows from child state objects of the device — narrowed to sourceIds when given
+  const sourceIdSet = useMemo(() => sourceIds ? new Set(sourceIds) : null, [sourceIds]);
   const initialRows = useMemo<AliasRow[]>(() => {
     return Object.entries(allObjects)
-      .filter(([id, obj]) => id.startsWith(prefix) && obj.type === 'state' && !id.startsWith('alias.'))
+      .filter(([id, obj]) => id.startsWith(prefix) && obj.type === 'state' && !id.startsWith('alias.')
+        && (!sourceIdSet || sourceIdSet.has(id)))
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([id, obj]) => {
         const suffix = id.slice(prefix.length);
@@ -95,7 +99,7 @@ export default function AutoCreateAliasModal({ deviceId, allObjects, existingIds
           checked: true,
         };
       });
-  }, [allObjects, prefix]);
+  }, [allObjects, prefix, sourceIdSet]);
 
   const [rows, setRows] = useState<AliasRow[]>(initialRows);
 

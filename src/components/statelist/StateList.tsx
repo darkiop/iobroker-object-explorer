@@ -74,7 +74,7 @@ import { DEFAULT_COLS, BUILTIN_DEFAULT_WIDTHS, BUILTIN_MIN_WIDTHS, BUILTIN_MAX_W
 function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allObjectIds, exportIds, onNavigateTo, onOpenInOtherPanel, forceHideToolbarLabels, visibleColsOverride, onVisibleColsChange, groupByPathOverride, onToggleGroupByPathOverride, historyIds, smartIds, onVisibleIdsChange, dragEnabled = false, onDropAlias }: StateListProps, ref: React.ForwardedRef<StateListHandle>) {
   const { colFilters, handleColFilterChange: onColFilterChange, pattern, treeFilter, handleClearTreeFilter: onClearTreeFilter, sidebarToggleSeq, fulltextEnabled, handleTreeScope, resetAllFilters } = usePanelContext();
   const { treeSearch } = useFilterContext();
-  const { selectedId, setSelectedId: onSelect, setHistoryModalId: _setHistoryModalId, setEnumManagerOpen, setAliasReplaceInitialStr, setEditInitialTab, setAutoAliasDeviceId } = useSelectionContext();
+  const { selectedId, setSelectedId: onSelect, setHistoryModalId: _setHistoryModalId, setEnumManagerOpen, setAliasReplaceInitialStr, setEditInitialTab, setAutoAliasDeviceId, setAutoAliasSourceIds } = useSelectionContext();
   const { appSettings, expertMode, scriptUsedIds, scriptsFetching, scriptLastUpdated, setScriptUsedIds, setConfirmScriptRefresh, handleToggleGroupByPath: _handleToggleGroupByPath, persistSettings } = useAppSettingsContext();
   const onToggleGroupByPath = onToggleGroupByPathOverride ?? _handleToggleGroupByPath;
 
@@ -154,7 +154,6 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
     exportMenuRef,
     ctxMenu, setCtxMenu,
     sepCtxMenu, setSepCtxMenu,
-    checkedSepPrefix,
   } = useStateListModals();
   const showToolbarLabels = forceHideToolbarLabels ? false : toolbarLabels;
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
@@ -804,9 +803,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
         treeFilter={treeFilter}
         pattern={pattern}
         fulltextEnabled={fulltextEnabled}
-        colFilters={colFilters}
         checkedIds={checkedIds}
-        checkedSepPrefix={checkedSepPrefix}
         pageSize={pageSize ?? 50}
         visibleCols={visibleCols}
         scriptsFetching={scriptsFetching}
@@ -832,7 +829,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
         onVirtualFolders={() => setVirtualFoldersOpen(true)}
         onDbOverview={() => setDbOverviewOpen(true)}
         onAliasReplace={(str) => onOpenAliasReplace?.(str)}
-        onAutoAlias={(target) => setAutoAliasDeviceId(target)}
+        onAutoAlias={(target, sourceIds) => { setAutoAliasSourceIds(sourceIds); setAutoAliasDeviceId(target); }}
         onHistoryOpen={(id, extra) => { setHistoryInitialExtra(extra); setHistoryModalId(id); }}
         onDeleteSelected={() => setMultiDeleteOpen(true)}
         onClearTreeFilter={onClearTreeFilter}
@@ -1508,7 +1505,7 @@ function StateList({ ids, states, objects, roomMap, functionMap, aliasMap, allOb
         if (allChecked) groupIds.forEach((id) => next.delete(id)); else groupIds.forEach((id) => next.add(id));
         return next;
       })}
-      onSepAutoAlias={(prefix) => setAutoAliasDeviceId(prefix)}
+      onSepAutoAlias={(prefix) => { setAutoAliasSourceIds(null); setAutoAliasDeviceId(prefix); }}
       onSepOptimize={(prefix) => { setOptimizePath(prefix + '.*'); setOptimizeOpen(true); setSepCtxMenu(null); }}
       onSepDelete={(prefix) => setDeletingGroupPrefix(prefix)}
       onStatsSelectNamespace={(ns) => handleTreeScope(`${ns}.`)}

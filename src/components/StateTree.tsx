@@ -501,7 +501,7 @@ const TreeNodeComponent = memo(function TreeNodeComponent({
 
 function StateTree({ stateIds, allObjects, historyIds, smartIds, onCreateAtPath, onSearch, onTreeScope, onDropAlias }: StateTreeProps) {
   const { treeFilter, treeSearch, setTreeSearch, treeExpandSignal, pattern, historyOnly, smartOnly } = useFilterContext();
-  const { selectedId, setSelectedId, setAliasReplaceInitialStr, setAutoAliasDeviceId } = useSelectionContext();
+  const { selectedId, setSelectedId, setAliasReplaceInitialStr, setAutoAliasDeviceId, setAutoAliasSourceIds } = useSelectionContext();
   const { appSettings, persistSettings } = useAppSettingsContext();
 
   const language = appSettings.language;
@@ -513,8 +513,9 @@ function StateTree({ stateIds, allObjects, historyIds, smartIds, onCreateAtPath,
     setAliasReplaceInitialStr(initialStr ?? null);
   }, [setAliasReplaceInitialStr]);
   const onAutoCreateAlias = useCallback((deviceId: string) => {
+    setAutoAliasSourceIds(null); // whole subtree
     setAutoAliasDeviceId(deviceId);
-  }, [setAutoAliasDeviceId]);
+  }, [setAutoAliasDeviceId, setAutoAliasSourceIds]);
 
   const {
     expandSignal, setExpandSignal,

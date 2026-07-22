@@ -17,9 +17,7 @@ interface StateListToolbarProps {
   treeFilter: string | null | undefined;
   pattern: string | null | undefined;
   fulltextEnabled: boolean;
-  colFilters: Partial<Record<SortKey, string>>;
   checkedIds: Set<string>;
-  checkedSepPrefix: string | null;
   pageSize: number;
   visibleCols: SortKey[];
   scriptsFetching: boolean;
@@ -45,7 +43,7 @@ interface StateListToolbarProps {
   onVirtualFolders: () => void;
   onDbOverview: () => void;
   onAliasReplace: (initialStr: string) => void;
-  onAutoAlias: (target: string) => void;
+  onAutoAlias: (target: string, sourceIds: string[]) => void;
   onHistoryOpen: (primary: string, extra: ExtraSeries[]) => void;
   onDeleteSelected: () => void;
   onClearTreeFilter: () => void;
@@ -62,8 +60,8 @@ interface StateListToolbarProps {
 export default function StateListToolbar({
   isEn, language, showToolbarLabels,
   groupByPath, shortenGroupPaths, showDesc, hideAliasSubRows,
-  treeFilter, pattern, fulltextEnabled, colFilters,
-  checkedIds, checkedSepPrefix, pageSize, visibleCols,
+  treeFilter, pattern, fulltextEnabled,
+  checkedIds, pageSize, visibleCols,
   scriptsFetching, scriptLastUpdated,
   allHistoryIds, objects,
   newMenuOpen, exportMenuOpen, newMenuRef, exportMenuRef,
@@ -80,12 +78,23 @@ export default function StateListToolbar({
   const historyEnabled = checkedArr.length >= 1 && checkedArr.length <= 2 && checkedArr.every(id => allHistoryIds.has(id));
   const hasAnyHistory = historyChecked.length > 0;
 
-  const idFilter = colFilters.id?.trim() ?? '';
+  // Auto Alias works on the checked rows only. The common ancestor of those rows is the
+  // default alias base path; checking a separator row checks its whole subtree, so that
+  // covers "check the group, then hit Auto Alias" as well.
+  const autoAliasSources = checkedArr.filter((id) => !id.startsWith('alias.'));
   const autoAliasTarget = (() => {
-    const t = checkedSepPrefix
-      ?? (treeFilter ? treeFilter.replace(/\.$/, '') : null)
-      ?? (!isGlobPattern(idFilter) && idFilter.includes('.') ? idFilter : null);
-    return t && t.startsWith('alias.') ? null : t;
+    if (autoAliasSources.length === 0) return null;
+    let common = autoAliasSources[0].split('.');
+    for (const id of autoAliasSources.slice(1)) {
+      const parts = id.split('.');
+      let i = 0;
+      while (i < common.length && i < parts.length && common[i] === parts[i]) i++;
+      common = common.slice(0, i);
+    }
+    // A single checked row (or a checked parent) yields the ID itself — step up one level
+    // so the base path is the containing device/channel rather than the state.
+    if (checkedIds.has(common.join('.'))) common = common.slice(0, -1);
+    return common.length >= 2 ? common.join('.') : null;
   })();
 
   const hasAliasChecked = checkedArr.some((id) => id.startsWith('alias.'));
@@ -226,11 +235,13 @@ export default function StateListToolbar({
           </button>
         )}
         <button
-          onClick={() => autoAliasTarget && onAutoAlias(autoAliasTarget)}
+          onClick={() => autoAliasTarget && onAutoAlias(autoAliasTarget, autoAliasSources)}
           disabled={!autoAliasTarget}
           title={autoAliasTarget
-            ? (isEn ? `Auto-create aliases for: ${autoAliasTarget}` : `Aliases auto-erstellen für: ${autoAliasTarget}`)
-            : (isEn ? 'Set a tree filter or ID filter to a device path first' : 'Zuerst einen Baum- oder ID-Filter auf einen Gerätepfad setzen')}
+            ? (isEn
+                ? `Auto-create aliases for ${autoAliasSources.length} selected datapoint(s) under ${autoAliasTarget}`
+                : `Aliases auto-erstellen für ${autoAliasSources.length} ausgewählte Datenpunkte unter ${autoAliasTarget}`)
+            : (isEn ? 'Select the datapoints to create aliases for first' : 'Zuerst die Datenpunkte auswählen, für die Aliase erstellt werden sollen')}
           className={`flex items-center gap-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${showToolbarLabels ? 'px-2.5 py-1 text-xs font-medium' : 'justify-center w-7 h-7'}`}
         >
           <Link2 size={15} />
