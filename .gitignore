@@ -35,5 +35,3 @@ docker-compose.yml
 ._*.jpg
 .DS_Store
 ._DS_Store
-
-images/**
